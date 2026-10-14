@@ -1,5 +1,6 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
+// Madcap Nailgun. A Syringe Gun clone.
 //
 //=============================================================================
 #ifndef TF_WEAPON_NAILGUN_H
@@ -8,7 +9,7 @@
 #pragma once
 #endif
 
-#include "tf_weaponbase_gun.h"
+#include "tf_weapon_syringegun.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -17,13 +18,13 @@
 
 //=============================================================================
 //
-// TF Weapon Sub-machine gun.
+// Madcap's Nailgun. Same projectile, damage, and rate of fire as the Syringe Gun.
 //
-class CTFNailgun : public CTFWeaponBaseGun
+class CTFNailgun : public CTFSyringeGun
 {
 public:
 
-	DECLARE_CLASS( CTFNailgun, CTFWeaponBaseGun );
+	DECLARE_CLASS( CTFNailgun, CTFSyringeGun );
 	DECLARE_NETWORKCLASS(); 
 	DECLARE_PREDICTABLE();
 
