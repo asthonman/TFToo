@@ -1,0 +1,27 @@
+// Madcap. Body, arms, and death sounds are the Scout's for now.
+// 300 units/sec is 100% move speed. Health is 175.
+"PlayerClassData"
+{
+	"name"				"madcap"
+	"model"				"models/player/scout.mdl"
+	"model_hwm"			"models/player/hwm/scout.mdl"
+	"model_hands"		"models/weapons/c_models/c_scout_arms.mdl"
+	"localize_name"		"#TF_Class_Name_Madcap"
+	"speed_max"			"300"
+	"health_max"		"175"
+	"armor_max"			"0"
+	"weapon1"			"tf_weapon_nailgun"
+	"weapon2"			"tf_weapon_bat"
+	"weapon3"			"tf_weapon_none"
+	"grenade1"			"tf_weapon_none"
+	"grenade2"			"tf_weapon_none"
+	"DontDoAirwalk"		"0"
+	"DontDoNewJump"		"0"
+
+	"AmmoMax"
+	{
+		"TF_AMMO_PRIMARY"		"150"
+		"TF_AMMO_SECONDARY"		"0"
+		"TF_AMMO_METAL"			"0"
+	}
+}

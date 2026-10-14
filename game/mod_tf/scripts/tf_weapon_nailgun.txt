@@ -1,0 +1,49 @@
+// Madcap Nailgun. Numbers match the stock Syringe Gun.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Nailgun"
+	"BuiltRightHanded"	"0"
+	"weight"			"2"
+	"WeaponType"		"primary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"10"
+	"Range"				"0"
+	"BulletsPerShot"	"1"
+	"Spread"			"0.0"
+	"PunchAngle"		"0.0"
+	"TimeFireDelay"		"0.105"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+	"TimeReloadStart"	"0.1"
+	"TimeReload"		"1.305"
+	"UseRapidFireCrits"	"1"
+
+	"primary_ammo"		"TF_AMMO_PRIMARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"40"
+	"default_clip"		"40"
+
+	"bucket"			"0"
+	"bucket_position"	"0"
+
+	"DoInstantEjectBrass"			"0"
+	"HasTeamSkins_Viewmodel"		"1"
+	"HasTeamSkins_Worldmodel"		"1"
+	"MuzzleFlashParticleEffect"		"muzzle_syringe"
+
+	"viewmodel"			"models/weapons/c_models/c_syringegun/c_syringegun.mdl"
+	"playermodel"		"models/weapons/c_models/c_syringegun/c_syringegun.mdl"
+	"anim_prefix"		"ac"
+
+	"ProjectileType"	"projectile_syringe"
+	"ProjectileSpeed"	"1000"
+
+	"WeaponSound"
+	{
+		"single_shot"	"Weapon_SyringeGun.Single"
+		"reload"		"Weapon_SyringeGun.WorldReload"
+		"empty"			"Weapon_SyringeGun.ClipEmpty"
+		"burst"			"Weapon_SyringeGun.SingleCrit"
+	}
+}
