@@ -264,6 +264,7 @@ public:
 	virtual const char	*GetPlayerDisplayModelAlt( int iClass = 0 ) const	{ Assert( iClass >= 0 && iClass < LOADOUT_COUNT ); return m_pszPlayerDisplayModelAlt[iClass]; }
 
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
+	void		RetargetClass( int iFromClass, int iToClass );
 	bool		IsAWearable() const;
 	bool		IsContentStreamable() const;
 	const char* GetAdTextToken() const { return m_pszAdText; }
@@ -755,6 +756,7 @@ public:
 	virtual IEconTool						*CreateEconToolImpl( const char *pszToolType, const char *pszUseString, const char *pszUsageRestriction, item_capabilities_t unCapabilities, KeyValues *pUsageKV ) OVERRIDE;
 
 	virtual bool BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors = NULL ) OVERRIDE;
+	void ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors );
 	virtual bool BPostSchemaInit( CUtlVector<CUtlString> *pVecErrors ) OVERRIDE;
 
 	virtual RTime32 GetCustomExpirationDate( const char *pszExpirationDate ) const OVERRIDE;

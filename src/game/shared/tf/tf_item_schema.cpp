@@ -1282,6 +1282,52 @@ int CTFItemDefinition::GetLoadoutSlot( int iLoadoutClass ) const
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Move an item from one class to another. Used so the Boston Basher
+// belongs to Madcap instead of the Scout.
+//-----------------------------------------------------------------------------
+void CTFItemDefinition::RetargetClass( int iFromClass, int iToClass )
+{
+	if ( iFromClass <= 0 || iToClass <= 0 || iFromClass >= LOADOUT_COUNT || iToClass >= LOADOUT_COUNT )
+		return;
+	if ( !m_vbClassUsability.IsBitSet( iFromClass ) )
+		return;
+
+	const int iSlot = m_iLoadoutSlots[iFromClass];
+	m_vbClassUsability.Clear( iFromClass );
+	m_iLoadoutSlots[iFromClass] = LOADOUT_POSITION_INVALID;
+	m_vbClassUsability.Set( iToClass );
+	m_iLoadoutSlots[iToClass] = ( iSlot != LOADOUT_POSITION_INVALID ) ? iSlot : m_iDefaultLoadoutSlot;
+
+	if ( !m_pszPlayerDisplayModel[iToClass] )
+	{
+		m_pszPlayerDisplayModel[iToClass] = m_pszPlayerDisplayModel[iFromClass];
+	}
+	if ( !m_pszPlayerDisplayModelAlt[iToClass] )
+	{
+		m_pszPlayerDisplayModelAlt[iToClass] = m_pszPlayerDisplayModelAlt[iFromClass];
+	}
+
+	KeyValues *pKV = GetRawDefinition();
+	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes" ) : NULL;
+	if ( !pClasses )
+		return;
+
+	for ( KeyValues *pKVClass = pClasses->GetFirstSubKey(); pKVClass; pKVClass = pKVClass->GetNextKey() )
+	{
+		const int iClass = StringFieldToInt( pKVClass->GetName(), GetItemSchema()->GetClassUsabilityStrings(), true );
+		if ( iClass != iFromClass )
+			continue;
+
+		const char *pszTo = GetItemSchema()->GetClassUsabilityStrings()[iToClass];
+		if ( pszTo && pszTo[0] )
+		{
+			pKVClass->SetName( pszTo );
+		}
+		break;
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Returns true if this item is in a wearable slot, or is acting as a wearable
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::IsAWearable() const
@@ -1362,8 +1408,9 @@ void CTFItemDefinition::FilloutSlotUsage( CBitVec<LOADOUT_COUNT> *pBV ) const
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::CanBeUsedByAllClasses( void ) const
 {
-	// Right now, Civilian isn't a real class, so we only have 9 classes in this check
-	for ( int iClass = 1; iClass < (LOADOUT_COUNT-1); iClass++ )
+	// Right now, Civilian isn't a real class. Extras such as Madcap are not part of
+	// "all class" either; that set is still the original nine.
+	for ( int iClass = TF_CLASS_SCOUT; iClass <= TF_CLASS_ENGINEER; iClass++ )
 	{
 		if ( !CanBeUsedByClass(iClass) )
 			return false;
@@ -1465,8 +1512,11 @@ static PlayerClassInfo_t gs_PlayerClassData[] =
 	{ "Pyro",		"#TF_Class_Name_Pyro" },
 	{ "Spy",		"#TF_Class_Name_Spy" },
 	{ "Engineer",	"#TF_Class_Name_Engineer" },
+	{ "Madcap",		"#TF_Class_Name_Madcap" },
 	{ "Invalid",	"" }						// lots of code loops over these classes based on LOADOUT_COUNT, which is wrong, but this allows them to do it safely
 };
+COMPILE_TIME_ASSERT( ARRAYSIZE( gs_PlayerClassData ) == LOADOUT_COUNT );
+COMPILE_TIME_ASSERT( LOADOUT_COUNT == TF_CLASS_COUNT_ALL );
 
 bool BIsPlayerClassValid( int iClass )
 {
@@ -1633,6 +1683,73 @@ void CTFItemSchema::Reset()
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Madcap's stock primary is a schema clone of the Syringe Gun. His
+// stock melee is the Boston Basher, which no longer belongs to the Scout.
+//-----------------------------------------------------------------------------
+static const int kMadcapNailgunDefIndex = 30001;
+
+void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
+{
+	CEconItemDefinition *pBasher = GetItemDefinitionByName( "The Boston Basher" );
+	if ( !pBasher )
+	{
+		pBasher = GetItemDefinition( 325 );
+	}
+	CTFItemDefinition *pTFBasher = dynamic_cast<CTFItemDefinition *>( pBasher );
+	if ( pTFBasher )
+	{
+		pTFBasher->RetargetClass( TF_CLASS_SCOUT, TF_CLASS_MADCAP );
+		NoteRuntimeBaseItem( pTFBasher );
+	}
+
+	if ( GetItemDefinition( kMadcapNailgunDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
+		return;
+
+	CEconItemDefinition *pSyringe = GetItemDefinitionByName( "TF_WEAPON_SYRINGEGUN_MEDIC" );
+	if ( !pSyringe )
+	{
+		pSyringe = GetItemDefinition( 17 );
+	}
+	if ( !pSyringe || !pSyringe->GetRawDefinition() )
+		return;
+
+	KeyValues *pCopy = pSyringe->GetRawDefinition()->MakeCopy();
+	if ( !pCopy )
+		return;
+
+	char szDefIndex[16];
+	Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapNailgunDefIndex );
+	pCopy->SetName( szDefIndex );
+	pCopy->SetString( "name", "TF_WEAPON_NAILGUN" );
+	pCopy->SetString( "item_class", "tf_weapon_nailgun" );
+	pCopy->SetString( "item_name", "#TF_Weapon_Nailgun" );
+	pCopy->SetString( "item_type_name", "#TF_Weapon_Nailgun" );
+	pCopy->SetInt( "baseitem", 1 );
+
+	// The copied definition is already prefab-expanded. Drop the prefab so the
+	// Medic class is not merged back in over Madcap.
+	KeyValues *pPrefab = pCopy->FindKey( "prefab" );
+	if ( pPrefab )
+	{
+		pCopy->RemoveSubKey( pPrefab );
+		pPrefab->deleteThis();
+	}
+
+	KeyValues *pClasses = pCopy->FindKey( "used_by_classes" );
+	if ( pClasses )
+	{
+		pCopy->RemoveSubKey( pClasses );
+		pClasses->deleteThis();
+	}
+	KeyValues *pMadcap = new KeyValues( "used_by_classes" );
+	pMadcap->SetString( "Madcap", "1" );
+	pCopy->AddSubKey( pMadcap );
+
+	AddRuntimeItemDefinition( pCopy, pVecErrors );
+	pCopy->deleteThis();
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFItemSchema::InitializeStringTable( const char **ppStringTable, unsigned int unStringCount, CUtlVector<const char *> *out_pvecStringTable )
@@ -1704,6 +1821,9 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	KeyValues* pKVWarDefs = pKVRawDefinition->FindKey( "war_definitions" );
 	SCHEMA_INIT_SUBSTEP( BInitWarDefs( pKVWarDefs, pVecErrors ) );
 
+	// Madcap's weapons are not in items_game.txt. Build them once the stock
+	// schema, including the Syringe Gun and the Boston Basher, has loaded.
+	ApplyMadcapItemDefinitions( pVecErrors );
 
 #ifdef GAME_DLL
 	IGameEvent * event = gameeventmanager->CreateEvent( "schema_updated" );
@@ -2677,4 +2797,56 @@ IEconTool *CTFItemSchema::CreateEconToolImpl( const char *pszToolType, const cha
 	return CEconItemSchema::CreateEconToolImpl( pszToolType, pszUseString, pszUsageRestriction, unCapabilities, pUsageKV );
 }
 
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Register an item definition that does not live in items_game.txt.
+//-----------------------------------------------------------------------------
+bool CEconItemSchema::AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors )
+{
+	if ( !pKVItem )
+		return false;
+
+	const int nItemIndex = Q_atoi( pKVItem->GetName() );
+	if ( nItemIndex <= 0 )
+		return false;
+	if ( m_mapItems.IsValidIndex( m_mapItems.Find( nItemIndex ) ) )
+		return false;
+	if ( pKVItem->GetString( "name", NULL ) && GetItemDefinitionByName( pKVItem->GetString( "name" ) ) )
+		return false;
+
+	CEconItemDefinition *pItemDef = CreateEconItemDefinition();
+	const int nMapIndex = m_mapItems.Insert( nItemIndex, pItemDef );
+	m_mapItemsSorted.Insert( nItemIndex, pItemDef );
+
+	if ( !pItemDef->BInitFromKV( pKVItem, pVecErrors ) )
+	{
+		m_mapItemsSorted.Remove( nItemIndex );
+		m_mapItems.RemoveAt( nMapIndex );
+		delete pItemDef;
+		return false;
+	}
+
+	m_mapItemsName.Insert( pItemDef->GetDefinitionName(), pItemDef );
+	if ( pItemDef->IsBaseItem() )
+	{
+		m_mapBaseItems.Insert( nItemIndex, pItemDef );
+	}
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Hand an existing unique out as a class's stock weapon.
+//-----------------------------------------------------------------------------
+void CEconItemSchema::NoteRuntimeBaseItem( CEconItemDefinition *pItemDef )
+{
+	if ( !pItemDef )
+		return;
+
+	const int nItemIndex = pItemDef->GetDefinitionIndex();
+	if ( !m_mapBaseItems.IsValidIndex( m_mapBaseItems.Find( nItemIndex ) ) )
+	{
+		m_mapBaseItems.Insert( nItemIndex, pItemDef );
+	}
+}
 

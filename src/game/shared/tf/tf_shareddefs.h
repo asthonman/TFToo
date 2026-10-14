@@ -221,6 +221,7 @@ enum ETFClass
 	// Medic, Sniper, Spy, then it wraps. Insert a matching entry at the same index in
 	// g_aPlayerClassNames, g_aPlayerClassNames_NonLocalized, g_aRawPlayerClassNamesShort
 	// and g_aRawPlayerClassNames. Key 0 is not a class button.
+	TF_CLASS_MADCAP,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
 

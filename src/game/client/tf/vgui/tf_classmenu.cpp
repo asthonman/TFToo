@@ -632,9 +632,15 @@ public:
 			m_pNames[i]->SetText( wszName );
 
 			bool bHasIcon = false;
-			if ( iClass >= 0 && iClass < TF_CLASS_MENU_BUTTONS )
+			int iIconClass = iClass;
+			// Extras do not have their own portrait yet. Use the slot they hang under.
+			if ( iClass > TF_CLASS_ENGINEER && nCount > 0 )
 			{
-				const char *pszShort = g_aRawPlayerClassNamesShort[iClass];
+				iIconClass = pClasses[0];
+			}
+			if ( iIconClass >= 0 && iIconClass < TF_CLASS_MENU_BUTTONS )
+			{
+				const char *pszShort = g_aRawPlayerClassNamesShort[iIconClass];
 				if ( pszShort && pszShort[0] )
 				{
 					char szIcon[128];
@@ -1102,6 +1108,7 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"tf_weapon_flamethrower",				// TF_CLASS_PYRO,
 	"",										// TF_CLASS_SPY,				// weapons handled individually
 	"tf_weapon_wrench",						// TF_CLASS_ENGINEER,		
+	"",										// TF_CLASS_MADCAP,
 };
 
 int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
@@ -1116,6 +1123,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_PYRO,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_SPY,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_ENGINEER,		
+	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MADCAP,			// Nailgun
 };
 
 //-----------------------------------------------------------------------------
@@ -2345,10 +2353,11 @@ void CTFClassMenu::UpdateNumClassLabels( int iTeam )
 			for ( int j = 1; j < m_nSlotClassCount[s] && nTotalCount < CLASS_COUNT_IMAGES; ++j )
 			{
 				const int iClass = m_nSlotClasses[s][j];
-				if ( iClass < 0 || iClass >= TF_CLASS_MENU_BUTTONS )
+				const int iIconClass = m_nSlotClasses[s][0];
+				if ( iIconClass < 0 || iIconClass >= TF_CLASS_MENU_BUTTONS )
 					continue;
 
-				const char *pszShort = g_aRawPlayerClassNamesShort[iClass];
+				const char *pszShort = g_aRawPlayerClassNamesShort[iIconClass];
 				if ( !pszShort || !pszShort[0] )
 					continue;
 
@@ -2394,7 +2403,18 @@ void CTFClassMenu::UpdateNumClassLabels( int iTeam )
 
 		if ( bInSomeSlot && iLocalPlayerClass >= 0 && iLocalPlayerClass < TF_CLASS_MENU_BUTTONS )
 		{
-			const char *pszShort = g_aRawPlayerClassNamesShort[iLocalPlayerClass];
+			int iIconClass = iLocalPlayerClass;
+			for ( int s = 0; s < m_nPopulatedSlots; ++s )
+			{
+				for ( int j = 1; j < m_nSlotClassCount[s]; ++j )
+				{
+					if ( m_nSlotClasses[s][j] == iLocalPlayerClass )
+					{
+						iIconClass = m_nSlotClasses[s][0];
+					}
+				}
+			}
+			const char *pszShort = ( iIconClass >= 0 && iIconClass < TF_CLASS_MENU_BUTTONS ) ? g_aRawPlayerClassNamesShort[iIconClass] : NULL;
 			if ( pszShort && pszShort[0] && m_pLocalPlayerImage )
 			{
 				if ( !m_pLocalPlayerImage->IsVisible() )

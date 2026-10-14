@@ -2812,6 +2812,10 @@ protected:
 
 	virtual bool BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors = NULL );
 	virtual bool BPostSchemaInit( CUtlVector<CUtlString> *pVecErrors );
+	// Items created in code, rather than items_game.txt. Madcap's Nailgun uses this,
+	// and the Boston Basher is added to the stock-item list.
+	bool AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors );
+	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
 #ifdef TF_CLIENT_DLL
 	virtual int CalculateNumberOfConcreteItems( const CEconItemDefinition *pItemDef );	// Let derived classes handle custom item types
 #endif // TF_CLIENT_DLL
