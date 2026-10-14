@@ -32,6 +32,7 @@ using namespace vgui;
 #define CLASS_COUNT_IMAGES	11
 
 class CTFClassTipsPanel;
+class CTFClassDropPanel;
 
 //-----------------------------------------------------------------------------
 // 
@@ -79,6 +80,18 @@ public:
 	virtual void UpdateClassCounts( void ){}
 	void		 SelectClass( int iClass );
 
+	// Keys 1-9 and hovering a portrait open that class's dropdown. A following
+	// number key picks an option. Key 0 is unchanged (close the menu).
+	// Classes added after the original nine are dealt into those dropdowns in
+	// menu order: Scout, Soldier, Pyro, Demoman, Heavy, Engineer, Medic, Sniper, Spy.
+	void		 RebuildClassDropdownGroups();
+	void		 OpenClassSlot( int nSlot, bool bForceRefresh = false );
+	void		 CloseClassDropdown();
+	void		 HighlightDropOption( int nOption, bool bPreview );
+	void		 ConfirmDropOption( int nOption );
+	int			 GetAnchorSlotForClass( int iClass ) const;
+	void		 PositionClassDropdown();
+
 	virtual int GetTeamNumber( void ) = 0;
 
 	// IGameEventListener interface:
@@ -87,6 +100,13 @@ public:
 	MESSAGE_FUNC( OnEconUIClosed, "EconUIClosed" );			// If the econ UI was opened (for editing loadout), we'll get notified when the user's done.
 
 	virtual GameActionSet_t GetPreferredActionSet() { return GAME_ACTION_SET_IN_GAME_HUD; }
+
+	// Dropdown anchors are the nine remap slots (keys 1-9).
+	enum
+	{
+		TF_CLASS_DROP_SLOTS = 9,
+		TF_CLASS_DROP_MAX_PER_SLOT = 32
+	};
 
 protected:
 	virtual void ApplySchemeSettings( IScheme *pScheme );
@@ -127,6 +147,14 @@ private:
 	ButtonCode_t	m_iClassMenuKey;
 	int				m_iCurrentClassIndex;
 	vgui::CKeyRepeatHandler	m_KeyRepeat;
+
+	int					m_nPopulatedSlots;
+	int					m_nSlotClassCount[TF_CLASS_DROP_SLOTS];
+	int					m_nSlotClasses[TF_CLASS_DROP_SLOTS][TF_CLASS_DROP_MAX_PER_SLOT];
+	int					m_nOpenSlot;
+	int					m_nDropHighlight;
+	CTFClassDropPanel	*m_pClassDropdown;
+	bool				m_bIgnoreNumberRepeat;
 
 	int				m_nBaseMusicGuid;
 

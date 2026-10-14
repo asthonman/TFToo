@@ -213,6 +213,9 @@ int GetClassIndexFromString( const char *pClassName, int nLastClassIndex/*=TF_LA
 	return TF_CLASS_UNDEFINED;
 }
 
+// menu buttons are not in the same order as the defines.
+// Slots 1-9 are the class-menu dropdown anchors (keys 1-9). Leave new classes
+// out of those slots; CTFClassMenu deals them into the dropdowns itself.
 int iRemapIndexToClass[TF_CLASS_MENU_BUTTONS] =
 {
 	0,
@@ -1462,7 +1465,7 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 			// Does it make sense to call the below Steam API so it'll force a validation next startup time?
 			// Need to verify it's real corruption and not someone dorking around with their objects.txt file...
 			//
-			// From Martin Otten: If you have a file on disc and you’re 100% sure it’s
+			// From Martin Otten: If you have a file on disc and youÂ’re 100% sure itÂ’s
 			//  corrupt, call ISteamApps::MarkContentCorrupt( false ), before you shutdown
 			//  the game. This will cause a content validation in Steam.
 

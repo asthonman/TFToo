@@ -20,6 +20,9 @@
 #include "tf_gamerules.h"
 #include "engine/IEngineSound.h"
 #include "inputsystem/iinputsystem.h"
+#include "tf_classdata.h"
+#include "vgui_controls/Label.h"
+#include "vgui/ISurface.h"
 
 #if defined( REPLAY_ENABLED )
 #include "replay/iclientreplaycontext.h"
@@ -443,11 +446,317 @@ private:
 	CFmtStr					m_fmtResFilename;
 };
 
+static void GetClassMenuDisplayName( int iClass, wchar_t *pOut, int nOutBytes );
+
+//-----------------------------------------------------------------------------
+// Purpose: One row in a class dropdown. Mouse input stays on the row so the
+// icon and labels can't steal hover or clicks. Does not take keyboard focus.
+//-----------------------------------------------------------------------------
+class CTFClassDropRow : public vgui::Button
+{
+	DECLARE_CLASS_SIMPLE( CTFClassDropRow, vgui::Button );
+
+public:
+	CTFClassDropRow( CTFClassMenu *pMenu, Panel *parent, const char *name )
+		: Button( parent, name, "" )
+		, m_pMenu( pMenu )
+		, m_nIndex( 0 )
+	{
+		SetPaintBackgroundEnabled( false );
+		SetPaintBorderEnabled( false );
+		SetProportional( false );
+	}
+
+	void SetIndex( int nIndex ) { m_nIndex = nIndex; }
+
+	virtual void OnMousePressed( vgui::MouseCode code )
+	{
+		if ( code == MOUSE_LEFT && m_pMenu && IsVisible() )
+		{
+			m_pMenu->ConfirmDropOption( m_nIndex );
+		}
+	}
+
+	virtual void OnCursorEntered()
+	{
+		BaseClass::OnCursorEntered();
+		if ( m_pMenu && IsVisible() )
+		{
+			m_pMenu->HighlightDropOption( m_nIndex, true );
+		}
+	}
+
+private:
+	CTFClassMenu	*m_pMenu;
+	int				m_nIndex;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: Dropdown under one of the nine class portraits.
+//-----------------------------------------------------------------------------
+class CTFClassDropPanel : public vgui::EditablePanel
+{
+	DECLARE_CLASS_SIMPLE( CTFClassDropPanel, vgui::EditablePanel );
+
+public:
+	enum
+	{
+		MAX_OPTIONS = CTFClassMenu::TF_CLASS_DROP_MAX_PER_SLOT
+	};
+
+	CTFClassDropPanel( CTFClassMenu *pMenu, const char *panelName )
+		: EditablePanel( pMenu, panelName )
+		, m_nCount( 0 )
+		, m_nHighlight( 0 )
+		, m_iTeam( TF_TEAM_RED )
+	{
+		SetProportional( false );
+		SetPaintBackgroundEnabled( true );
+		SetBuildModeEditable( false );
+		SetBuildModeDeletable( false );
+		SetMouseInputEnabled( true );
+		SetKeyBoardInputEnabled( false );
+		Q_memset( m_pRows, 0, sizeof( m_pRows ) );
+		Q_memset( m_pIcons, 0, sizeof( m_pIcons ) );
+		Q_memset( m_pNums, 0, sizeof( m_pNums ) );
+		Q_memset( m_pNames, 0, sizeof( m_pNames ) );
+		Q_memset( m_nClasses, 0, sizeof( m_nClasses ) );
+	}
+
+	void SetOptions( const int *pClasses, int nCount, int nHighlight, int iTeam )
+	{
+		if ( nCount < 0 )
+			nCount = 0;
+		if ( nCount > MAX_OPTIONS )
+			nCount = MAX_OPTIONS;
+
+		m_nCount = nCount;
+		m_iTeam = iTeam;
+		m_nHighlight = ( nHighlight >= 0 && nHighlight < nCount ) ? nHighlight : 0;
+
+		SetProportional( false );
+
+		vgui::HFont hFont = 0;
+		vgui::IScheme *pScheme = vgui::scheme()->GetIScheme( GetScheme() );
+		if ( pScheme )
+		{
+			hFont = pScheme->GetFont( "HudFontSmallBold", true );
+			if ( !hFont )
+			{
+				hFont = pScheme->GetFont( "Default", true );
+			}
+		}
+
+		// Sizes are real pixels. The parent menu is proportional; this panel is not,
+		// so scale once here and pass pixels to SetBounds.
+		const int nPad = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 4 );
+		const int nRow = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 26 );
+		const int nGap = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 2 );
+		const int nWide = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 168 );
+		const int nIcon = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 22 );
+		const int nNumW = vgui::scheme()->GetProportionalScaledValueEx( GetScheme(), 16 );
+
+		const int nTall = nPad * 2 + ( nCount > 0 ? nCount * nRow + ( nCount - 1 ) * nGap : nRow );
+		SetSize( nWide, nTall );
+
+		for ( int i = 0; i < MAX_OPTIONS; ++i )
+		{
+			if ( i >= nCount )
+			{
+				if ( m_pRows[i] )
+				{
+					m_pRows[i]->SetVisible( false );
+				}
+				continue;
+			}
+
+			if ( !m_pRows[i] )
+			{
+				CTFClassMenu *pMenu = dynamic_cast<CTFClassMenu *>( GetParent() );
+				m_pRows[i] = new CTFClassDropRow( pMenu, this, CFmtStr( "DropRow%d", i ).Access() );
+				m_pNums[i] = new vgui::Label( m_pRows[i], "DropNum", "" );
+				m_pIcons[i] = new vgui::ImagePanel( m_pRows[i], "DropIcon" );
+				m_pNames[i] = new vgui::Label( m_pRows[i], "DropName", "" );
+				m_pNums[i]->SetMouseInputEnabled( false );
+				m_pIcons[i]->SetMouseInputEnabled( false );
+				m_pNames[i]->SetMouseInputEnabled( false );
+				m_pNums[i]->SetPaintBackgroundEnabled( false );
+				m_pNames[i]->SetPaintBackgroundEnabled( false );
+				m_pIcons[i]->SetShouldScaleImage( true );
+				m_pNums[i]->SetContentAlignment( vgui::Label::a_center );
+				m_pNames[i]->SetContentAlignment( vgui::Label::a_west );
+				m_pNums[i]->SetProportional( false );
+				m_pIcons[i]->SetProportional( false );
+				m_pNames[i]->SetProportional( false );
+				m_pRows[i]->SetProportional( false );
+			}
+
+			const int iClass = pClasses[i];
+			m_nClasses[i] = iClass;
+			m_pRows[i]->SetIndex( i );
+			m_pRows[i]->SetVisible( true );
+			m_pRows[i]->SetEnabled( true );
+			m_pRows[i]->SetProportional( false );
+
+			const int nY = nPad + i * ( nRow + nGap );
+			m_pRows[i]->SetBounds( nPad, nY, nWide - nPad * 2, nRow );
+			m_pNums[i]->SetBounds( 0, 0, nNumW, nRow );
+			m_pIcons[i]->SetBounds( nNumW, ( nRow - nIcon ) / 2, nIcon, nIcon );
+			m_pNames[i]->SetBounds( nNumW + nIcon + 4, 0, nWide - nPad * 2 - nNumW - nIcon - 8, nRow );
+
+			if ( hFont )
+			{
+				m_pNums[i]->SetFont( hFont );
+				m_pNames[i]->SetFont( hFont );
+			}
+			m_pNums[i]->SetFgColor( Color( 255, 214, 140, 255 ) );
+			m_pNames[i]->SetFgColor( Color( 245, 236, 220, 255 ) );
+
+			if ( i < 9 )
+			{
+				char szNum[8];
+				Q_snprintf( szNum, sizeof( szNum ), "%d", i + 1 );
+				m_pNums[i]->SetText( szNum );
+				m_pNums[i]->SetVisible( true );
+			}
+			else
+			{
+				m_pNums[i]->SetText( "" );
+				m_pNums[i]->SetVisible( false );
+			}
+
+			wchar_t wszName[128];
+			wszName[0] = L'\0';
+			GetClassMenuDisplayName( iClass, wszName, sizeof( wszName ) );
+			m_pNames[i]->SetText( wszName );
+
+			bool bHasIcon = false;
+			if ( iClass >= 0 && iClass < TF_CLASS_MENU_BUTTONS )
+			{
+				const char *pszShort = g_aRawPlayerClassNamesShort[iClass];
+				if ( pszShort && pszShort[0] )
+				{
+					char szIcon[128];
+					Q_snprintf( szIcon, sizeof( szIcon ), "class_sel_sm_%s_%s", pszShort, ( iTeam == TF_TEAM_BLUE ) ? "blu" : "red" );
+					m_pIcons[i]->SetImage( szIcon );
+					bHasIcon = true;
+				}
+			}
+			m_pIcons[i]->SetVisible( bHasIcon );
+		}
+
+		Repaint();
+	}
+
+	void SetHighlight( int nHighlight )
+	{
+		m_nHighlight = nHighlight;
+		Repaint();
+	}
+
+	virtual void PaintBackground()
+	{
+		int nWide, nTall;
+		GetSize( nWide, nTall );
+
+		const bool bBlue = ( m_iTeam == TF_TEAM_BLUE );
+		vgui::surface()->DrawSetColor( bBlue ? Color( 24, 40, 58, 238 ) : Color( 62, 22, 22, 240 ) );
+		vgui::surface()->DrawFilledRect( 0, 0, nWide, nTall );
+
+		if ( m_nHighlight >= 0 && m_nHighlight < m_nCount && m_pRows[m_nHighlight] && m_pRows[m_nHighlight]->IsVisible() )
+		{
+			int x, y, w, t;
+			m_pRows[m_nHighlight]->GetBounds( x, y, w, t );
+			vgui::surface()->DrawSetColor( bBlue ? Color( 62, 108, 150, 255 ) : Color( 150, 54, 48, 255 ) );
+			vgui::surface()->DrawFilledRect( x, y, x + w, y + t );
+		}
+
+		vgui::surface()->DrawSetColor( bBlue ? Color( 176, 208, 228, 255 ) : Color( 236, 190, 140, 255 ) );
+		vgui::surface()->DrawOutlinedRect( 0, 0, nWide, nTall );
+		vgui::surface()->DrawOutlinedRect( 1, 1, nWide - 1, nTall - 1 );
+	}
+
+private:
+	CTFClassDropRow		*m_pRows[MAX_OPTIONS];
+	vgui::ImagePanel	*m_pIcons[MAX_OPTIONS];
+	vgui::Label			*m_pNums[MAX_OPTIONS];
+	vgui::Label			*m_pNames[MAX_OPTIONS];
+	int					m_nClasses[MAX_OPTIONS];
+	int					m_nCount;
+	int					m_nHighlight;
+	int					m_iTeam;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: Display name for a class index. Falls back through the localization
+// token, the playerclass script, then "Class N" so a new class still shows up
+// before its menu strings are filled in.
+//-----------------------------------------------------------------------------
+static void GetClassMenuDisplayName( int iClass, wchar_t *pOut, int nOutBytes )
+{
+	pOut[0] = L'\0';
+
+	if ( iClass >= 0 && iClass < TF_CLASS_MENU_BUTTONS && g_aPlayerClassNames[iClass] && g_aPlayerClassNames[iClass][0] )
+	{
+		if ( g_aPlayerClassNames[iClass][0] == '#' )
+		{
+			const wchar_t *pwsz = g_pVGuiLocalize->Find( g_aPlayerClassNames[iClass] );
+			if ( pwsz && pwsz[0] )
+			{
+				V_wcsncpy( pOut, pwsz, nOutBytes );
+				return;
+			}
+		}
+	}
+
+	if ( IsValidTFPlayerClass( iClass ) )
+	{
+		TFPlayerClassData_t *pData = GetPlayerClassData( iClass );
+		if ( pData && pData->m_szLocalizableName[0] )
+		{
+			const char *pszLoc = pData->m_szLocalizableName;
+			if ( pszLoc[0] == '#' )
+			{
+				const wchar_t *pwsz = g_pVGuiLocalize->Find( pszLoc );
+				if ( pwsz && pwsz[0] )
+				{
+					V_wcsncpy( pOut, pwsz, nOutBytes );
+					return;
+				}
+			}
+			g_pVGuiLocalize->ConvertANSIToUnicode( pszLoc, pOut, nOutBytes );
+			if ( pOut[0] )
+				return;
+		}
+		if ( pData && pData->m_szClassName[0] )
+		{
+			g_pVGuiLocalize->ConvertANSIToUnicode( pData->m_szClassName, pOut, nOutBytes );
+			if ( pOut[0] )
+				return;
+		}
+	}
+
+	if ( iClass >= 0 && iClass < TF_CLASS_MENU_BUTTONS && g_aPlayerClassNames_NonLocalized[iClass] && g_aPlayerClassNames_NonLocalized[iClass][0] )
+	{
+		g_pVGuiLocalize->ConvertANSIToUnicode( g_aPlayerClassNames_NonLocalized[iClass], pOut, nOutBytes );
+		return;
+	}
+
+	char szFallback[32];
+	Q_snprintf( szFallback, sizeof( szFallback ), "Class %d", iClass );
+	g_pVGuiLocalize->ConvertANSIToUnicode( szFallback, pOut, nOutBytes );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 :	CClassMenu( pViewPort )
+,	m_nPopulatedSlots( 0 )
+,	m_nOpenSlot( -1 )
+,	m_nDropHighlight( 0 )
+,	m_pClassDropdown( NULL )
+,	m_bIgnoreNumberRepeat( false )
 {
 	MakePopup();
 
@@ -509,6 +818,12 @@ CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 	m_pMvmUpgradeImages[TF_CLASS_SNIPER] = new vgui::ImagePanel( this, "MvMUpgradeImageSniper" );
 	m_pMvmUpgradeImages[TF_CLASS_ENGINEER] = new vgui::ImagePanel( this, "MvMUpgradeImageEngineer" );
 	m_pMvmUpgradeImages[TF_CLASS_SPY] = new vgui::ImagePanel( this, "MvMUpgradeImageSpy" );
+
+	Q_memset( m_nSlotClassCount, 0, sizeof( m_nSlotClassCount ) );
+	Q_memset( m_nSlotClasses, 0, sizeof( m_nSlotClasses ) );
+	m_pClassDropdown = new CTFClassDropPanel( this, "ClassDropPanel" );
+	m_pClassDropdown->SetVisible( false );
+	m_pClassDropdown->SetZPos( 5000 );
 
 	vgui::ivgui()->AddTickSignal( GetVPanel() );
 }
@@ -579,6 +894,20 @@ void CTFClassMenu::ApplySchemeSettings( IScheme *pScheme )
 			m_pClassButtons[i]->SetArmedSound("misc/null.wav");
 		}
 	}
+
+	RebuildClassDropdownGroups();
+	if ( m_pClassDropdown )
+	{
+		m_pClassDropdown->SetZPos( 5000 );
+		if ( m_nOpenSlot >= 0 && m_nOpenSlot < m_nPopulatedSlots )
+		{
+			OpenClassSlot( m_nOpenSlot, true );
+		}
+		else
+		{
+			m_pClassDropdown->SetVisible( false );
+		}
+	}
 }
 
 void CTFClassMenu::PerformLayout()
@@ -593,6 +922,8 @@ void CTFClassMenu::PerformLayout()
 		m_pCountLabel->SizeToContents();
 	}
 #endif
+
+	PositionClassDropdown();
 }
 
 //-----------------------------------------------------------------------------
@@ -664,6 +995,9 @@ void CTFClassMenu::ShowPanel( bool bShow )
 		// Force us to reload our scheme, in case Steam Controller stuff has changed.
 		InvalidateLayout( true, true );
 
+		RebuildClassDropdownGroups();
+		CloseClassDropdown();
+
 		Activate();
 
 		m_iClassMenuKey = gameuifuncs->GetButtonCodeForBind( "changeclass" );
@@ -673,6 +1007,7 @@ void CTFClassMenu::ShowPanel( bool bShow )
 	}
 	else
 	{
+		CloseClassDropdown();
 		SetVisible( false );
 		if ( m_pTFPlayerModelPanel )
 		{
@@ -714,13 +1049,28 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 //-----------------------------------------------------------------------------
 void CTFClassMenu::UpdateButtonSelectionStates( int iClass )
 {
-	// Set the correct button as selected, all other buttons as not selected
+	// Highlight the portrait that owns this class, including classes that only
+	// exist inside that portrait's dropdown.
+	int nAnchorClass = iClass;
+	for ( int s = 0; s < m_nPopulatedSlots; ++s )
+	{
+		for ( int j = 0; j < m_nSlotClassCount[s]; ++j )
+		{
+			if ( m_nSlotClasses[s][j] == iClass )
+			{
+				nAnchorClass = m_nSlotClasses[s][0];
+				s = m_nPopulatedSlots;
+				break;
+			}
+		}
+	}
+
 	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 	{
 		if ( !m_pClassButtons[ i ] )
 			continue;
 
-		m_pClassButtons[ i ]->SetSelected( i == iClass );
+		m_pClassButtons[ i ]->SetSelected( i == nAnchorClass );
 	}
 }
 
@@ -864,8 +1214,237 @@ void CTFClassMenu::LoadItems()
 		}
 	}
 
-	m_pTFPlayerModelPanel->PlayVCD( bCanUseFancyClassSelectAnimation ? pszVCD : NULL, g_pszLegacyClassSelectVCDWeapons[iClass] );
-	m_pTFPlayerModelPanel->HoldItemInSlot( g_iLegacyClassSelectWeaponSlots[iClass] );
+	const char *pszLegacyWeapon = "";
+	int iLegacySlot = LOADOUT_POSITION_PRIMARY;
+	if ( iClass >= 0 && iClass < ARRAYSIZE( g_pszLegacyClassSelectVCDWeapons ) && g_pszLegacyClassSelectVCDWeapons[iClass] )
+	{
+		pszLegacyWeapon = g_pszLegacyClassSelectVCDWeapons[iClass];
+	}
+	if ( iClass >= 0 && iClass < ARRAYSIZE( g_iLegacyClassSelectWeaponSlots ) )
+	{
+		iLegacySlot = g_iLegacyClassSelectWeaponSlots[iClass];
+	}
+
+	m_pTFPlayerModelPanel->PlayVCD( bCanUseFancyClassSelectAnimation ? pszVCD : NULL, pszLegacyWeapon );
+	m_pTFPlayerModelPanel->HoldItemInSlot( iLegacySlot );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Build the nine dropdowns. Slot 0 is key 1 (Scout in the stock remap).
+// Any valid class that is not already one of those nine is appended in enum
+// order, round-robin: first new class under Scout, second under Soldier, and so on.
+//-----------------------------------------------------------------------------
+void CTFClassMenu::RebuildClassDropdownGroups()
+{
+	m_nPopulatedSlots = 0;
+	Q_memset( m_nSlotClassCount, 0, sizeof( m_nSlotClassCount ) );
+	Q_memset( m_nSlotClasses, 0, sizeof( m_nSlotClasses ) );
+
+	const int nSlotLimit = ( TF_CLASS_DROP_SLOTS < ( TF_CLASS_MENU_BUTTONS - 1 ) ) ? TF_CLASS_DROP_SLOTS : ( TF_CLASS_MENU_BUTTONS - 1 );
+	for ( int iSlot = 0; iSlot < nSlotLimit; ++iSlot )
+	{
+		const int iClass = iRemapIndexToClass[ iSlot + 1 ];
+		if ( !IsValidTFPlayerClass( iClass ) )
+			continue;
+		if ( m_nPopulatedSlots >= TF_CLASS_DROP_SLOTS )
+			break;
+
+		m_nSlotClasses[ m_nPopulatedSlots ][ 0 ] = iClass;
+		m_nSlotClassCount[ m_nPopulatedSlots ] = 1;
+		m_nPopulatedSlots++;
+	}
+
+	if ( m_nPopulatedSlots <= 0 )
+		return;
+
+	int nExtra = 0;
+	for ( int iClass = TF_FIRST_NORMAL_CLASS; iClass < TF_CLASS_COUNT_ALL; ++iClass )
+	{
+		if ( !IsValidTFPlayerClass( iClass ) )
+			continue;
+
+		bool bAnchor = false;
+		for ( int s = 0; s < m_nPopulatedSlots; ++s )
+		{
+			if ( m_nSlotClasses[s][0] == iClass )
+			{
+				bAnchor = true;
+				break;
+			}
+		}
+		if ( bAnchor )
+			continue;
+
+		const int s = nExtra % m_nPopulatedSlots;
+		if ( m_nSlotClassCount[s] < TF_CLASS_DROP_MAX_PER_SLOT )
+		{
+			m_nSlotClasses[s][ m_nSlotClassCount[s] ] = iClass;
+			m_nSlotClassCount[s]++;
+		}
+		nExtra++;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+int CTFClassMenu::GetAnchorSlotForClass( int iClass ) const
+{
+	for ( int s = 0; s < m_nPopulatedSlots; ++s )
+	{
+		if ( m_nSlotClassCount[s] > 0 && m_nSlotClasses[s][0] == iClass )
+			return s;
+	}
+	return -1;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFClassMenu::CloseClassDropdown()
+{
+	m_nOpenSlot = -1;
+	m_nDropHighlight = 0;
+	if ( m_pClassDropdown )
+	{
+		m_pClassDropdown->SetVisible( false );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFClassMenu::PositionClassDropdown()
+{
+	if ( m_nOpenSlot < 0 || m_nOpenSlot >= m_nPopulatedSlots || !m_pClassDropdown || !m_pClassDropdown->IsVisible() )
+		return;
+
+	const int iAnchor = m_nSlotClasses[m_nOpenSlot][0];
+	if ( iAnchor < 0 || iAnchor >= ARRAYSIZE( m_pClassButtons ) )
+		return;
+
+	CExImageButton *pButton = m_pClassButtons[iAnchor];
+	if ( !pButton )
+		return;
+
+	int nX = 0;
+	int nY = 0;
+	pButton->LocalToScreen( nX, nY );
+	ScreenToLocal( nX, nY );
+
+	int nW = 0;
+	int nT = 0;
+	pButton->GetSize( nW, nT );
+	if ( nW <= 0 || nT <= 0 )
+		return;
+
+	int nDropW = 0;
+	int nDropT = 0;
+	m_pClassDropdown->GetSize( nDropW, nDropT );
+
+	int nParentW = 0;
+	int nParentT = 0;
+	GetSize( nParentW, nParentT );
+
+	int nDX = nX + ( nW - nDropW ) / 2;
+	int nDY = nY + nT - 2;
+	if ( nDX < 0 )
+		nDX = 0;
+	if ( nDX + nDropW > nParentW )
+		nDX = ( nParentW > nDropW ) ? ( nParentW - nDropW ) : 0;
+	if ( nDY + nDropT > nParentT )
+	{
+		const int nAbove = nY - nDropT;
+		if ( nAbove >= 0 )
+			nDY = nAbove;
+	}
+	if ( nDY < 0 )
+		nDY = 0;
+
+	m_pClassDropdown->SetPos( nDX, nDY );
+	m_pClassDropdown->SetZPos( 5000 );
+	m_pClassDropdown->MoveToFront();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFClassMenu::OpenClassSlot( int nSlot, bool bForceRefresh )
+{
+	if ( nSlot < 0 || nSlot >= m_nPopulatedSlots )
+		return;
+	if ( m_nSlotClassCount[nSlot] <= 0 || !m_pClassDropdown )
+		return;
+
+	const bool bChanged = ( m_nOpenSlot != nSlot );
+	if ( !bForceRefresh && !bChanged && m_pClassDropdown->IsVisible() )
+		return;
+
+	m_nOpenSlot = nSlot;
+	if ( bChanged || m_nDropHighlight >= m_nSlotClassCount[nSlot] )
+	{
+		m_nDropHighlight = 0;
+	}
+
+	m_pClassDropdown->SetOptions( m_nSlotClasses[nSlot], m_nSlotClassCount[nSlot], m_nDropHighlight, GetTeamNumber() );
+	m_pClassDropdown->SetVisible( true );
+	m_pClassDropdown->SetMouseInputEnabled( true );
+	m_pClassDropdown->MoveToFront();
+	PositionClassDropdown();
+
+	const int iClass = m_nSlotClasses[nSlot][m_nDropHighlight];
+	if ( bChanged && iClass != m_iCurrentClassIndex )
+	{
+		SelectClass( iClass );
+	}
+	else
+	{
+		UpdateButtonSelectionStates( iClass );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFClassMenu::HighlightDropOption( int nOption, bool bPreview )
+{
+	if ( m_nOpenSlot < 0 || m_nOpenSlot >= m_nPopulatedSlots )
+		return;
+	if ( nOption < 0 || nOption >= m_nSlotClassCount[m_nOpenSlot] )
+		return;
+
+	m_nDropHighlight = nOption;
+	if ( m_pClassDropdown )
+	{
+		m_pClassDropdown->SetHighlight( nOption );
+	}
+
+	if ( bPreview )
+	{
+		const int iClass = m_nSlotClasses[m_nOpenSlot][nOption];
+		if ( iClass != m_iCurrentClassIndex )
+		{
+			SelectClass( iClass );
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFClassMenu::ConfirmDropOption( int nOption )
+{
+	if ( m_nOpenSlot < 0 || m_nOpenSlot >= m_nPopulatedSlots )
+		return;
+	if ( nOption < 0 || nOption >= m_nSlotClassCount[m_nOpenSlot] )
+		return;
+
+	const int iClass = m_nSlotClasses[m_nOpenSlot][nOption];
+	if ( !IsValidTFPlayerClass( iClass ) && iClass != TF_CLASS_RANDOM )
+		return;
+
+	SelectClass( iClass );
+	Go();
 }
 
 //-----------------------------------------------------------------------------
@@ -875,23 +1454,72 @@ void CTFClassMenu::OnKeyCodePressed( KeyCode code )
 {
 	m_KeyRepeat.KeyDown( code );
 
+	int nNum = 0;
 	if ( code > KEY_0 && code <= KEY_9 )
 	{
-		const int iButton = code - KEY_0;
-		const int iClass = iRemapIndexToClass[ iButton ];
-		SelectClass( iClass );
-		Go();
+		nNum = code - KEY_0;
 	}
 	else if ( code > KEY_PAD_0 && code <= KEY_PAD_9 )
 	{
-		const int iButton = code - KEY_PAD_0;
-		const int iClass = iRemapIndexToClass[ iButton ];
-		SelectClass( iClass );
-		Go();
+		nNum = code - KEY_PAD_0;
+	}
+
+	if ( nNum > 0 )
+	{
+		// Key-repeat would open a dropdown and immediately confirm option 1.
+		if ( m_bIgnoreNumberRepeat )
+			return;
+
+		if ( m_nPopulatedSlots <= 0 )
+		{
+			RebuildClassDropdownGroups();
+		}
+
+		if ( m_nPopulatedSlots <= 0 )
+		{
+			if ( nNum < TF_CLASS_MENU_BUTTONS )
+			{
+				SelectClass( iRemapIndexToClass[ nNum ] );
+				Go();
+			}
+			return;
+		}
+
+		// No dropdown yet: 1-9 opens that portrait's list. Once it is open, the
+		// same keys pick an entry (1 is the portrait's own class). Pressing the
+		// portrait's key again when it is not also an option index confirms that
+		// class. A higher number with no matching option switches portraits.
+		if ( m_nOpenSlot < 0 )
+		{
+			if ( nNum <= m_nPopulatedSlots )
+			{
+				OpenClassSlot( nNum - 1 );
+			}
+		}
+		else if ( nNum <= m_nSlotClassCount[ m_nOpenSlot ] )
+		{
+			ConfirmDropOption( nNum - 1 );
+		}
+		else if ( nNum - 1 == m_nOpenSlot )
+		{
+			ConfirmDropOption( 0 );
+		}
+		else if ( nNum <= m_nPopulatedSlots )
+		{
+			OpenClassSlot( nNum - 1 );
+		}
+		return;
 	}
 	else if( code == KEY_ENTER || code == KEY_SPACE || code == KEY_XBUTTON_A || code == KEY_XBUTTON_RTRIGGER || code == STEAMCONTROLLER_A )
 	{
-		Go();
+		if ( m_nOpenSlot >= 0 )
+		{
+			ConfirmDropOption( m_nDropHighlight );
+		}
+		else
+		{
+			Go();
+		}
 	}
 	else if ( ( m_iClassMenuKey != BUTTON_CODE_INVALID && m_iClassMenuKey == code ) ||
 		code == KEY_XBUTTON_BACK || 
@@ -909,17 +1537,25 @@ void CTFClassMenu::OnKeyCodePressed( KeyCode code )
 	}
 	else if( code == KEY_XBUTTON_RIGHT || code == KEY_XSTICK1_RIGHT || code == STEAMCONTROLLER_DPAD_RIGHT )
 	{
-		int loopCheck = 0;
-		int nCurrentClass = GetRemappedMenuIndexForClass( m_iCurrentClassIndex );
-
-		do 
+		if ( m_nPopulatedSlots > 0 )
 		{
-			loopCheck++;
-			nCurrentClass++;
-			nCurrentClass = ( nCurrentClass % TF_CLASS_MENU_BUTTONS );
-		} while( ( m_pClassButtons[ iRemapIndexToClass[nCurrentClass] ] == NULL ) && ( loopCheck < TF_CLASS_MENU_BUTTONS ) );
-		
-		SelectClass(  iRemapIndexToClass[ nCurrentClass ] );
+			const int nSlot = ( m_nOpenSlot < 0 ) ? 0 : ( m_nOpenSlot + 1 ) % m_nPopulatedSlots;
+			OpenClassSlot( nSlot );
+		}
+		else
+		{
+			int loopCheck = 0;
+			int nCurrentClass = GetRemappedMenuIndexForClass( m_iCurrentClassIndex );
+
+			do 
+			{
+				loopCheck++;
+				nCurrentClass++;
+				nCurrentClass = ( nCurrentClass % TF_CLASS_MENU_BUTTONS );
+			} while( ( m_pClassButtons[ iRemapIndexToClass[nCurrentClass] ] == NULL ) && ( loopCheck < TF_CLASS_MENU_BUTTONS ) );
+			
+			SelectClass(  iRemapIndexToClass[ nCurrentClass ] );
+		}
 	}
 	else if ( code == STEAMCONTROLLER_Y )
 	{
@@ -927,25 +1563,41 @@ void CTFClassMenu::OnKeyCodePressed( KeyCode code )
 	}
 	else if( code == KEY_XBUTTON_LEFT || code == KEY_XSTICK1_LEFT || code == STEAMCONTROLLER_DPAD_LEFT )
 	{
-		int loopCheck = 0;
-		int nCurrentClass = GetRemappedMenuIndexForClass( m_iCurrentClassIndex );
-
-		do 
+		if ( m_nPopulatedSlots > 0 )
 		{
-			loopCheck++;
-			nCurrentClass--;
-			if( nCurrentClass <= 0 )
+			const int nSlot = ( m_nOpenSlot < 0 ) ? ( m_nPopulatedSlots - 1 ) : ( m_nOpenSlot + m_nPopulatedSlots - 1 ) % m_nPopulatedSlots;
+			OpenClassSlot( nSlot );
+		}
+		else
+		{
+			int loopCheck = 0;
+			int nCurrentClass = GetRemappedMenuIndexForClass( m_iCurrentClassIndex );
+
+			do 
 			{
-				nCurrentClass = GetRemappedMenuIndexForClass( TF_CLASS_RANDOM );
-			}
-		} while( ( m_pClassButtons[ iRemapIndexToClass[nCurrentClass] ] == NULL ) && ( loopCheck < TF_CLASS_MENU_BUTTONS ) );
-		
-		SelectClass(  iRemapIndexToClass[ nCurrentClass ] );
+				loopCheck++;
+				nCurrentClass--;
+				if( nCurrentClass <= 0 )
+				{
+					nCurrentClass = GetRemappedMenuIndexForClass( TF_CLASS_RANDOM );
+				}
+			} while( ( m_pClassButtons[ iRemapIndexToClass[nCurrentClass] ] == NULL ) && ( loopCheck < TF_CLASS_MENU_BUTTONS ) );
+			
+			SelectClass(  iRemapIndexToClass[ nCurrentClass ] );
+		}
 	}
 	else if( code == KEY_XBUTTON_UP || code == KEY_XSTICK1_UP || code == STEAMCONTROLLER_DPAD_UP )
 	{
-		// Scroll class info text up
-		if ( g_lastPanel )
+		if ( m_nOpenSlot >= 0 && m_nSlotClassCount[m_nOpenSlot] > 0 )
+		{
+			int nOption = m_nDropHighlight - 1;
+			if ( nOption < 0 )
+			{
+				nOption = m_nSlotClassCount[m_nOpenSlot] - 1;
+			}
+			HighlightDropOption( nOption, true );
+		}
+		else if ( g_lastPanel )
 		{
 			CExRichText *pRichText = dynamic_cast< CExRichText * >( g_lastPanel->FindChildByName( "classInfo" ) );
 
@@ -957,8 +1609,16 @@ void CTFClassMenu::OnKeyCodePressed( KeyCode code )
 	}
 	else if( code == KEY_XBUTTON_DOWN || code == KEY_XSTICK1_DOWN || code == STEAMCONTROLLER_DPAD_DOWN )
 	{
-		// Scroll class info text up
-		if ( g_lastPanel )
+		if ( m_nOpenSlot >= 0 && m_nSlotClassCount[m_nOpenSlot] > 0 )
+		{
+			int nOption = m_nDropHighlight + 1;
+			if ( nOption >= m_nSlotClassCount[m_nOpenSlot] )
+			{
+				nOption = 0;
+			}
+			HighlightDropOption( nOption, true );
+		}
+		else if ( g_lastPanel )
 		{
 			CExRichText *pRichText = dynamic_cast< CExRichText * >( g_lastPanel->FindChildByName( "classInfo" ) );
 
@@ -992,22 +1652,51 @@ void CTFClassMenu::OnThink()
 	vgui::KeyCode code = m_KeyRepeat.KeyRepeated();
 	if ( code )
 	{
+		m_bIgnoreNumberRepeat = true;
 		OnKeyCodePressed( code );
+		m_bIgnoreNumberRepeat = false;
 	}
 
 	// Get mouse cursor position
 	int aCursorPos[2];
 	vgui::input()->GetCursorPos( aCursorPos[0], aCursorPos[1] );
 
-	// Go through all buttons - if the mouse is within one, select that class
-	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
-	{
-		if ( !m_pClassButtons[ i ] )
-			continue;
+	const bool bOverDropdown = m_pClassDropdown && m_pClassDropdown->IsVisible() && m_pClassDropdown->IsWithin( aCursorPos[0], aCursorPos[1] );
 
-		if ( m_iCurrentClassIndex != i && m_pClassButtons[ i ]->IsWithin( aCursorPos[0], aCursorPos[1] ) )
+	if ( !bOverDropdown )
+	{
+		int nHoverSlot = -1;
+		for ( int s = 0; s < m_nPopulatedSlots; ++s )
 		{
-			SelectClass( i );
+			const int iAnchor = m_nSlotClasses[s][0];
+			if ( iAnchor < 0 || iAnchor >= ARRAYSIZE( m_pClassButtons ) )
+				continue;
+
+			CExImageButton *pButton = m_pClassButtons[iAnchor];
+			if ( pButton && pButton->IsVisible() && pButton->IsWithin( aCursorPos[0], aCursorPos[1] ) )
+			{
+				nHoverSlot = s;
+				break;
+			}
+		}
+
+		if ( nHoverSlot >= 0 )
+		{
+			if ( nHoverSlot != m_nOpenSlot )
+			{
+				OpenClassSlot( nHoverSlot );
+			}
+		}
+		else if ( TF_CLASS_RANDOM >= 0 && TF_CLASS_RANDOM < ARRAYSIZE( m_pClassButtons ) && m_pClassButtons[TF_CLASS_RANDOM] && m_pClassButtons[TF_CLASS_RANDOM]->IsVisible() && m_pClassButtons[TF_CLASS_RANDOM]->IsWithin( aCursorPos[0], aCursorPos[1] ) )
+		{
+			if ( m_nOpenSlot != -1 )
+			{
+				CloseClassDropdown();
+			}
+			if ( m_iCurrentClassIndex != TF_CLASS_RANDOM )
+			{
+				SelectClass( TF_CLASS_RANDOM );
+			}
 		}
 	}
 
@@ -1219,6 +1908,10 @@ void CTFClassMenu::Go()
 	if ( iClass == TF_CLASS_UNDEFINED )
 		return;
 
+	// New classes have to be entered in g_aRawPlayerClassNames before joinclass can see them.
+	if ( iClass < 0 || iClass >= TF_CLASS_MENU_BUTTONS || !g_aRawPlayerClassNames[iClass] || !g_aRawPlayerClassNames[iClass][0] )
+		return;
+
 	// Check class limits
 	if ( TFGameRules() && !TFGameRules()->CanPlayerChooseClass( C_TFPlayer::GetLocalTFPlayer(), iClass ) )
 		return;
@@ -1284,14 +1977,30 @@ void CTFClassMenu::OnCommand( const char *command )
 		const char *pClass = command + 6;
 		const int iClass = atoi( pClass );
 
-		// Avoid restarting the animation if the user selected on the same class
+		const int nSlot = GetAnchorSlotForClass( iClass );
+		if ( nSlot >= 0 )
+		{
+			// The portrait click joins the anchor class once its dropdown is
+			// already open (hover or a previous click opened it). Otherwise
+			// the click just opens the list.
+			if ( m_nOpenSlot == nSlot )
+			{
+				ConfirmDropOption( 0 );
+			}
+			else
+			{
+				OpenClassSlot( nSlot );
+			}
+			return;
+		}
+
+		// Random, and anything that is not one of the nine portraits.
 		if ( iClass != m_iCurrentClassIndex )
 		{
 			SelectClass( iClass );
 		}
 		else
 		{
-			// Ensure selection states, in case the user clicks a button and drags away
 			UpdateButtonSelectionStates( iClass );
 		}
 
@@ -1441,7 +2150,7 @@ void CTFClassMenu::UpdateNumClassLabels( int iTeam )
 		}
 	}
 
-	for( int i = TF_FIRST_NORMAL_CLASS ; i <= TF_LAST_NORMAL_CLASS ; i++ )
+	for ( int i = TF_FIRST_NORMAL_CLASS; i < ARRAYSIZE( g_ClassDefinesRemap ) && i < ARRAYSIZE( g_sDialogVariables ) && i < ARRAYSIZE( g_sClassImagesBlue ) && i < ARRAYSIZE( g_sClassImagesRed ); i++ )
 	{
 		if ( bSpectator == true )
 		{
@@ -1550,6 +2259,86 @@ void CTFClassMenu::UpdateNumClassLabels( int iTeam )
 		if ( m_pCountLabel && !m_pCountLabel->IsVisible() )
 		{
 			m_pCountLabel->SetVisible( true );
+		}
+	}
+
+	// Classes that only exist inside a dropdown have no res-file count image.
+	// Paint them into whatever count slots are left.
+	if ( !bSpectator && nTotalCount < CLASS_COUNT_IMAGES )
+	{
+		for ( int s = 0; s < m_nPopulatedSlots && nTotalCount < CLASS_COUNT_IMAGES; ++s )
+		{
+			for ( int j = 1; j < m_nSlotClassCount[s] && nTotalCount < CLASS_COUNT_IMAGES; ++j )
+			{
+				const int iClass = m_nSlotClasses[s][j];
+				if ( iClass < 0 || iClass >= TF_CLASS_MENU_BUTTONS )
+					continue;
+
+				const char *pszShort = g_aRawPlayerClassNamesShort[iClass];
+				if ( !pszShort || !pszShort[0] )
+					continue;
+
+				int classCount = g_TF_PR->GetCountForPlayerClass( iTeam, iClass, false );
+				if ( iClass == iLocalPlayerClass && classCount > 0 )
+				{
+					classCount--;
+				}
+				if ( classCount <= 0 )
+					continue;
+
+				char szImage[128];
+				Q_snprintf( szImage, sizeof( szImage ), "class_sel_sm_%s_%s", pszShort, ( iTeam == TF_TEAM_BLUE ) ? "blu" : "red" );
+
+				for ( int n = 0; n < classCount && nTotalCount < CLASS_COUNT_IMAGES; ++n )
+				{
+					CTFImagePanel *pImage = m_ClassCountImages[nTotalCount];
+					if ( pImage )
+					{
+						pImage->SetVisible( true );
+						pImage->SetImage( szImage );
+					}
+					nTotalCount++;
+				}
+			}
+		}
+	}
+
+	if ( !bSpectator && IsValidTFPlayerClass( iLocalPlayerClass ) && GetAnchorSlotForClass( iLocalPlayerClass ) < 0 )
+	{
+		bool bInSomeSlot = false;
+		for ( int s = 0; s < m_nPopulatedSlots && !bInSomeSlot; ++s )
+		{
+			for ( int j = 1; j < m_nSlotClassCount[s]; ++j )
+			{
+				if ( m_nSlotClasses[s][j] == iLocalPlayerClass )
+				{
+					bInSomeSlot = true;
+					break;
+				}
+			}
+		}
+
+		if ( bInSomeSlot && iLocalPlayerClass >= 0 && iLocalPlayerClass < TF_CLASS_MENU_BUTTONS )
+		{
+			const char *pszShort = g_aRawPlayerClassNamesShort[iLocalPlayerClass];
+			if ( pszShort && pszShort[0] && m_pLocalPlayerImage )
+			{
+				if ( !m_pLocalPlayerImage->IsVisible() )
+				{
+					m_pLocalPlayerImage->SetVisible( true );
+				}
+				if ( m_iLocalPlayerClass != iLocalPlayerClass )
+				{
+					m_iLocalPlayerClass = iLocalPlayerClass;
+					char szImage[128];
+					Q_snprintf( szImage, sizeof( szImage ), "class_sel_sm_%s_%s", pszShort, ( iTeam == TF_TEAM_BLUE ) ? "blu" : "red" );
+					m_pLocalPlayerImage->SetImage( szImage );
+				}
+			}
+			if ( m_pLocalPlayerBG && !m_pLocalPlayerBG->IsVisible() )
+			{
+				m_pLocalPlayerBG->SetVisible( true );
+			}
 		}
 	}
 

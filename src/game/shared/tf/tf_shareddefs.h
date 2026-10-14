@@ -214,7 +214,13 @@ enum ETFClass
 	TF_CLASS_SPY,
 	TF_CLASS_ENGINEER,		
 
-	// Add any new classes after Engineer
+	// Add any new classes after Engineer and before Civilian so IsValidTFPlayerClass()
+	// stays true. Do not put them in iRemapIndexToClass slots 1-9; those nine are the
+	// class-menu portraits (keys 1-9). The menu deals each new class into the next
+	// portrait's dropdown, in order: Scout, Soldier, Pyro, Demoman, Heavy, Engineer,
+	// Medic, Sniper, Spy, then it wraps. Insert a matching entry at the same index in
+	// g_aPlayerClassNames, g_aPlayerClassNames_NonLocalized, g_aRawPlayerClassNamesShort
+	// and g_aRawPlayerClassNames. Key 0 is not a class button.
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
 
