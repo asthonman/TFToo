@@ -23,6 +23,7 @@
 #include "tf_classdata.h"
 #include "vgui_controls/Label.h"
 #include "vgui/ISurface.h"
+#include "vgui/IPanel.h"
 
 #if defined( REPLAY_ENABLED )
 #include "replay/iclientreplaycontext.h"
@@ -748,6 +749,79 @@ static void GetClassMenuDisplayName( int iClass, wchar_t *pOut, int nOutBytes )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: The nine portrait buttons. Entering one with the mouse opens its dropdown.
+//-----------------------------------------------------------------------------
+class CTFClassSlotButton : public CExImageButton
+{
+	DECLARE_CLASS_SIMPLE( CTFClassSlotButton, CExImageButton );
+
+public:
+	CTFClassSlotButton( CTFClassMenu *pMenu, const char *pszName, int iClass )
+		: CExImageButton( pMenu, pszName, "", pMenu )
+		, m_pClassMenu( pMenu )
+		, m_iClass( iClass )
+	{
+		// The embedded portrait would otherwise eat the hover.
+		if ( GetImage() )
+		{
+			GetImage()->SetMouseInputEnabled( false );
+		}
+	}
+
+	virtual void OnCursorEntered()
+	{
+		BaseClass::OnCursorEntered();
+		if ( !m_pClassMenu )
+			return;
+
+		if ( m_pClassMenu->GetAnchorSlotForClass( m_iClass ) < 0 )
+		{
+			m_pClassMenu->RebuildClassDropdownGroups();
+		}
+
+		const int nSlot = m_pClassMenu->GetAnchorSlotForClass( m_iClass );
+		if ( nSlot >= 0 )
+		{
+			m_pClassMenu->OpenClassSlot( nSlot );
+		}
+	}
+
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme )
+	{
+		BaseClass::ApplySchemeSettings( pScheme );
+		if ( GetImage() )
+		{
+			GetImage()->SetMouseInputEnabled( false );
+		}
+	}
+
+private:
+	CTFClassMenu	*m_pClassMenu;
+	int				m_iClass;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: True when the cursor is over this panel or one of its children.
+//-----------------------------------------------------------------------------
+static bool IsHoveringPanel( vgui::Panel *pPanel, int x, int y )
+{
+	if ( !pPanel || !pPanel->IsVisible() )
+		return false;
+
+	if ( pPanel->IsWithin( x, y ) )
+		return true;
+
+	VPANEL hOver = vgui::input()->GetMouseOver();
+	for ( VPANEL v = hOver; v != 0; v = vgui::ipanel()->GetParent( v ) )
+	{
+		if ( v == pPanel->GetVPanel() )
+			return true;
+	}
+
+	return false;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
@@ -790,15 +864,15 @@ CTFClassMenu::CTFClassMenu( IViewPort *pViewPort )
 	m_pLocalPlayerBG = new CTFImagePanel( this, "localPlayerBG" );
 	m_iLocalPlayerClass = TEAM_UNASSIGNED;
 
-	m_pClassButtons[TF_CLASS_SCOUT] = new CExImageButton( this, "scout", "", this );
-	m_pClassButtons[TF_CLASS_SOLDIER] = new CExImageButton( this, "soldier", "", this );
-	m_pClassButtons[TF_CLASS_PYRO] = new CExImageButton( this, "pyro", "", this );
-	m_pClassButtons[TF_CLASS_DEMOMAN] = new CExImageButton( this, "demoman", "", this );
-	m_pClassButtons[TF_CLASS_MEDIC] = new CExImageButton( this, "medic", "", this );
-	m_pClassButtons[TF_CLASS_HEAVYWEAPONS] = new CExImageButton( this, "heavyweapons", "", this );
-	m_pClassButtons[TF_CLASS_SNIPER] = new CExImageButton( this, "sniper", "", this );
-	m_pClassButtons[TF_CLASS_ENGINEER] = new CExImageButton( this, "engineer", "", this );
-	m_pClassButtons[TF_CLASS_SPY] = new CExImageButton( this, "spy", "", this );
+	m_pClassButtons[TF_CLASS_SCOUT] = new CTFClassSlotButton( this, "scout", TF_CLASS_SCOUT );
+	m_pClassButtons[TF_CLASS_SOLDIER] = new CTFClassSlotButton( this, "soldier", TF_CLASS_SOLDIER );
+	m_pClassButtons[TF_CLASS_PYRO] = new CTFClassSlotButton( this, "pyro", TF_CLASS_PYRO );
+	m_pClassButtons[TF_CLASS_DEMOMAN] = new CTFClassSlotButton( this, "demoman", TF_CLASS_DEMOMAN );
+	m_pClassButtons[TF_CLASS_MEDIC] = new CTFClassSlotButton( this, "medic", TF_CLASS_MEDIC );
+	m_pClassButtons[TF_CLASS_HEAVYWEAPONS] = new CTFClassSlotButton( this, "heavyweapons", TF_CLASS_HEAVYWEAPONS );
+	m_pClassButtons[TF_CLASS_SNIPER] = new CTFClassSlotButton( this, "sniper", TF_CLASS_SNIPER );
+	m_pClassButtons[TF_CLASS_ENGINEER] = new CTFClassSlotButton( this, "engineer", TF_CLASS_ENGINEER );
+	m_pClassButtons[TF_CLASS_SPY] = new CTFClassSlotButton( this, "spy", TF_CLASS_SPY );
 	m_pClassButtons[TF_CLASS_RANDOM] = new CExImageButton( this, "random", "", this );
 #endif
 
@@ -1673,7 +1747,7 @@ void CTFClassMenu::OnThink()
 				continue;
 
 			CExImageButton *pButton = m_pClassButtons[iAnchor];
-			if ( pButton && pButton->IsVisible() && pButton->IsWithin( aCursorPos[0], aCursorPos[1] ) )
+			if ( IsHoveringPanel( pButton, aCursorPos[0], aCursorPos[1] ) )
 			{
 				nHoverSlot = s;
 				break;
@@ -1687,7 +1761,7 @@ void CTFClassMenu::OnThink()
 				OpenClassSlot( nHoverSlot );
 			}
 		}
-		else if ( TF_CLASS_RANDOM >= 0 && TF_CLASS_RANDOM < ARRAYSIZE( m_pClassButtons ) && m_pClassButtons[TF_CLASS_RANDOM] && m_pClassButtons[TF_CLASS_RANDOM]->IsVisible() && m_pClassButtons[TF_CLASS_RANDOM]->IsWithin( aCursorPos[0], aCursorPos[1] ) )
+		else if ( IsHoveringPanel( m_pClassButtons[TF_CLASS_RANDOM], aCursorPos[0], aCursorPos[1] ) )
 		{
 			if ( m_nOpenSlot != -1 )
 			{
