@@ -1683,67 +1683,186 @@ void CTFItemSchema::Reset()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Madcap's stock primary is a schema clone of the Syringe Gun. His
-// stock melee is the Boston Basher, which no longer belongs to the Scout.
+// Purpose: Madcap's stock primary is a schema clone of the Syringe Gun, drawn
+// with the Nailgun world model that still ships in the game. His stock
+// secondary is the abandoned throwable brick. His stock melee is the Boston
+// Basher. Every Scout weapon with the Basher's bleed-and-self-hit pair (the
+// Basher itself and its reskins, currently the Three-Rune Blade) moves to him.
 //-----------------------------------------------------------------------------
 static const int kMadcapNailgunDefIndex = 30001;
+static const int kMadcapBrickDefIndex = 30002;
+static const int kBostonBasherDefIndex = 325;
+
+static void RemoveKVSubKey( KeyValues *pKV, const char *pszName )
+{
+	if ( !pKV || !pszName )
+		return;
+
+	KeyValues *pSub = pKV->FindKey( pszName );
+	if ( !pSub )
+		return;
+
+	pKV->RemoveSubKey( pSub );
+	pSub->deleteThis();
+}
+
+static void SetMadcapOnlyClass( KeyValues *pItemKV )
+{
+	RemoveKVSubKey( pItemKV, "used_by_classes" );
+	KeyValues *pMadcap = new KeyValues( "used_by_classes" );
+	pMadcap->SetString( "Madcap", "1" );
+	pItemKV->AddSubKey( pMadcap );
+}
+
+static void AddAttribute( KeyValues *pAttrs, const char *pszName, const char *pszClass, const char *pszValue )
+{
+	KeyValues *pAttr = new KeyValues( pszName );
+	pAttr->SetString( "attribute_class", pszClass );
+	pAttr->SetString( "value", pszValue );
+	pAttrs->AddSubKey( pAttr );
+}
+
+static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const char *pszClass )
+{
+	if ( !pDef || !pszClass )
+		return false;
+
+	const CUtlVector<static_attrib_t> &attrs = pDef->GetStaticAttributes();
+	FOR_EACH_VEC( attrs, i )
+	{
+		const CEconItemAttributeDefinition *pAttrDef = attrs[i].GetAttributeDefinition();
+		if ( !pAttrDef || !pAttrDef->GetAttributeClass() )
+			continue;
+
+		if ( !Q_stricmp( pAttrDef->GetAttributeClass(), pszClass ) )
+			return true;
+	}
+
+	return false;
+}
 
 void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
 {
-	CEconItemDefinition *pBasher = GetItemDefinitionByName( "The Boston Basher" );
-	if ( !pBasher )
+	// Boston Basher and every reskin that copies its two attributes.
+	const ItemDefinitionMap_t &mapItems = GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
 	{
-		pBasher = GetItemDefinition( 325 );
-	}
-	CTFItemDefinition *pTFBasher = dynamic_cast<CTFItemDefinition *>( pBasher );
-	if ( pTFBasher )
-	{
-		pTFBasher->RetargetClass( TF_CLASS_SCOUT, TF_CLASS_MADCAP );
-		NoteRuntimeBaseItem( pTFBasher );
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !pTF )
+			continue;
+		if ( !pTF->CanBeUsedByClass( TF_CLASS_SCOUT ) )
+			continue;
+		if ( !Madcap_HasAttributeClass( pTF, "bleeding_duration" ) )
+			continue;
+		if ( !Madcap_HasAttributeClass( pTF, "hit_self_on_miss" ) )
+			continue;
+
+		pTF->RetargetClass( TF_CLASS_SCOUT, TF_CLASS_MADCAP );
+
+		// Only the Basher itself is the stock melee. Reskins stay unlocks.
+		const char *pszName = pTF->GetDefinitionName();
+		const bool bStockBasher = ( pTF->GetDefinitionIndex() == kBostonBasherDefIndex )
+			|| ( pszName && !Q_stricmp( pszName, "The Boston Basher" ) );
+		if ( bStockBasher )
+		{
+			NoteRuntimeBaseItem( pTF );
+		}
 	}
 
-	if ( GetItemDefinition( kMadcapNailgunDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
+	if ( !GetItemDefinition( kMadcapNailgunDefIndex ) && !GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
+	{
+		CEconItemDefinition *pSyringe = GetItemDefinitionByName( "TF_WEAPON_SYRINGEGUN_MEDIC" );
+		if ( !pSyringe )
+		{
+			pSyringe = GetItemDefinition( 17 );
+		}
+		if ( pSyringe && pSyringe->GetRawDefinition() )
+		{
+			KeyValues *pCopy = pSyringe->GetRawDefinition()->MakeCopy();
+			if ( pCopy )
+			{
+				char szDefIndex[16];
+				Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapNailgunDefIndex );
+				pCopy->SetName( szDefIndex );
+				pCopy->SetString( "name", "TF_WEAPON_NAILGUN" );
+				pCopy->SetString( "item_class", "tf_weapon_nailgun" );
+				pCopy->SetString( "item_name", "#TF_Weapon_Nailgun" );
+				pCopy->SetString( "item_type_name", "#TF_Weapon_Nailgun" );
+				pCopy->SetString( "item_logname", "nailgun" );
+				pCopy->SetString( "item_iconname", "nailgun" );
+				pCopy->SetString( "item_slot", "primary" );
+				pCopy->SetInt( "baseitem", 1 );
+				pCopy->SetInt( "enabled", 1 );
+				pCopy->SetInt( "propername", 0 );
+				// w_nailgun.mdl is a standalone world model, not a c_model.
+				pCopy->SetInt( "attach_to_hands", 0 );
+				pCopy->SetString( "model_player", "models/weapons/w_models/w_nailgun.mdl" );
+				pCopy->SetString( "model_world", "models/weapons/w_models/w_nailgun.mdl" );
+				pCopy->SetString( "image_inventory", "sprites/bucket_nailgun" );
+
+				// The copied definition is already prefab-expanded. Drop the prefab
+				// so the Medic class is not merged back in over Madcap.
+				RemoveKVSubKey( pCopy, "prefab" );
+				RemoveKVSubKey( pCopy, "model_player_per_class" );
+				SetMadcapOnlyClass( pCopy );
+
+				AddRuntimeItemDefinition( pCopy, pVecErrors );
+				pCopy->deleteThis();
+			}
+		}
+	}
+
+	if ( GetItemDefinition( kMadcapBrickDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_BRICK" ) )
 		return;
 
-	CEconItemDefinition *pSyringe = GetItemDefinitionByName( "TF_WEAPON_SYRINGEGUN_MEDIC" );
-	if ( !pSyringe )
+	// Clone a stock secondary so the expanded definition already has the fields
+	// BInitFromKV expects, then turn it into the brick launcher.
+	CEconItemDefinition *pSecondary = GetItemDefinitionByName( "TF_WEAPON_PISTOL_SCOUT" );
+	if ( !pSecondary )
 	{
-		pSyringe = GetItemDefinition( 17 );
+		pSecondary = GetItemDefinition( 23 );
 	}
-	if ( !pSyringe || !pSyringe->GetRawDefinition() )
+	if ( !pSecondary || !pSecondary->GetRawDefinition() )
 		return;
 
-	KeyValues *pCopy = pSyringe->GetRawDefinition()->MakeCopy();
+	KeyValues *pCopy = pSecondary->GetRawDefinition()->MakeCopy();
 	if ( !pCopy )
 		return;
 
 	char szDefIndex[16];
-	Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapNailgunDefIndex );
+	Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapBrickDefIndex );
 	pCopy->SetName( szDefIndex );
-	pCopy->SetString( "name", "TF_WEAPON_NAILGUN" );
-	pCopy->SetString( "item_class", "tf_weapon_nailgun" );
-	pCopy->SetString( "item_name", "#TF_Weapon_Nailgun" );
-	pCopy->SetString( "item_type_name", "#TF_Weapon_Nailgun" );
+	pCopy->SetString( "name", "TF_WEAPON_BRICK" );
+	pCopy->SetString( "item_class", "tf_weapon_throwable_brick" );
+	pCopy->SetString( "item_name", "#TF_Weapon_Brick" );
+	pCopy->SetString( "item_type_name", "#TF_Weapon_Brick" );
+	pCopy->SetString( "item_logname", "brick" );
+	pCopy->SetString( "item_iconname", "brick" );
+	pCopy->SetString( "item_slot", "secondary" );
 	pCopy->SetInt( "baseitem", 1 );
+	pCopy->SetInt( "enabled", 1 );
+	pCopy->SetInt( "hidden", 0 );
+	pCopy->SetInt( "propername", 0 );
+	pCopy->SetInt( "attach_to_hands", 0 );
+	pCopy->SetString( "model_player", "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
+	pCopy->SetString( "model_world", "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
 
-	// The copied definition is already prefab-expanded. Drop the prefab so the
-	// Medic class is not merged back in over Madcap.
-	KeyValues *pPrefab = pCopy->FindKey( "prefab" );
-	if ( pPrefab )
-	{
-		pCopy->RemoveSubKey( pPrefab );
-		pPrefab->deleteThis();
-	}
+	RemoveKVSubKey( pCopy, "prefab" );
+	RemoveKVSubKey( pCopy, "base_item_name" );
+	RemoveKVSubKey( pCopy, "particle_suffix" );
+	RemoveKVSubKey( pCopy, "xifier_class_remap" );
+	RemoveKVSubKey( pCopy, "attributes" );
+	RemoveKVSubKey( pCopy, "tags" );
+	SetMadcapOnlyClass( pCopy );
 
-	KeyValues *pClasses = pCopy->FindKey( "used_by_classes" );
-	if ( pClasses )
-	{
-		pCopy->RemoveSubKey( pClasses );
-		pClasses->deleteThis();
-	}
-	KeyValues *pMadcap = new KeyValues( "used_by_classes" );
-	pMadcap->SetString( "Madcap", "1" );
-	pCopy->AddSubKey( pMadcap );
+	KeyValues *pAttrs = new KeyValues( "attributes" );
+	// Spawns CTFProjectile_ThrowableBrick instead of the generic grenade.
+	AddAttribute( pAttrs, "projectile entity name", "projectile_entity_name", "tf_projectile_throwable_brick" );
+	// Hold fire to scale damage from 40 to 70. That same duration is the fuse.
+	AddAttribute( pAttrs, "is throwable chargeable", "is_throwable_chargeable", "1" );
+	AddAttribute( pAttrs, "throwable detonation time", "throwable_detonation_time", "1.5" );
+	AddAttribute( pAttrs, "throwable recharge time", "throwable_recharge_time", "6" );
+	pCopy->AddSubKey( pAttrs );
 
 	AddRuntimeItemDefinition( pCopy, pVecErrors );
 	pCopy->deleteThis();

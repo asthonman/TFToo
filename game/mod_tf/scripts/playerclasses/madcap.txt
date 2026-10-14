@@ -1,5 +1,6 @@
 // Madcap. Body, arms, and death sounds are the Scout's for now.
 // 300 units/sec is 100% move speed. Health is 175.
+// Primary: Nailgun. Secondary: Brick. Melee: Boston Basher.
 "PlayerClassData"
 {
 	"name"				"madcap"
@@ -11,8 +12,8 @@
 	"health_max"		"175"
 	"armor_max"			"0"
 	"weapon1"			"tf_weapon_nailgun"
-	"weapon2"			"tf_weapon_bat"
-	"weapon3"			"tf_weapon_none"
+	"weapon2"			"tf_weapon_throwable_brick"
+	"weapon3"			"tf_weapon_bat"
 	"grenade1"			"tf_weapon_none"
 	"grenade2"			"tf_weapon_none"
 	"DontDoAirwalk"		"0"
@@ -21,7 +22,7 @@
 	"AmmoMax"
 	{
 		"TF_AMMO_PRIMARY"		"150"
-		"TF_AMMO_SECONDARY"		"0"
+		"TF_AMMO_SECONDARY"		"1"
 		"TF_AMMO_METAL"			"0"
 	}
 }

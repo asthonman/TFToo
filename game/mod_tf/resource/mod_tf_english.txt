@@ -6,5 +6,6 @@
 		"TF_MyStrings"				"Your strings go in this file."
 		"TF_Class_Name_Madcap"		"Madcap"
 		"TF_Weapon_Nailgun"			"Nailgun"
+		"TF_Weapon_Brick"			"Brick"
 	}
 }

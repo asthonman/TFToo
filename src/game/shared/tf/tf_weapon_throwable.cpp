@@ -42,6 +42,11 @@ END_PREDICTION_DATA()
 //LINK_ENTITY_TO_CLASS( tf_weapon_throwable, CTFThrowable );
 //PRECACHE_WEAPON_REGISTER( tf_weapon_throwable );
 
+// Madcap's stock secondary. Same launcher as the abandoned throwable;
+// the item's "projectile entity name" attribute selects the brick.
+LINK_ENTITY_TO_CLASS( tf_weapon_throwable_brick, CTFThrowable );
+PRECACHE_WEAPON_REGISTER( tf_weapon_throwable_brick );
+
 
 // Projectile
 IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_Throwable, DT_TFProjectile_Throwable )
@@ -94,6 +99,7 @@ void CTFThrowable::Precache()
 
 	PrecacheModel( g_pszArrowModels[MODEL_BREAD_MONSTER] );
 	PrecacheModel( g_pszArrowModels[MODEL_THROWING_KNIFE] );
+	PrecacheModel( "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
 	PrecacheScriptSound( TF_GRENADE_CHARGE );
 	
 	PrecacheScriptSound( "Weapon_bm_throwable.throw" );
