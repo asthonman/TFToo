@@ -37,6 +37,7 @@
 #include "panelmetaclassmgr.h"
 #include "c_tf_player.h"
 #include "ienginevgui.h"
+#include "vgui/ILocalize.h"
 #include "in_buttons.h"
 #include "voice_status.h"
 #include "tf_gamerules.h"
@@ -400,6 +401,14 @@ static CDllDemandLoader g_GameUI( "GameUI" );
 //-----------------------------------------------------------------------------
 void ClientModeTFNormal::Init()
 {
+	// Madcap's name and class tips live in the mod localization file. Load it
+	// explicitly so a missing auto-load doesn't leave those strings blank.
+	if ( g_pVGuiLocalize )
+	{
+		g_pVGuiLocalize->AddFile( "resource/mod_tf_%language%.txt", "MOD", true );
+		g_pVGuiLocalize->AddFile( "resource/mod_tf_english.txt", "MOD", true );
+	}
+
 	m_pMenuEngyBuild = ( CHudMenuEngyBuild * )GET_HUDELEMENT( CHudMenuEngyBuild );
 	Assert( m_pMenuEngyBuild );
 
