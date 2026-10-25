@@ -1720,7 +1720,7 @@ int g_ClassDefinesRemap[] = {
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_ClassDefinesRemap ) == TF_LAST_NORMAL_CLASS + 1 );
 
-static void SetClassCountDialogVariable( vgui::Panel *pPanel, const char *pszVar, int classCount, int iClassLimit )
+static void SetClassCountDialogVariable( vgui::EditablePanel *pPanel, const char *pszVar, int classCount, int iClassLimit )
 {
 	if ( !pszVar || !pszVar[0] )
 		return;
