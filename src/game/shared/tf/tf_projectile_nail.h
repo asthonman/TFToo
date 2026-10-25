@@ -29,5 +29,18 @@ public:
 	virtual float GetGravity( void );
 };
 
+//-----------------------------------------------------------------------------
+// Purpose: Nailgun projectile. Same flight as a syringe, Madcap's w_nail model.
+//-----------------------------------------------------------------------------
+class CTFProjectile_Nail : public CTFProjectile_Syringe
+{
+	DECLARE_CLASS( CTFProjectile_Nail, CTFProjectile_Syringe );
+
+public:
+	static CTFBaseProjectile *Create( const Vector &vecOrigin, const QAngle &vecAngles, CTFWeaponBaseGun *pLauncher = NULL, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, bool bCritical = false );
+
+	virtual const char *GetProjectileModelName( void )	{ return "models/weapons/w_models/w_nail.mdl"; }
+};
+
 
 #endif	//TF_PROJECTILE_NAIL_H

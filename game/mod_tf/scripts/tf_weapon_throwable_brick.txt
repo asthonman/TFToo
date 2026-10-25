@@ -24,7 +24,7 @@
 	"HasTeamSkins_Viewmodel"	"0"
 	"HasTeamSkins_Worldmodel"	"0"
 
-	"viewmodel"			"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl"
-	"playermodel"		"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl"
+	"viewmodel"			"models/weapons/w_models/w_brick_scout.mdl"
+	"playermodel"		"models/weapons/w_models/w_brick_scout.mdl"
 	"anim_prefix"		"gren"
 }

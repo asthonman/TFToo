@@ -621,7 +621,14 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 			GetProjectileFireSetup( pPlayer, vecOffset, &vecSrc, &angForward );
 			angForward.x += RandomFloat( -flSpread, flSpread );
 			angForward.y += RandomFloat( -flSpread, flSpread );
-			pProjectile = CTFProjectile_Syringe::Create( vecSrc, angForward, this, pPlayer, pPlayer, IsCurrentAttackACrit() );
+			if ( GetWeaponID() == TF_WEAPON_NAILGUN )
+			{
+				pProjectile = CTFProjectile_Nail::Create( vecSrc, angForward, this, pPlayer, pPlayer, IsCurrentAttackACrit() );
+			}
+			else
+			{
+				pProjectile = CTFProjectile_Syringe::Create( vecSrc, angForward, this, pPlayer, pPlayer, IsCurrentAttackACrit() );
+			}
 		}
 		break;
 	default:
