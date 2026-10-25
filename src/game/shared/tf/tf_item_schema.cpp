@@ -1759,12 +1759,27 @@ static void SetMadcapOnlyClass( KeyValues *pItemKV )
 	pItemKV->AddSubKey( pMadcap );
 }
 
-static void AddAttribute( KeyValues *pAttrs, const char *pszName, const char *pszClass, const char *pszValue )
+static bool RealItemDefExists( CEconItemSchema *pSchema, int iDefIndex )
 {
+	// GetItemDefinition() returns the default item when the index is missing.
+	// Compare the index or a missing def looks like it already exists.
+	const CEconItemDefinition *pDef = pSchema->GetItemDefinition( iDefIndex );
+	return pDef && pDef->GetDefinitionIndex() == iDefIndex;
+}
+
+static bool AddAttributeIfPresent( CEconItemSchema *pSchema, KeyValues *pAttrs, const char *pszName, const char *pszValue )
+{
+	if ( !pSchema->GetAttributeDefinitionByName( pszName ) )
+	{
+		Warning( "Madcap item attribute \"%s\" is not in the schema. Skipping it.\n", pszName );
+		return false;
+	}
+
 	KeyValues *pAttr = new KeyValues( pszName );
-	pAttr->SetString( "attribute_class", pszClass );
+	pAttr->SetString( "attribute_class", pszName );
 	pAttr->SetString( "value", pszValue );
 	pAttrs->AddSubKey( pAttr );
+	return true;
 }
 
 static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const char *pszClass )
@@ -1819,10 +1834,10 @@ void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErro
 		}
 	}
 
-	if ( !GetItemDefinition( kMadcapNailgunDefIndex ) && !GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
+	if ( !RealItemDefExists( this, kMadcapNailgunDefIndex ) && !GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
 	{
 		CEconItemDefinition *pSyringe = GetItemDefinitionByName( "TF_WEAPON_SYRINGEGUN_MEDIC" );
-		if ( !pSyringe )
+		if ( !pSyringe && RealItemDefExists( this, 17 ) )
 		{
 			pSyringe = GetItemDefinition( 17 );
 		}
@@ -1856,19 +1871,22 @@ void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErro
 				RemoveKVSubKey( pCopy, "model_player_per_class" );
 				SetMadcapOnlyClass( pCopy );
 
-				AddRuntimeItemDefinition( pCopy, pVecErrors );
+				if ( !AddRuntimeItemDefinition( pCopy, pVecErrors ) )
+				{
+					Warning( "Madcap Nailgun was not added to the item schema.\n" );
+				}
 				pCopy->deleteThis();
 			}
 		}
 	}
 
-	if ( GetItemDefinition( kMadcapBrickDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_BRICK" ) )
+	if ( RealItemDefExists( this, kMadcapBrickDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_BRICK" ) )
 		return;
 
 	// Clone a stock secondary so the expanded definition already has the fields
 	// BInitFromKV expects, then turn it into the brick launcher.
 	CEconItemDefinition *pSecondary = GetItemDefinitionByName( "TF_WEAPON_PISTOL_SCOUT" );
-	if ( !pSecondary )
+	if ( !pSecondary && RealItemDefExists( this, 23 ) )
 	{
 		pSecondary = GetItemDefinition( 23 );
 	}
@@ -1907,14 +1925,17 @@ void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErro
 
 	KeyValues *pAttrs = new KeyValues( "attributes" );
 	// Spawns CTFProjectile_ThrowableBrick instead of the generic grenade.
-	AddAttribute( pAttrs, "projectile entity name", "projectile_entity_name", "tf_projectile_throwable_brick" );
-	// Hold fire to scale damage from 40 to 70. That same duration is the fuse.
-	AddAttribute( pAttrs, "is throwable chargeable", "is_throwable_chargeable", "1" );
-	AddAttribute( pAttrs, "throwable detonation time", "throwable_detonation_time", "1.5" );
-	AddAttribute( pAttrs, "throwable recharge time", "throwable_recharge_time", "6" );
+	// A missing attribute must not reject the whole item, or Madcap has no secondary.
+	AddAttributeIfPresent( this, pAttrs, "projectile entity name", "tf_projectile_throwable_brick" );
+	AddAttributeIfPresent( this, pAttrs, "is throwable chargeable", "1" );
+	AddAttributeIfPresent( this, pAttrs, "throwable detonation time", "1.5" );
+	AddAttributeIfPresent( this, pAttrs, "throwable recharge time", "6" );
 	pCopy->AddSubKey( pAttrs );
 
-	AddRuntimeItemDefinition( pCopy, pVecErrors );
+	if ( !AddRuntimeItemDefinition( pCopy, pVecErrors ) )
+	{
+		Warning( "Madcap Brick was not added to the item schema.\n" );
+	}
 	pCopy->deleteThis();
 }
 
