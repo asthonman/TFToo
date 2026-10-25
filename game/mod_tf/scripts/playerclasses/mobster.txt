@@ -1,0 +1,29 @@
+// Mobster. 500 health, 1.2 scale, 230 units/sec (scout speed * 0.575).
+// Primary: Typewriter. Secondary: Money Bag. Melee: Lead Pipe.
+// Overheal penalty and airblast resistance are applied in InitClass.
+// A backstab only kills him at 400 health or below. Above that he is left at 50 and slowed.
+"PlayerClassData"
+{
+	"name"				"mobster"
+	"model"				"models/player/mobster.mdl"
+	"model_hwm"			"models/player/mobster.mdl"
+	"model_hands"		"models/weapons/c_mobster_arms.mdl"
+	"localize_name"		"#TF_Class_Name_Mobster"
+	"speed_max"			"230"
+	"health_max"		"500"
+	"armor_max"			"0"
+	"weapon1"			"tf_weapon_typewriter"
+	"weapon2"			"tf_weapon_moneybag"
+	"weapon3"			"tf_weapon_leadpipe"
+	"grenade1"			"tf_weapon_none"
+	"grenade2"			"tf_weapon_none"
+	"DontDoAirwalk"		"0"
+	"DontDoNewJump"		"0"
+
+	"AmmoMax"
+	{
+		"TF_AMMO_PRIMARY"		"200"
+		"TF_AMMO_SECONDARY"		"1"
+		"TF_AMMO_METAL"			"0"
+	}
+}

@@ -50,6 +50,21 @@ static const NewItemAttribute_t s_BrickAttrs[] =
 	{ "throwable recharge time", "6" },
 };
 
+static const NewItemAttribute_t s_TypewriterAttrs[] =
+{
+	{ "bullets per shot bonus", "0.75" },
+	{ "fire rate bonus", "0.34" },
+	{ "damage bonus HIDDEN", "0.5" },
+	{ "Reload time increased", "1.8" },
+	{ "dmg bonus vs buildings", "1.15" },
+	{ "spread penalty", "1.3" },
+};
+
+static const NewItemAttribute_t s_MoneyBagAttrs[] =
+{
+	{ "effect bar recharge rate increased", "6" },
+};
+
 // Madcap. b1 is the Nailgun (primary). b2 is the Brick (secondary).
 static const NewItemDefDesc_t s_NewItems[] =
 {
@@ -80,6 +95,48 @@ static const NewItemDefDesc_t s_NewItems[] =
 		0,
 		s_BrickAttrs,
 		ARRAYSIZE( s_BrickAttrs ),
+	},
+	{
+		"b3",
+		"tf_weapon_typewriter",
+		"#TF_Weapon_Typewriter",
+		"primary",
+		LOADOUT_POSITION_PRIMARY,
+		TF_CLASS_MOBSTER,
+		"models/weapons/w_typewriter.mdl",
+		"models/weapons/w_typewriter.mdl",
+		"typewriter",
+		1,
+		s_TypewriterAttrs,
+		ARRAYSIZE( s_TypewriterAttrs ),
+	},
+	{
+		"b4",
+		"tf_weapon_moneybag",
+		"#TF_Weapon_MoneyBag",
+		"secondary",
+		LOADOUT_POSITION_SECONDARY,
+		TF_CLASS_MOBSTER,
+		"models/weapons/w_moneybag_closed.mdl",
+		"models/weapons/w_moneybag_closed.mdl",
+		"moneybag",
+		1,
+		s_MoneyBagAttrs,
+		ARRAYSIZE( s_MoneyBagAttrs ),
+	},
+	{
+		"b5",
+		"tf_weapon_leadpipe",
+		"#TF_Weapon_LeadPipe",
+		"melee",
+		LOADOUT_POSITION_MELEE,
+		TF_CLASS_MOBSTER,
+		"models/weapons/w_leadpipe.mdl",
+		"models/weapons/w_leadpipe.mdl",
+		"leadpipe",
+		1,
+		NULL,
+		0,
 	},
 };
 

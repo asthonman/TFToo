@@ -1012,6 +1012,7 @@ static ConVar *s_pThrowSpeedConvars[TF_LAST_NORMAL_CLASS] = {
 	&tf_passtime_throwspeed_spy,
 	&tf_passtime_throwspeed_engineer,
 	&tf_passtime_throwspeed_scout, // TF_CLASS_MADCAP
+	&tf_passtime_throwspeed_scout, // TF_CLASS_MOBSTER
 };
 
 //-----------------------------------------------------------------------------
@@ -1027,6 +1028,7 @@ static ConVar *s_pThrowArcConvars[TF_LAST_NORMAL_CLASS] = {
 	&tf_passtime_throwarc_spy,
 	&tf_passtime_throwarc_engineer,
 	&tf_passtime_throwarc_scout, // TF_CLASS_MADCAP
+	&tf_passtime_throwarc_scout, // TF_CLASS_MOBSTER
 };
 
 //-----------------------------------------------------------------------------

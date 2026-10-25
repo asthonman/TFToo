@@ -1,0 +1,49 @@
+// Mobster Typewriter. Shortstop numbers, then the item attributes scale them.
+// Clip is 50. No distance falloff (the weapon strips DMG_USEDISTANCEMOD).
+// Alt-fire is the Shortstop shove for 65 damage and no extra knockback.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Typewriter"
+	"BuiltRightHanded"	"0"
+	"weight"			"2"
+	"WeaponType"		"primary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"12"
+	"Range"				"8192"
+	"BulletsPerShot"	"4"
+	"Spread"			"0.04"
+	"PunchAngle"		"0.0"
+	"TimeFireDelay"		"0.36"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+	"TimeReload"		"1.52"
+	"UseRapidFireCrits"	"1"
+
+	"primary_ammo"		"TF_AMMO_PRIMARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"50"
+	"default_clip"		"50"
+
+	"bucket"			"0"
+	"bucket_position"	"0"
+
+	"DoInstantEjectBrass"			"0"
+	"HasTeamSkins_Viewmodel"		"0"
+	"HasTeamSkins_Worldmodel"		"0"
+	"MuzzleFlashParticleEffect"		""
+
+	"viewmodel"			"models/weapons/v_typewriter.mdl"
+	"playermodel"		"models/weapons/w_typewriter.mdl"
+	"anim_prefix"		"pistol"
+
+	"ProjectileType"	"projectile_bullet"
+
+	"WeaponSound"
+	{
+		"single_shot"	"Mobster.Typewriter.Fire"
+		"reload"		"Mobster.Typewriter.Reload"
+		"empty"			"Mobster.Typewriter.Empty"
+		"burst"			"Mobster.Typewriter.FireCrit"
+	}
+}

@@ -160,7 +160,7 @@ inline bool IsValidPickupWeaponSlot( int iSlot )
 // The total number of loadouts to track for each player.
 // 0 is undefined. The last slot is the civilian/invalid padding index.
 // Must stay equal to TF_CLASS_COUNT_ALL (see the assert in tf_item_schema.cpp).
-#define LOADOUT_COUNT					(11+1)
+#define LOADOUT_COUNT					(12+1)
 
 // Halloween! (Shared by GC and game client.)
 enum EHalloweenMap

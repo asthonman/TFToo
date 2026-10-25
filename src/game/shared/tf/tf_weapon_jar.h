@@ -22,6 +22,8 @@
 #define CTFProjectile_JarMilk C_TFProjectile_JarMilk
 #define CTFProjectile_Cleaver C_TFProjectile_Cleaver
 #define CTFProjectile_Throwable C_TFProjectile_Throwable
+#define CTFMoneyBag C_TFMoneyBag
+#define CTFProjectile_MoneyBag C_TFProjectile_MoneyBag
 #endif
 
 class CTFProjectile_Jar;
@@ -253,6 +255,73 @@ private:
 	bool m_bSoundPlayed;
 #endif
 };
+
+// *************************************************************************************************************************
+// Mobster Money Bag. A cleaver-style throwable that becomes a healing fountain on the ground.
+class CTFMoneyBag : public CTFCleaver
+{
+public:
+	DECLARE_CLASS( CTFMoneyBag, CTFCleaver );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual int			GetWeaponID( void ) const			{ return TF_WEAPON_CLEAVER; }
+	virtual const char*	GetEffectLabelText( void )			{ return "#TF_Weapon_MoneyBag"; }
+	virtual void		Precache( void );
+
+#ifdef GAME_DLL
+	virtual const AngularImpulse GetAngularImpulse( void )	{ return AngularImpulse( -550, -550, 50 ); }
+	virtual Vector		GetVelocityVector( const Vector &vecForward, const Vector &vecRight, const Vector &vecUp );
+	virtual CTFProjectile_Jar	*CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
+#endif
+};
+
+class CTFProjectile_MoneyBag : public CTFProjectile_Jar
+{
+public:
+	DECLARE_CLASS( CTFProjectile_MoneyBag, CTFProjectile_Jar );
+	DECLARE_NETWORKCLASS();
+
+	CTFProjectile_MoneyBag();
+
+	virtual int			GetWeaponID( void ) const OVERRIDE	{ return TF_WEAPON_GRENADE_CLEAVER; }
+	virtual void		Precache() OVERRIDE;
+
+#ifdef CLIENT_DLL
+	virtual const char*	GetTrailParticleName( void );
+	virtual void		CreateTrailParticles( void );
+#endif
+
+#ifdef GAME_DLL
+	static CTFProjectile_MoneyBag *Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
+
+	virtual void		Spawn() OVERRIDE;
+	virtual void		SetCustomPipebombModel() OVERRIDE;
+	virtual float		GetDamage() OVERRIDE				{ return 0.f; }
+	virtual bool		ExplodesOnHit() OVERRIDE			{ return false; }
+	virtual void		Detonate() OVERRIDE					{}
+	virtual void		Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE { (void)pTrace; (void)bitsDamageType; }
+	virtual void		PipebombTouch( CBaseEntity *pOther ) OVERRIDE { (void)pOther; }
+	virtual void		VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE;
+
+	void				FlightThink( void );
+	void				AuraThink( void );
+	void				Deploy( const Vector &vecOrigin );
+
+private:
+	bool				m_bDeployed;
+	float				m_flFlightDieTime;
+	float				m_flRefreshUntil;
+	float				m_flRemoveTime;
+#endif
+};
+
+#ifdef GAME_DLL
+class CTFPlayer;
+void MobsterAura_ModifyDamage( CTFPlayer *pVictim, CTFPlayer *pAttacker, float &flDamage );
+#endif
 
 void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeapon, CBaseEntity *pWeapon, const Vector& vContactPoint, int iTeam, float flRadius, ETFCond cond, float flDuration, const char *pszImpactEffect, const char *pszExplodeSound );
 

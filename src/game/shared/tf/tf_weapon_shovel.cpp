@@ -218,3 +218,23 @@ int CTFShovel::GetDamageCustom()
 	}
 }
 #endif
+
+//=============================================================================
+// Mobster Lead Pipe.
+//=============================================================================
+IMPLEMENT_NETWORKCLASS_ALIASED( TFLeadPipe, DT_TFWeaponLeadPipe )
+
+BEGIN_NETWORK_TABLE( CTFLeadPipe, DT_TFWeaponLeadPipe )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFLeadPipe )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_leadpipe, CTFLeadPipe );
+PRECACHE_WEAPON_REGISTER( tf_weapon_leadpipe );
+
+void CTFLeadPipe::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheScriptSound( "Saxxy.HitWorld" );
+}

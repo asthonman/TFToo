@@ -4165,6 +4165,20 @@ void CTFPlayer::InitClass( void )
 
 	TeamFortress_SetSpeed();
 
+	// Mobster is large, overheals poorly, and is harder to airblast.
+	// Speed is already 230 in the class file, so it is not applied again here.
+	RemoveCustomAttribute( "patient overheal penalty" );
+	RemoveCustomAttribute( "airblast vulnerability multiplier" );
+	if ( IsPlayerClass( TF_CLASS_MOBSTER ) )
+	{
+		SetModelScale( 1.2f );
+		AddCustomAttribute( "patient overheal penalty", 0.2f, -1.f );
+		AddCustomAttribute( "airblast vulnerability multiplier", 0.45f, -1.f );
+	}
+	else
+	{
+		SetModelScale( 1.0f );
+	}
 }
 
 //-----------------------------------------------------------------------------

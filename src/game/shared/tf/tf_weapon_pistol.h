@@ -18,6 +18,7 @@
 #define CTFPistol_Scout C_TFPistol_Scout
 #define CTFPistol_ScoutPrimary C_TFPistol_ScoutPrimary
 #define CTFPistol_ScoutSecondary C_TFPistol_ScoutSecondary
+#define CTFTypewriter C_TFTypewriter
 #endif
 
 // We allow the pistol to fire as fast as the player can click.
@@ -84,12 +85,35 @@ public:
 
 	void			Push( void );
 
+protected:
+	// Shortstop shove is 1 damage. The Typewriter overrides both.
+	virtual float	GetPushDamage( void ) const { return 1.f; }
+	virtual int		GetPushDamageFlags( void ) const { return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB; }
+
 #ifdef CLIENT_DLL
 	virtual bool	ShouldPlayClientReloadSound() { return true; }
 #endif
 
 private:
 	float			m_flPushTime;
+};
+
+class CTFTypewriter : public CTFPistol_ScoutPrimary
+{
+public:
+	DECLARE_CLASS( CTFTypewriter, CTFPistol_ScoutPrimary );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	// Same weapon id as the Shortstop so the bullet, crit, and damage tables stay put.
+	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_HANDGUN_SCOUT_PRIMARY; }
+	virtual void	PlayWeaponShootSound( void );
+	virtual int		GetDamageType( void ) const;
+	virtual void	Precache( void );
+
+protected:
+	virtual float	GetPushDamage( void ) const			{ return 65.f; }
+	virtual int		GetPushDamageFlags( void ) const	{ return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB | DMG_PREVENT_PHYSICS_FORCE; }
 };
 
 class CTFPistol_ScoutSecondary : public CTFPistol_Scout

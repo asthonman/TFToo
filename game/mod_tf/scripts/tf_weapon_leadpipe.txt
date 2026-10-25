@@ -1,0 +1,38 @@
+// Mobster Lead Pipe. Stock shovel damage and swing, with Saxxy hit sounds.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_LeadPipe"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"melee"
+	"MeleeWeapon"		"1"
+
+	"Damage"			"65"
+	"Range"				"48"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+	"SmackDelay"		"0.2"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"2"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/v_leadpipe.mdl"
+	"playermodel"		"models/weapons/w_leadpipe.mdl"
+	"anim_prefix"		"shotgun"
+
+	"WeaponSound"
+	{
+		"melee_miss"		"Weapon_Shovel.Miss"
+		"melee_hit"			"Saxxy.HitWorld"
+		"melee_hit_world"	"Saxxy.HitWorld"
+	}
+}

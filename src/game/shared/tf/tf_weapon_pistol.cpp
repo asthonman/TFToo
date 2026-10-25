@@ -171,8 +171,8 @@ void CTFPistol_ScoutPrimary::Push( void )
 			Vector vecToVictim = pVictim->GetAbsOrigin() - pOwner->GetAbsOrigin();
 			VectorNormalize( vecToVictim );
 			pVictim->ApplyGenericPushbackImpulse( vecToVictim * 400.f, pOwner );
-			float flDamage = 1.f;
-			CTakeDamageInfo info( pVictim, pOwner, this, flDamage, DMG_MELEE | DMG_NEVERGIB | DMG_CLUB, TF_DMG_CUSTOM_NONE );
+			float flDamage = GetPushDamage();
+			CTakeDamageInfo info( pVictim, pOwner, this, flDamage, GetPushDamageFlags(), TF_DMG_CUSTOM_NONE );
 			CalculateMeleeDamageForce( &info, vecForward, GetAbsOrigin() + vecForward * flDist, 1.f / flDamage * 80.f );
 			pVictim->DispatchTraceAttack( info, vecForward, &trace );
 			ApplyMultiDamage();
@@ -231,6 +231,68 @@ void CTFPistol_ScoutPrimary::Precache( void )
 	PrecacheScriptSound( "Weapon_Hands.PushImpact" );
 	
 	BaseClass::Precache();
+}
+
+//============================
+// Mobster Typewriter. Shortstop with no falloff, a 65-damage shove, and its own sounds.
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFTypewriter, DT_WeaponTypewriter )
+
+BEGIN_NETWORK_TABLE( CTFTypewriter, DT_WeaponTypewriter )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFTypewriter )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_typewriter, CTFTypewriter );
+PRECACHE_WEAPON_REGISTER( tf_weapon_typewriter );
+
+void CTFTypewriter::Precache( void )
+{
+	BaseClass::Precache();
+
+	PrecacheScriptSound( "Mobster.Typewriter.Fire" );
+	PrecacheScriptSound( "Mobster.Typewriter.FireLow" );
+	PrecacheScriptSound( "Mobster.Typewriter.FireCrit" );
+	PrecacheScriptSound( "Mobster.Typewriter.FireLowCrit" );
+	PrecacheScriptSound( "Mobster.Typewriter.Empty" );
+	PrecacheScriptSound( "Mobster.Typewriter.Reload" );
+}
+
+int CTFTypewriter::GetDamageType( void ) const
+{
+	// The Shortstop bullet type includes distance falloff. The Typewriter does not.
+	return BaseClass::GetDamageType() & ~DMG_USEDISTANCEMOD;
+}
+
+void CTFTypewriter::PlayWeaponShootSound( void )
+{
+	// Clip has not been spent yet. The low bank starts once this shot leaves 12 or fewer.
+	const int nLeft = Clip1() - GetAmmoPerShot();
+	const bool bLow = nLeft <= 12;
+	const bool bCrit = IsCurrentAttackACrit();
+
+	const char *pszSound = "Mobster.Typewriter.Fire";
+	if ( bCrit && bLow )
+		pszSound = "Mobster.Typewriter.FireLowCrit";
+	else if ( bCrit )
+		pszSound = "Mobster.Typewriter.FireCrit";
+	else if ( bLow )
+		pszSound = "Mobster.Typewriter.FireLow";
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner )
+		pOwner->EmitSound( pszSound );
+	else
+		EmitSound( pszSound );
+
+	if ( nLeft <= 0 )
+	{
+		if ( pOwner )
+			pOwner->EmitSound( "Mobster.Typewriter.Empty" );
+		else
+			EmitSound( "Mobster.Typewriter.Empty" );
+	}
 }
 
 //============================

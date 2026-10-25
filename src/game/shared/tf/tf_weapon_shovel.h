@@ -14,6 +14,7 @@
 
 #ifdef CLIENT_DLL
 #define CTFShovel C_TFShovel
+#define CTFLeadPipe C_TFLeadPipe
 #endif
 
 enum shovel_weapontypes_t
@@ -62,6 +63,23 @@ private:
 
 	bool			m_bHolstering;
 	float			m_flLastHealthRatio;
+};
+
+// Mobster Lead Pipe. A shovel with no Atomizer penalties. Hit sounds are in the weapon script.
+class CTFLeadPipe : public CTFShovel
+{
+public:
+	DECLARE_CLASS( CTFLeadPipe, CTFShovel );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFLeadPipe() {}
+
+	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
+	virtual void	Precache( void );
+
+private:
+	CTFLeadPipe( const CTFLeadPipe & ) {}
 };
 
 #endif // TF_WEAPON_SHOVEL_H

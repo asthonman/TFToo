@@ -225,6 +225,7 @@ enum ETFClass
 	// number as TF_CLASS_UNDEFINED when it has no class. Key 0 is Random on
 	// every page.
 	TF_CLASS_MADCAP,
+	TF_CLASS_MOBSTER,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
 

@@ -26,6 +26,7 @@
 #include "particle_parse.h"
 #include "bone_setup.h"
 #include "tf_flame.h"
+#include "recipientfilter.h"
 #endif
 
 //=============================================================================
@@ -80,6 +81,23 @@ END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( tf_projectile_cleaver, CTFProjectile_Cleaver );
 PRECACHE_WEAPON_REGISTER( tf_projectile_cleaver );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFMoneyBag, DT_TFWeaponMoneyBag )
+BEGIN_NETWORK_TABLE( CTFMoneyBag, DT_TFWeaponMoneyBag )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFMoneyBag )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_moneybag, CTFMoneyBag );
+PRECACHE_WEAPON_REGISTER( tf_weapon_moneybag );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_MoneyBag, DT_TFProjectile_MoneyBag )
+BEGIN_NETWORK_TABLE( CTFProjectile_MoneyBag, DT_TFProjectile_MoneyBag )
+END_NETWORK_TABLE()
+
+LINK_ENTITY_TO_CLASS( tf_projectile_moneybag, CTFProjectile_MoneyBag );
+PRECACHE_WEAPON_REGISTER( tf_projectile_moneybag );
 
 #define TF_JAR_LAUNCH_SPEED		1000.f
 #define TF_CLEAVER_LAUNCH_SPEED		7000.f
@@ -1165,3 +1183,347 @@ const char *CTFProjectile_Cleaver::GetTrailParticleName( void )
 }
 
 #endif // GAME_DLL
+
+static const char *kMoneyBagClosedModel = "models/weapons/w_moneybag_closed.mdl";
+static const char *kMoneyBagOpenModel = "models/weapons/w_moneybag_open.mdl";
+static const float kMoneyBagRadius = 375.f;
+static const float kMoneyBagDuration = 5.f;
+static const float kMoneyBagLinger = 1.f;
+
+void CTFMoneyBag::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheModel( kMoneyBagClosedModel );
+	PrecacheModel( kMoneyBagOpenModel );
+	PrecacheModel( "models/weapons/v_moneybag.mdl" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
+	PrecacheParticleSystem( "weapon_moneybag_parent" );
+}
+
+#ifdef GAME_DLL
+Vector CTFMoneyBag::GetVelocityVector( const Vector &vecForward, const Vector &vecRight, const Vector &vecUp )
+{
+	// The bag's throw is an absolute velocity, not the cleaver's normalized 3000.
+	(void)vecRight;
+	(void)vecUp;
+	return vecForward * 4400.f + Vector( 0, 0, 200 );
+}
+
+CTFProjectile_Jar *CTFMoneyBag::CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	return CTFProjectile_MoneyBag::Create( position, angles, velocity, angVelocity, pOwner, weaponInfo );
+}
+
+struct MobsterAuraEntry_t
+{
+	EHANDLE		hFountain;
+	EHANDLE		hPlayer;
+	float		flExpire;
+	float		flNextResistSound;
+};
+
+static CUtlVector< MobsterAuraEntry_t > s_MobsterAura;
+
+static void MobsterAura_PurgeExpired( void )
+{
+	for ( int i = s_MobsterAura.Count() - 1; i >= 0; --i )
+	{
+		if ( !s_MobsterAura[i].hPlayer || gpGlobals->curtime > s_MobsterAura[i].flExpire )
+			s_MobsterAura.Remove( i );
+	}
+}
+
+static void MobsterAura_Refresh( CBaseEntity *pFountain, CTFPlayer *pPlayer, float flExpire )
+{
+	FOR_EACH_VEC( s_MobsterAura, i )
+	{
+		if ( s_MobsterAura[i].hFountain == pFountain && s_MobsterAura[i].hPlayer == pPlayer )
+		{
+			s_MobsterAura[i].flExpire = flExpire;
+			return;
+		}
+	}
+
+	MobsterAuraEntry_t entry;
+	entry.hFountain = pFountain;
+	entry.hPlayer = pPlayer;
+	entry.flExpire = flExpire;
+	entry.flNextResistSound = 0.f;
+	s_MobsterAura.AddToTail( entry );
+}
+
+static void MobsterAura_HealFountain( CBaseEntity *pFountain )
+{
+	FOR_EACH_VEC( s_MobsterAura, i )
+	{
+		if ( s_MobsterAura[i].hFountain != pFountain )
+			continue;
+		if ( gpGlobals->curtime > s_MobsterAura[i].flExpire )
+			continue;
+
+		CTFPlayer *pPlayer = ToTFPlayer( s_MobsterAura[i].hPlayer );
+		if ( !pPlayer || !pPlayer->IsAlive() )
+			continue;
+
+		// 3% of max health, and never past the un-overhealed max.
+		pPlayer->TakeHealth( pPlayer->GetMaxHealth() * 0.03f, DMG_GENERIC );
+	}
+}
+
+void MobsterAura_ModifyDamage( CTFPlayer *pVictim, CTFPlayer *pAttacker, float &flDamage )
+{
+	if ( !pVictim || flDamage <= 0.f )
+		return;
+
+	MobsterAura_PurgeExpired();
+
+	bool bVictimBuff = false;
+	bool bAttackerBuff = false;
+	int iResist = -1;
+
+	FOR_EACH_VEC( s_MobsterAura, i )
+	{
+		CTFPlayer *pBuffed = ToTFPlayer( s_MobsterAura[i].hPlayer );
+		if ( !pBuffed )
+			continue;
+
+		if ( pBuffed == pVictim )
+		{
+			bVictimBuff = true;
+			iResist = i;
+		}
+		if ( pAttacker && pBuffed == pAttacker )
+			bAttackerBuff = true;
+	}
+
+	if ( bVictimBuff )
+	{
+		flDamage *= 0.85f;
+		if ( iResist >= 0 && gpGlobals->curtime >= s_MobsterAura[iResist].flNextResistSound )
+		{
+			s_MobsterAura[iResist].flNextResistSound = gpGlobals->curtime + 0.1f;
+			pVictim->EmitSound( "Mobster.MoneyBag.Resist" );
+		}
+	}
+
+	// A buffed attacker hits harder. Self-damage only gets the resist above.
+	if ( bAttackerBuff && pAttacker && pAttacker != pVictim )
+	{
+		flDamage *= 1.15f;
+
+		CSingleUserRecipientFilter filter( pAttacker );
+		filter.MakeReliable();
+		EmitSound_t params;
+		params.m_pSoundName = "Mobster.MoneyBag.Hit";
+		params.m_flVolume = 0.15f;
+		params.m_SoundLevel = SNDLVL_NONE;
+		params.m_nChannel = CHAN_STATIC;
+		pAttacker->EmitSound( filter, pAttacker->entindex(), params );
+	}
+}
+
+CTFProjectile_MoneyBag::CTFProjectile_MoneyBag()
+{
+	m_bDeployed = false;
+	m_flFlightDieTime = 0.f;
+	m_flRefreshUntil = 0.f;
+	m_flRemoveTime = 0.f;
+}
+
+void CTFProjectile_MoneyBag::Precache()
+{
+	PrecacheModel( kMoneyBagClosedModel );
+	PrecacheModel( kMoneyBagOpenModel );
+	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
+	PrecacheParticleSystem( "weapon_moneybag_parent" );
+	BaseClass::Precache();
+}
+
+void CTFProjectile_MoneyBag::SetCustomPipebombModel()
+{
+	SetModel( kMoneyBagClosedModel );
+}
+
+void CTFProjectile_MoneyBag::Spawn()
+{
+	BaseClass::Spawn();
+
+	SetDetonateTimerLength( FLT_MAX );
+	SetModelScale( 1.4f );
+	m_bDeployed = false;
+	m_flFlightDieTime = gpGlobals->curtime + 15.f;
+	SetContextThink( &CTFProjectile_MoneyBag::FlightThink, gpGlobals->curtime + 0.05f, "MoneyBagFlight" );
+}
+
+void CTFProjectile_MoneyBag::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
+{
+	// The jar base detonates on the first enemy and the pipebomb base bounces like a pill.
+	// Neither is the bag. Drop the projectile if it goes into the sky.
+	if ( m_bDeployed )
+		return;
+
+	int otherIndex = !index;
+	CBaseEntity *pHit = pEvent->pEntities[otherIndex];
+	if ( !pHit )
+		return;
+
+	surfacedata_t *pprops = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
+	if ( pprops && pprops->game.material == 'X' )
+		UTIL_Remove( this );
+}
+
+void CTFProjectile_MoneyBag::FlightThink( void )
+{
+	if ( m_bDeployed )
+	{
+		AuraThink();
+		return;
+	}
+
+	if ( gpGlobals->curtime >= m_flFlightDieTime )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	Vector vecSrc = GetAbsOrigin();
+	trace_t tr;
+	UTIL_TraceLine( vecSrc, vecSrc - Vector( 0, 0, 25 ), MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE, &tr );
+	if ( tr.fraction < 0.98f )
+	{
+		if ( tr.surface.flags & SURF_SKY )
+		{
+			UTIL_Remove( this );
+			return;
+		}
+
+		Deploy( tr.endpos + tr.plane.normal * 2.f );
+		return;
+	}
+
+	SetContextThink( &CTFProjectile_MoneyBag::FlightThink, gpGlobals->curtime + 0.05f, "MoneyBagFlight" );
+}
+
+void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
+{
+	if ( m_bDeployed )
+		return;
+
+	m_bDeployed = true;
+	SetAbsOrigin( vecOrigin );
+	SetAbsVelocity( vec3_origin );
+	SetModel( kMoneyBagOpenModel );
+	SetModelScale( 1.4f );
+
+	int iSeq = LookupSequence( "deploy" );
+	if ( iSeq >= 0 )
+		ResetSequence( iSeq );
+
+	IPhysicsObject *pPhys = VPhysicsGetObject();
+	if ( pPhys )
+		pPhys->EnableMotion( false );
+
+	SetMoveType( MOVETYPE_NONE );
+	AddSolidFlags( FSOLID_NOT_SOLID );
+	SetTouch( NULL );
+
+	EmitSound( "Mobster.MoneyBag.Deploy" );
+	DispatchParticleEffect( "weapon_moneybag_parent", PATTACH_ABSORIGIN_FOLLOW, this );
+
+	m_flRefreshUntil = gpGlobals->curtime + kMoneyBagDuration;
+	m_flRemoveTime = m_flRefreshUntil + kMoneyBagLinger;
+	SetContextThink( &CTFProjectile_MoneyBag::AuraThink, gpGlobals->curtime, "MoneyBagAura" );
+}
+
+void CTFProjectile_MoneyBag::AuraThink( void )
+{
+	if ( gpGlobals->curtime < m_flRefreshUntil )
+	{
+		CUtlVector< CTFPlayer * > players;
+		CollectPlayers( &players, TEAM_ANY, COLLECT_ONLY_LIVING_PLAYERS );
+
+		const Vector vecSrc = GetAbsOrigin() + Vector( 0, 0, 20 );
+		FOR_EACH_VEC( players, i )
+		{
+			CTFPlayer *pPlayer = players[i];
+			if ( !pPlayer )
+				continue;
+
+			const bool bSameTeam = pPlayer->GetTeamNumber() == GetTeamNumber();
+			const bool bDisguisedAsUs = pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pPlayer->m_Shared.GetDisguiseTeam() == GetTeamNumber();
+			if ( !bSameTeam && !bDisguisedAsUs )
+				continue;
+
+			if ( ( pPlayer->EyePosition() - vecSrc ).Length() >= kMoneyBagRadius )
+				continue;
+
+			trace_t tr;
+			UTIL_TraceLine( vecSrc, pPlayer->EyePosition(), MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE, &tr );
+			if ( tr.fraction <= 0.95f )
+				continue;
+
+			MobsterAura_Refresh( this, pPlayer, gpGlobals->curtime + kMoneyBagLinger );
+		}
+	}
+
+	MobsterAura_HealFountain( this );
+
+	if ( gpGlobals->curtime >= m_flRemoveTime )
+	{
+		for ( int i = s_MobsterAura.Count() - 1; i >= 0; --i )
+		{
+			if ( s_MobsterAura[i].hFountain == this )
+				s_MobsterAura.Remove( i );
+		}
+		UTIL_Remove( this );
+		return;
+	}
+
+	SetContextThink( &CTFProjectile_MoneyBag::AuraThink, gpGlobals->curtime + 0.2f, "MoneyBagAura" );
+}
+
+CTFProjectile_MoneyBag *CTFProjectile_MoneyBag::Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	CTFProjectile_MoneyBag *pGrenade = static_cast< CTFProjectile_MoneyBag * >( CBaseEntity::CreateNoSpawn( "tf_projectile_moneybag", position, angles, pOwner ) );
+	if ( pGrenade )
+	{
+		pGrenade->SetPipebombMode();
+		DispatchSpawn( pGrenade );
+		pGrenade->InitGrenade( velocity, angVelocity, pOwner, weaponInfo );
+		pGrenade->m_flFullDamage = 0;
+		pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
+		pGrenade->SetModelScale( 1.4f );
+	}
+	return pGrenade;
+}
+#else
+CTFProjectile_MoneyBag::CTFProjectile_MoneyBag()
+{
+}
+
+void CTFProjectile_MoneyBag::Precache()
+{
+	PrecacheModel( kMoneyBagClosedModel );
+	PrecacheModel( kMoneyBagOpenModel );
+	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
+	PrecacheParticleSystem( "weapon_moneybag_parent" );
+	BaseClass::Precache();
+}
+
+const char *CTFProjectile_MoneyBag::GetTrailParticleName( void )
+{
+	return "";
+}
+
+void CTFProjectile_MoneyBag::CreateTrailParticles( void )
+{
+}
+#endif

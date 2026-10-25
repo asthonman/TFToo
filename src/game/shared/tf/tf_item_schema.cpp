@@ -1542,6 +1542,7 @@ static PlayerClassInfo_t gs_PlayerClassData[] =
 	{ "Spy",		"#TF_Class_Name_Spy" },
 	{ "Engineer",	"#TF_Class_Name_Engineer" },
 	{ "Madcap",		"#TF_Class_Name_Madcap" },
+	{ "Mobster",	"#TF_Class_Name_Mobster" },
 	{ "Invalid",	"" }						// lots of code loops over these classes based on LOADOUT_COUNT, which is wrong, but this allows them to do it safely
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( gs_PlayerClassData ) == LOADOUT_COUNT );

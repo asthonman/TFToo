@@ -1,0 +1,32 @@
+// Mobster Money Bag. Thrown like a cleaver. The projectile deploys the fountain.
+// Recharge time is the cleaver's 5.1s times the "effect bar recharge rate increased" attribute.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_MoneyBag"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"ProjectileType"	"projectile_cleaver"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"TF_AMMO_SECONDARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"1"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/v_moneybag.mdl"
+	"playermodel"		"models/weapons/w_moneybag_closed.mdl"
+	"anim_prefix"		"gren"
+}

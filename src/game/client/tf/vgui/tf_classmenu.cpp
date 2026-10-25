@@ -711,6 +711,7 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"",										// TF_CLASS_SPY,				// weapons handled individually
 	"tf_weapon_wrench",						// TF_CLASS_ENGINEER,
 	"",										// TF_CLASS_MADCAP,
+	"",										// TF_CLASS_MOBSTER,
 };
 
 int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
@@ -726,6 +727,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_SPY,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_ENGINEER,
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MADCAP,
+	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MOBSTER,
 };
 
 //-----------------------------------------------------------------------------
@@ -762,7 +764,7 @@ static const ClassMenuSlot_t g_ClassMenuPages[][9] =
 	{
 		{ TF_CLASS_MADCAP,			"scout" },	// B1
 		{ TF_CLASS_UNDEFINED,		NULL },		// B2
-		{ TF_CLASS_UNDEFINED,		NULL },		// B3
+		{ TF_CLASS_MOBSTER,			"pyro" },	// B3
 		{ TF_CLASS_UNDEFINED,		NULL },		// B4
 		{ TF_CLASS_UNDEFINED,		NULL },		// B5
 		{ TF_CLASS_UNDEFINED,		NULL },		// B6
@@ -1716,6 +1718,7 @@ int g_ClassDefinesRemap[] = {
 	TF_CLASS_SPY,
 
 	TF_CLASS_MADCAP,
+	TF_CLASS_MOBSTER,
 	TF_CLASS_CIVILIAN,
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_ClassDefinesRemap ) == TF_LAST_NORMAL_CLASS + 1 );

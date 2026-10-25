@@ -1,0 +1,102 @@
+// Mobster weapon sounds. Paths are relative to sound/.
+
+"Mobster.Typewriter.Fire"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1"
+	"soundlevel"	"94"
+	"pitch"			"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"vip_mobster_indev1/typewriter_fire01.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire02.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire03.mp3"
+	}
+}
+
+"Mobster.Typewriter.FireLow"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1"
+	"soundlevel"	"94"
+	"pitch"			"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"vip_mobster_indev1/typewriter_fire01_low.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire02_low.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire03_low.mp3"
+	}
+}
+
+"Mobster.Typewriter.FireCrit"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1"
+	"soundlevel"	"94"
+	"pitch"			"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"vip_mobster_indev1/typewriter_fire01_crit.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire02_crit.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire03_crit.mp3"
+	}
+}
+
+"Mobster.Typewriter.FireLowCrit"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1"
+	"soundlevel"	"94"
+	"pitch"			"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"vip_mobster_indev1/typewriter_fire01_low_crit.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire02_low_crit.mp3"
+		"wave"	"vip_mobster_indev1/typewriter_fire03_low_crit.mp3"
+	}
+}
+
+"Mobster.Typewriter.Empty"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"1"
+	"soundlevel"	"90"
+	"pitch"			"PITCH_NORM"
+	"wave"			"vip_mobster_indev1/typewriter_noammo.mp3"
+}
+
+"Mobster.Typewriter.Reload"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1"
+	"soundlevel"	"90"
+	"pitch"			"PITCH_NORM"
+	"wave"			"vip_mobster_indev1/typewriter_reload.mp3"
+}
+
+"Mobster.MoneyBag.Deploy"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"1"
+	"soundlevel"	"90"
+	"pitch"			"PITCH_NORM"
+	"wave"			"vip_mobster_indev1/moneybag_deploy.mp3"
+}
+
+"Mobster.MoneyBag.Hit"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"0.15"
+	"soundlevel"	"SNDLVL_NONE"
+	"pitch"			"PITCH_NORM"
+	"wave"			"vip_mobster_indev1/moneybag_hitsound.mp3"
+}
+
+"Mobster.MoneyBag.Resist"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_45dB"
+	"pitch"			"PITCH_NORM"
+	"wave"			"vip_mobster_indev1/moneybag_resist.mp3"
+}

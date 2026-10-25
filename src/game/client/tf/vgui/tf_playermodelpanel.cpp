@@ -1325,6 +1325,7 @@ int ClassZoomZ[] =
 	27, // TF_CLASS_SPY,
 	20, // TF_CLASS_ENGINEER,		
 	20, // TF_CLASS_MADCAP,
+	20, // TF_CLASS_MOBSTER,
 };
 
 //-----------------------------------------------------------------------------
