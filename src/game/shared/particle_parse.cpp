@@ -85,6 +85,21 @@ void GetParticleManifest( CUtlVector<CUtlString>& list )
 	}
 
 	manifest->deleteThis();
+
+	// Mod files listed here are added on top of the stock manifest. A
+	// particles_manifest.txt in the mod would replace the stock one.
+	KeyValues *pModManifest = new KeyValues( "mod_particles_manifest.txt" );
+	if ( pModManifest->LoadFromFile( filesystem, "particles/mod_particles_manifest.txt", "GAME" ) )
+	{
+		for ( KeyValues *sub = pModManifest->GetFirstSubKey(); sub != NULL; sub = sub->GetNextKey() )
+		{
+			if ( !Q_stricmp( sub->GetName(), "file" ) )
+			{
+				list.AddToTail( sub->GetString() );
+			}
+		}
+	}
+	pModManifest->deleteThis();
 }
 
 

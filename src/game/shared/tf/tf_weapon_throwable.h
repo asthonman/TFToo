@@ -46,7 +46,7 @@ public:
 	virtual CBaseEntity *FireJar( CTFPlayer *pPlayer ) OVERRIDE;
 
 	virtual int			GetWeaponID( void ) const				{ return TF_WEAPON_THROWABLE; }
-	virtual const char*	GetEffectLabelText( void )				{ return "#TF_Throwable"; }
+	virtual const char*	GetEffectLabelText( void )				{ return "#TF_Weapon_Brick"; }
 	virtual bool		ShowHudElement( void )					{ return true; }
 	virtual const char*	 ModifyEventParticles( const char* token ) { return NULL; }
 
@@ -207,15 +207,22 @@ public:
 
 #ifdef GAME_DLL
 	virtual void OnHit( CBaseEntity *pOther );
+	virtual void OnHitWorld( void );
 
 	virtual float		GetDamage()							{ return RemapVal( m_flChargePercent, 0, 1, 40.0f, 70.0f ); }
 	virtual float		GetDamageRadius() const				{ return 0.0f; }
 
-	virtual const char *GetExplodeEffectParticle() const	{ return ""; }
+	virtual const char *GetExplodeEffectParticle() const	{ return "brick_impact"; }
 	virtual const char *GetExplodeEffectSound()	const		{ return ""; }
+
+	void				PlayImpactEffect( void );
 
 #endif	// GAME_DLL
 
+#ifdef CLIENT_DLL
+	virtual const char *GetTrailParticleName( void ) OVERRIDE;
+	virtual void		CreateTrailParticles( void ) OVERRIDE;
+#endif
 };
 
 // *************************************************************************************************************************

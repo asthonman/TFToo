@@ -106,6 +106,14 @@ void CTFThrowable::Precache()
 	PrecacheScriptSound( "Weapon_bm_throwable.throw" );
 	PrecacheScriptSound( "Weapon_bm_throwable.smash" );
 
+	PrecacheParticleSystem( "throwable_trail_red" );
+	PrecacheParticleSystem( "throwable_trail_red_crit" );
+	PrecacheParticleSystem( "throwable_trail_blue" );
+	PrecacheParticleSystem( "throwable_trail_blue_crit" );
+	PrecacheParticleSystem( "brick_impact" );
+	PrecacheParticleSystem( "brick_impact_debris" );
+	PrecacheParticleSystem( "brick_impact_sparks" );
+
 	PrecacheParticleSystem( "grenade_smoke_cycle" );
 	PrecacheParticleSystem( "blood_bread_biting" );
 }
@@ -520,10 +528,27 @@ void CTFProjectile_ThrowableRepel::OnHit( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 // THROWABLE BRICK
 //-----------------------------------------------------------------------------
+void CTFProjectile_ThrowableBrick::PlayImpactEffect( void )
+{
+	CPVSFilter filter( GetAbsOrigin() );
+	TE_TFParticleEffect( filter, 0.0f, "brick_impact", GetAbsOrigin(), vec3_angle );
+}
+
+void CTFProjectile_ThrowableBrick::OnHitWorld( void )
+{
+	if ( m_bHit )
+		return;
+
+	PlayImpactEffect();
+	m_bHit = true;
+}
+
 void CTFProjectile_ThrowableBrick::OnHit( CBaseEntity *pOther ) 
 { 
 	if ( m_bHit )
 		return;
+
+	PlayImpactEffect();
 
 	CTFPlayer *pPlayer = dynamic_cast< CTFPlayer*>( pOther );
 
@@ -661,6 +686,34 @@ void CTFProjectile_ThrowableBreadMonster::Explode( trace_t *pTrace, int bitsDama
 }
 
 #endif // GAME_DLL
+
+#ifdef CLIENT_DLL
+//-----------------------------------------------------------------------------
+const char *CTFProjectile_ThrowableBrick::GetTrailParticleName( void )
+{
+	const bool bCrit = IsCritical();
+	if ( GetTeamNumber() == TF_TEAM_BLUE )
+		return bCrit ? "throwable_trail_blue_crit" : "throwable_trail_blue";
+
+	return bCrit ? "throwable_trail_red_crit" : "throwable_trail_red";
+}
+
+void CTFProjectile_ThrowableBrick::CreateTrailParticles( void )
+{
+	if ( pEffectTrail )
+	{
+		ParticleProp()->StopEmission( pEffectTrail );
+	}
+
+	if ( pEffectCrit )
+	{
+		ParticleProp()->StopEmission( pEffectCrit );
+		pEffectCrit = NULL;
+	}
+
+	pEffectTrail = ParticleProp()->Create( GetTrailParticleName(), PATTACH_ABSORIGIN_FOLLOW );
+}
+#endif
 //
 //#ifdef CLIENT_DLL
 //

@@ -345,7 +345,7 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 	}
 
 	// ALL CLASS
-	DECLARE_ITEM_EFFECT_METER( CTFThrowable, TF_WEAPON_THROWABLE, true, "resource/UI/HudItemEffectMeter_Action.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFThrowable, TF_WEAPON_THROWABLE, true, "resource/UI/HudItemEffectMeter_Scout.res" );
 
 	// Kill Streak
 	DECLARE_ITEM_EFFECT_METER( CTFWeaponBase, TF_WEAPON_NONE, false, "resource/UI/HudItemEffectMeter_KillStreak.res" );
@@ -1466,6 +1466,19 @@ float CHudItemEffectMeter_Weapon< CTFLunchBox >::GetProgress( void )
 //-----------------------------------------------------------------------------
 // CTFThrowable
 //-----------------------------------------------------------------------------
+template <>
+CTFThrowable* CHudItemEffectMeter_Weapon<CTFThrowable>::GetWeapon( void )
+{
+	// Keep looking. The meter is created on class change, which is before the
+	// Brick exists, and the default lookup gives up forever if it misses once.
+	if ( m_pPlayer && !m_hWeapon )
+	{
+		m_hWeapon = dynamic_cast<CTFThrowable*>( m_pPlayer->Weapon_OwnsThisID( m_iWeaponID ) );
+	}
+
+	return m_hWeapon;
+}
+
 template <>
 bool CHudItemEffectMeter_Weapon<CTFThrowable>::IsEnabled( void )
 {

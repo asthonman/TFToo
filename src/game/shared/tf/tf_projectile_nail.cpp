@@ -28,6 +28,7 @@
 #define SYRINGE_MODEL				"models/weapons/w_models/w_syringe_proj.mdl"
 #define NAIL_MODEL					"models/weapons/w_models/w_nail.mdl"
 #define SYRINGE_DISPATCH_EFFECT		"ClientProjectile_Syringe"
+#define NAIL_DISPATCH_EFFECT		"ClientProjectile_Nail"
 
 LINK_ENTITY_TO_CLASS( tf_projectile_syringe, CTFProjectile_Syringe );
 PRECACHE_REGISTER( tf_projectile_syringe );
@@ -79,7 +80,7 @@ CTFBaseProjectile *CTFProjectile_Nail::Create(
 	CBaseEntity *pScorer /*= NULL*/,
 	bool bCritical /*= false */
 ) {
-	return CTFBaseProjectile::Create( "tf_projectile_nail", vecOrigin, vecAngles, pOwner, SYRINGE_VELOCITY, g_sModelIndexNail, SYRINGE_DISPATCH_EFFECT, pScorer, bCritical );
+	return CTFBaseProjectile::Create( "tf_projectile_nail", vecOrigin, vecAngles, pOwner, SYRINGE_VELOCITY, g_sModelIndexNail, NAIL_DISPATCH_EFFECT, pScorer, bCritical );
 }
 
 //-----------------------------------------------------------------------------
@@ -165,5 +166,47 @@ void ClientsideProjectileSyringeCallback( const CEffectData &data )
 }
 
 DECLARE_CLIENT_EFFECT( SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallback );
+
+//-----------------------------------------------------------------------------
+void GetNailTrailParticleName( CTFPlayer *pPlayer, CAttribute_String *attrParticleName, bool bCritical )
+{
+	int iTeamNumber = TF_TEAM_RED;
+	if ( pPlayer )
+	{
+		iTeamNumber = pPlayer->GetTeamNumber();
+	}
+
+	if ( iTeamNumber == TF_TEAM_BLUE )
+	{
+		attrParticleName->set_value( bCritical ? "nailtrails_scout_blue_crit" : "nailtrails_scout_blue" );
+	}
+	else
+	{
+		attrParticleName->set_value( bCritical ? "nailtrails_scout_red_crit" : "nailtrails_scout_red" );
+	}
+}
+
+void ClientsideProjectileNailCallback( const CEffectData &data )
+{
+	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>( ClientEntityList().GetBaseEntityFromHandle( data.m_hEntity ) );
+	if ( pPlayer )
+	{
+		C_LocalTempEntity *pNail = ClientsideProjectileCallback( data, SYRINGE_GRAVITY );
+		if ( pNail )
+		{
+			CAttribute_String attrParticleName;
+
+			pNail->m_nSkin = ( pPlayer->GetTeamNumber() == TF_TEAM_RED ) ? 0 : 1;
+			bool bCritical = ( ( data.m_nDamageType & DMG_CRITICAL ) != 0 );
+			GetNailTrailParticleName( pPlayer, &attrParticleName, bCritical );
+
+			pNail->AddParticleEffect( attrParticleName.value().c_str() );
+			pNail->AddEffects( EF_NOSHADOW );
+			pNail->flags |= FTENT_USEFASTCOLLISIONS;
+		}
+	}
+}
+
+DECLARE_CLIENT_EFFECT( NAIL_DISPATCH_EFFECT, ClientsideProjectileNailCallback );
 
 #endif

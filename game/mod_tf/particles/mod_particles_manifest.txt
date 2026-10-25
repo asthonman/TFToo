@@ -1,0 +1,5 @@
+particles_manifest
+{
+	"file"		"particles/weapon_nailgun.pcf"
+	"file"		"particles/weapon_brick.pcf"
+}
