@@ -699,7 +699,7 @@ void CTFProjectile_ThrowableBreadMonster::Explode( trace_t *pTrace, int bitsDama
 //-----------------------------------------------------------------------------
 const char *CTFProjectile_ThrowableBrick::GetTrailParticleName( void )
 {
-	const bool bCrit = IsCritical();
+	const bool bCrit = m_bCritical;
 	if ( GetTeamNumber() == TF_TEAM_BLUE )
 		return bCrit ? "throwable_trail_blue_crit" : "throwable_trail_blue";
 
