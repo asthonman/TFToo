@@ -38,6 +38,7 @@
 #include "econ_game_account_client.h"
 #include "gcsdk/gcclientsdk.h"
 #include "econ_gcmessages.h"
+#include "newitemdefinitions.h"
 #include "tf_gamerules.h"
 #include "tf_gcmessages.h"
 #include "econ_item.h"
@@ -1433,6 +1434,10 @@ CEconItemView *CTFPlayerInventory::GetFirstItemOfItemDef( item_definition_index_
 			return pItem;
 		}
 	}
+
+	// b-schema weapons are stock. No backpack copy is required.
+	if ( CEconItemView *pStock = NewItem_AlwaysOwnedView( nDefIndex ) )
+		return pStock;
 
 	return NULL;
 }
