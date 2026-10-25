@@ -9,6 +9,7 @@
 
 	"Damage"			"40"
 	"Range"				"0"
+	"ProjectileType"	"projectile_throwable"
 	"TimeFireDelay"		"0.8"
 	"TimeIdle"			"5.0"
 	"TimeIdleEmpty"		"0.25"
