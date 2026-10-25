@@ -528,27 +528,37 @@ void CTFProjectile_ThrowableRepel::OnHit( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 // THROWABLE BRICK
 //-----------------------------------------------------------------------------
-void CTFProjectile_ThrowableBrick::PlayImpactEffect( void )
-{
-	CPVSFilter filter( GetAbsOrigin() );
-	TE_TFParticleEffect( filter, 0.0f, "brick_impact", GetAbsOrigin(), vec3_angle );
-}
-
-void CTFProjectile_ThrowableBrick::OnHitWorld( void )
+void CTFProjectile_ThrowableBrick::Explode( trace_t *pTrace, int bitsDamageType )
 {
 	if ( m_bHit )
 		return;
 
-	PlayImpactEffect();
 	m_bHit = true;
+
+	// Same exit as a jar or a rocket: the projectile is gone, the impact effect is what remains.
+	SetModelName( NULL_STRING );
+	AddSolidFlags( FSOLID_NOT_SOLID );
+	m_takedamage = DAMAGE_NO;
+
+	if ( pTrace && pTrace->fraction != 1.0 )
+	{
+		SetAbsOrigin( pTrace->endpos + ( pTrace->plane.normal * 1.0f ) );
+	}
+
+	Vector vecOrigin = GetAbsOrigin();
+	CPVSFilter filter( vecOrigin );
+	TE_TFParticleEffect( filter, 0.0f, GetExplodeEffectParticle(), vecOrigin, vec3_angle );
+
+	SetTouch( NULL );
+	AddEffects( EF_NODRAW );
+	SetAbsVelocity( vec3_origin );
+	UTIL_Remove( this );
 }
 
 void CTFProjectile_ThrowableBrick::OnHit( CBaseEntity *pOther ) 
 { 
 	if ( m_bHit )
 		return;
-
-	PlayImpactEffect();
 
 	CTFPlayer *pPlayer = dynamic_cast< CTFPlayer*>( pOther );
 
@@ -576,8 +586,6 @@ void CTFProjectile_ThrowableBrick::OnHit( CBaseEntity *pOther )
 		pPlayer->ApplyPunchImpulseX( RandomInt( 15, 20 ) );
 		ApplyMultiDamage();
 	}
-
-	BaseClass::OnHit( pOther );
 }
 //-----------------------------------------------------------------------------
 // THROWABLE BREADMONSTER

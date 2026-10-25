@@ -203,19 +203,17 @@ public:
 	DECLARE_NETWORKCLASS();
 
 	virtual void		SetCustomPipebombModel()			{ SetModel( "models/weapons/w_models/w_brick_scout_projectile.mdl" ); }
-	virtual bool		ExplodesOnHit()						{ return false; }
+	virtual bool		ExplodesOnHit()						{ return true; }
 
 #ifdef GAME_DLL
-	virtual void OnHit( CBaseEntity *pOther );
-	virtual void OnHitWorld( void );
+	virtual void		OnHit( CBaseEntity *pOther );
+	virtual void		Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE;
 
 	virtual float		GetDamage()							{ return RemapVal( m_flChargePercent, 0, 1, 40.0f, 70.0f ); }
 	virtual float		GetDamageRadius() const				{ return 0.0f; }
 
 	virtual const char *GetExplodeEffectParticle() const	{ return "brick_impact"; }
 	virtual const char *GetExplodeEffectSound()	const		{ return ""; }
-
-	void				PlayImpactEffect( void );
 
 #endif	// GAME_DLL
 
