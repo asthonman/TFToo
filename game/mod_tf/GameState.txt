@@ -1,3 +1,11 @@
 "GameState"
 {
+	"1"
+	{
+		"id"		"133"
+		"value"		"0"
+		"data"		"4"
+		"hud"		"0"
+		"msg"		"0"
+	}
 }
