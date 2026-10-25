@@ -215,12 +215,15 @@ enum ETFClass
 	TF_CLASS_ENGINEER,		
 
 	// Add any new classes after Engineer and before Civilian so IsValidTFPlayerClass()
-	// stays true. Do not put them in iRemapIndexToClass slots 1-9; those nine are the
-	// class-menu portraits (keys 1-9). The menu deals each new class into the next
-	// portrait's dropdown, in order: Scout, Soldier, Pyro, Demoman, Heavy, Engineer,
-	// Medic, Sniper, Spy, then it wraps. Insert a matching entry at the same index in
+	// stays true. Insert a matching entry at the same index in
 	// g_aPlayerClassNames, g_aPlayerClassNames_NonLocalized, g_aRawPlayerClassNamesShort
-	// and g_aRawPlayerClassNames. Key 0 is not a class button.
+	// and g_aRawPlayerClassNames.
+	//
+	// The class menu does not pick a new class up by itself. Add it to
+	// g_ClassMenuPages in tf_classmenu.cpp. The letter is the page (A, then B,
+	// ...) and the number is the 1-9 key and the button on that page. Leave a
+	// number as TF_CLASS_UNDEFINED when it has no class. Key 0 is Random on
+	// every page.
 	TF_CLASS_MADCAP,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
@@ -230,6 +233,42 @@ enum ETFClass
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
+
+//-----------------------------------------------------------------------------
+// Madcap passives. Speed tiers match the Escape Plan. Outgoing damage is the
+// Equalizer's health ramp with the hidden full-health penalty removed: 100%
+// at full health, 300% at 0. Overheal stays at 100% damage and base speed.
+//-----------------------------------------------------------------------------
+inline float Madcap_HealthRatio( int iHealth, int iMaxHealth )
+{
+	if ( iMaxHealth <= 0 )
+		return 1.f;
+	return (float)iHealth / (float)iMaxHealth;
+}
+
+inline float Madcap_SpeedModFromHealth( int iHealth, int iMaxHealth )
+{
+	const float flHealthRatio = Madcap_HealthRatio( iHealth, iMaxHealth );
+	if ( flHealthRatio > 0.8f )
+		return 1.f;
+	else if ( flHealthRatio > 0.6f )
+		return 1.1f;
+	else if ( flHealthRatio > 0.4f )
+		return 1.2f;
+	else if ( flHealthRatio > 0.2f )
+		return 1.4f;
+	return 1.6f;
+}
+
+inline float Madcap_DamageScaleFromHealth( int iHealth, int iMaxHealth )
+{
+	float flHealthRatio = Madcap_HealthRatio( iHealth, iMaxHealth );
+	if ( flHealthRatio < 0.f )
+		flHealthRatio = 0.f;
+	else if ( flHealthRatio > 1.f )
+		flHealthRatio = 1.f;
+	return 3.f - ( 2.f * flHealthRatio );
+}
 
 #define FOR_EACH_NORMAL_PLAYER_CLASS( _i ) for ( int _i = TF_FIRST_NORMAL_CLASS; _i < TF_LAST_NORMAL_CLASS; _i++ )
 

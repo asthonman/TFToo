@@ -265,6 +265,7 @@ public:
 
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
 	void		RetargetClass( int iFromClass, int iToClass );
+	void		ClearClassEquip( void );
 	bool		IsAWearable() const;
 	bool		IsContentStreamable() const;
 	const char* GetAdTextToken() const { return m_pszAdText; }

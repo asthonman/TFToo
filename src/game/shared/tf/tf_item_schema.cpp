@@ -1328,6 +1328,34 @@ void CTFItemDefinition::RetargetClass( int iFromClass, int iToClass )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Take an item off every class. Used for the Equalizer and the
+// Escape Plan, which Madcap's passives replace.
+//-----------------------------------------------------------------------------
+void CTFItemDefinition::ClearClassEquip( void )
+{
+	m_vbClassUsability.ClearAll();
+	m_iDefaultLoadoutSlot = LOADOUT_POSITION_INVALID;
+	for ( int i = 0; i < LOADOUT_COUNT; i++ )
+	{
+		m_iLoadoutSlots[i] = LOADOUT_POSITION_INVALID;
+	}
+
+	KeyValues *pKV = GetRawDefinition();
+	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes" ) : NULL;
+	if ( !pClasses )
+		return;
+
+	KeyValues *pKVClass = pClasses->GetFirstSubKey();
+	while ( pKVClass )
+	{
+		KeyValues *pNext = pKVClass->GetNextKey();
+		pClasses->RemoveSubKey( pKVClass );
+		pKVClass->deleteThis();
+		pKVClass = pNext;
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Returns true if this item is in a wearable slot, or is acting as a wearable
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::IsAWearable() const
@@ -1692,6 +1720,23 @@ void CTFItemSchema::Reset()
 static const int kMadcapNailgunDefIndex = 30001;
 static const int kMadcapBrickDefIndex = 30002;
 static const int kBostonBasherDefIndex = 325;
+static const int kEqualizerDefIndex = 128;
+static const int kEscapePlanDefIndex = 775;
+
+static void UnequipNamedItem( CTFItemSchema *pSchema, const char *pszName, int iDefIndex )
+{
+	// By-name only. GetItemDefinition() returns the default item when the
+	// index is missing, and clearing that would unequip unrelated items.
+	CEconItemDefinition *pDef = pSchema->GetItemDefinitionByName( pszName );
+	if ( !pDef || pDef->GetDefinitionIndex() != iDefIndex )
+		return;
+
+	CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( pDef );
+	if ( pTF )
+	{
+		pTF->ClearClassEquip();
+	}
+}
 
 static void RemoveKVSubKey( KeyValues *pKV, const char *pszName )
 {
@@ -1743,6 +1788,11 @@ static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const cha
 
 void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
 {
+	// Madcap carries these passives. The weapons they came from are not equippable.
+	// Festivized copies are the same definitions, so they go with them.
+	UnequipNamedItem( this, "The Equalizer", kEqualizerDefIndex );
+	UnequipNamedItem( this, "The Escape Plan", kEscapePlanDefIndex );
+
 	// Boston Basher and every reskin that copies its two attributes.
 	const ItemDefinitionMap_t &mapItems = GetItemDefinitionMap();
 	FOR_EACH_MAP_FAST( mapItems, i )

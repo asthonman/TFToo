@@ -7,5 +7,8 @@
 		"TF_Class_Name_Madcap"		"Madcap"
 		"TF_Weapon_Nailgun"			"Nailgun"
 		"TF_Weapon_Brick"			"Brick"
+		"ClassTips_10_Count"		"2"
+		"ClassTips_10_1"			"Move speed increases as health decreases, up to +60%."
+		"ClassTips_10_2"			"Damage with all weapons increases as health decreases, from 100% up to 300%. Self-damage is not increased."
 	}
 }
