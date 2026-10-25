@@ -1,0 +1,16 @@
+"VertexLitGeneric"
+{
+	"$basetexture"	"models/weapons/w_grenade_nail/w_grenade_nail_blue"
+	"$surfaceprop"	"default"
+
+	"$phongdisablehalflambert" "1"
+	"$phong"	"1"
+	"$phongexponent" "40"
+
+	"$phongboost" "1"	
+	"$lightwarptexture" "models/player/pyro/pyro_lightwarp"
+	"$phongfresnelranges"	"[1 .5 8]"
+//	"$halflambert" "1"
+	"$bumpmap" "models/weapons/w_grenade_nail/w_grenade_nail_normal"
+	
+}

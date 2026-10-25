@@ -1,0 +1,61 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models\weapons\c_throwbrick/v_brick_tex"
+	"$bumpmap"     "models\weapons\c_throwbrick/v_brick_normal"
+
+	"$phongdisablehalflambert" "1"
+	"$phong" "1"
+	"$phongexponent" "10"
+	"$phongboost" "0.02"	
+	"$phongfresnelranges"	"[5 5 5]"
+	"$glowcolor" "1"
+
+	// Cloaking
+	"$cloakPassEnabled" "1"
+
+	"$yellow" "0"
+
+
+    "Proxies"
+    {
+        "ConVarEx"
+        {
+             "ConVar" "tf2c_player_nohalflambert"
+              "0"
+                {
+                     "$PhongDisableHalfLambert"  "0"
+                }
+               "1"
+               {
+                   "$PhongDisableHalfLambert"  "1"
+               }
+        }
+		"invis"
+		{
+		}
+		"ModelGlowColor"
+		{
+			"resultVar" "$glowcolor"
+		}
+		"Equals"
+		{
+			"srcVar1"  "$glowcolor"
+			"resultVar" "$selfillumtint"
+		}
+		"Equals"
+		{
+			"srcVar1"  "$glowcolor"
+			"resultVar" "$color2"
+		}
+		"YellowLevel"
+		{
+			"resultVar" "$yellow"
+		}
+		"Multiply"
+		{
+			"srcVar1" "$color2"
+			"srcVar2" "$yellow"
+			"resultVar" "$color2"
+		}
+	}
+}

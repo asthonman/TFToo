@@ -1,0 +1,64 @@
+"VertexLitGeneric"
+{
+  "$basetexture"            "vip_mobster/models/player/mobster_jewelry"
+  "$bumpmap"                "vip_mobster/models/player/mobster_jewelry_normal"
+  "$phongexponenttexture"   "vip_mobster/models/player/mobster_jewelry"
+
+  "$lightwarptexture"       "models/player/pyro/pyro_lightwarp"
+  "$phong"                  "1"
+  "$phongexponent"          "15"
+  "$phongboost"             "8.000000"
+  "$phongfresnelranges"     "[.25 .5 1]"
+  "$rimlight"               "1"
+  "$rimlightexponent"       "4"
+  "$rimlightboost"          "2.500000"
+  "$color2"                 "{ 255 255 155 }"
+  "$bumpmapalphaphongmask"  "1"
+  "$cloakPassEnabled"       "1"
+  "$detail"                 "effects/tiledfire/fireLayeredSlowTiled512"
+  "$detailscale"            "5"
+  "$detailblendfactor"      "0"
+  "$detailblendmode"        "6"
+  "$phongtint"              "[1.25 1.25 0.6]"
+
+  "$envmap"                 "env_cubemap"
+  "$envmaptint"             "[0.5 .5 0.3]"
+  "$envmapfresnel"          "1"
+  "$envMapFresnelMinMaxExp" "[1 1 1]"
+  "$tempvar"                "0"
+
+  "$yellow"                 "0"
+  ">=DX90"
+  {
+    "$selfillum"            "1"
+  }
+  "$selfillumtint"          "[1.000000 1.000000 1.000000]"
+  "$selfIllumFresnel"       "1"
+  "$selfIllumFresnelMinMaxExp" "[.1 4 10]"
+  
+  "Proxies"
+  {
+    "invis"
+    {
+    }
+    "AnimatedTexture"
+    {
+      "animatedtexturevar"         "$detail"
+      "animatedtextureframenumvar" "$detailframe"
+      "animatedtextureframerate"   "30"
+    }
+    "BurnLevel"
+    {
+      "resultVar" "$detailblendfactor"
+    }
+    "YellowLevel"
+    {
+      "resultVar" "$yellow"
+    }
+    "Equals"
+    {
+      "srcVar1"   "$yellow"
+      "resultVar" "$color2"
+    }
+  }
+}

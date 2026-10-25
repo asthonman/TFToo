@@ -1,0 +1,200 @@
+screenspace_general
+{
+  "$pixshader"                 "vip_compass_indev_ps20"
+  "$basetexture"               "_rt_FullFrameFB"
+  "$texture1"                  "vip_mobster/hud/vip_compass"
+
+  "$x360appchooser"            "1"
+  "$ignorez"                   "1"
+  
+  "<dx90"
+  {
+    "$no_draw"                 "1"
+  }
+
+  "$copyalpha"                 "0"
+  "$alpha_blend_color_overlay" "0"
+  "$alpha_blend"               "0"
+  "$linearwrite"               "1"
+  "$linearread_basetexture"    "0"
+  "$linearread_texture1"       "1"
+  "$linearread_texture2"       "0"
+  "$linearread_texture3"       "0"
+
+  "$zero"                      "0"
+  "$flag_nodraw"               "4"
+  "$sixtyfour"                 "64"
+  "$thousand"                  "1000"
+  
+  "$world_mins"                "[0.0 0.0 0.0]"
+  "$world_maxs"                "[0.0 0.0 0.0]"
+  "$entityorigin"              "[0.0 0.0 0.0]"
+  "$playerorigin"              "[0.0 0.0 0.0]"
+
+  "$alpha"                     "5"
+  "$data"                      "0"
+
+  "$LocalPlayerX"              "0.0"
+  "$LocalPlayerY"              "0.0"
+
+  "$temp1"                     "0.0"
+  "$temp2"                     "0.0"
+
+  "Proxies"
+  {
+    "EntityOrigin"
+    {
+    }
+    "WorldDims"
+    {
+    }
+    "Alpha"
+    {
+    }
+    "MaterialModify"
+    {
+    }
+    "PlayerPosition"
+    {
+      "scale"        "1"
+      "resultVar"    "$playerorigin"
+    }
+    "CurrentTime"
+    {
+      "resultVar"    "$c0_z"
+    }
+
+    "LessOrEqual"
+    {
+      "srcVar1"      "$alpha"
+      "srcVar2"      "$sixtyfour"
+      "resultVar"    "$flags"
+      "greaterVar"   "$flag_nodraw"
+      "LessEqualVar" "$zero"
+    }
+
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$entityorigin[0]"
+      "max"          "$entityorigin[0]"
+      "resultVar"    "$c1_z"
+    }
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$entityorigin[1]"
+      "max"          "$entityorigin[1]"
+      "resultVar"    "$c1_w"
+    }
+
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$playerorigin[0]"
+      "max"          "$playerorigin[0]"
+      "resultVar"    "$LocalPlayerX"
+    }
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$playerorigin[1]"
+      "max"          "$playerorigin[1]"
+      "resultVar"    "$LocalPlayerY"
+    }
+
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$world_maxs[0]"
+      "max"          "$world_maxs[0]"
+      "resultVar"    "$c1_x"
+    }
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$world_maxs[1]"
+      "max"          "$world_maxs[1]"
+      "resultVar"    "$c1_y"
+    }
+    "Subtract"
+    {
+      "srcVar1"      "$c1_x"
+      "srcVar2"      "$LocalPlayerX"
+      "resultVar"    "$c1_x"
+    }
+    "Subtract"
+    {
+      "srcVar1"      "$c1_y"
+      "srcVar2"      "$LocalPlayerY"
+      "resultVar"    "$c1_y"
+    }
+
+    "Subtract"
+    {
+      "srcVar1"      "$c1_z"
+      "srcVar2"      "$LocalPlayerX"
+      "resultVar"    "$c1_z"
+    }
+    "Subtract"
+    {
+      "srcVar1"      "$c1_w"
+      "srcVar2"      "$LocalPlayerY"
+      "resultVar"    "$c1_w"
+    }
+
+    "Equals"
+    {
+      "srcVar1"      "$alpha"
+      "resultVar"    "$c0_x"
+    }
+    "Equals"
+    {
+      "srcVar1"      "$data"
+      "resultVar"    "$c0_y"
+    }
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$world_mins[0]"
+      "max"          "$world_mins[0]"
+      "resultVar"    "$c2_x"
+    }
+    "Clamp"
+    {
+      "srcVar1"      "$zero"
+      "min"          "$world_mins[1]"
+      "max"          "$world_mins[1]"
+      "resultVar"    "$c2_y"
+    }
+    "Divide"
+    {
+      "srcVar1"      "$c2_y"
+      "srcVar2"      "$thousand"
+      "resultVar"    "$c2_y"
+    }
+    "Add"
+    {
+      "srcVar1"      "$c0_z"
+      "srcVar2"      "$c2_x"
+      "resultVar"    "$c0_z"
+    }
+    "Divide"
+    {
+      "srcVar1"      "$c2_x"
+      "srcVar2"      "$thousand"
+      "resultVar"    "$c2_x"
+    }
+
+    "Equals"
+    {
+      "srcVar1"      "$temp1"
+      "resultVar"    "$c3_x"
+    }
+    "Equals"
+    {
+      "srcVar1"      "$temp2"
+      "resultVar"    "$c3_y"
+    }
+  }
+}

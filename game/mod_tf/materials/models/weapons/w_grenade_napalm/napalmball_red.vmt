@@ -1,0 +1,33 @@
+"VertexLitGeneric"
+{
+	"$basetexture"	"models/weapons/w_grenade_napalm/napalmball_red"
+	"$surfaceprop"	"flesh"
+
+	"$phongdisablehalflambert" "1"
+	"$phong"	"1"
+	"$phongexponent" "20"
+	"$phongboost" "1"	
+	"$lightwarptexture" "models\lightwarps\weapon_lightwarp"
+	"$phongfresnelranges" "[1.25 0.5 1]"
+//	"$halflambert" "1"
+
+	"$rimlight" "1"
+	"$rimlightexponent" "4"
+	"$rimlightboost" "13"
+    "Proxies"
+    {
+        "ConVarEx"
+        {
+             "ConVar" "tf2c_player_nohalflambert"
+              "0"
+                {
+                     "$PhongDisableHalfLambert"  "0"
+                }
+               "1"
+               {
+                   "$PhongDisableHalfLambert"  "1"
+               }
+        }
+    }		
+
+}
