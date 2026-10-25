@@ -206,11 +206,17 @@ public:
 	virtual bool		ExplodesOnHit()						{ return true; }
 
 #ifdef GAME_DLL
+	virtual void		InitThrowable( float flChargePercent ) OVERRIDE;
+	virtual void		PipebombTouch( CBaseEntity *pOther ) OVERRIDE;
+	virtual void		VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE;
+	virtual void		ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity ) OVERRIDE;
+	virtual void		DetonateThink( void ) OVERRIDE;
 	virtual void		OnHit( CBaseEntity *pOther );
 	virtual void		Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE;
+	void				BrickImpactThink( void );
 
 	virtual float		GetDamage()							{ return RemapVal( m_flChargePercent, 0, 1, 40.0f, 70.0f ); }
-	virtual float		GetDamageRadius() const				{ return 0.0f; }
+	virtual float		GetDamageRadius() const				{ return 50.0f; }
 
 	virtual const char *GetExplodeEffectParticle() const	{ return "brick_impact"; }
 	virtual const char *GetExplodeEffectSound()	const		{ return ""; }

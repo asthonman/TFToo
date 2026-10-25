@@ -22,6 +22,7 @@
 #include "te_effect_dispatch.h"
 #include "bone_setup.h"
 #include "tf_target_dummy.h"
+#include "vphysics_interface.h"
 #endif
 
 
@@ -527,7 +528,131 @@ void CTFProjectile_ThrowableRepel::OnHit( CBaseEntity *pOther )
 }
 //-----------------------------------------------------------------------------
 // THROWABLE BRICK
+// Bursts on contact, same shape as the Wrap Assassin ornament:
+// 50 unit splash, 90% of the hit damage, standard radius falloff, no blast push.
 //-----------------------------------------------------------------------------
+static const float BRICK_EXPLODE_RADIUS = 50.0f;
+static const float BRICK_EXPLODE_DAMAGE_MULT = 0.9f;
+
+void CTFProjectile_ThrowableBrick::InitThrowable( float flChargePercent )
+{
+	BaseClass::InitThrowable( flChargePercent );
+	SetElasticity( 0.0f );
+}
+
+void CTFProjectile_ThrowableBrick::BrickImpactThink( void )
+{
+	if ( m_bHit )
+		return;
+
+	trace_t pTrace;
+	Vector velDir = m_vCollisionVelocity;
+	if ( velDir.IsZero() )
+		velDir = GetAbsVelocity();
+	VectorNormalize( velDir );
+
+	Vector vecSpot = GetAbsOrigin() - velDir * 16;
+	UTIL_TraceLine( vecSpot, vecSpot + velDir * 32, MASK_SOLID, this, COLLISION_GROUP_NONE, &pTrace );
+
+	CBaseEntity *pHit = pTrace.m_pEnt;
+	if ( pHit && pHit->IsPlayer() && !pHit->InSameTeam( this ) && pHit->m_takedamage != DAMAGE_NO )
+		OnHit( pHit );
+
+	Explode( &pTrace, DMG_BLAST | DMG_PREVENT_PHYSICS_FORCE );
+}
+
+void CTFProjectile_ThrowableBrick::PipebombTouch( CBaseEntity *pOther )
+{
+	if ( m_bHit || !pOther || pOther == GetThrower() )
+		return;
+
+	if ( !pOther->IsSolid() || pOther->IsSolidFlagSet( FSOLID_VOLUME_CONTENTS ) )
+		return;
+
+	trace_t pTrace;
+	Vector velDir = GetAbsVelocity();
+	IPhysicsObject *pPhys = VPhysicsGetObject();
+	if ( velDir.IsZero() && pPhys )
+		pPhys->GetVelocity( &velDir, NULL );
+	if ( velDir.IsZero() && pOther->IsPlayer() )
+		velDir = pOther->WorldSpaceCenter() - GetAbsOrigin();
+
+	VectorNormalize( velDir );
+	Vector vecSpot = GetAbsOrigin() - velDir * 32;
+	UTIL_TraceLine( vecSpot, vecSpot + velDir * 64, MASK_SOLID, this, COLLISION_GROUP_NONE, &pTrace );
+
+	if ( pTrace.fraction < 1.0 && ( pTrace.surface.flags & SURF_SKY ) )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	// Touched a surface. Never keep bouncing the way a pill or a baseball does.
+	m_bTouched = true;
+
+	if ( pOther->IsPlayer() && !pOther->InSameTeam( this ) && pOther->m_takedamage != DAMAGE_NO )
+		OnHit( pOther );
+
+	Explode( &pTrace, DMG_BLAST | DMG_PREVENT_PHYSICS_FORCE );
+}
+
+void CTFProjectile_ThrowableBrick::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
+{
+	// The pipebomb base treats this as a pill: mark it touched and let the physics bounce.
+	// The ornament does not. Burst next frame instead. (Can't explode inside the callback.)
+	if ( m_bHit )
+		return;
+
+	int otherIndex = !index;
+	CBaseEntity *pHitEntity = pEvent->pEntities[otherIndex];
+	if ( !pHitEntity || pHitEntity == GetThrower() )
+		return;
+
+	surfacedata_t *pprops = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
+	if ( pprops && pprops->game.material == 'X' )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	m_bTouched = true;
+	m_vCollisionVelocity = pEvent->preVelocity[index];
+	SetThink( &CTFProjectile_ThrowableBrick::BrickImpactThink );
+	SetNextThink( gpGlobals->curtime );
+	SetContextThink( &CTFProjectile_ThrowableBrick::BrickImpactThink, gpGlobals->curtime, "BrickImpactThink" );
+}
+
+void CTFProjectile_ThrowableBrick::ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity )
+{
+	if ( m_bHit )
+		return;
+
+	if ( trace.surface.flags & SURF_SKY )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	m_bTouched = true;
+	m_vCollisionVelocity = GetAbsVelocity();
+	vecVelocity = vec3_origin;
+	SetAbsVelocity( vec3_origin );
+	SetThink( &CTFProjectile_ThrowableBrick::BrickImpactThink );
+	SetNextThink( gpGlobals->curtime );
+	SetContextThink( &CTFProjectile_ThrowableBrick::BrickImpactThink, gpGlobals->curtime, "BrickImpactThink" );
+}
+
+void CTFProjectile_ThrowableBrick::DetonateThink( void )
+{
+	if ( m_bTouched && !m_bHit )
+	{
+		BrickImpactThink();
+		return;
+	}
+
+	BaseClass::DetonateThink();
+}
+
 void CTFProjectile_ThrowableBrick::Explode( trace_t *pTrace, int bitsDamageType )
 {
 	if ( m_bHit )
@@ -535,7 +660,6 @@ void CTFProjectile_ThrowableBrick::Explode( trace_t *pTrace, int bitsDamageType 
 
 	m_bHit = true;
 
-	// Same exit as a jar or a rocket: the projectile is gone, the impact effect is what remains.
 	SetModelName( NULL_STRING );
 	AddSolidFlags( FSOLID_NOT_SOLID );
 	m_takedamage = DAMAGE_NO;
@@ -549,9 +673,21 @@ void CTFProjectile_ThrowableBrick::Explode( trace_t *pTrace, int bitsDamageType 
 	CPVSFilter filter( vecOrigin );
 	TE_TFParticleEffect( filter, 0.0f, GetExplodeEffectParticle(), vecOrigin, vec3_angle );
 
+	float flExplodeDamage = GetDamage() * BRICK_EXPLODE_DAMAGE_MULT;
+	Vector vecBlastForce( 0.0f, 0.0f, 0.0f );
+	int iDamageType = bitsDamageType | DMG_BLAST | DMG_PREVENT_PHYSICS_FORCE;
+	CTakeDamageInfo info( this, GetThrower(), GetLauncher(), vecBlastForce, vecOrigin, flExplodeDamage, iDamageType, GetCustomDamageType(), &vecOrigin );
+	CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, BRICK_EXPLODE_RADIUS, NULL, 0.0f, 0.0f );
+	TFGameRules()->RadiusDamage( radiusinfo );
+
 	SetTouch( NULL );
 	AddEffects( EF_NODRAW );
 	SetAbsVelocity( vec3_origin );
+
+	IPhysicsObject *pPhys = VPhysicsGetObject();
+	if ( pPhys )
+		pPhys->EnableMotion( false );
+
 	UTIL_Remove( this );
 }
 
