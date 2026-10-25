@@ -16,6 +16,7 @@
 #include "tf_quest_map_node.h"
 #include "econ_quests.h"
 #include "econ_paintkit.h"
+#include "newitemdefinitions.h"
 
 	#include "econ_item_system.h"
 	#include "tf_quest_restriction.h"
@@ -1717,8 +1718,6 @@ void CTFItemSchema::Reset()
 // Basher. Every Scout weapon with the Basher's bleed-and-self-hit pair (the
 // Basher itself and its reskins, currently the Three-Rune Blade) moves to him.
 //-----------------------------------------------------------------------------
-static const int kMadcapNailgunDefIndex = 30001;
-static const int kMadcapBrickDefIndex = 30002;
 static const int kBostonBasherDefIndex = 325;
 static const int kEqualizerDefIndex = 128;
 static const int kEscapePlanDefIndex = 775;
@@ -1736,50 +1735,6 @@ static void UnequipNamedItem( CTFItemSchema *pSchema, const char *pszName, int i
 	{
 		pTF->ClearClassEquip();
 	}
-}
-
-static void RemoveKVSubKey( KeyValues *pKV, const char *pszName )
-{
-	if ( !pKV || !pszName )
-		return;
-
-	KeyValues *pSub = pKV->FindKey( pszName );
-	if ( !pSub )
-		return;
-
-	pKV->RemoveSubKey( pSub );
-	pSub->deleteThis();
-}
-
-static void SetMadcapOnlyClass( KeyValues *pItemKV )
-{
-	RemoveKVSubKey( pItemKV, "used_by_classes" );
-	KeyValues *pMadcap = new KeyValues( "used_by_classes" );
-	pMadcap->SetString( "Madcap", "1" );
-	pItemKV->AddSubKey( pMadcap );
-}
-
-static bool RealItemDefExists( CEconItemSchema *pSchema, int iDefIndex )
-{
-	// GetItemDefinition() returns the default item when the index is missing.
-	// Compare the index or a missing def looks like it already exists.
-	const CEconItemDefinition *pDef = pSchema->GetItemDefinition( iDefIndex );
-	return pDef && pDef->GetDefinitionIndex() == iDefIndex;
-}
-
-static bool AddAttributeIfPresent( CEconItemSchema *pSchema, KeyValues *pAttrs, const char *pszName, const char *pszValue )
-{
-	if ( !pSchema->GetAttributeDefinitionByName( pszName ) )
-	{
-		Warning( "Madcap item attribute \"%s\" is not in the schema. Skipping it.\n", pszName );
-		return false;
-	}
-
-	KeyValues *pAttr = new KeyValues( pszName );
-	pAttr->SetString( "attribute_class", pszName );
-	pAttr->SetString( "value", pszValue );
-	pAttrs->AddSubKey( pAttr );
-	return true;
 }
 
 static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const char *pszClass )
@@ -1834,109 +1789,9 @@ void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErro
 		}
 	}
 
-	if ( !RealItemDefExists( this, kMadcapNailgunDefIndex ) && !GetItemDefinitionByName( "TF_WEAPON_NAILGUN" ) )
-	{
-		CEconItemDefinition *pSyringe = GetItemDefinitionByName( "TF_WEAPON_SYRINGEGUN_MEDIC" );
-		if ( !pSyringe && RealItemDefExists( this, 17 ) )
-		{
-			pSyringe = GetItemDefinition( 17 );
-		}
-		if ( pSyringe && pSyringe->GetRawDefinition() )
-		{
-			KeyValues *pCopy = pSyringe->GetRawDefinition()->MakeCopy();
-			if ( pCopy )
-			{
-				char szDefIndex[16];
-				Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapNailgunDefIndex );
-				pCopy->SetName( szDefIndex );
-				pCopy->SetString( "name", "TF_WEAPON_NAILGUN" );
-				pCopy->SetString( "item_class", "tf_weapon_nailgun" );
-				pCopy->SetString( "item_name", "#TF_Weapon_Nailgun" );
-				pCopy->SetString( "item_type_name", "#TF_Weapon_Nailgun" );
-				pCopy->SetString( "item_logname", "nailgun" );
-				pCopy->SetString( "item_iconname", "nailgun" );
-				pCopy->SetString( "item_slot", "primary" );
-				pCopy->SetInt( "baseitem", 1 );
-				pCopy->SetInt( "enabled", 1 );
-				pCopy->SetInt( "propername", 0 );
-				// w_nailgun.mdl is a standalone world model, not a c_model.
-				pCopy->SetInt( "attach_to_hands", 0 );
-				pCopy->SetString( "model_player", "models/weapons/w_models/w_nailgun.mdl" );
-				pCopy->SetString( "model_world", "models/weapons/w_models/w_nailgun.mdl" );
-				pCopy->SetString( "image_inventory", "sprites/bucket_nailgun" );
-
-				// The copied definition is already prefab-expanded. Drop the prefab
-				// so the Medic class is not merged back in over Madcap.
-				RemoveKVSubKey( pCopy, "prefab" );
-				RemoveKVSubKey( pCopy, "model_player_per_class" );
-				SetMadcapOnlyClass( pCopy );
-
-				if ( !AddRuntimeItemDefinition( pCopy, pVecErrors ) )
-				{
-					Warning( "Madcap Nailgun was not added to the item schema.\n" );
-				}
-				pCopy->deleteThis();
-			}
-		}
-	}
-
-	if ( RealItemDefExists( this, kMadcapBrickDefIndex ) || GetItemDefinitionByName( "TF_WEAPON_BRICK" ) )
-		return;
-
-	// Clone a stock secondary so the expanded definition already has the fields
-	// BInitFromKV expects, then turn it into the brick launcher.
-	CEconItemDefinition *pSecondary = GetItemDefinitionByName( "TF_WEAPON_PISTOL_SCOUT" );
-	if ( !pSecondary && RealItemDefExists( this, 23 ) )
-	{
-		pSecondary = GetItemDefinition( 23 );
-	}
-	if ( !pSecondary || !pSecondary->GetRawDefinition() )
-		return;
-
-	KeyValues *pCopy = pSecondary->GetRawDefinition()->MakeCopy();
-	if ( !pCopy )
-		return;
-
-	char szDefIndex[16];
-	Q_snprintf( szDefIndex, sizeof( szDefIndex ), "%d", kMadcapBrickDefIndex );
-	pCopy->SetName( szDefIndex );
-	pCopy->SetString( "name", "TF_WEAPON_BRICK" );
-	pCopy->SetString( "item_class", "tf_weapon_throwable_brick" );
-	pCopy->SetString( "item_name", "#TF_Weapon_Brick" );
-	pCopy->SetString( "item_type_name", "#TF_Weapon_Brick" );
-	pCopy->SetString( "item_logname", "brick" );
-	pCopy->SetString( "item_iconname", "brick" );
-	pCopy->SetString( "item_slot", "secondary" );
-	pCopy->SetInt( "baseitem", 1 );
-	pCopy->SetInt( "enabled", 1 );
-	pCopy->SetInt( "hidden", 0 );
-	pCopy->SetInt( "propername", 0 );
-	pCopy->SetInt( "attach_to_hands", 0 );
-	pCopy->SetString( "model_player", "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
-	pCopy->SetString( "model_world", "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
-
-	RemoveKVSubKey( pCopy, "prefab" );
-	RemoveKVSubKey( pCopy, "base_item_name" );
-	RemoveKVSubKey( pCopy, "particle_suffix" );
-	RemoveKVSubKey( pCopy, "xifier_class_remap" );
-	RemoveKVSubKey( pCopy, "attributes" );
-	RemoveKVSubKey( pCopy, "tags" );
-	SetMadcapOnlyClass( pCopy );
-
-	KeyValues *pAttrs = new KeyValues( "attributes" );
-	// Spawns CTFProjectile_ThrowableBrick instead of the generic grenade.
-	// A missing attribute must not reject the whole item, or Madcap has no secondary.
-	AddAttributeIfPresent( this, pAttrs, "projectile entity name", "tf_projectile_throwable_brick" );
-	AddAttributeIfPresent( this, pAttrs, "is throwable chargeable", "1" );
-	AddAttributeIfPresent( this, pAttrs, "throwable detonation time", "1.5" );
-	AddAttributeIfPresent( this, pAttrs, "throwable recharge time", "6" );
-	pCopy->AddSubKey( pAttrs );
-
-	if ( !AddRuntimeItemDefinition( pCopy, pVecErrors ) )
-	{
-		Warning( "Madcap Brick was not added to the item schema.\n" );
-	}
-	pCopy->deleteThis();
+	// Nailgun (b1) and Brick (b2). Defined in newitemdefinitions.cpp.
+	// Those items are stock: the player always owns them.
+	RegisterNewItemDefinitions( this, pVecErrors );
 }
 
 //-----------------------------------------------------------------------------
@@ -2011,8 +1866,8 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	KeyValues* pKVWarDefs = pKVRawDefinition->FindKey( "war_definitions" );
 	SCHEMA_INIT_SUBSTEP( BInitWarDefs( pKVWarDefs, pVecErrors ) );
 
-	// Madcap's weapons are not in items_game.txt. Build them once the stock
-	// schema, including the Syringe Gun and the Boston Basher, has loaded.
+	// Madcap's weapons are not in items_game.txt. Nailgun (b1) and Brick (b2)
+	// come from newitemdefinitions.cpp, which is compiled into this file.
 	ApplyMadcapItemDefinitions( pVecErrors );
 
 #ifdef GAME_DLL
@@ -2997,7 +2852,12 @@ bool CEconItemSchema::AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<C
 	if ( !pKVItem )
 		return false;
 
-	const int nItemIndex = Q_atoi( pKVItem->GetName() );
+	const bool bNewSchema = ItemDefIndexIsNewSchema( pKVItem->GetName() );
+	const int nItemIndex = bNewSchema
+		? (int)ItemDefIndexFromAltId( pKVItem->GetName() )
+		: Q_atoi( pKVItem->GetName() );
+	if ( bNewSchema && !IsNewItemDefinitionIndex( (item_definition_index_t)nItemIndex ) )
+		return false;
 	if ( nItemIndex <= 0 )
 		return false;
 	if ( m_mapItems.IsValidIndex( m_mapItems.Find( nItemIndex ) ) )
@@ -3039,4 +2899,9 @@ void CEconItemSchema::NoteRuntimeBaseItem( CEconItemDefinition *pItemDef )
 		m_mapBaseItems.Insert( nItemIndex, pItemDef );
 	}
 }
+
+// New-schema item bodies. Included here, not listed in the vpc, so an
+// existing Visual Studio project picks them up without a project regen.
+// Do not also add newitemdefinitions.cpp to the project.
+#include "newitemdefinitions.cpp"
 

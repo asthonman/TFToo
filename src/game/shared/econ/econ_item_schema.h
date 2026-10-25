@@ -2807,15 +2807,17 @@ public:
 
 	bool BInsertLootlist( const char *pListName, KeyValues *pKVLootList, CUtlVector<CUtlString> *pVecErrors );
 
+	// Items created in code, rather than items_game.txt. The b-schema in
+	// newitemdefinitions.cpp uses this. The Boston Basher is added to the
+	// stock-item list with NoteRuntimeBaseItem.
+	bool AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors );
+	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
+
 protected:
 	virtual void Reset( void );
 
 	virtual bool BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors = NULL );
 	virtual bool BPostSchemaInit( CUtlVector<CUtlString> *pVecErrors );
-	// Items created in code, rather than items_game.txt. Madcap's Nailgun uses this,
-	// and the Boston Basher is added to the stock-item list.
-	bool AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors );
-	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
 #ifdef TF_CLIENT_DLL
 	virtual int CalculateNumberOfConcreteItems( const CEconItemDefinition *pItemDef );	// Let derived classes handle custom item types
 #endif // TF_CLIENT_DLL

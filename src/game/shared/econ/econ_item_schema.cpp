@@ -15,6 +15,7 @@
 #include "rtime.h"
 #include "item_selection_criteria.h"
 #include "checksum_sha1.h"
+#include "newitemdefinitions.h"
 
 #include <google/protobuf/text_format.h>
 #include <string.h>
@@ -3042,7 +3043,9 @@ bool CEconItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString
     m_bLoadOnDemand = m_pKVItem->GetBool("loadondemand");
 #endif
 
-	m_nDefIndex = Q_atoi( m_pKVItem->GetName() );
+	m_nDefIndex = ItemDefIndexIsNewSchema( m_pKVItem->GetName() )
+		? ItemDefIndexFromAltId( m_pKVItem->GetName() )
+		: Q_atoi( m_pKVItem->GetName() );
 	m_unMinItemLevel = (uint32)m_pKVItem->GetInt( "min_ilevel", GetItemSchema()->GetMinLevel() );
 	m_unMaxItemLevel = (uint32)m_pKVItem->GetInt( "max_ilevel", GetItemSchema()->GetMaxLevel() );
 	m_nDefaultDropQuantity = m_pKVItem->GetInt( "default_drop_quantity", 1 );
@@ -5304,7 +5307,14 @@ bool CEconItemSchema::BInitItems( KeyValues *pKVItems, CUtlVector<CUtlString> *p
 			}
 			else
 			{
-				int nItemIndex = Q_atoi( pKVItem->GetName() );
+				const bool bNewSchema = ItemDefIndexIsNewSchema( pKVItem->GetName() );
+				int nItemIndex = bNewSchema
+					? (int)ItemDefIndexFromAltId( pKVItem->GetName() )
+					: Q_atoi( pKVItem->GetName() );
+				if ( bNewSchema && !IsNewItemDefinitionIndex( (item_definition_index_t)nItemIndex ) )
+				{
+					SCHEMA_INIT_CHECK( false, "Item definition \"%s\" is not a valid b-schema id", pKVItem->GetName() );
+				}
 				int nMapIndex = m_mapItems.Find( nItemIndex );
 
 				// Make sure the item index is correct because we use this index as a reference
@@ -6696,6 +6706,16 @@ CEconItemDefinition *CEconItemSchema::GetItemDefinition( int iItemIndex )
 #endif // CSTRIKE_DLL
 #endif // defined(CLIENT_DLL) || defined(GAME_DLL)
 
+	// "bN" ids live in newitemdefinitions.cpp. Do not substitute the default
+	// item when one of those is missing.
+	if ( IsNewItemDefinitionIndex( (item_definition_index_t)iItemIndex ) )
+	{
+		int iNewIndex = m_mapItems.Find( iItemIndex );
+		if ( m_mapItems.IsValidIndex( iNewIndex ) )
+			return m_mapItems[iNewIndex];
+		return NULL;
+	}
+
 	int iIndex = m_mapItems.Find( iItemIndex );
 	if ( m_mapItems.IsValidIndex( iIndex ) )
 		return m_mapItems[iIndex]; 
@@ -6729,6 +6749,15 @@ const CEconItemDefinition *CEconItemSchema::GetItemDefinition( int iItemIndex ) 
 //-----------------------------------------------------------------------------
 CEconItemDefinition *CEconItemSchema::GetItemDefinitionByName( const char *pszDefName )
 {
+	// A leading 'b' and digits is the new schema, not a vanilla item name.
+	if ( ItemDefIndexIsNewSchema( pszDefName ) )
+	{
+		const item_definition_index_t iAlt = ItemDefIndexFromAltId( pszDefName );
+		const int iNewIndex = m_mapItems.Find( iAlt );
+		if ( m_mapItems.IsValidIndex( iNewIndex ) )
+			return m_mapItems[iNewIndex];
+	}
+
 	int nIndex = m_mapItemsName.Find( pszDefName );
 	if ( nIndex != m_mapItemsName.InvalidIndex() )
 		return m_mapItemsName[nIndex];
