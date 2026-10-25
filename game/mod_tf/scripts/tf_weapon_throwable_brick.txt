@@ -1,35 +1,30 @@
-// Madcap Brick. Chargeable throwable. The projectile is CTFProjectile_ThrowableBrick.
+// Madcap's stock secondary. Charge time and recharge come from the item attributes.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Brick"
 	"BuiltRightHanded"	"0"
-	"weight"			"3"
+	"weight"			"1"
 	"WeaponType"		"secondary"
 	"MeleeWeapon"		"0"
 
-	"Damage"			"0"
+	"Damage"			"40"
 	"Range"				"0"
-	"BulletsPerShot"	"1"
-	"Spread"			"0.0"
-	"PunchAngle"		"0.0"
-	"TimeFireDelay"		"0.5"
+	"TimeFireDelay"		"0.8"
 	"TimeIdle"			"5.0"
 	"TimeIdleEmpty"		"0.25"
-	"TimeReload"		"0.0"
 
 	"primary_ammo"		"TF_AMMO_SECONDARY"
 	"secondary_ammo"	"None"
 	"clip_size"			"-1"
-	"default_clip"		"-1"
+	"default_clip"		"1"
 
 	"bucket"			"1"
 	"bucket_position"	"0"
 
-	"DoInstantEjectBrass"	"0"
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
 
 	"viewmodel"			"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl"
 	"playermodel"		"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl"
-	"anim_prefix"		"grenade"
-
-	"ProjectileType"	"projectile_throwable"
+	"anim_prefix"		"gren"
 }
