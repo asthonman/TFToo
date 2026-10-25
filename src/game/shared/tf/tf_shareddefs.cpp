@@ -223,8 +223,9 @@ int GetClassIndexFromString( const char *pClassName, int nLastClassIndex/*=TF_LA
 }
 
 // menu buttons are not in the same order as the defines.
-// Slots 1-9 are the class-menu dropdown anchors (keys 1-9). Leave new classes
-// out of those slots; CTFClassMenu deals them into the dropdowns itself.
+// Slots 1-9 are the nine class-menu button positions (keys 1-9 on page A).
+// Which class sits on a later page is g_ClassMenuPages in tf_classmenu.cpp.
+// Key 0 is not a slot.
 int iRemapIndexToClass[TF_CLASS_MENU_BUTTONS] =
 {
 	0,

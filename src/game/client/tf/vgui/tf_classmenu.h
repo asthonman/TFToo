@@ -32,7 +32,6 @@ using namespace vgui;
 #define CLASS_COUNT_IMAGES	11
 
 class CTFClassTipsPanel;
-class CTFClassDropPanel;
 
 //-----------------------------------------------------------------------------
 // 
@@ -80,18 +79,6 @@ public:
 	virtual void UpdateClassCounts( void ){}
 	void		 SelectClass( int iClass );
 
-	// Keys 1-9 and hovering a portrait open that class's dropdown. A following
-	// number key picks an option. Key 0 is unchanged (close the menu).
-	// Classes added after the original nine are dealt into those dropdowns in
-	// menu order: Scout, Soldier, Pyro, Demoman, Heavy, Engineer, Medic, Sniper, Spy.
-	void		 RebuildClassDropdownGroups();
-	void		 OpenClassSlot( int nSlot, bool bForceRefresh = false );
-	void		 CloseClassDropdown();
-	void		 HighlightDropOption( int nOption, bool bPreview );
-	void		 ConfirmDropOption( int nOption );
-	int			 GetAnchorSlotForClass( int iClass ) const;
-	void		 PositionClassDropdown();
-
 	virtual int GetTeamNumber( void ) = 0;
 
 	// IGameEventListener interface:
@@ -101,16 +88,10 @@ public:
 
 	virtual GameActionSet_t GetPreferredActionSet() { return GAME_ACTION_SET_IN_GAME_HUD; }
 
-	// Dropdown anchors are the nine remap slots (keys 1-9).
-	enum
-	{
-		TF_CLASS_DROP_SLOTS = 9,
-		TF_CLASS_DROP_MAX_PER_SLOT = 32
-	};
-
 protected:
 	virtual void ApplySchemeSettings( IScheme *pScheme );
 	virtual void OnKeyCodePressed( KeyCode code );
+	virtual void OnMouseWheeled( int delta );
 	CExImageButton *GetCurrentClassButton();
 	virtual void OnKeyCodeReleased( vgui::KeyCode code );
 	virtual void OnThink();
@@ -138,6 +119,21 @@ protected:
 
 private:
 
+	// Nine button positions, keys 1-9. Which class is on which page is written
+	// out in g_ClassMenuPages (tf_classmenu.cpp): letter is the page, number is
+	// the key and the button. Empty numbers are not filled in automatically.
+	enum { CLASS_MENU_SLOT_COUNT = 9 };
+
+	static int			ClassPageCount( void );
+	static int			ClassForPageSlot( int nPage, int nSlot );
+	static int			PageForClass( int iClass );
+	static const char	*PortraitShortName( int iClass );
+
+	void		ApplyClassPage( void );
+	void		ChangeClassPage( int nDir, bool bFromWheel );
+	void		CycleClassHighlight( int nDir );
+	int			ClassShownOnButton( int iButton ) const;
+
 	void CheckMvMUpgrades();
 
 #ifdef _X360
@@ -146,15 +142,10 @@ private:
 
 	ButtonCode_t	m_iClassMenuKey;
 	int				m_iCurrentClassIndex;
+	int				m_nClassPage;
+	int				m_nSlotClass[CLASS_MENU_SLOT_COUNT];
+	float			m_flLastClassPageChange;
 	vgui::CKeyRepeatHandler	m_KeyRepeat;
-
-	int					m_nPopulatedSlots;
-	int					m_nSlotClassCount[TF_CLASS_DROP_SLOTS];
-	int					m_nSlotClasses[TF_CLASS_DROP_SLOTS][TF_CLASS_DROP_MAX_PER_SLOT];
-	int					m_nOpenSlot;
-	int					m_nDropHighlight;
-	CTFClassDropPanel	*m_pClassDropdown;
-	bool				m_bIgnoreNumberRepeat;
 
 	int				m_nBaseMusicGuid;
 
