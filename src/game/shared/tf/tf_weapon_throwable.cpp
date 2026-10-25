@@ -99,7 +99,8 @@ void CTFThrowable::Precache()
 
 	PrecacheModel( g_pszArrowModels[MODEL_BREAD_MONSTER] );
 	PrecacheModel( g_pszArrowModels[MODEL_THROWING_KNIFE] );
-	PrecacheModel( "models/weapons/c_models/c_bread/c_bread_plainloaf.mdl" );
+	PrecacheModel( "models/weapons/w_models/w_brick_scout.mdl" );
+	PrecacheModel( "models/weapons/w_models/w_brick_scout_projectile.mdl" );
 	PrecacheScriptSound( TF_GRENADE_CHARGE );
 	
 	PrecacheScriptSound( "Weapon_bm_throwable.throw" );
