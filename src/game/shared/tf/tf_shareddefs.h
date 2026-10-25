@@ -624,6 +624,8 @@ enum ProjectileType_t
 	TF_PROJECTILE_FLAME_BALL,	
 
 	// Add new entries here!
+	TF_PROJECTILE_NAIL,
+	TF_PROJECTILE_BRICK,
 
 	TF_NUM_PROJECTILES
 };
