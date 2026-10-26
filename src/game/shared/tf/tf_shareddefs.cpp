@@ -125,7 +125,7 @@ const char g_szBotModels[][ MAX_PATH ] =
 	"models/bots/spy/bot_spy.mdl",
 	"models/bots/engineer/bot_engineer.mdl",
 	"models/bots/scout/bot_scout.mdl", // Madcap, Scout model for now
-	"models/player/mobster.mdl", // Mobster
+	"models/vip_mobster/player/mobster.mdl", // Mobster
 };
 
 const char g_szPlayerRobotModels[][MAX_PATH] =
@@ -142,7 +142,7 @@ const char g_szPlayerRobotModels[][MAX_PATH] =
 	"models/bots/spy/bot_spy_human_anims.mdl",
 	"models/bots/engineer/bot_engineer_human_anim.mdl",
 	"models/bots/scout/bot_scout_human_anim.mdl", // Madcap
-	"models/player/mobster.mdl", // Mobster
+	"models/vip_mobster/player/mobster.mdl", // Mobster
 };
 
 const char g_szBotBossModels[][ MAX_PATH ] = 
@@ -159,7 +159,7 @@ const char g_szBotBossModels[][ MAX_PATH ] =
 	"models/bots/spy/bot_spy.mdl",
 	"models/bots/engineer/bot_engineer.mdl",
 	"models/bots/scout/bot_scout.mdl", // Madcap
-	"models/player/mobster.mdl", // Mobster
+	"models/vip_mobster/player/mobster.mdl", // Mobster
 };
 
 const char g_szBotBossSentryBusterModel[ MAX_PATH ] = "models/bots/demo/bot_sentry_buster.mdl";

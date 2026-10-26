@@ -6870,7 +6870,8 @@ void CTFPlayer::HandleCommand_JoinClass( const char *pClassName, bool bAllowSpaw
 
 		if ( !IsValidTFPlayerClass( iClass ) )
 		{
-			Warning( "HandleCommand_JoinClass( %s ) - invalid class name.\n", pClassName );
+			Warning( "HandleCommand_JoinClass( %s ) - invalid class name. This server knows classes through %s.\n",
+				pClassName, g_aRawPlayerClassNames[ TF_LAST_NORMAL_CLASS - 1 ] );
 			return;
 		}
 

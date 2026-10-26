@@ -5,9 +5,9 @@
 "PlayerClassData"
 {
 	"name"				"mobster"
-	"model"				"models/player/mobster.mdl"
-	"model_hwm"			"models/player/mobster.mdl"
-	"model_hands"		"models/weapons/c_mobster_arms.mdl"
+	"model"				"models/vip_mobster/player/mobster.mdl"
+	"model_hwm"			"models/vip_mobster/player/mobster.mdl"
+	"model_hands"		"models/vip_mobster/weapons/c_mobster_arms.mdl"
 	"localize_name"		"#TF_Class_Name_Mobster"
 	"speed_max"			"230"
 	"health_max"		"250"
