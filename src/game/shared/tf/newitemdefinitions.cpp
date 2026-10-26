@@ -99,7 +99,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 	{
 		"b3",
 		"tf_weapon_typewriter",
-		"#TF_Weapon_Typewriter",
+		"#TF_Weapon_TommyGun",
 		"primary",
 		LOADOUT_POSITION_PRIMARY,
 		TF_CLASS_MOBSTER,

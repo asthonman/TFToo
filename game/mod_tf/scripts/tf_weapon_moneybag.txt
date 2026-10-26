@@ -1,4 +1,6 @@
-// Mobster Money Bag. Thrown like a cleaver. The projectile deploys the fountain.
+// Mobster Money Bag. Thrown like a cleaver. Once it lands, teammates in line of
+// sight within 375 units get the Buff Banner mini-crit for 5 seconds. The buff
+// lasts 1 second after they leave the aura.
 // Recharge time is the cleaver's 5.1s times the "effect bar recharge rate increased" attribute.
 "WeaponData"
 {

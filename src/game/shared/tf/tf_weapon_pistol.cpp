@@ -234,7 +234,8 @@ void CTFPistol_ScoutPrimary::Precache( void )
 }
 
 //============================
-// Mobster Typewriter. Shortstop with no falloff, a 65-damage shove, and its own sounds.
+// Mobster Tommy Gun. Shortstop with a 65-damage shove and its own sounds.
+// Distance falloff is the Shortstop's. The displayed name is Tommy Gun.
 
 IMPLEMENT_NETWORKCLASS_ALIASED( TFTypewriter, DT_WeaponTypewriter )
 
@@ -257,12 +258,6 @@ void CTFTypewriter::Precache( void )
 	PrecacheScriptSound( "Mobster.Typewriter.FireLowCrit" );
 	PrecacheScriptSound( "Mobster.Typewriter.Empty" );
 	PrecacheScriptSound( "Mobster.Typewriter.Reload" );
-}
-
-int CTFTypewriter::GetDamageType( void ) const
-{
-	// The Shortstop bullet type includes distance falloff. The Typewriter does not.
-	return BaseClass::GetDamageType() & ~DMG_USEDISTANCEMOD;
 }
 
 void CTFTypewriter::PlayWeaponShootSound( void )

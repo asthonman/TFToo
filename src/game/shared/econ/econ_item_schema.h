@@ -1443,6 +1443,13 @@ public:
 
 	const CUtlVector<CLootlistJob*>& GetLootlistJobs() const { return m_jobs; }
 
+	// Rewrite a vanilla weapon so an existing definition (and every strange or
+	// renamed copy of it) spawns as a different weapon. String pointers must
+	// outlive the schema. Static attributes are edited separately.
+	void PresentAsWeapon( const char *pszItemClass, const char *pszItemName, const char *pszLogName, const char *pszPlayerModel, const char *pszWorldModel, bool bAttachToHands, const char *pszItemTypeName = NULL );
+	void StripStaticAttributeClass( const char *pszAttributeClass );
+	bool AddStaticAttribute( const char *pszName, const char *pszValue );
+
 
 #if defined(CLIENT_DLL) || defined(GAME_DLL)
 	int						GetStyleSkin( style_index_t unStyle, int iTeam, bool bViewmodel ) const;
@@ -2814,6 +2821,16 @@ public:
 	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
 
 protected:
+	// items_game.txt still stops last_valid_class at Engineer. Raising it here
+	// does not touch the schema CRC. Account index must stay above the new end.
+	void ExtendLastValidClass( equipped_class_t unClass )
+	{
+		if ( unClass > m_unLastValidClass && unClass < m_unAccoutClassIndex )
+		{
+			m_unLastValidClass = unClass;
+		}
+	}
+
 	virtual void Reset( void );
 
 	virtual bool BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors = NULL );

@@ -1376,7 +1376,7 @@ Vector g_TFClassViewVectors[TF_CLASS_COUNT_ALL] =
 	Vector( 0, 0, 68 ),		// TF_CLASS_ENGINEER,
 
 	Vector( 0, 0, 65 ),		// TF_CLASS_MADCAP,			// Scout height for now
-	Vector( 0, 0, 78 ),		// TF_CLASS_MOBSTER,		// Scout view * 1.2 scale
+	Vector( 0, 0, 65 ),		// TF_CLASS_MOBSTER,		// same height as Scout
 	Vector( 0, 0, 65 ),		// TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 };
 
@@ -6916,28 +6916,6 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			WRITE_BYTE( pVictim->entindex() );
 			MessageEnd();
 		}
-
-		// Mobster keeps a backstab that lands above 400 health, and is left at 50.
-		// A shield that already zeroed the damage (Razorback) does not also stun him.
-		if ( pVictim && flDamage > 0.f && pVictim->IsPlayerClass( TF_CLASS_MOBSTER ) && !pVictim->m_Shared.IsInvulnerable() && pVictim->GetHealth() > 400 )
-		{
-			flDamage = (float)( pVictim->GetHealth() - 50 );
-
-#ifdef GAME_DLL
-			pVictim->m_Shared.StunPlayer( 5.0f, 0.5f, TF_STUN_MOVEMENT, pTFAttacker );
-			pVictim->EmitSound( "Player.Spy_Shield_Break" );
-			if ( pTFAttacker )
-			{
-				pTFAttacker->m_Shared.AddCond( TF_COND_CANNOT_SWITCH_FROM_MELEE, 2.0f );
-				CTFKnife *pKnife = dynamic_cast< CTFKnife * >( pTFAttacker->GetActiveWeapon() );
-				if ( pKnife )
-				{
-					pKnife->BackstabBlocked();
-					pKnife->m_flNextPrimaryAttack = gpGlobals->curtime + 2.f;
-				}
-			}
-#endif
-		}
 	}
 
 	// Madcap: every point of damage he deals scales from 100% at full health
@@ -6947,12 +6925,6 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 	{
 		flDamage *= Madcap_DamageScaleFromHealth( pTFAttacker->GetHealth(), pTFAttacker->GetMaxHealth() );
 	}
-
-#ifdef GAME_DLL
-	// Money Bag fountain: people standing in it take 15% less and deal 15% more.
-	if ( pVictim )
-		MobsterAura_ModifyDamage( pVictim, pTFAttacker, flDamage );
-#endif
 
 	info.SetDamage( flDamage );
 

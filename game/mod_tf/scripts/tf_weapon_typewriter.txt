@@ -1,9 +1,9 @@
-// Mobster Typewriter. Shortstop numbers, then the item attributes scale them.
-// Clip is 50. No distance falloff (the weapon strips DMG_USEDISTANCEMOD).
+// Mobster Tommy Gun. Shortstop numbers, then the item attributes scale them.
+// Clip is 50. Distance falloff is the Shortstop's.
 // Alt-fire is the Shortstop shove for 65 damage and no extra knockback.
 "WeaponData"
 {
-	"printname"			"#TF_Weapon_Typewriter"
+	"printname"			"#TF_Weapon_TommyGun"
 	"BuiltRightHanded"	"0"
 	"weight"			"2"
 	"WeaponType"		"primary"

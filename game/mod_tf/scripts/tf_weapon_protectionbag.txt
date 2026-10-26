@@ -1,0 +1,36 @@
+// Protection Insurance. The Battalion's Backup, thrown like the Money Bag.
+// Buff Banner and Battalion's Backup both take 600 damage to fill, pulse for 10
+// seconds, and reach 450 units, so the Money Bag's recharge (5.1s * 6), 375 unit
+// line of sight, 5 second uptime, and 1 second linger are unchanged.
+// The aura grants the Backup's damage resistance. +20 max health stays on the item.
+// The bugle is the held model. The flag is the model once it is placed.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_ProtectionInsurance"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"ProjectileType"	"projectile_cleaver"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"TF_AMMO_SECONDARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"1"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"1"
+	"HasTeamSkins_Worldmodel"	"1"
+
+	"viewmodel"			"models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl"
+	"playermodel"		"models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl"
+	"anim_prefix"		"gren"
+}

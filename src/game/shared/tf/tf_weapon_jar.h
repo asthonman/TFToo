@@ -24,6 +24,10 @@
 #define CTFProjectile_Throwable C_TFProjectile_Throwable
 #define CTFMoneyBag C_TFMoneyBag
 #define CTFProjectile_MoneyBag C_TFProjectile_MoneyBag
+#define CTFProtectionBag C_TFProtectionBag
+#define CTFProjectile_ProtectionBag C_TFProjectile_ProtectionBag
+#define CTFSpeakeasy C_TFSpeakeasy
+#define CTFProjectile_Speakeasy C_TFProjectile_Speakeasy
 #endif
 
 class CTFProjectile_Jar;
@@ -257,7 +261,9 @@ private:
 };
 
 // *************************************************************************************************************************
-// Mobster Money Bag. A cleaver-style throwable that becomes a healing fountain on the ground.
+// Mobster Money Bag. A cleaver-style throwable. Once it lands, teammates in
+// line of sight get the Buff Banner mini-crit for 5 seconds, lingering 1 second
+// after they leave.
 class CTFMoneyBag : public CTFCleaver
 {
 public:
@@ -288,6 +294,24 @@ public:
 	virtual int			GetWeaponID( void ) const OVERRIDE	{ return TF_WEAPON_GRENADE_CLEAVER; }
 	virtual void		Precache() OVERRIDE;
 
+	// Buff Banner and Battalion's Backup share a 450-unit range, a 10 second
+	// uptime, and 600 damage to fill. Those ratios are 1, so the bag keeps the
+	// Money Bag's 375-unit line of sight, 5 second uptime, and 1 second linger.
+	virtual const char	*GetClosedModel( void ) const	{ return "models/weapons/w_moneybag_closed.mdl"; }
+	virtual const char	*GetOpenModel( void ) const		{ return "models/weapons/w_moneybag_open.mdl"; }
+	virtual float		GetBagModelScale( void ) const	{ return 1.4f; }
+	virtual ETFCond		GetAuraCondition( void ) const	{ return TF_COND_OFFENSEBUFF; }
+	virtual float		GetAuraRadius( void ) const		{ return 375.f; }
+	virtual float		GetAuraDuration( void ) const	{ return 5.f; }
+	virtual float		GetAuraLinger( void ) const		{ return 1.f; }
+	// How long the condition lasts when it is applied. flTimeRemaining is how long
+	// the aura will still accept people. The Money Bag ignores that and reapplies
+	// a 1 second buff. Speakeasy uses the time left plus that 1 second.
+	virtual float		GetAppliedBuffDuration( float flTimeRemaining ) const { (void)flTimeRemaining; return GetAuraLinger(); }
+	virtual bool		GrantsAuraOnce( void ) const	{ return false; }
+	virtual const char	*GetDeploySound( void ) const	{ return "Mobster.MoneyBag.Deploy"; }
+	virtual const char	*GetDeployParticle( void ) const { return "weapon_moneybag_parent"; }
+
 #ifdef CLIENT_DLL
 	virtual const char*	GetTrailParticleName( void );
 	virtual void		CreateTrailParticles( void );
@@ -309,8 +333,10 @@ public:
 	void				FlightThink( void );
 	void				AuraThink( void );
 	void				Deploy( const Vector &vecOrigin );
+	virtual void		ApplyTeamSkin( void )			{}
 
 private:
+	CUtlVector<int>		m_AuraGrantedEntIndex;
 	bool				m_bDeployed;
 	float				m_flFlightDieTime;
 	float				m_flRefreshUntil;
@@ -318,10 +344,89 @@ private:
 #endif
 };
 
+// Battalion's Backup, thrown like the Money Bag. Same line of sight, duration,
+// and 1 second linger. The buff is the Backup's damage resistance, and the
+// wearer keeps the +20 max health. Held model is the bugle. Placed model is the flag.
+class CTFProtectionBag : public CTFMoneyBag
+{
+public:
+	DECLARE_CLASS( CTFProtectionBag, CTFMoneyBag );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual const char*	GetEffectLabelText( void )			{ return "#TF_Weapon_ProtectionInsurance"; }
+	virtual void		Precache( void );
+
 #ifdef GAME_DLL
-class CTFPlayer;
-void MobsterAura_ModifyDamage( CTFPlayer *pVictim, CTFPlayer *pAttacker, float &flDamage );
+	virtual CTFProjectile_Jar	*CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
 #endif
+};
+
+class CTFProjectile_ProtectionBag : public CTFProjectile_MoneyBag
+{
+public:
+	DECLARE_CLASS( CTFProjectile_ProtectionBag, CTFProjectile_MoneyBag );
+	DECLARE_NETWORKCLASS();
+
+	virtual const char	*GetClosedModel( void ) const	{ return "models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl"; }
+	virtual const char	*GetOpenModel( void ) const		{ return "models/workshop/weapons/c_models/c_battalion_buffbanner/c_battalion_buffbanner.mdl"; }
+	virtual float		GetBagModelScale( void ) const	{ return 1.0f; }
+	virtual ETFCond		GetAuraCondition( void ) const	{ return TF_COND_DEFENSEBUFF; }
+	virtual const char	*GetDeploySound( void ) const	{ return "Weapon_BuffBanner.Flag"; }
+	virtual const char	*GetDeployParticle( void ) const { return NULL; }
+
+#ifdef GAME_DLL
+	static CTFProjectile_ProtectionBag *Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
+
+	virtual void		ApplyTeamSkin( void );
+#endif
+};
+
+// The Concheror, thrown like the Money Bag. It fills on 480 damage instead of
+// 600, so the recharge is 4/5 of the Money Bag. The crate lasts 5 seconds.
+// Each teammate is buffed once: 6 seconds if they are there when it lands,
+// down to 1 second if they arrive as it ends. The wearer keeps its health regen.
+// Held model is the Scottish Handshake. Placed model is the beer crate.
+class CTFSpeakeasy : public CTFMoneyBag
+{
+public:
+	DECLARE_CLASS( CTFSpeakeasy, CTFMoneyBag );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual const char*	GetEffectLabelText( void )			{ return "#TF_Weapon_Speakeasy"; }
+	virtual void		Precache( void );
+
+#ifdef GAME_DLL
+	virtual CTFProjectile_Jar	*CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
+#endif
+};
+
+class CTFProjectile_Speakeasy : public CTFProjectile_MoneyBag
+{
+public:
+	DECLARE_CLASS( CTFProjectile_Speakeasy, CTFProjectile_MoneyBag );
+	DECLARE_NETWORKCLASS();
+
+	virtual const char	*GetClosedModel( void ) const	{ return "models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl"; }
+	virtual const char	*GetOpenModel( void ) const		{ return "models/player/items/taunts/beer_crate/beer_crate.mdl"; }
+	virtual float		GetBagModelScale( void ) const	{ return 1.0f; }
+	virtual ETFCond		GetAuraCondition( void ) const	{ return TF_COND_REGENONDAMAGEBUFF; }
+	virtual float		GetAuraDuration( void ) const	{ return 5.f; }
+	virtual float		GetAuraLinger( void ) const		{ return 0.f; }
+	virtual float		GetAppliedBuffDuration( float flTimeRemaining ) const { return flTimeRemaining + 1.f; }
+	virtual bool		GrantsAuraOnce( void ) const	{ return true; }
+	virtual const char	*GetDeploySound( void ) const	{ return "Samurai.Conch"; }
+	virtual const char	*GetDeployParticle( void ) const { return NULL; }
+
+#ifdef GAME_DLL
+	static CTFProjectile_Speakeasy *Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+		const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
+#endif
+};
 
 void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeapon, CBaseEntity *pWeapon, const Vector& vContactPoint, int iTeam, float flRadius, ETFCond cond, float flDuration, const char *pszImpactEffect, const char *pszExplodeSound );
 

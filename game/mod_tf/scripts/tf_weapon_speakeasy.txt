@@ -1,0 +1,37 @@
+// Speakeasy. The Concheror, thrown like the Money Bag.
+// The Concheror fills on 480 damage against the Buff Banner's 600, so the
+// recharge is 5.1s * 4.8 = 24.48s. The crate lasts 5 seconds and grants the
+// Concheror's speed and healing once per teammate. The buff is 6 seconds if
+// they are there when it lands, and 1 second if they arrive as it ends.
+// Line of sight is still 375 units. +4 health regen stays.
+// The Scottish Handshake is the held model. The beer crate is the placed model.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Speakeasy"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"ProjectileType"	"projectile_cleaver"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"TF_AMMO_SECONDARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"1"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"1"
+	"HasTeamSkins_Worldmodel"	"1"
+
+	"viewmodel"			"models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl"
+	"playermodel"		"models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl"
+	"anim_prefix"		"gren"
+}

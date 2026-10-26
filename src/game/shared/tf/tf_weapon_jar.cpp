@@ -99,6 +99,40 @@ END_NETWORK_TABLE()
 LINK_ENTITY_TO_CLASS( tf_projectile_moneybag, CTFProjectile_MoneyBag );
 PRECACHE_WEAPON_REGISTER( tf_projectile_moneybag );
 
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProtectionBag, DT_TFWeaponProtectionBag )
+BEGIN_NETWORK_TABLE( CTFProtectionBag, DT_TFWeaponProtectionBag )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFProtectionBag )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_protectionbag, CTFProtectionBag );
+PRECACHE_WEAPON_REGISTER( tf_weapon_protectionbag );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_ProtectionBag, DT_TFProjectile_ProtectionBag )
+BEGIN_NETWORK_TABLE( CTFProjectile_ProtectionBag, DT_TFProjectile_ProtectionBag )
+END_NETWORK_TABLE()
+
+LINK_ENTITY_TO_CLASS( tf_projectile_protectionbag, CTFProjectile_ProtectionBag );
+PRECACHE_WEAPON_REGISTER( tf_projectile_protectionbag );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFSpeakeasy, DT_TFWeaponSpeakeasy )
+BEGIN_NETWORK_TABLE( CTFSpeakeasy, DT_TFWeaponSpeakeasy )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFSpeakeasy )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_speakeasy, CTFSpeakeasy );
+PRECACHE_WEAPON_REGISTER( tf_weapon_speakeasy );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_Speakeasy, DT_TFProjectile_Speakeasy )
+BEGIN_NETWORK_TABLE( CTFProjectile_Speakeasy, DT_TFProjectile_Speakeasy )
+END_NETWORK_TABLE()
+
+LINK_ENTITY_TO_CLASS( tf_projectile_speakeasy, CTFProjectile_Speakeasy );
+PRECACHE_WEAPON_REGISTER( tf_projectile_speakeasy );
+
 #define TF_JAR_LAUNCH_SPEED		1000.f
 #define TF_CLEAVER_LAUNCH_SPEED		7000.f
 #define TF_WEAPON_PEEJAR_MODEL	"models/weapons/c_models/urinejar.mdl"
@@ -1186,9 +1220,8 @@ const char *CTFProjectile_Cleaver::GetTrailParticleName( void )
 
 static const char *kMoneyBagClosedModel = "models/weapons/w_moneybag_closed.mdl";
 static const char *kMoneyBagOpenModel = "models/weapons/w_moneybag_open.mdl";
-static const float kMoneyBagRadius = 375.f;
-static const float kMoneyBagDuration = 5.f;
-static const float kMoneyBagLinger = 1.f;
+static const char *kProtectionBugleModel = "models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl";
+static const char *kProtectionFlagModel = "models/workshop/weapons/c_models/c_battalion_buffbanner/c_battalion_buffbanner.mdl";
 
 void CTFMoneyBag::Precache( void )
 {
@@ -1200,6 +1233,22 @@ void CTFMoneyBag::Precache( void )
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
 	PrecacheParticleSystem( "weapon_moneybag_parent" );
+}
+
+void CTFProtectionBag::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheModel( kProtectionBugleModel );
+	PrecacheModel( kProtectionFlagModel );
+	PrecacheScriptSound( "Weapon_BuffBanner.Flag" );
+}
+
+void CTFSpeakeasy::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheModel( "models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl" );
+	PrecacheModel( "models/player/items/taunts/beer_crate/beer_crate.mdl" );
+	PrecacheScriptSound( "Samurai.Conch" );
 }
 
 #ifdef GAME_DLL
@@ -1217,114 +1266,6 @@ CTFProjectile_Jar *CTFMoneyBag::CreateJarProjectile( const Vector &position, con
 	return CTFProjectile_MoneyBag::Create( position, angles, velocity, angVelocity, pOwner, weaponInfo );
 }
 
-struct MobsterAuraEntry_t
-{
-	EHANDLE		hFountain;
-	EHANDLE		hPlayer;
-	float		flExpire;
-	float		flNextResistSound;
-};
-
-static CUtlVector< MobsterAuraEntry_t > s_MobsterAura;
-
-static void MobsterAura_PurgeExpired( void )
-{
-	for ( int i = s_MobsterAura.Count() - 1; i >= 0; --i )
-	{
-		if ( !s_MobsterAura[i].hPlayer || gpGlobals->curtime > s_MobsterAura[i].flExpire )
-			s_MobsterAura.Remove( i );
-	}
-}
-
-static void MobsterAura_Refresh( CBaseEntity *pFountain, CTFPlayer *pPlayer, float flExpire )
-{
-	FOR_EACH_VEC( s_MobsterAura, i )
-	{
-		if ( s_MobsterAura[i].hFountain == pFountain && s_MobsterAura[i].hPlayer == pPlayer )
-		{
-			s_MobsterAura[i].flExpire = flExpire;
-			return;
-		}
-	}
-
-	MobsterAuraEntry_t entry;
-	entry.hFountain = pFountain;
-	entry.hPlayer = pPlayer;
-	entry.flExpire = flExpire;
-	entry.flNextResistSound = 0.f;
-	s_MobsterAura.AddToTail( entry );
-}
-
-static void MobsterAura_HealFountain( CBaseEntity *pFountain )
-{
-	FOR_EACH_VEC( s_MobsterAura, i )
-	{
-		if ( s_MobsterAura[i].hFountain != pFountain )
-			continue;
-		if ( gpGlobals->curtime > s_MobsterAura[i].flExpire )
-			continue;
-
-		CTFPlayer *pPlayer = ToTFPlayer( s_MobsterAura[i].hPlayer );
-		if ( !pPlayer || !pPlayer->IsAlive() )
-			continue;
-
-		// 3% of max health, and never past the un-overhealed max.
-		pPlayer->TakeHealth( pPlayer->GetMaxHealth() * 0.03f, DMG_GENERIC );
-	}
-}
-
-void MobsterAura_ModifyDamage( CTFPlayer *pVictim, CTFPlayer *pAttacker, float &flDamage )
-{
-	if ( !pVictim || flDamage <= 0.f )
-		return;
-
-	MobsterAura_PurgeExpired();
-
-	bool bVictimBuff = false;
-	bool bAttackerBuff = false;
-	int iResist = -1;
-
-	FOR_EACH_VEC( s_MobsterAura, i )
-	{
-		CTFPlayer *pBuffed = ToTFPlayer( s_MobsterAura[i].hPlayer );
-		if ( !pBuffed )
-			continue;
-
-		if ( pBuffed == pVictim )
-		{
-			bVictimBuff = true;
-			iResist = i;
-		}
-		if ( pAttacker && pBuffed == pAttacker )
-			bAttackerBuff = true;
-	}
-
-	if ( bVictimBuff )
-	{
-		flDamage *= 0.85f;
-		if ( iResist >= 0 && gpGlobals->curtime >= s_MobsterAura[iResist].flNextResistSound )
-		{
-			s_MobsterAura[iResist].flNextResistSound = gpGlobals->curtime + 0.1f;
-			pVictim->EmitSound( "Mobster.MoneyBag.Resist" );
-		}
-	}
-
-	// A buffed attacker hits harder. Self-damage only gets the resist above.
-	if ( bAttackerBuff && pAttacker && pAttacker != pVictim )
-	{
-		flDamage *= 1.15f;
-
-		CSingleUserRecipientFilter filter( pAttacker );
-		filter.MakeReliable();
-		EmitSound_t params;
-		params.m_pSoundName = "Mobster.MoneyBag.Hit";
-		params.m_flVolume = 0.15f;
-		params.m_SoundLevel = SNDLVL_NONE;
-		params.m_nChannel = CHAN_STATIC;
-		pAttacker->EmitSound( filter, pAttacker->entindex(), params );
-	}
-}
-
 CTFProjectile_MoneyBag::CTFProjectile_MoneyBag()
 {
 	m_bDeployed = false;
@@ -1335,18 +1276,21 @@ CTFProjectile_MoneyBag::CTFProjectile_MoneyBag()
 
 void CTFProjectile_MoneyBag::Precache()
 {
-	PrecacheModel( kMoneyBagClosedModel );
-	PrecacheModel( kMoneyBagOpenModel );
-	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
+	PrecacheModel( GetClosedModel() );
+	PrecacheModel( GetOpenModel() );
+	if ( GetDeploySound() && GetDeploySound()[0] )
+		PrecacheScriptSound( GetDeploySound() );
+	if ( GetDeployParticle() && GetDeployParticle()[0] )
+		PrecacheParticleSystem( GetDeployParticle() );
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
-	PrecacheParticleSystem( "weapon_moneybag_parent" );
 	BaseClass::Precache();
 }
 
 void CTFProjectile_MoneyBag::SetCustomPipebombModel()
 {
-	SetModel( kMoneyBagClosedModel );
+	SetModel( GetClosedModel() );
+	ApplyTeamSkin();
 }
 
 void CTFProjectile_MoneyBag::Spawn()
@@ -1354,7 +1298,7 @@ void CTFProjectile_MoneyBag::Spawn()
 	BaseClass::Spawn();
 
 	SetDetonateTimerLength( FLT_MAX );
-	SetModelScale( 1.4f );
+	SetModelScale( GetBagModelScale() );
 	m_bDeployed = false;
 	m_flFlightDieTime = gpGlobals->curtime + 15.f;
 	SetContextThink( &CTFProjectile_MoneyBag::FlightThink, gpGlobals->curtime + 0.05f, "MoneyBagFlight" );
@@ -1417,8 +1361,9 @@ void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
 	m_bDeployed = true;
 	SetAbsOrigin( vecOrigin );
 	SetAbsVelocity( vec3_origin );
-	SetModel( kMoneyBagOpenModel );
-	SetModelScale( 1.4f );
+	SetModel( GetOpenModel() );
+	SetModelScale( GetBagModelScale() );
+	ApplyTeamSkin();
 
 	int iSeq = LookupSequence( "deploy" );
 	if ( iSeq >= 0 )
@@ -1432,11 +1377,12 @@ void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
 	AddSolidFlags( FSOLID_NOT_SOLID );
 	SetTouch( NULL );
 
-	EmitSound( "Mobster.MoneyBag.Deploy" );
-	DispatchParticleEffect( "weapon_moneybag_parent", PATTACH_ABSORIGIN_FOLLOW, this );
+	EmitSound( GetDeploySound() );
+	if ( GetDeployParticle() && GetDeployParticle()[0] )
+		DispatchParticleEffect( GetDeployParticle(), PATTACH_ABSORIGIN_FOLLOW, this );
 
-	m_flRefreshUntil = gpGlobals->curtime + kMoneyBagDuration;
-	m_flRemoveTime = m_flRefreshUntil + kMoneyBagLinger;
+	m_flRefreshUntil = gpGlobals->curtime + GetAuraDuration();
+	m_flRemoveTime = m_flRefreshUntil + GetAuraLinger();
 	SetContextThink( &CTFProjectile_MoneyBag::AuraThink, gpGlobals->curtime, "MoneyBagAura" );
 }
 
@@ -1448,6 +1394,7 @@ void CTFProjectile_MoneyBag::AuraThink( void )
 		CollectPlayers( &players, TEAM_ANY, COLLECT_ONLY_LIVING_PLAYERS );
 
 		const Vector vecSrc = GetAbsOrigin() + Vector( 0, 0, 20 );
+		CTFPlayer *pProvider = ToTFPlayer( GetThrower() );
 		FOR_EACH_VEC( players, i )
 		{
 			CTFPlayer *pPlayer = players[i];
@@ -1459,7 +1406,7 @@ void CTFProjectile_MoneyBag::AuraThink( void )
 			if ( !bSameTeam && !bDisguisedAsUs )
 				continue;
 
-			if ( ( pPlayer->EyePosition() - vecSrc ).Length() >= kMoneyBagRadius )
+			if ( ( pPlayer->EyePosition() - vecSrc ).Length() >= GetAuraRadius() )
 				continue;
 
 			trace_t tr;
@@ -1467,19 +1414,23 @@ void CTFProjectile_MoneyBag::AuraThink( void )
 			if ( tr.fraction <= 0.95f )
 				continue;
 
-			MobsterAura_Refresh( this, pPlayer, gpGlobals->curtime + kMoneyBagLinger );
+			if ( GrantsAuraOnce() )
+			{
+				if ( m_AuraGrantedEntIndex.Find( pPlayer->entindex() ) != m_AuraGrantedEntIndex.InvalidIndex() )
+					continue;
+				m_AuraGrantedEntIndex.AddToTail( pPlayer->entindex() );
+			}
+
+			// Money Bag and Protection Insurance refresh a 1 second buff.
+			// Speakeasy grants its buff once. A full 5 seconds of aura is left at
+			// deploy, so that grant is 6 seconds, and it falls to 1 second as the crate ends.
+			float flTimeRemaining = m_flRefreshUntil - gpGlobals->curtime;
+			pPlayer->m_Shared.AddCond( GetAuraCondition(), GetAppliedBuffDuration( flTimeRemaining ), pProvider ? pProvider : this );
 		}
 	}
 
-	MobsterAura_HealFountain( this );
-
 	if ( gpGlobals->curtime >= m_flRemoveTime )
 	{
-		for ( int i = s_MobsterAura.Count() - 1; i >= 0; --i )
-		{
-			if ( s_MobsterAura[i].hFountain == this )
-				s_MobsterAura.Remove( i );
-		}
 		UTIL_Remove( this );
 		return;
 	}
@@ -1498,7 +1449,57 @@ CTFProjectile_MoneyBag *CTFProjectile_MoneyBag::Create( const Vector &position, 
 		pGrenade->InitGrenade( velocity, angVelocity, pOwner, weaponInfo );
 		pGrenade->m_flFullDamage = 0;
 		pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
-		pGrenade->SetModelScale( 1.4f );
+		pGrenade->SetModelScale( pGrenade->GetBagModelScale() );
+	}
+	return pGrenade;
+}
+
+CTFProjectile_Jar *CTFProtectionBag::CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	return CTFProjectile_ProtectionBag::Create( position, angles, velocity, angVelocity, pOwner, weaponInfo );
+}
+
+CTFProjectile_ProtectionBag *CTFProjectile_ProtectionBag::Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	CTFProjectile_ProtectionBag *pGrenade = static_cast< CTFProjectile_ProtectionBag * >( CBaseEntity::CreateNoSpawn( "tf_projectile_protectionbag", position, angles, pOwner ) );
+	if ( pGrenade )
+	{
+		pGrenade->SetPipebombMode();
+		DispatchSpawn( pGrenade );
+		pGrenade->InitGrenade( velocity, angVelocity, pOwner, weaponInfo );
+		pGrenade->m_flFullDamage = 0;
+		pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
+		pGrenade->SetModelScale( pGrenade->GetBagModelScale() );
+		pGrenade->ApplyTeamSkin();
+	}
+	return pGrenade;
+}
+
+void CTFProjectile_ProtectionBag::ApplyTeamSkin( void )
+{
+	SetSkin( GetTeamNumber() == TF_TEAM_BLUE ? 1 : 0 );
+}
+
+CTFProjectile_Jar *CTFSpeakeasy::CreateJarProjectile( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	return CTFProjectile_Speakeasy::Create( position, angles, velocity, angVelocity, pOwner, weaponInfo );
+}
+
+CTFProjectile_Speakeasy *CTFProjectile_Speakeasy::Create( const Vector &position, const QAngle &angles, const Vector &velocity,
+	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo )
+{
+	CTFProjectile_Speakeasy *pGrenade = static_cast< CTFProjectile_Speakeasy * >( CBaseEntity::CreateNoSpawn( "tf_projectile_speakeasy", position, angles, pOwner ) );
+	if ( pGrenade )
+	{
+		pGrenade->SetPipebombMode();
+		DispatchSpawn( pGrenade );
+		pGrenade->InitGrenade( velocity, angVelocity, pOwner, weaponInfo );
+		pGrenade->m_flFullDamage = 0;
+		pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
+		pGrenade->SetModelScale( pGrenade->GetBagModelScale() );
 	}
 	return pGrenade;
 }
@@ -1509,12 +1510,12 @@ CTFProjectile_MoneyBag::CTFProjectile_MoneyBag()
 
 void CTFProjectile_MoneyBag::Precache()
 {
-	PrecacheModel( kMoneyBagClosedModel );
-	PrecacheModel( kMoneyBagOpenModel );
-	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
-	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
-	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
-	PrecacheParticleSystem( "weapon_moneybag_parent" );
+	PrecacheModel( GetClosedModel() );
+	PrecacheModel( GetOpenModel() );
+	if ( GetDeploySound() && GetDeploySound()[0] )
+		PrecacheScriptSound( GetDeploySound() );
+	if ( GetDeployParticle() && GetDeployParticle()[0] )
+		PrecacheParticleSystem( GetDeployParticle() );
 	BaseClass::Precache();
 }
 

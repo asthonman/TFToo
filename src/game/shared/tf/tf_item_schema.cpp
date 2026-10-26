@@ -1357,6 +1357,190 @@ void CTFItemDefinition::ClearClassEquip( void )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Hold the money bag like a jar, and do not keep the banner backpack.
+//-----------------------------------------------------------------------------
+void CTFItemDefinition::UseMoneyBagVisuals( const char *pszModel )
+{
+	m_iAnimationSlot = TF_WPN_TYPE_ITEM1;
+	for ( int i = 0; i < LOADOUT_COUNT; ++i )
+	{
+		m_pszPlayerDisplayModel[i] = pszModel;
+	}
+
+	for ( int t = 0; t < TEAM_VISUAL_SECTIONS; ++t )
+	{
+		perteamvisuals_t *pVis = GetPerTeamVisual( t );
+		if ( !pVis )
+			continue;
+		pVis->m_AttachedModels.Purge();
+		pVis->m_AttachedModelsFestive.Purge();
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The Buff Banner (and its strange, renamed, and festive copies) is
+// the Money Bag. Soldier can no longer equip it. b4 stays the stock bag.
+//-----------------------------------------------------------------------------
+static bool ItemIsBuffBanner( const CTFItemDefinition *pTF )
+{
+	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
+		return false;
+
+	const char *pszClass = pTF->GetItemClass();
+	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
+		return false;
+
+	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
+	FOR_EACH_VEC( attrs, i )
+	{
+		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
+		if ( !pAttr || !pAttr->GetAttributeClass() )
+			continue;
+		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
+			continue;
+		if ( fabsf( attrs[i].m_value.asFloat - 1.f ) < 0.01f )
+			return true;
+	}
+
+	const char *pszName = pTF->GetDefinitionName();
+	return pszName && V_stristr( pszName, "Buff Banner" ) != NULL;
+}
+
+static void ConvertBuffBannersToMoneyBags( CTFItemSchema *pSchema )
+{
+	static const char *kMoneyBagModel = "models/weapons/w_moneybag_closed.mdl";
+
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !ItemIsBuffBanner( pTF ) )
+			continue;
+
+		pTF->PresentAsWeapon( "tf_weapon_moneybag", "#TF_Weapon_MoneyBag", "moneybag", kMoneyBagModel, kMoneyBagModel, true );
+		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
+		pTF->UseMoneyBagVisuals( kMoneyBagModel );
+		pTF->StripStaticAttributeClass( "set_buff_type" );
+		pTF->StripStaticAttributeClass( "provide_on_active" );
+		pTF->AddStaticAttribute( "effect bar recharge rate increased", "6" );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The Battalion's Backup (and its strange, renamed, and festive copies)
+// is Protection Insurance. Soldier can no longer equip it.
+//
+// The Backup matches the Buff Banner: 600 damage to fill, 450 unit range, 10
+// second uptime. The Money Bag turns the banner's 600 damage into a 30.6s
+// recharge (cleaver 5.1s times 6). The same ratio leaves this recharge, the
+// 375 unit line of sight, and the 5 second uptime unchanged. The +20 max health
+// stays. The buff itself is the Backup's damage resistance.
+//-----------------------------------------------------------------------------
+static bool ItemIsBattalionsBackup( const CTFItemDefinition *pTF )
+{
+	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
+		return false;
+
+	const char *pszClass = pTF->GetItemClass();
+	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
+		return false;
+
+	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
+	FOR_EACH_VEC( attrs, i )
+	{
+		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
+		if ( !pAttr || !pAttr->GetAttributeClass() )
+			continue;
+		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
+			continue;
+		if ( fabsf( attrs[i].m_value.asFloat - 2.f ) < 0.01f )
+			return true;
+	}
+
+	const char *pszName = pTF->GetDefinitionName();
+	return pszName && V_stristr( pszName, "Battalion" ) != NULL;
+}
+
+static void ConvertBattalionsBackupsToProtection( CTFItemSchema *pSchema )
+{
+	static const char *kBugleModel = "models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl";
+
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !ItemIsBattalionsBackup( pTF ) )
+			continue;
+
+		pTF->PresentAsWeapon( "tf_weapon_protectionbag", "#TF_Weapon_ProtectionInsurance", "protection_insurance", kBugleModel, kBugleModel, true );
+		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
+		pTF->UseMoneyBagVisuals( kBugleModel );
+		pTF->StripStaticAttributeClass( "set_buff_type" );
+		pTF->StripStaticAttributeClass( "provide_on_active" );
+		// add_maxhealth (+20) is left in place.
+		// 6 * (600 battalion damage / 600 banner damage) == 6, same recharge as the Money Bag.
+		pTF->AddStaticAttribute( "effect bar recharge rate increased", "6" );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The Concheror (and its strange and renamed copies) is the Speakeasy.
+// Soldier can no longer equip it.
+//
+// Rage scale 1.25 fills the meter on 480 damage, against the Buff Banner's 600.
+// 6 * (480 / 600) = 4.8, so the recharge is 5.1s * 4.8 = 24.48s.
+// Range matches the banner, so the aura is still 375 units of line of sight.
+// Unlike the other bags, each teammate is buffed once. The crate lasts 5
+// seconds. The buff is 6 seconds at deploy and 1 second as the crate ends.
+// The +4 health regen stays. The buff itself is the Concheror's speed and healing.
+//-----------------------------------------------------------------------------
+static bool ItemIsConcheror( const CTFItemDefinition *pTF )
+{
+	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
+		return false;
+
+	const char *pszClass = pTF->GetItemClass();
+	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
+		return false;
+
+	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
+	FOR_EACH_VEC( attrs, i )
+	{
+		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
+		if ( !pAttr || !pAttr->GetAttributeClass() )
+			continue;
+		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
+			continue;
+		if ( fabsf( attrs[i].m_value.asFloat - 3.f ) < 0.01f )
+			return true;
+	}
+
+	const char *pszName = pTF->GetDefinitionName();
+	return pszName && V_stristr( pszName, "Concheror" ) != NULL;
+}
+
+static void ConvertConcherorsToSpeakeasies( CTFItemSchema *pSchema )
+{
+	static const char *kBottleModel = "models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl";
+
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !ItemIsConcheror( pTF ) )
+			continue;
+
+		pTF->PresentAsWeapon( "tf_weapon_speakeasy", "#TF_Weapon_Speakeasy", "speakeasy", kBottleModel, kBottleModel, true, "#TF_ItemType_Moonshine" );
+		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
+		pTF->UseMoneyBagVisuals( kBottleModel );
+		pTF->StripStaticAttributeClass( "set_buff_type" );
+		pTF->StripStaticAttributeClass( "provide_on_active" );
+		// add_health_regen (+4) is left in place.
+		pTF->AddStaticAttribute( "effect bar recharge rate increased", "4.8" );
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Returns true if this item is in a wearable slot, or is acting as a wearable
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::IsAWearable() const
@@ -1844,6 +2028,11 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	
 	SCHEMA_INIT_SUBSTEP( CEconItemSchema::BInitSchema( pKVRawDefinition, pVecErrors ) );
 
+	// items_game.txt still ends the equippable range at Engineer. Madcap and
+	// Mobster use the same loadout slots, so Equip() has to accept them.
+	// Leave the file alone; the schema CRC was already computed from it.
+	ExtendLastValidClass( TF_CLASS_MOBSTER );
+
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );
 
@@ -1870,6 +2059,9 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	// Madcap's weapons are not in items_game.txt. Nailgun (b1) and Brick (b2)
 	// come from newitemdefinitions.cpp, which is compiled into this file.
 	ApplyMadcapItemDefinitions( pVecErrors );
+	ConvertBuffBannersToMoneyBags( this );
+	ConvertBattalionsBackupsToProtection( this );
+	ConvertConcherorsToSpeakeasies( this );
 
 #ifdef GAME_DLL
 	IGameEvent * event = gameeventmanager->CreateEvent( "schema_updated" );

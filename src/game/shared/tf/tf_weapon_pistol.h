@@ -86,7 +86,7 @@ public:
 	void			Push( void );
 
 protected:
-	// Shortstop shove is 1 damage. The Typewriter overrides both.
+	// Shortstop shove is 1 damage. The Tommy Gun overrides both.
 	virtual float	GetPushDamage( void ) const { return 1.f; }
 	virtual int		GetPushDamageFlags( void ) const { return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB; }
 
@@ -108,7 +108,6 @@ public:
 	// Same weapon id as the Shortstop so the bullet, crit, and damage tables stay put.
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_HANDGUN_SCOUT_PRIMARY; }
 	virtual void	PlayWeaponShootSound( void );
-	virtual int		GetDamageType( void ) const;
 	virtual void	Precache( void );
 
 protected:

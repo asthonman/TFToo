@@ -2419,6 +2419,88 @@ bool CEconItemDefinition::BInitFromTestItemKVs( int iNewDefIndex, KeyValues *pKV
 	return true;
 }
 
+void CEconItemDefinition::PresentAsWeapon( const char *pszItemClass, const char *pszItemName, const char *pszLogName, const char *pszPlayerModel, const char *pszWorldModel, bool bAttachToHands, const char *pszItemTypeName )
+{
+	if ( !pszItemTypeName || !pszItemTypeName[0] )
+		pszItemTypeName = pszItemName;
+
+	m_pszItemClassname = pszItemClass;
+	m_pszItemBaseName = pszItemName;
+	m_pszItemTypeName = pszItemTypeName;
+	m_pszItemDesc = "";
+	m_pszBaseDisplayModel = pszPlayerModel;
+	m_pszWorldDisplayModel = pszWorldModel;
+	m_pszItemLogClassname = pszLogName;
+	m_pszItemIconClassname = pszLogName;
+	m_pszInventoryImage = NULL;
+	m_pszWorldExtraWearableModel = NULL;
+	m_pszWorldExtraWearableViewModel = NULL;
+	m_bAttachToHands = bAttachToHands;
+	m_bProperName = false;
+
+	if ( !m_pKVItem )
+		return;
+
+	m_pKVItem->SetString( "item_class", pszItemClass );
+	m_pKVItem->SetString( "item_name", pszItemName );
+	m_pKVItem->SetString( "item_type_name", pszItemTypeName );
+	m_pKVItem->SetString( "item_description", "" );
+	m_pKVItem->SetString( "item_logname", pszLogName );
+	m_pKVItem->SetString( "item_iconname", pszLogName );
+	m_pKVItem->SetString( "model_player", pszPlayerModel );
+	m_pKVItem->SetString( "model_world", pszWorldModel );
+	m_pKVItem->SetString( "image_inventory", "" );
+	m_pKVItem->SetString( "extra_wearable", "" );
+	m_pKVItem->SetString( "extra_wearable_vm", "" );
+	m_pKVItem->SetInt( "attach_to_hands", bAttachToHands ? 1 : 0 );
+	m_pKVItem->SetInt( "propername", 0 );
+}
+
+void CEconItemDefinition::StripStaticAttributeClass( const char *pszAttributeClass )
+{
+	if ( !pszAttributeClass )
+		return;
+
+	for ( int i = m_vecStaticAttributes.Count() - 1; i >= 0; --i )
+	{
+		const CEconItemAttributeDefinition *pAttr = m_vecStaticAttributes[i].GetAttributeDefinition();
+		if ( !pAttr || !pAttr->GetAttributeClass() )
+			continue;
+		if ( Q_stricmp( pAttr->GetAttributeClass(), pszAttributeClass ) )
+			continue;
+		m_vecStaticAttributes.Remove( i );
+	}
+}
+
+bool CEconItemDefinition::AddStaticAttribute( const char *pszName, const char *pszValue )
+{
+	if ( !pszName || !pszValue )
+		return false;
+
+	const CEconItemAttributeDefinition *pExisting = GetItemSchema()->GetAttributeDefinitionByName( pszName );
+	if ( pExisting )
+	{
+		FOR_EACH_VEC( m_vecStaticAttributes, i )
+		{
+			if ( m_vecStaticAttributes[i].iDefIndex == pExisting->GetDefinitionIndex() )
+				return true;
+		}
+	}
+
+	KeyValues *pKV = new KeyValues( pszName );
+	pKV->SetString( "value", pszValue );
+
+	static_attrib_t attr;
+	CUtlVector<CUtlString> errors;
+	const bool bOk = attr.BInitFromKV_MultiLine( GetDefinitionName() ? GetDefinitionName() : "item", pKV, &errors );
+	pKV->deleteThis();
+	if ( !bOk )
+		return false;
+
+	m_vecStaticAttributes.AddToTail( attr );
+	return true;
+}
+
 animation_on_wearable_t *GetOrCreateAnimationActivity( perteamvisuals_t *pVisData, const char *pszActivityName )
 {
 	FOR_EACH_VEC( pVisData->m_Animations, i )

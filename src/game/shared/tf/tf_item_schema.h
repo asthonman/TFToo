@@ -266,6 +266,7 @@ public:
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
 	void		RetargetClass( int iFromClass, int iToClass );
 	void		ClearClassEquip( void );
+	void		UseMoneyBagVisuals( const char *pszModel );
 	bool		IsAWearable() const;
 	bool		IsContentStreamable() const;
 	const char* GetAdTextToken() const { return m_pszAdText; }
