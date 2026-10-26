@@ -10,6 +10,6 @@
 	}
 	"itemtest"
 	{
-		"viewed"		"2"
+		"viewed"		"5"
 	}
 }

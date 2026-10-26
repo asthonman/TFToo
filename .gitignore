@@ -504,3 +504,5 @@ FodyWeavers.xsd
 *.sln.iml
 /game/mod_tf/downloadlists
 /game/mod_tf/cfg
+game/mod_tf/GameState.txt
+game/mod_tf/media/viewed.res
