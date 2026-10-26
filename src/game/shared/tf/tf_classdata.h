@@ -87,7 +87,8 @@ class CTFPlayerClassDataMgr : public CAutoGameSystem
 public:
 
 	CTFPlayerClassDataMgr();
-	virtual bool Init( void );	
+	virtual bool Init( void );
+	virtual void LevelInitPostEntity( void );
 	TFPlayerClassData_t *Get( unsigned int iClass );
 	void AddAdditionalPlayerDeathSounds( void );
 private:

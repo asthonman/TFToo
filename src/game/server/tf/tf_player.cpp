@@ -6852,20 +6852,23 @@ void CTFPlayer::HandleCommand_JoinClass( const char *pClassName, bool bAllowSpaw
 
 	if ( stricmp( pClassName, "random" ) != 0 && stricmp( pClassName, "auto" ) != 0 )
 	{
-		int i = 0;
-
-		for ( i = TF_CLASS_SCOUT ; i < TF_CLASS_COUNT_ALL ; i++ )
+		iClass = TF_CLASS_UNDEFINED;
+		for ( int i = TF_FIRST_NORMAL_CLASS; i < TF_LAST_NORMAL_CLASS; ++i )
 		{
-			if ( stricmp( pClassName, GetPlayerClassData( i )->m_szClassName ) == 0 )
+			// The class script name is the normal match. Also accept the names the
+			// class menu sends (raw, short, and the non-localized display name) so a
+			// class is still selectable if its script failed to load.
+			if ( stricmp( pClassName, GetPlayerClassData( i )->m_szClassName ) == 0 ||
+				 stricmp( pClassName, g_aRawPlayerClassNames[i] ) == 0 ||
+				 stricmp( pClassName, g_aRawPlayerClassNamesShort[i] ) == 0 ||
+				 stricmp( pClassName, g_aPlayerClassNames_NonLocalized[i] ) == 0 )
 			{
 				iClass = i;
 				break;
 			}
 		}
-		 
-		bool bCivilianOkay = false;
 
-		if ( !bCivilianOkay && ( i >= TF_LAST_NORMAL_CLASS ) )
+		if ( !IsValidTFPlayerClass( iClass ) )
 		{
 			Warning( "HandleCommand_JoinClass( %s ) - invalid class name.\n", pClassName );
 			return;

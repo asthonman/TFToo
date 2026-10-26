@@ -126,14 +126,25 @@ void TFPlayerClassData_t::Parse( const char *szName )
 	if ( m_bParsed )
 		return;
 
-	// Parse class file.
+	// Parse class file. The encrypted reader only searches MOD, so also try GAME
+	// for a loose script that lives next to gameinfo.txt.
 	const unsigned char *pKey = GetTFEncryptionKey();
 	KeyValues *pKV = ReadEncryptedKVFile( filesystem, szName, pKey );
-	if ( pKV )
+	if ( !pKV )
 	{
-		ParseData( pKV );
-		pKV->deleteThis();
+		char szFullName[512];
+		Q_snprintf( szFullName, sizeof( szFullName ), "%s.txt", szName );
+		pKV = new KeyValues( "PlayerClassData" );
+		if ( !pKV->LoadFromFile( filesystem, szFullName, "GAME" ) )
+		{
+			pKV->deleteThis();
+			Warning( "Failed to load player class script %s.txt\n", szName );
+			return;
+		}
 	}
+
+	ParseData( pKV );
+	pKV->deleteThis();
 }
 
 //-----------------------------------------------------------------------------
@@ -248,10 +259,30 @@ bool CTFPlayerClassDataMgr::Init( void )
 		COMPILE_TIME_ASSERT( ARRAYSIZE( s_aPlayerClassFiles ) == TF_CLASS_COUNT_ALL );
 		pClassData = &m_aTFPlayerClassData[iClass];
 		Assert( pClassData );
+		// Keep the join name even if the script is missing or loads later.
+		if ( iClass < TF_CLASS_MENU_BUTTONS && g_aRawPlayerClassNames[iClass][0] )
+			Q_strncpy( pClassData->m_szClassName, g_aRawPlayerClassNames[iClass], TF_NAME_LENGTH );
 		pClassData->Parse( s_aPlayerClassFiles[iClass] );
 	}
 
 	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Try again once the map is up, in case the mod search path was not
+// ready when the game systems initialized.
+//-----------------------------------------------------------------------------
+void CTFPlayerClassDataMgr::LevelInitPostEntity( void )
+{
+	for ( int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass )
+	{
+		if ( !s_aPlayerClassFiles[iClass][0] )
+			continue;
+
+		TFPlayerClassData_t *pClassData = &m_aTFPlayerClassData[iClass];
+		if ( !pClassData->m_bParsed )
+			pClassData->Parse( s_aPlayerClassFiles[iClass] );
+	}
 }
 
 //-----------------------------------------------------------------------------
