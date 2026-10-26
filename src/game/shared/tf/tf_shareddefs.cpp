@@ -210,7 +210,10 @@ const char *g_pszBreadModels[] =
 	"models/weapons/c_models/c_bread/c_bread_pretzel.mdl",		// Medic
 	"models/weapons/c_models/c_bread/c_bread_ration.mdl",		// Soldier
 	"models/weapons/c_models/c_bread/c_bread_russianblack.mdl",	// Heavy?
+	"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl",	// Madcap
+	"models/vip_mobster/bread_garlic.mdl",				// Mobster
 };
+COMPILE_TIME_ASSERT( ARRAYSIZE( g_pszBreadModels ) == ( TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS ) );
 
 int GetClassIndexFromString( const char *pClassName, int nLastClassIndex/*=TF_LAST_NORMAL_CLASS*/ )
 {
