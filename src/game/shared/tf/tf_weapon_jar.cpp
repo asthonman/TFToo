@@ -1425,7 +1425,8 @@ void CTFProjectile_MoneyBag::AuraThink( void )
 			// Speakeasy grants its buff once. A full 5 seconds of aura is left at
 			// deploy, so that grant is 6 seconds, and it falls to 1 second as the crate ends.
 			float flTimeRemaining = m_flRefreshUntil - gpGlobals->curtime;
-			pPlayer->m_Shared.AddCond( GetAuraCondition(), GetAppliedBuffDuration( flTimeRemaining ), pProvider ? pProvider : this );
+			CBaseEntity *pBuffProvider = pProvider ? static_cast< CBaseEntity * >( pProvider ) : this;
+			pPlayer->m_Shared.AddCond( GetAuraCondition(), GetAppliedBuffDuration( flTimeRemaining ), pBuffProvider );
 		}
 	}
 
