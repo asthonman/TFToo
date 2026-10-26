@@ -20135,7 +20135,15 @@ void CTFPlayer::NoteSpokeVoiceCommand( const char *pszScenePlayed )
 		m_iVoiceSpamCounter++;
 	}
 
-	m_flNextVoiceCommandTime = gpGlobals->curtime + MIN( GetSceneDuration( pszScenePlayed ), tf_max_voice_speak_delay.GetFloat() );
+	float flSpokenFor = GetSceneDuration( pszScenePlayed );
+	if ( flSpokenFor <= 0.0f )
+	{
+		// Sound-script responses are not scene files, so the scene cache reports 0
+		// and the next voice command would be allowed immediately.
+		flSpokenFor = 2.5f;
+	}
+
+	m_flNextVoiceCommandTime = gpGlobals->curtime + MIN( flSpokenFor, tf_max_voice_speak_delay.GetFloat() );
 
 	if ( m_iVoiceSpamCounter > 0 )
 	{
