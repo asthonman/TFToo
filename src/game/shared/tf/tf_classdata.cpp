@@ -126,21 +126,13 @@ void TFPlayerClassData_t::Parse( const char *szName )
 	if ( m_bParsed )
 		return;
 
-	// Parse class file. The encrypted reader only searches MOD, so also try GAME
-	// for a loose script that lives next to gameinfo.txt.
+	// Parse class file.
 	const unsigned char *pKey = GetTFEncryptionKey();
 	KeyValues *pKV = ReadEncryptedKVFile( filesystem, szName, pKey );
 	if ( !pKV )
 	{
-		char szFullName[512];
-		Q_snprintf( szFullName, sizeof( szFullName ), "%s.txt", szName );
-		pKV = new KeyValues( "PlayerClassData" );
-		if ( !pKV->LoadFromFile( filesystem, szFullName, "GAME" ) )
-		{
-			pKV->deleteThis();
-			Warning( "Failed to load player class script %s.txt\n", szName );
-			return;
-		}
+		Warning( "Failed to load player class script %s.txt\n", szName );
+		return;
 	}
 
 	ParseData( pKV );
