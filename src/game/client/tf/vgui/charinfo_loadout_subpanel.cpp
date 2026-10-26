@@ -20,6 +20,7 @@
 #include "trading_start_dialog.h"
 #include "gc_clientsystem.h"
 #include "tf_item_system.h"
+#include "tf_classmenu.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
@@ -37,6 +38,7 @@ CImageButton::CImageButton( vgui::Panel *parent, const char *panelName ) : BaseC
 {
 	m_pszActiveImageName = NULL;
 	m_pszInactiveImageName = NULL;
+	m_bScaleImage = false;
 
 	m_pActiveImage = NULL;
 	m_pInactiveImage = NULL;
@@ -142,11 +144,20 @@ void CImageButton::ApplySchemeSettings( vgui::IScheme *pScheme )
 //-----------------------------------------------------------------------------
 void CImageButton::SetActiveImage( const char *imagename )
 {
+	delete [] m_pszActiveImageName;
+	m_pszActiveImageName = NULL;
+
+	if ( !imagename || !imagename[0] )
+	{
+		SetActiveImage( (vgui::IImage *)NULL );
+		return;
+	}
+
 	int len = Q_strlen( imagename ) + 1;
 	m_pszActiveImageName = new char[ len ];
 	Q_strncpy( m_pszActiveImageName, imagename, len );
 
-	SetActiveImage(vgui::scheme()->GetImage( m_pszActiveImageName, m_bScaleImage ) );
+	SetActiveImage( vgui::scheme()->GetImage( m_pszActiveImageName, m_bScaleImage ) );
 }
 
 //-----------------------------------------------------------------------------
@@ -154,11 +165,20 @@ void CImageButton::SetActiveImage( const char *imagename )
 //-----------------------------------------------------------------------------
 void CImageButton::SetInactiveImage( const char *imagename )
 {
+	delete [] m_pszInactiveImageName;
+	m_pszInactiveImageName = NULL;
+
+	if ( !imagename || !imagename[0] )
+	{
+		SetInactiveImage( (vgui::IImage *)NULL );
+		return;
+	}
+
 	int len = Q_strlen( imagename ) + 1;
 	m_pszInactiveImageName = new char[ len ];
 	Q_strncpy( m_pszInactiveImageName, imagename, len );
 
-	SetInactiveImage(vgui::scheme()->GetImage( m_pszInactiveImageName, m_bScaleImage ) );
+	SetInactiveImage( vgui::scheme()->GetImage( m_pszInactiveImageName, m_bScaleImage ) );
 }
 
 //-----------------------------------------------------------------------------
@@ -278,18 +298,25 @@ const char *g_pszSubButtonLabelNames[CHSB_NUM_BUTTONS] =
 	"ShowPaintkitsLabel",	// CHSB_PAINTKITS
 };
 
-int g_nLoadoutClassOrder[] =
+//-----------------------------------------------------------------------------
+// Madcap and Mobster are not in CharInfoLoadoutSubPanel.res. The stock nine
+// pick up scale, sounds, and a size from that file.
+//-----------------------------------------------------------------------------
+static void InitExtraLoadoutClassButton( CImageButton *pButton )
 {
-	TF_CLASS_SCOUT,
-	TF_CLASS_SOLDIER,
-	TF_CLASS_PYRO,
-	TF_CLASS_DEMOMAN,
-	TF_CLASS_HEAVYWEAPONS,
-	TF_CLASS_ENGINEER,
-	TF_CLASS_MEDIC,
-	TF_CLASS_SNIPER,
-	TF_CLASS_SPY
-};
+	KeyValues *pSettings = new KeyValues( "ImageButton" );
+	pSettings->SetInt( "scaleImage", 1 );
+	pSettings->SetInt( "wide", 60 );
+	pSettings->SetInt( "tall", 120 );
+	pSettings->SetString( "labelText", "" );
+	pSettings->SetString( "textAlignment", "south-west" );
+	pSettings->SetString( "font", "MenuKeys" );
+	pSettings->SetString( "sound_depressed", "UI/buttonclick.wav" );
+	pSettings->SetString( "sound_released", "UI/buttonclickrelease.wav" );
+	pButton->ApplySettings( pSettings );
+	pSettings->deleteThis();
+	pButton->SetVisible( false );
+}
 
 
 //-----------------------------------------------------------------------------
@@ -299,6 +326,8 @@ CCharInfoLoadoutSubPanel::CCharInfoLoadoutSubPanel(Panel *parent) : vgui::Proper
 {
 	m_iCurrentClassIndex = TF_CLASS_UNDEFINED;
 	m_iCurrentTeamIndex = TF_TEAM_RED;
+	m_nLoadoutClassPage = 0;
+	m_flLastLoadoutPageChange = -1.f;
 	m_iShowingPanel = CHAP_LOADOUT;
 	m_iPrevShowingPanel = CHAP_LOADOUT;
 
@@ -313,6 +342,10 @@ CCharInfoLoadoutSubPanel::CCharInfoLoadoutSubPanel(Panel *parent) : vgui::Proper
 	m_pClassButtons[ TF_CLASS_MEDIC ] = new CImageButton( this, "medic" );
 	m_pClassButtons[ TF_CLASS_SNIPER ] = new CImageButton( this, "sniper" );
 	m_pClassButtons[ TF_CLASS_SPY ] = new CImageButton( this, "spy" );
+	m_pClassButtons[ TF_CLASS_MADCAP ] = new CImageButton( this, "madcap" );
+	m_pClassButtons[ TF_CLASS_MOBSTER ] = new CImageButton( this, "mobster" );
+	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_MADCAP ] );
+	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_MOBSTER ] );
 
 	for( int i = 0; i < Q_ARRAYSIZE( m_pClassButtons ); i++ )
 	{
@@ -385,7 +418,9 @@ void CCharInfoLoadoutSubPanel::ApplySchemeSettings( vgui::IScheme *pScheme )
 	// Start classes sized as if the mouse is in the middle of the screen
 	m_iMouseXPos = -1;
 	m_bSnapClassLayout = true;
+	ApplyLoadoutClassPage();
 	RecalculateTargetClassLayout();
+	m_bClassLayoutDirty = true;
 }
 
 //-----------------------------------------------------------------------------
@@ -644,6 +679,7 @@ void CCharInfoLoadoutSubPanel::SetTeamIndex( int iTeam )
 {
 	Assert( IsValidTFTeam( iTeam ) );
 	m_iCurrentTeamIndex = iTeam;
+	ApplyLoadoutClassPage();
 }
 
 
@@ -813,10 +849,33 @@ void CCharInfoLoadoutSubPanel::PerformLayout( void )
 
 	m_bClassLayoutDirty = false;
 
-	// Now Layout the class images. 
-	for ( int iPanel = 0; iPanel < ARRAYSIZE( g_nLoadoutClassOrder ); iPanel++ )
+	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 	{
-		int i = g_nLoadoutClassOrder[iPanel];
+		if ( !m_pClassButtons[i] || !m_pClassButtons[i]->IsVisible() )
+			continue;
+
+		bool bOnPage = false;
+		for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
+		{
+			if ( ClassButtonForPageSlot( nSlot ) == i )
+			{
+				bOnPage = true;
+				break;
+			}
+		}
+		if ( !bOnPage )
+			m_pClassButtons[i]->SetVisible( false );
+	}
+
+	// Lay out whichever classes are on this page. Empty slots stay empty.
+	for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
+	{
+		const int i = ClassButtonForPageSlot( nSlot );
+		if ( i == TF_CLASS_UNDEFINED )
+			continue;
+
+		if ( !m_pClassButtons[i]->IsVisible() )
+			m_pClassButtons[i]->SetVisible( true );
 
 		int iX = m_iClassLayout[i][0];
 		int iY = m_iClassLayout[i][1];
@@ -854,9 +913,12 @@ void CCharInfoLoadoutSubPanel::PerformLayout( void )
 	// cached pos might have come from the keyboard.
 	if( x < 0 )
 		vgui::input()->GetCursorPos(x, y);
-	for ( int iPanel = 0; iPanel < ARRAYSIZE( g_nLoadoutClassOrder ); iPanel++ )
+	for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
 	{
-		int i = g_nLoadoutClassOrder[iPanel];
+		const int i = ClassButtonForPageSlot( nSlot );
+		if ( i == TF_CLASS_UNDEFINED || !m_pClassButtons[i]->IsVisible() )
+			continue;
+
 		m_pClassButtons[i]->SetArmed( false );
 
 		m_pClassButtons[i]->SetEnabled( TFInventoryManager()->GetLocalTFInventory()->RetrievedInventoryFromSteam() );
@@ -925,18 +987,21 @@ void CCharInfoLoadoutSubPanel::UpdateLabelFromClass( int nClass )
 		m_pItemsLabel->SetColorStr( m_ItemColor );
 	}
 
-	int iPos = 0;
-	for ( int i = TF_FIRST_NORMAL_CLASS; i <= NUM_CLASSES_IN_LOADOUT_PANEL; i++ )
+	int nSlot = -1;
+	for ( int i = 0; i < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++i )
 	{
-		if ( iRemapIndexToClass[i] == nClass )
+		if ( CTFClassMenu::ClassForPageSlot( m_nLoadoutClassPage, i ) == nClass )
 		{
-			iPos = i;
+			nSlot = i;
 			break;
 		}
 	}
-	Assert(iPos != 0 );
-	int iXLeft = (GetWide() - ((m_iClassWideMin * NUM_CLASSES_IN_LOADOUT_PANEL) + (m_iClassXDelta * (NUM_CLASSES_IN_LOADOUT_PANEL-1)))) * 0.5;
-	int iBaseX = iXLeft + ((m_iClassWideMin + m_iClassXDelta) * (iPos-1));
+	if ( nSlot < 0 || !m_pClassLabel || !m_pItemsLabel )
+		return;
+
+	const int nSlots = CTFClassMenu::CLASS_MENU_SLOT_COUNT;
+	int iXLeft = (GetWide() - ((m_iClassWideMin * nSlots) + (m_iClassXDelta * (nSlots-1)))) * 0.5;
+	int iBaseX = iXLeft + ((m_iClassWideMin + m_iClassXDelta) * nSlot);
 	int iCenterX = iBaseX + (m_iClassWideMin * 0.5);
 
 	m_pClassLabel->SetVisible( true );
@@ -1077,8 +1142,11 @@ void CCharInfoLoadoutSubPanel::RecalculateTargetClassLayoutAtPos( int x, int y )
 {
 	// Ignore mouse movement outside the buttons
 	bool bWithin = false;
-	for ( int i = TF_FIRST_NORMAL_CLASS; i <= NUM_CLASSES_IN_LOADOUT_PANEL; i++ )
+	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 	{
+		if ( !m_pClassButtons[i] || !m_pClassButtons[i]->IsVisible() )
+			continue;
+
 		if ( m_pClassButtons[i]->IsWithin(x,y) )
 		{
 			bWithin = true;
@@ -1129,14 +1197,17 @@ void CCharInfoLoadoutSubPanel::RecalculateTargetClassLayoutAtPos( int x, int y )
 //-----------------------------------------------------------------------------
 void CCharInfoLoadoutSubPanel::RecalculateTargetClassLayout( void )
 {
-	// Now Layout the class images. 
-	for ( int i = TF_FIRST_NORMAL_CLASS; i <= NUM_CLASSES_IN_LOADOUT_PANEL; i++ )
-	{
-		int iIndex = GetRemappedMenuIndexForClass(i);
+	const int nSlots = CTFClassMenu::CLASS_MENU_SLOT_COUNT;
 
-		// Figure out where we'd be unscaled
-		int iXLeft = (GetWide() - ((m_iClassWideMin * NUM_CLASSES_IN_LOADOUT_PANEL) + (m_iClassXDelta * (NUM_CLASSES_IN_LOADOUT_PANEL-1)))) * 0.5;
-		int iBaseX = iXLeft + ((m_iClassWideMin + m_iClassXDelta) * (iIndex-1));
+	for ( int nSlot = 0; nSlot < nSlots; ++nSlot )
+	{
+		const int i = ClassButtonForPageSlot( nSlot );
+		if ( i == TF_CLASS_UNDEFINED )
+			continue;
+
+		// Figure out where we'd be unscaled. Slot 0 is the 1 key, same as class select.
+		int iXLeft = (GetWide() - ((m_iClassWideMin * nSlots) + (m_iClassXDelta * (nSlots-1)))) * 0.5;
+		int iBaseX = iXLeft + ((m_iClassWideMin + m_iClassXDelta) * nSlot);
 
 		// Scale based on distance from the mouse cursor.
 		int iCenterX = iBaseX + (m_iClassWideMin * 0.5);
@@ -1165,38 +1236,50 @@ void CCharInfoLoadoutSubPanel::RecalculateTargetClassLayout( void )
 
 void CCharInfoLoadoutSubPanel::MoveCharacterSelection( int nDirection )
 {
+	const int nCount = CountClassesOnLoadoutPage();
+	if ( nCount <= 0 )
+		return;
+
 	int nCurrent = 0;
 
 	if ( m_iLabelSetToClass != -1 )
 	{
-		for ( int i = 0; i < ARRAYSIZE( g_nLoadoutClassOrder ); i++ )
+		int nIndex = -1;
+		int nSeen = 0;
+		for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
 		{
-			if ( m_iLabelSetToClass == g_nLoadoutClassOrder[ i ] )
+			const int iClass = ClassButtonForPageSlot( nSlot );
+			if ( iClass == TF_CLASS_UNDEFINED )
+				continue;
+			if ( m_iLabelSetToClass == iClass )
 			{
-				nCurrent = i;
+				nIndex = nSeen;
 				break;
 			}
+			++nSeen;
 		}
 
-		nCurrent += nDirection;
-
-		if ( nCurrent < 0 )
+		if ( nIndex >= 0 )
 		{
-			nCurrent = ARRAYSIZE( g_nLoadoutClassOrder ) - 1;
-		}
-		else if ( nCurrent >= ARRAYSIZE( g_nLoadoutClassOrder ) )
-		{
-			nCurrent = 0;
+			nCurrent = nIndex + nDirection;
+			if ( nCurrent < 0 )
+				nCurrent = nCount - 1;
+			else if ( nCurrent >= nCount )
+				nCurrent = 0;
 		}
 	}
 
-	for ( int i = 0; i < ARRAYSIZE( g_nLoadoutClassOrder ); i++ )
+	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 	{
-		m_pClassButtons[ g_nLoadoutClassOrder[ i ] ]->SetArmed( false );
+		if ( m_pClassButtons[i] )
+			m_pClassButtons[i]->SetArmed( false );
 	}
 
-	// animate the class buttons
-	CImageButton *pButton = m_pClassButtons[ g_nLoadoutClassOrder[ nCurrent ] ];
+	const int iClass = ClassOnLoadoutPage( nCurrent );
+	CImageButton *pButton = ( iClass > TF_CLASS_UNDEFINED && iClass < ARRAYSIZE( m_pClassButtons ) ) ? m_pClassButtons[iClass] : NULL;
+	if ( !pButton )
+		return;
+
 	int x, y, wide, tall;
 	pButton->GetBounds( x, y, wide, tall );
 	RecalculateTargetClassLayoutAtPos( x + wide/2, y + tall/2 );
@@ -1236,6 +1319,17 @@ void CCharInfoLoadoutSubPanel::OnKeyCodePressed(vgui::KeyCode code)
 		{
 			BaseClass::OnKeyCodePressed( code );
 		}
+		return;
+	}
+
+	// Same binds that change pages on the class select screen. One wheel notch
+	// arrives as both a key and OnMouseWheeled; the wheel path is debounced.
+	const bool bNextPage = ClassMenuButtonBoundTo( code, "invnext" );
+	const bool bPrevPage = ClassMenuButtonBoundTo( code, "invprev" );
+	if ( m_iShowingPanel == CHAP_LOADOUT && ( bNextPage || bPrevPage ) )
+	{
+		const bool bWheel = ( code == MOUSE_WHEEL_UP || code == MOUSE_WHEEL_DOWN );
+		ChangeLoadoutClassPage( bNextPage ? 1 : -1, bWheel );
 		return;
 	}
 
@@ -1279,8 +1373,12 @@ void CCharInfoLoadoutSubPanel::OnKeyCodePressed(vgui::KeyCode code)
 	{
 		if ( m_iLabelSetToClass == -1 )
 		{
-			m_iLabelSetToClass = g_nLoadoutClassOrder[ 0 ];
-			CImageButton *pButton = m_pClassButtons[ m_iLabelSetToClass ];
+			const int iFirst = ClassOnLoadoutPage( 0 );
+			CImageButton *pButton = ( iFirst > TF_CLASS_UNDEFINED ) ? m_pClassButtons[iFirst] : NULL;
+			if ( !pButton )
+				return;
+
+			m_iLabelSetToClass = iFirst;
 			UpdateLabelFromClass( m_iLabelSetToClass );
 
 			int x, y, wide, tall;
@@ -1303,10 +1401,10 @@ void CCharInfoLoadoutSubPanel::OnKeyCodePressed(vgui::KeyCode code)
 			m_pClassLabel->SetVisible( false );
 			m_pItemsLabel->SetVisible( false );
 
-			for ( int iPanel = 0; iPanel < ARRAYSIZE( g_nLoadoutClassOrder ); iPanel++ )
+			for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
 			{
-				int i = g_nLoadoutClassOrder[iPanel];
-				m_pClassButtons[i]->SetArmed( false );
+				if ( m_pClassButtons[i] )
+					m_pClassButtons[i]->SetArmed( false );
 			}
 
 			UpdateLabelFromSubButton( 0 );
@@ -1315,4 +1413,159 @@ void CCharInfoLoadoutSubPanel::OnKeyCodePressed(vgui::KeyCode code)
 	}
 
 	BaseClass::OnKeyCodePressed( code );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: invnext / invprev, including the mouse wheel, change pages.
+//-----------------------------------------------------------------------------
+void CCharInfoLoadoutSubPanel::OnMouseWheeled( int delta )
+{
+	if ( m_iShowingPanel != CHAP_LOADOUT || m_iCurrentClassIndex != TF_CLASS_UNDEFINED || delta == 0 )
+	{
+		BaseClass::OnMouseWheeled( delta );
+		return;
+	}
+
+	const ButtonCode_t code = ( delta > 0 ) ? MOUSE_WHEEL_UP : MOUSE_WHEEL_DOWN;
+	if ( ClassMenuButtonBoundTo( code, "invnext" ) )
+	{
+		ChangeLoadoutClassPage( 1, true );
+		return;
+	}
+	if ( ClassMenuButtonBoundTo( code, "invprev" ) )
+	{
+		ChangeLoadoutClassPage( -1, true );
+		return;
+	}
+
+	BaseClass::OnMouseWheeled( delta );
+}
+
+int CCharInfoLoadoutSubPanel::ClassButtonForPageSlot( int nSlot ) const
+{
+	if ( nSlot < 0 || nSlot >= CTFClassMenu::CLASS_MENU_SLOT_COUNT )
+		return TF_CLASS_UNDEFINED;
+
+	const int iClass = CTFClassMenu::ClassForPageSlot( m_nLoadoutClassPage, nSlot );
+	if ( !IsValidTFPlayerClass( iClass ) )
+		return TF_CLASS_UNDEFINED;
+	if ( iClass < 0 || iClass >= ARRAYSIZE( m_pClassButtons ) || !m_pClassButtons[iClass] )
+		return TF_CLASS_UNDEFINED;
+
+	return iClass;
+}
+
+int CCharInfoLoadoutSubPanel::CountClassesOnLoadoutPage( void ) const
+{
+	int nCount = 0;
+	for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
+	{
+		if ( ClassButtonForPageSlot( nSlot ) != TF_CLASS_UNDEFINED )
+			++nCount;
+	}
+	return nCount;
+}
+
+int CCharInfoLoadoutSubPanel::ClassOnLoadoutPage( int nVisibleIndex ) const
+{
+	int nSeen = 0;
+	for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
+	{
+		const int iClass = ClassButtonForPageSlot( nSlot );
+		if ( iClass == TF_CLASS_UNDEFINED )
+			continue;
+		if ( nSeen == nVisibleIndex )
+			return iClass;
+		++nSeen;
+	}
+	return TF_CLASS_UNDEFINED;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Show this page's classes in the same slots as the class menu.
+// Empty numbers stay blank. Portraits that don't exist yet reuse another class.
+//-----------------------------------------------------------------------------
+void CCharInfoLoadoutSubPanel::ApplyLoadoutClassPage( void )
+{
+	const int nPages = CTFClassMenu::ClassPageCount();
+	if ( m_nLoadoutClassPage < 0 || m_nLoadoutClassPage >= nPages )
+		m_nLoadoutClassPage = 0;
+
+	const char *pTeamExtension = ( m_iCurrentTeamIndex == TF_TEAM_BLUE ) ? "blu" : "red";
+
+	for ( int i = 0; i < ARRAYSIZE( m_pClassButtons ); ++i )
+	{
+		if ( !m_pClassButtons[i] )
+			continue;
+
+		bool bOnPage = false;
+		for ( int nSlot = 0; nSlot < CTFClassMenu::CLASS_MENU_SLOT_COUNT; ++nSlot )
+		{
+			if ( ClassButtonForPageSlot( nSlot ) == i )
+			{
+				bOnPage = true;
+				break;
+			}
+		}
+
+		if ( m_pClassButtons[i]->IsVisible() != bOnPage )
+			m_pClassButtons[i]->SetVisible( bOnPage );
+
+		if ( !bOnPage )
+		{
+			m_pClassButtons[i]->SetCommand( "" );
+			continue;
+		}
+
+		const char *pszName = g_aRawPlayerClassNames[i];
+		if ( pszName && pszName[0] )
+		{
+			m_pClassButtons[i]->SetCommand( CFmtStr( "loadout %s", pszName ) );
+		}
+
+		const char *pszShort = CTFClassMenu::PortraitShortName( i );
+		m_pClassButtons[i]->SetActiveImage( CFmtStr( "class_sel_sm_%s_%s", pszShort, pTeamExtension ) );
+		m_pClassButtons[i]->SetInactiveImage( CFmtStr( "class_sel_sm_%s_inactive", pszShort ) );
+	}
+}
+
+void CCharInfoLoadoutSubPanel::ChangeLoadoutClassPage( int nDir, bool bFromWheel )
+{
+	if ( nDir == 0 || m_iShowingPanel != CHAP_LOADOUT || m_iCurrentClassIndex != TF_CLASS_UNDEFINED )
+		return;
+
+	const int nPages = CTFClassMenu::ClassPageCount();
+	if ( nPages <= 1 )
+		return;
+
+	// One wheel notch is delivered as both a key and OnMouseWheeled, sometimes
+	// a frame apart. Drop the second so two pages don't wrap straight back.
+	if ( bFromWheel )
+	{
+		const float flNow = Plat_FloatTime();
+		if ( m_flLastLoadoutPageChange >= 0.f && ( flNow - m_flLastLoadoutPageChange ) < 0.1f )
+			return;
+		m_flLastLoadoutPageChange = flNow;
+	}
+
+	int nPage = m_nLoadoutClassPage + ( nDir > 0 ? 1 : -1 );
+	if ( nPage >= nPages )
+		nPage = 0;
+	else if ( nPage < 0 )
+		nPage = nPages - 1;
+
+	m_nLoadoutClassPage = nPage;
+	m_iLabelSetToClass = -1;
+	m_iMouseXPos = -1;
+	if ( m_pClassLabel )
+		m_pClassLabel->SetVisible( false );
+	if ( m_pItemsLabel )
+		m_pItemsLabel->SetVisible( false );
+
+	ApplyLoadoutClassPage();
+	m_bSnapClassLayout = true;
+	RecalculateTargetClassLayout();
+	m_bClassLayoutDirty = true;
+	InvalidateLayout();
+	RequestFocus();
 }

@@ -774,7 +774,7 @@ static const ClassMenuSlot_t g_ClassMenuPages[][9] =
 	},
 };
 
-static bool ClassMenuButtonBoundTo( ButtonCode_t code, const char *pszCommand )
+bool ClassMenuButtonBoundTo( ButtonCode_t code, const char *pszCommand )
 {
 	if ( code <= BUTTON_CODE_NONE || !pszCommand || !pszCommand[0] )
 		return false;

@@ -115,6 +115,7 @@ public:
 	void MoveCharacterSelection( int nDirection );
 	void	OnKeyCodeTyped( vgui::KeyCode code );
 	void	OnKeyCodePressed( vgui::KeyCode code );
+	void	OnMouseWheeled( int delta );
 
 	bool		 ShouldShowExplanations( void ) { return (m_iShowingPanel == CHAP_LOADOUT && m_iCurrentClassIndex == TF_CLASS_UNDEFINED); }
 
@@ -132,6 +133,11 @@ public:
 
 private:
 	void		RequestInventoryRefresh();
+	void		ApplyLoadoutClassPage( void );
+	void		ChangeLoadoutClassPage( int nDir, bool bFromWheel );
+	int			ClassButtonForPageSlot( int nSlot ) const;
+	int			CountClassesOnLoadoutPage( void ) const;
+	int			ClassOnLoadoutPage( int nVisibleIndex ) const;
 
 	CImageButton		*m_pClassButtons[NUM_CLASSES_IN_LOADOUT_PANEL+1];
 	CImageButton		*m_pSubButtons[CHSB_NUM_BUTTONS];
@@ -143,6 +149,8 @@ private:
 	bool				m_bRequestingInventoryRefresh;
 	int					m_iCurrentClassIndex;
 	int					m_iCurrentTeamIndex;
+	int					m_nLoadoutClassPage;
+	float				m_flLastLoadoutPageChange;
 	charinfo_activepanels_t	m_iShowingPanel;
 	charinfo_activepanels_t	m_iPrevShowingPanel;
 	CClassLoadoutPanel	*m_pClassLoadoutPanel;

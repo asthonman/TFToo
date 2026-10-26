@@ -29,6 +29,8 @@
 
 using namespace vgui;
 
+bool ClassMenuButtonBoundTo( ButtonCode_t code, const char *pszCommand );
+
 #define CLASS_COUNT_IMAGES	11
 
 class CTFClassTipsPanel;
@@ -62,6 +64,14 @@ private:
 
 public:
 	CTFClassMenu( IViewPort *pViewPort );
+
+	// Same pages the items menu uses. Letter is the page, 0-8 is the 1-9 key.
+	enum { CLASS_MENU_SLOT_COUNT = 9 };
+
+	static int ClassPageCount( void );
+	static int ClassForPageSlot( int nPage, int nSlot );
+	static int PageForClass( int iClass );
+	static const char *PortraitShortName( int iClass );
 
 	virtual void Update( void );
 	virtual Panel *CreateControlByName( const char *controlName );
@@ -118,16 +128,6 @@ protected:
 	CSCHintIcon				*m_pCancelHintIcon;
 
 private:
-
-	// Nine button positions, keys 1-9. Which class is on which page is written
-	// out in g_ClassMenuPages (tf_classmenu.cpp): letter is the page, number is
-	// the key and the button. Empty numbers are not filled in automatically.
-	enum { CLASS_MENU_SLOT_COUNT = 9 };
-
-	static int			ClassPageCount( void );
-	static int			ClassForPageSlot( int nPage, int nSlot );
-	static int			PageForClass( int iClass );
-	static const char	*PortraitShortName( int iClass );
 
 	void		ApplyClassPage( void );
 	void		ChangeClassPage( int nDir, bool bFromWheel );
