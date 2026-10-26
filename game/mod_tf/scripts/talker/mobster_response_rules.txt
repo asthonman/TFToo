@@ -1,0 +1,383 @@
+// Mobster voice. Loaded on top of the stock response rules.
+// No per-class spy callouts or domination lines.
+criterion "MobsterClass" "playerclass" "Mobster" required
+criterion "MobsterMedicAngry" "mediccall" "angry" required
+criterion "MobsterMeleeKill" "meleekill" "1" required
+criterion "MobsterPainSharp" "painlevel" "sharp" required
+criterion "MobsterPainSevere" "painlevel" "severe" required
+criterion "MobsterPainCrit" "painlevel" "crit" required
+criterion "MobsterConceptMedic" "Concept" "TLK_PLAYER_MEDIC" required
+criterion "MobsterConceptThanks" "Concept" "TLK_PLAYER_THANKS" required
+criterion "MobsterConceptGo" "Concept" "TLK_PLAYER_GO" required
+criterion "MobsterConceptMoveUp" "Concept" "TLK_PLAYER_MOVEUP" required
+criterion "MobsterConceptLeft" "Concept" "TLK_PLAYER_LEFT" required
+criterion "MobsterConceptRight" "Concept" "TLK_PLAYER_RIGHT" required
+criterion "MobsterConceptYes" "Concept" "TLK_PLAYER_YES" required
+criterion "MobsterConceptNo" "Concept" "TLK_PLAYER_NO" required
+criterion "MobsterConceptIncoming" "Concept" "TLK_PLAYER_INCOMING" required
+criterion "MobsterConceptCloakedSpy" "Concept" "TLK_PLAYER_CLOAKEDSPY" required
+criterion "MobsterConceptSentryAhead" "Concept" "TLK_PLAYER_SENTRYAHEAD" required
+criterion "MobsterConceptTeleporter" "Concept" "TLK_PLAYER_TELEPORTERHERE" required
+criterion "MobsterConceptDispenser" "Concept" "TLK_PLAYER_DISPENSERHERE" required
+criterion "MobsterConceptSentry" "Concept" "TLK_PLAYER_SENTRYHERE" required
+criterion "MobsterConceptCharge" "Concept" "TLK_PLAYER_ACTIVATECHARGE" required
+criterion "MobsterConceptHelp" "Concept" "TLK_PLAYER_HELP" required
+criterion "MobsterConceptBattleCry" "Concept" "TLK_PLAYER_BATTLECRY" required
+criterion "MobsterConceptCheers" "Concept" "TLK_PLAYER_CHEERS" required
+criterion "MobsterConceptJeers" "Concept" "TLK_PLAYER_JEERS" required
+criterion "MobsterConceptPositive" "Concept" "TLK_PLAYER_POSITIVE" required
+criterion "MobsterConceptNegative" "Concept" "TLK_PLAYER_NEGATIVE" required
+criterion "MobsterConceptNiceShot" "Concept" "TLK_PLAYER_NICESHOT" required
+criterion "MobsterConceptGoodJob" "Concept" "TLK_PLAYER_GOODJOB" required
+criterion "MobsterConceptTaunt" "Concept" "TLK_PLAYER_TAUNT" required
+criterion "MobsterConceptLaugh" "Concept" "TLK_TAUNT_LAUGH" required
+criterion "MobsterConceptJarate" "Concept" "TLK_JARATE_HIT" required
+criterion "MobsterConceptMedicFollow" "Concept" "TLK_HEALTARGET_STARTEDHEALING" required
+criterion "MobsterConceptKill" "Concept" "TLK_KILLED_PLAYER" required
+criterion "MobsterConceptCaptured" "Concept" "TLK_CAPTURED_POINT" required
+criterion "MobsterConceptCapAlert" "Concept" "TLK_CAPTURE_BLOCKED" required
+criterion "MobsterConceptStandPoint" "Concept" "TLK_LOST_CONTROL_POINT" required
+criterion "MobsterConceptPain" "Concept" "TLK_PLAYER_PAIN" required
+criterion "MobsterConceptAttackerPain" "Concept" "TLK_PLAYER_ATTACKER_PAIN" required
+
+response "MobsterMedicAngry"
+{
+	speak "Mobster.MedicAngry"
+}
+response "MobsterMeleeKill" odds 66 predelay "0.4,1.6"
+{
+	speak "Mobster.MeleeKillImmediate"
+	speak "Mobster.MeleeKill"
+}
+response "MobsterPainSharp" odds 20
+{
+	speak "Mobster.PainSharp"
+}
+response "MobsterPainSevere" odds 20
+{
+	speak "Mobster.PainSevere"
+}
+response "MobsterPainCrit" odds 20
+{
+	speak "Mobster.PainCritical"
+}
+response "MobsterMedic"
+{
+	speak "Mobster.Medic"
+}
+response "MobsterThanks"
+{
+	speak "Mobster.Thanks"
+}
+response "MobsterGo"
+{
+	speak "Mobster.Go"
+}
+response "MobsterMoveUp"
+{
+	speak "Mobster.MoveUp"
+}
+response "MobsterLeft"
+{
+	speak "Mobster.Left"
+}
+response "MobsterRight"
+{
+	speak "Mobster.Right"
+}
+response "MobsterYes"
+{
+	speak "Mobster.Yes"
+}
+response "MobsterNo"
+{
+	speak "Mobster.No"
+}
+response "MobsterIncoming"
+{
+	speak "Mobster.Incoming"
+}
+response "MobsterCloakedSpy"
+{
+	speak "Mobster.CloakedSpy"
+}
+response "MobsterSentryAhead"
+{
+	speak "Mobster.SentryAhead"
+}
+response "MobsterTeleporter"
+{
+	speak "Mobster.NeedTeleporter"
+}
+response "MobsterDispenser"
+{
+	speak "Mobster.NeedDispenser"
+}
+response "MobsterSentry"
+{
+	speak "Mobster.NeedSentry"
+}
+response "MobsterCharge"
+{
+	speak "Mobster.ActivateCharge"
+}
+response "MobsterHelp"
+{
+	speak "Mobster.Help"
+}
+response "MobsterBattleCry"
+{
+	speak "Mobster.BattleCry"
+}
+response "MobsterCheers"
+{
+	speak "Mobster.Cheers"
+}
+response "MobsterJeers"
+{
+	speak "Mobster.Jeers"
+}
+response "MobsterPositive"
+{
+	speak "Mobster.Positive"
+}
+response "MobsterNegative"
+{
+	speak "Mobster.Negative"
+}
+response "MobsterNiceShot"
+{
+	speak "Mobster.NiceShot"
+}
+response "MobsterGoodJob"
+{
+	speak "Mobster.GoodJob"
+}
+response "MobsterTaunt"
+{
+	speak "Mobster.MeleeDare"
+}
+response "MobsterLaugh"
+{
+	speak "Mobster.Laugh"
+}
+response "MobsterJarate"
+{
+	speak "Mobster.JarateHit"
+}
+response "MobsterMedicFollow"
+{
+	speak "Mobster.MedicFollow"
+}
+response "MobsterKill"
+{
+	speak "Mobster.GenericKill"
+}
+response "MobsterCaptured"
+{
+	speak "Mobster.Cheers"
+}
+response "MobsterCapAlert"
+{
+	speak "Mobster.CaptureAlert"
+}
+response "MobsterStandPoint"
+{
+	speak "Mobster.StandOnPoint"
+}
+
+rule "MobsterMedicAngry"
+{
+	criteria MobsterClass MobsterConceptMedic MobsterMedicAngry
+	response MobsterMedicAngry
+}
+rule "MobsterMeleeKill"
+{
+	criteria MobsterClass MobsterConceptKill MobsterMeleeKill
+	response MobsterMeleeKill
+}
+rule "MobsterPainSharp"
+{
+	criteria MobsterClass MobsterConceptPain MobsterPainSharp
+	response MobsterPainSharp
+}
+rule "MobsterAttackerPainSharp"
+{
+	criteria MobsterClass MobsterConceptAttackerPain MobsterPainSharp
+	response MobsterPainSharp
+}
+rule "MobsterPainSevere"
+{
+	criteria MobsterClass MobsterConceptPain MobsterPainSevere
+	response MobsterPainSevere
+}
+rule "MobsterAttackerPainSevere"
+{
+	criteria MobsterClass MobsterConceptAttackerPain MobsterPainSevere
+	response MobsterPainSevere
+}
+rule "MobsterPainCrit"
+{
+	criteria MobsterClass MobsterConceptPain MobsterPainCrit
+	response MobsterPainCrit
+}
+rule "MobsterAttackerPainCrit"
+{
+	criteria MobsterClass MobsterConceptAttackerPain MobsterPainCrit
+	response MobsterPainCrit
+}
+rule "MobsterMedic"
+{
+	criteria MobsterClass MobsterConceptMedic
+	response MobsterMedic
+}
+rule "MobsterThanks"
+{
+	criteria MobsterClass MobsterConceptThanks
+	response MobsterThanks
+}
+rule "MobsterGo"
+{
+	criteria MobsterClass MobsterConceptGo
+	response MobsterGo
+}
+rule "MobsterMoveUp"
+{
+	criteria MobsterClass MobsterConceptMoveUp
+	response MobsterMoveUp
+}
+rule "MobsterLeft"
+{
+	criteria MobsterClass MobsterConceptLeft
+	response MobsterLeft
+}
+rule "MobsterRight"
+{
+	criteria MobsterClass MobsterConceptRight
+	response MobsterRight
+}
+rule "MobsterYes"
+{
+	criteria MobsterClass MobsterConceptYes
+	response MobsterYes
+}
+rule "MobsterNo"
+{
+	criteria MobsterClass MobsterConceptNo
+	response MobsterNo
+}
+rule "MobsterIncoming"
+{
+	criteria MobsterClass MobsterConceptIncoming
+	response MobsterIncoming
+}
+rule "MobsterCloakedSpy"
+{
+	criteria MobsterClass MobsterConceptCloakedSpy
+	response MobsterCloakedSpy
+}
+rule "MobsterSentryAhead"
+{
+	criteria MobsterClass MobsterConceptSentryAhead
+	response MobsterSentryAhead
+}
+rule "MobsterTeleporter"
+{
+	criteria MobsterClass MobsterConceptTeleporter
+	response MobsterTeleporter
+}
+rule "MobsterDispenser"
+{
+	criteria MobsterClass MobsterConceptDispenser
+	response MobsterDispenser
+}
+rule "MobsterSentry"
+{
+	criteria MobsterClass MobsterConceptSentry
+	response MobsterSentry
+}
+rule "MobsterCharge"
+{
+	criteria MobsterClass MobsterConceptCharge
+	response MobsterCharge
+}
+rule "MobsterHelp"
+{
+	criteria MobsterClass MobsterConceptHelp
+	response MobsterHelp
+}
+rule "MobsterBattleCry"
+{
+	criteria MobsterClass MobsterConceptBattleCry
+	response MobsterBattleCry
+}
+rule "MobsterCheers"
+{
+	criteria MobsterClass MobsterConceptCheers
+	response MobsterCheers
+}
+rule "MobsterJeers"
+{
+	criteria MobsterClass MobsterConceptJeers
+	response MobsterJeers
+}
+rule "MobsterPositive"
+{
+	criteria MobsterClass MobsterConceptPositive
+	response MobsterPositive
+}
+rule "MobsterNegative"
+{
+	criteria MobsterClass MobsterConceptNegative
+	response MobsterNegative
+}
+rule "MobsterNiceShot"
+{
+	criteria MobsterClass MobsterConceptNiceShot
+	response MobsterNiceShot
+}
+rule "MobsterGoodJob"
+{
+	criteria MobsterClass MobsterConceptGoodJob
+	response MobsterGoodJob
+}
+rule "MobsterTaunt"
+{
+	criteria MobsterClass MobsterConceptTaunt
+	response MobsterTaunt
+}
+rule "MobsterLaugh"
+{
+	criteria MobsterClass MobsterConceptLaugh
+	response MobsterLaugh
+}
+rule "MobsterJarate"
+{
+	criteria MobsterClass MobsterConceptJarate
+	response MobsterJarate
+}
+rule "MobsterMedicFollow"
+{
+	criteria MobsterClass MobsterConceptMedicFollow
+	response MobsterMedicFollow
+}
+rule "MobsterKill"
+{
+	criteria MobsterClass MobsterConceptKill
+	response MobsterKill
+}
+rule "MobsterCaptured"
+{
+	criteria MobsterClass MobsterConceptCaptured
+	response MobsterCaptured
+}
+rule "MobsterCapAlert"
+{
+	criteria MobsterClass MobsterConceptCapAlert
+	response MobsterCapAlert
+}
+rule "MobsterStandPoint"
+{
+	criteria MobsterClass MobsterConceptStandPoint
+	response MobsterStandPoint
+}

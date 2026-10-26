@@ -100,3 +100,576 @@
 	"pitch"			"PITCH_NORM"
 	"wave"			"vip_mobster_indev1/moneybag_resist.mp3"
 }
+
+// Mobster voice lines. Spoken by the response rules, not by other classes.
+
+"Mobster.Medic"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_medic01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medic02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medic03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medic04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medic05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medicangry03.mp3"
+	}
+}
+
+"Mobster.MedicAngry"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_medicangry01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medicangry02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medicangry03.mp3"
+	}
+}
+
+"Mobster.MedicFollow"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_medic03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medicangry02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_medicangry03.mp3"
+	}
+}
+
+"Mobster.Thanks"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_thanks01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_thanks02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_thanks03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_thanks04.mp3"
+	}
+}
+
+"Mobster.Go"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_go01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_go02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_go03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_go04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_go05.mp3"
+	}
+}
+
+"Mobster.MoveUp"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_moveup01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moveup02.mp3"
+	}
+}
+
+"Mobster.Left"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"wave"			"mvm/mobster_indev1/mobster_headleft01.mp3"
+}
+
+"Mobster.Right"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"wave"			"mvm/mobster_indev1/mobster_headright01.mp3"
+}
+
+"Mobster.Yes"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_yes01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_yes02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_yes03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_yes04.mp3"
+	}
+}
+
+"Mobster.No"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_no01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_no02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_no03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_no04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_norare01.mp3"
+	}
+}
+
+"Mobster.Incoming"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_incoming01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_incoming02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_incoming03.mp3"
+	}
+}
+
+"Mobster.CloakedSpy"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cloakedspy06.mp3"
+	}
+}
+
+"Mobster.SentryAhead"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_sentryahead01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_sentryahead02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_sentryahead03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_sentryahead04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_sentryahead05.mp3"
+	}
+}
+
+"Mobster.NeedTeleporter"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_needteleporter01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_needteleporter02.mp3"
+	}
+}
+
+"Mobster.NeedDispenser"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_needdispenser01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_needdispenser02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_needdispenser03.mp3"
+	}
+}
+
+"Mobster.NeedSentry"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_needsentry01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_needsentry02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_needsentry03.mp3"
+	}
+}
+
+"Mobster.ActivateCharge"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_activatecharge01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_activatecharge02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_activatecharge03.mp3"
+	}
+}
+
+"Mobster.Help"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_helpme01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpme02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpme03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpme04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpme05.mp3"
+	}
+}
+
+"Mobster.BattleCry"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_battlecry01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry07.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_battlecry08.mp3"
+	}
+}
+
+"Mobster.MeleeDare"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_meleedare01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleedare02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleedare03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleedare04.mp3"
+	}
+}
+
+"Mobster.Cheers"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_cheers01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cheers02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_cheers03.mp3"
+	}
+}
+
+"Mobster.Jeers"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_jeers01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jeers02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jeers03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jeers04.mp3"
+	}
+}
+
+"Mobster.Positive"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_positivevocalization06.mp3"
+	}
+}
+
+"Mobster.Negative"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_negativevocalization01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_negativevocalization02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_negativevocalization03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_negativevocalization04.mp3"
+	}
+}
+
+"Mobster.NiceShot"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_niceshot01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_niceshot02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_niceshot03.mp3"
+	}
+}
+
+"Mobster.GoodJob"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_goodjob01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_goodjob02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_goodjob03.mp3"
+	}
+}
+
+"Mobster.StandOnPoint"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_standonthepoint01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_standonthepoint02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_standonthepoint03.mp3"
+	}
+}
+
+"Mobster.GenericKill"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_generickill01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill07.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill08.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill09.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill10.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill11.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill12.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_generickill13.mp3"
+	}
+}
+
+"Mobster.PainCritical"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_paincrticialdeath01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_paincrticialdeath02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_paincrticialdeath03.mp3"
+	}
+}
+
+"Mobster.PainSevere"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_painsevere01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsevere02.mp3"
+	}
+}
+
+"Mobster.PainSharp"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_painsharp01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_painsharp07.mp3"
+	}
+}
+
+"Mobster.JarateHit"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_jaratehit01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jaratehit02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jaratehit03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_jaratehit04.mp3"
+	}
+}
+
+"Mobster.Laugh"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"wave"			"mvm/mobster_indev1/mobster_laugh01.mp3"
+}
+
+"Mobster.LeaveSpawn"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_leavespawn01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_leavespawn02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_leavespawn03.mp3"
+	}
+}
+
+"Mobster.MeleeKill"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_meleekill01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleekill02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleekill03.mp3"
+	}
+}
+
+"Mobster.MeleeKillImmediate"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_meleekillimmediate01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleekillimmediate02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_meleekillimmediate03.mp3"
+	}
+}
+
+"Mobster.CaptureAlert"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_capalert01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert07.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert08.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert09.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_capalert10.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpmecapture01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_helpmecapture02.mp3"
+	}
+}
+
+"Mobster.MoneyBag.Voice"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed07.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed08.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_moneybagdeployed09.mp3"
+	}
+}

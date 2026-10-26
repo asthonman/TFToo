@@ -3304,6 +3304,8 @@ bool CDefaultResponseSystem::Init()
 	const char *basescript = GetScriptFile();
 
 	LoadRuleSet( basescript );
+	// Mobster lines live in the mod. Missing file is ignored.
+	LoadRuleSet( "scripts/talker/mobster_response_rules.txt" );
 
 	return true;
 }

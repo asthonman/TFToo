@@ -2938,6 +2938,7 @@ void CTFPlayer::PrecacheTFPlayer()
 	// Precache the player sounds.
 	PrecacheScriptSound( "Player.Spawn" );
 	PrecacheScriptSound( "TFPlayer.Pain" );
+	PrecacheScriptSound( "Mobster.LeaveSpawn" );
 	PrecacheScriptSound( "TFPlayer.CritHit" );
 	PrecacheScriptSound( "TFPlayer.CritHitMini" );
 	PrecacheScriptSound( "TFPlayer.DoubleDonk" );
@@ -3944,6 +3945,8 @@ void CTFPlayer::Spawn()
 	}
 
 	SetContextThink( &CTFPlayer::PostSpawnThink, gpGlobals->curtime + 0.1f, "PostSpawnThink" );
+	if ( IsPlayerClass( TF_CLASS_MOBSTER ) )
+		SetContextThink( &CTFPlayer::MobsterLeaveSpawnVoice, gpGlobals->curtime + random->RandomFloat( 1.f, 2.f ), "MobsterLeaveSpawnVoice" );
 }
 
 //-----------------------------------------------------------------------------
@@ -11131,7 +11134,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 			pszVictimDoubleJumping = "victimdoublejumping:1";
 		}
 
-		CFmtStrN<128> modifiers( "%s,%s,%s,%s,victimclass:%s", pszCustomDeath, pszDomination, pszVictimStunned, pszVictimDoubleJumping, g_aPlayerClassNames_NonLocalized[ pTFVictim->GetPlayerClass()->GetClassIndex() ] );
+		CFmtStrN<160> modifiers( "%s,%s,%s,%s,victimclass:%s%s", pszCustomDeath, pszDomination, pszVictimStunned, pszVictimDoubleJumping, g_aPlayerClassNames_NonLocalized[ pTFVictim->GetPlayerClass()->GetClassIndex() ], ( info.GetDamageType() & DMG_CLUB ) ? ",meleekill:1" : "" );
 
 		bool bPlayspeech = true;
 
@@ -15236,7 +15239,13 @@ void CTFPlayer::PainSound( const CTakeDamageInfo &info )
 
 	char szResponse[AI_Response::MAX_RESPONSE_NAME];
 
-	if ( SpeakConceptIfAllowed( MP_CONCEPT_PLAYER_PAIN, "damagecritical:1", szResponse, AI_Response::MAX_RESPONSE_NAME, &filter ) )
+	const char *pszPain = "damagecritical:1,painlevel:sharp";
+	if ( info.GetDamageType() & DMG_CRITICAL )
+		pszPain = "damagecritical:1,painlevel:crit";
+	else if ( GetHealth() < GetMaxHealth() * 0.4f )
+		pszPain = "damagecritical:1,painlevel:severe";
+
+	if ( SpeakConceptIfAllowed( MP_CONCEPT_PLAYER_PAIN, pszPain, szResponse, AI_Response::MAX_RESPONSE_NAME, &filter ) )
 	{
 		flPainLength = MAX( GetSceneDuration( szResponse ), flPainLength );
 	}
@@ -15245,7 +15254,7 @@ void CTFPlayer::PainSound( const CTakeDamageInfo &info )
 	if ( bAttackerIsPlayer )
 	{
 		CSingleUserRecipientFilter attackerFilter( ToBasePlayer( info.GetAttacker() ) );
-		SpeakConceptIfAllowed( MP_CONCEPT_PLAYER_ATTACKER_PAIN, "damagecritical:1", szResponse, AI_Response::MAX_RESPONSE_NAME, &attackerFilter );
+		SpeakConceptIfAllowed( MP_CONCEPT_PLAYER_ATTACKER_PAIN, pszPain, szResponse, AI_Response::MAX_RESPONSE_NAME, &attackerFilter );
 	}
 
 	pExpresser->DisallowMultipleScenes();
@@ -19924,6 +19933,33 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 	// Save the current concept.
 	m_iCurrentConcept = iConcept;
 
+	char szMobsterMedic[64];
+	const char *pszModifiers = modifiers;
+	if ( IsPlayerClass( TF_CLASS_MOBSTER ) && iConcept == MP_CONCEPT_PLAYER_MEDIC )
+	{
+		// Three medic calls inside ten seconds become the angry line.
+		static float s_flLast[ MAX_PLAYERS + 1 ];
+		static int s_nCount[ MAX_PLAYERS + 1 ];
+		const int nPlayer = entindex();
+		if ( nPlayer > 0 && nPlayer <= MAX_PLAYERS )
+		{
+			if ( gpGlobals->curtime - s_flLast[ nPlayer ] < 10.f )
+			{
+				if ( ++s_nCount[ nPlayer ] >= 3 )
+				{
+					s_nCount[ nPlayer ] = 0;
+					V_snprintf( szMobsterMedic, sizeof( szMobsterMedic ), "mediccall:angry" );
+					pszModifiers = szMobsterMedic;
+				}
+			}
+			else
+			{
+				s_nCount[ nPlayer ] = 1;
+			}
+			s_flLast[ nPlayer ] = gpGlobals->curtime;
+		}
+	}
+
 	if ( m_Shared.InCond( TF_COND_DISGUISED ) && !filter && ( iConcept != MP_CONCEPT_KILLED_PLAYER ) )
 	{
 		CSingleUserRecipientFilter filter(this);
@@ -19946,7 +19982,7 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 		if ( modifiers )
 		{
 			Q_strncat( buf, ",", sizeof(buf), 1 );
-			Q_strncat( buf, modifiers, sizeof(buf), COPY_ALL_CHARACTERS );
+			Q_strncat( buf, pszModifiers, sizeof(buf), COPY_ALL_CHARACTERS );
 		}
 
 		m_bSpeakingConceptAsDisguisedSpy = true;
@@ -19961,7 +19997,7 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 		undisguisedFilter.RemoveRecipient( this );
 
 		// play normal concept to teammates
-		bool bPlayedNormally = SpeakIfAllowed( g_pszMPConcepts[iConcept], modifiers, pszOutResponseChosen, bufsize, &undisguisedFilter );
+		bool bPlayedNormally = SpeakIfAllowed( g_pszMPConcepts[iConcept], pszModifiers, pszOutResponseChosen, bufsize, &undisguisedFilter );
 
 		pExpresser->DisallowMultipleScenes();
 
@@ -19983,7 +20019,7 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 		}
 
 		// play normally
-		bReturn = SpeakIfAllowed( g_pszMPConcepts[iConcept], modifiers, pszOutResponseChosen, bufsize, filter );
+		bReturn = SpeakIfAllowed( g_pszMPConcepts[iConcept], pszModifiers, pszOutResponseChosen, bufsize, filter );
 	}
 
 	//Add bubble on top of a player calling for medic.
@@ -19996,6 +20032,12 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 	}
 
 	return bReturn;
+}
+
+void CTFPlayer::MobsterLeaveSpawnVoice( void )
+{
+	if ( IsAlive() && IsPlayerClass( TF_CLASS_MOBSTER ) )
+		EmitSound( "Mobster.LeaveSpawn" );
 }
 
 //-----------------------------------------------------------------------------

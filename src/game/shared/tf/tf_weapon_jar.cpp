@@ -1232,6 +1232,7 @@ void CTFMoneyBag::Precache( void )
 	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Voice" );
 	PrecacheParticleSystem( "weapon_moneybag_parent" );
 }
 
@@ -1284,6 +1285,7 @@ void CTFProjectile_MoneyBag::Precache()
 		PrecacheParticleSystem( GetDeployParticle() );
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
+	PrecacheScriptSound( "Mobster.MoneyBag.Voice" );
 	BaseClass::Precache();
 }
 
@@ -1378,6 +1380,10 @@ void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
 	SetTouch( NULL );
 
 	EmitSound( GetDeploySound() );
+#ifdef GAME_DLL
+	if ( CTFPlayer *pOwner = ToTFPlayer( GetThrower() ) )
+		pOwner->EmitSound( "Mobster.MoneyBag.Voice" );
+#endif
 	if ( GetDeployParticle() && GetDeployParticle()[0] )
 		DispatchParticleEffect( GetDeployParticle(), PATTACH_ABSORIGIN_FOLLOW, this );
 

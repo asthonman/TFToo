@@ -26,4 +26,9 @@
 		"TF_AMMO_SECONDARY"		"1"
 		"TF_AMMO_METAL"			"0"
 	}
+
+	"sound_death"			"Mobster.PainSevere"
+	"sound_crit_death"		"Mobster.PainCritical"
+	"sound_melee_death"		"Mobster.PainSharp"
+	"sound_explosion_death"	"Mobster.PainCritical"
 }
