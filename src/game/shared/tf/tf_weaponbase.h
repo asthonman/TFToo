@@ -48,6 +48,7 @@
 
 class CTFPlayer;
 class CBaseObject;
+class CBaseAnimating;
 class CTFWeaponBaseGrenadeProj;
 class CTFWeaponAttachmentModel;
 
@@ -443,6 +444,10 @@ class CTFWeaponBase : public CBaseCombatWeapon, public IHasOwner, public IHasGen
 	C_BaseEntity *GetWeaponForEffect();
 
 	virtual const char* ModifyEventParticles( const char* token ) { return token; }
+
+	// DrawModel clears the viewmodel body, then draws. Weapons whose mesh is not
+	// bodygroup 0 put it back here. Default does nothing.
+	virtual void	ModifyViewModelBodygroups( CBaseAnimating *pVM ) {}
 
 	// Shadows
 	virtual ShadowType_t ShadowCastType( void ) OVERRIDE;

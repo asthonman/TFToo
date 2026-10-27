@@ -134,7 +134,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"models/weapons/w_leadpipe.mdl",
 		"models/weapons/w_leadpipe.mdl",
 		"leadpipe",
-		1,
+		0,
 		NULL,
 		0,
 	},

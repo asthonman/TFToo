@@ -236,5 +236,16 @@ PRECACHE_WEAPON_REGISTER( tf_weapon_leadpipe );
 void CTFLeadPipe::Precache( void )
 {
 	BaseClass::Precache();
+	PrecacheModel( "models/weapons/v_leadpipe.mdl" );
 	PrecacheScriptSound( "Saxxy.HitWorld" );
 }
+
+#ifdef CLIENT_DLL
+void CTFLeadPipe::ModifyViewModelBodygroups( CBaseAnimating *pVM )
+{
+	if ( pVM )
+	{
+		pVM->SetBodygroup( 0, 1 );
+	}
+}
+#endif

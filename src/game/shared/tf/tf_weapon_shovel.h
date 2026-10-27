@@ -78,6 +78,11 @@ public:
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
 	virtual void	Precache( void );
 
+#ifdef CLIENT_DLL
+	// v_leadpipe's bodygroup 0 has no mesh. The pipe is bodygroup 1.
+	virtual void	ModifyViewModelBodygroups( CBaseAnimating *pVM ) OVERRIDE;
+#endif
+
 private:
 	CTFLeadPipe( const CTFLeadPipe & ) {}
 };

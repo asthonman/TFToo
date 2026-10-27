@@ -270,6 +270,12 @@ int CTFViewModel::DrawModel( int flags )
 		 return 0;
 	}
 
+	CTFWeaponBase *pWeapon = ( CTFWeaponBase * )GetOwningWeapon();
+	if ( pWeapon )
+	{
+		pWeapon->ModifyViewModelBodygroups( this );
+	}
+
 	return BaseClass::DrawModel( flags );
 }
 
