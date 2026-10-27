@@ -59,7 +59,9 @@ BEGIN_NETWORK_TABLE( CTFWeaponBaseGrenadeProj, DT_TFWeaponBaseGrenadeProj )
 	RecvPropEHandle( RECVINFO( m_hDeflectOwner )),
 
 #else
-	SendPropVector( SENDINFO( m_vInitialVelocity ), 20 /*nbits*/, 0 /*flags*/, -3000 /*low value*/, 3000 /*high value*/	),
+	// 20 bits. 8192 covers the Money Bag, whose throw is an absolute 4400
+	// plus a little lift. The old 3000 cap clamped that and spammed a warning.
+	SendPropVector( SENDINFO( m_vInitialVelocity ), 20 /*nbits*/, 0 /*flags*/, -8192 /*low value*/, 8192 /*high value*/	),
 	SendPropBool( SENDINFO( m_bCritical ) ),
 
 	SendPropExclude( "DT_BaseEntity", "m_vecOrigin" ),

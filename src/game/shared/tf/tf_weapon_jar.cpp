@@ -1250,12 +1250,32 @@ Activity CTFMoneyBag::TranslateViewmodelHandActivityInternal( Activity actBase )
 	}
 }
 
+#ifdef CLIENT_DLL
+void CTFMoneyBag::ModifyViewModelBodygroups( CBaseAnimating *pVM )
+{
+	if ( !pVM )
+		return;
+
+	// Submodel 0 is the bag. Submodel 1 is empty. Hide it once the throw
+	// lets go, which is the event at cycle 0.588.
+	int iValue = 0;
+	const char *pszSeq = pVM->GetSequenceName( pVM->GetSequence() );
+	if ( pszSeq && !Q_stricmp( pszSeq, "bag_throw" ) && pVM->GetCycle() >= 0.55f )
+		iValue = 1;
+
+	const int iGroup = pVM->FindBodygroupByName( "Moneybag" );
+	if ( iGroup >= 0 )
+		pVM->SetBodygroup( iGroup, iValue );
+}
+#endif
+
 void CTFMoneyBag::Precache( void )
 {
 	BaseClass::Precache();
 	PrecacheModel( kMoneyBagClosedModel );
 	PrecacheModel( kMoneyBagOpenModel );
 	PrecacheModel( "models/weapons/v_moneybag.mdl" );
+	PrecacheModel( "models/weapons/c_mobster_arms.mdl" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );
@@ -1330,6 +1350,9 @@ void CTFProjectile_MoneyBag::Spawn()
 	SetModelScale( GetBagModelScale() );
 	m_bDeployed = false;
 	m_flFlightDieTime = gpGlobals->curtime + 15.f;
+	// deploy on the open bag is cosmetic. The client has to advance it,
+	// because the placed bag is MOVETYPE_NONE.
+	UseClientSideAnimation();
 	SetContextThink( &CTFProjectile_MoneyBag::FlightThink, gpGlobals->curtime + 0.05f, "MoneyBagFlight" );
 }
 

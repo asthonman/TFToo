@@ -211,6 +211,27 @@ static void AddMoneyBagAnimReplacements( KeyValues *pKV )
 	pKV->SetString( "anim_slot", "ITEM1" );
 }
 
+static void AddLeadPipeAnimReplacements( KeyValues *pKV )
+{
+	// Body poses the melee table asks for that this model did not compile.
+	static const char *s_pszRepl[][2] =
+	{
+		{ "ACT_MP_WALK_MELEE", "ACT_MP_RUN_MELEE" },
+		{ "ACT_MP_JUMP_MELEE", "ACT_MP_JUMP_FLOAT_MELEE" },
+		{ "ACT_MP_ATTACK_AIRWALK_MELEE", "ACT_MP_ATTACK_STAND_MELEE" },
+	};
+
+	KeyValues *pVisuals = new KeyValues( "visuals" );
+	KeyValues *pRepl = new KeyValues( "animation_replacement" );
+	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
+	{
+		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
+	}
+	pVisuals->AddSubKey( pRepl );
+	pKV->AddSubKey( pVisuals );
+	pKV->SetString( "anim_slot", "MELEE" );
+}
+
 void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> *pVecErrors )
 {
 	if ( !pSchema )
@@ -277,6 +298,18 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		else if ( !Q_stricmp( desc.pszAltId, "b4" ) )
 		{
 			AddMoneyBagAnimReplacements( pKV );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b5" ) )
+		{
+			AddLeadPipeAnimReplacements( pKV );
+		}
+
+		// c_mobster_arms has a reference pose and no sequences. The three
+		// v_ models own the arm bones, so the arms bonemerge onto the
+		// viewmodel. Every other class attaches the weapon to the arms.
+		if ( !Q_stricmp( desc.pszAltId, "b3" ) || !Q_stricmp( desc.pszAltId, "b4" ) || !Q_stricmp( desc.pszAltId, "b5" ) )
+		{
+			pKV->SetString( "extra_wearable_vm", "models/weapons/c_mobster_arms.mdl" );
 		}
 
 		if ( !pSchema->AddRuntimeItemDefinition( pKV, pVecErrors ) )

@@ -279,6 +279,12 @@ public:
 	virtual Activity	TranslateViewmodelHandActivityInternal( Activity actBase );
 	virtual void		Precache( void );
 
+#ifdef CLIENT_DLL
+	// v_moneybag's throw hides the bag with a bodygroup event that was
+	// compiled as AE_EMPTY, so the viewmodel does it itself.
+	virtual void		ModifyViewModelBodygroups( CBaseAnimating *pVM );
+#endif
+
 #ifdef GAME_DLL
 	virtual const AngularImpulse GetAngularImpulse( void )	{ return AngularImpulse( -550, -550, 50 ); }
 	virtual Vector		GetVelocityVector( const Vector &vecForward, const Vector &vecRight, const Vector &vecUp );

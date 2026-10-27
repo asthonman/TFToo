@@ -237,6 +237,7 @@ void CTFLeadPipe::Precache( void )
 {
 	BaseClass::Precache();
 	PrecacheModel( "models/weapons/v_leadpipe.mdl" );
+	PrecacheModel( "models/weapons/c_mobster_arms.mdl" );
 	PrecacheScriptSound( "Saxxy.HitWorld" );
 }
 
