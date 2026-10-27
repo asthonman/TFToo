@@ -500,7 +500,7 @@ void CTFHudPlayerClass::UpdateModelPanel()
 
 		if ( bDisguised )
 		{
-			nClass = pPlayer->m_Shared.GetDisguiseClass();
+			nClass = GetDisguiseVisualClass( pPlayer->m_Shared.GetDisguiseClass() );
 			nTeam = pPlayer->m_Shared.GetDisguiseTeam();
 
 			if ( pDisguiseWeapon )

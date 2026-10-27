@@ -77,6 +77,7 @@ CHudMenuSpyDisguise::CHudMenuSpyDisguise( const char *pElementName )
 
 	m_iSelectedItem = -1;
 	m_iGroupSelection = -1;
+	m_iClassPage = 0;
 
 	m_pActiveSelection = NULL;
 
@@ -161,6 +162,8 @@ void CHudMenuSpyDisguise::ApplySchemeSettings( IScheme *pScheme )
 	ToggleSelectionIcons( false );
 
 	BaseClass::ApplySchemeSettings( pScheme );
+
+	UpdateClassItems();
 }
 
 //-----------------------------------------------------------------------------
@@ -193,19 +196,7 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 		return 1;
 	}
 
-	// menu classes are not in the same order as the defines
-	static int iRemapKeyToClass[9] = 
-	{
-		TF_CLASS_SCOUT,
-		TF_CLASS_SOLDIER,
-		TF_CLASS_PYRO,
-		TF_CLASS_DEMOMAN,
-		TF_CLASS_HEAVYWEAPONS,
-		TF_CLASS_ENGINEER,
-		TF_CLASS_MEDIC,
-		TF_CLASS_SNIPER,
-		TF_CLASS_SPY
-	};
+	// Slats follow the class menu pages. Reload swaps the original nine for the next page.
 
 	bool bController = ( IsConsole() || ( keynum >= JOYSTICK_FIRST ) );
 
@@ -248,8 +239,11 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 		case STEAMCONTROLLER_A:
 			{
 				// select disguise
-				int iClass = iRemapKeyToClass[m_iSelectedItem-1];
+				int iClass = ClassMenuClassForPageSlot( m_iClassPage, m_iSelectedItem - 1 );
 				int iTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? 1 : 0;
+
+				if ( !IsValidTFPlayerClass( iClass ) )
+					return 0;
 
 				SelectDisguise( iClass, iTeam );
 			}
@@ -305,7 +299,12 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 			}
 		}
 
-		if ( pszCurrentBinding && ( FStrEq( pszCurrentBinding, "disguiseteam" ) || FStrEq( pszCurrentBinding, "+reload" ) ) )
+		if ( pszCurrentBinding && FStrEq( pszCurrentBinding, "+reload" ) )
+		{
+			ToggleClassPage();
+			return 0;
+		}
+		else if ( pszCurrentBinding && FStrEq( pszCurrentBinding, "disguiseteam" ) )
 		{
 			ToggleDisguiseTeam();
 			return 0;
@@ -420,10 +419,11 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 
 		if ( iSlot >= 0 )
 		{
-			int iClass = iRemapKeyToClass[ iSlot ];
+			int iClass = ClassMenuClassForPageSlot( m_iClassPage, iSlot );
 			int iTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? 1 : 0;
 
-			SelectDisguise( iClass, iTeam );
+			if ( IsValidTFPlayerClass( iClass ) )
+				SelectDisguise( iClass, iTeam );
 
 			m_iGroupSelection = -1;
 			ToggleSelectionIcons( false );
@@ -473,6 +473,14 @@ void CHudMenuSpyDisguise::FindToggleBinding( void )
 		key = "< Reload >";
 	}
 	SetDialogVariable( "reload", key );
+
+	vgui::Label *pToggle = dynamic_cast< vgui::Label * >( FindChildByName( "ToggleLabel" ) );
+	if ( pToggle )
+	{
+		wchar_t wsz[128];
+		g_pVGuiLocalize->ConvertANSIToUnicode( CFmtStr( "%s - CLASS SET", key ), wsz, sizeof( wsz ) );
+		pToggle->SetText( wsz );
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -547,14 +555,17 @@ void CHudMenuSpyDisguise::SelectDisguise( int iClass, int iTeam )
 	{
 		// intercepting the team value and reassigning what gets passed into Disguise()
 		// because the team numbers in the client menu don't match the #define values for the teams
-		char szDisguise[32];
-
 		if ( iTeam <= LAST_SHARED_TEAM )
 		{
 			iTeam = ( iTeam == 1 ) ? TF_TEAM_BLUE : TF_TEAM_RED;
 		}
 
-		Q_snprintf( szDisguise, sizeof (szDisguise), "disguise 2%d%d", iTeam, iClass );
+		const int iImpulse = EncodeDisguiseImpulse( iTeam, iClass );
+		if ( iImpulse <= 0 )
+			return;
+
+		char szDisguise[32];
+		Q_snprintf( szDisguise, sizeof( szDisguise ), "disguise %d", iImpulse );
 
 		CCommand args;
 		args.Tokenize( szDisguise );
@@ -570,14 +581,64 @@ void CHudMenuSpyDisguise::ToggleDisguiseTeam( void )
 {
 	// flip the teams
 	m_iShowingTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? TF_TEAM_RED : TF_TEAM_BLUE;
+	UpdateClassItems();
+}
 
-	// show / hide the class items
-	bool bShowBlue = ( m_iShowingTeam == TF_TEAM_BLUE );
+//-----------------------------------------------------------------------------
+// Purpose: Reload swaps the original nine for the classes on the next page.
+//-----------------------------------------------------------------------------
+void CHudMenuSpyDisguise::ToggleClassPage( void )
+{
+	const int nPages = ClassMenuPageCount();
+	if ( nPages <= 1 )
+		return;
 
-	for ( int i=0; i<9; i++ )
+	m_iClassPage++;
+	if ( m_iClassPage >= nPages )
+		m_iClassPage = 0;
+
+	UpdateClassItems();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Show the current page's classes on the current team. Empty slats hide.
+//-----------------------------------------------------------------------------
+void CHudMenuSpyDisguise::UpdateClassItems( void )
+{
+	const int nPages = ClassMenuPageCount();
+	if ( m_iClassPage < 0 || m_iClassPage >= nPages )
+		m_iClassPage = 0;
+
+	const bool bShowBlue = ( m_iShowingTeam == TF_TEAM_BLUE );
+
+	for ( int i = 0; i < 9; ++i )
 	{
-		m_pClassItems_Red[i]->SetVisible( !bShowBlue );
-		m_pClassItems_Blue[i]->SetVisible( bShowBlue );
+		const int iClass = ClassMenuClassForPageSlot( m_iClassPage, i );
+		const bool bHasClass = IsValidTFPlayerClass( iClass );
+
+		m_pClassItems_Red[i]->SetVisible( bHasClass && !bShowBlue );
+		m_pClassItems_Blue[i]->SetVisible( bHasClass && bShowBlue );
+
+		if ( !bHasClass )
+			continue;
+
+		const char *pszIcon = ClassMenuHudIconName( iClass );
+		const char *pszName = ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS ) ? g_aPlayerClassNames[ iClass ] : "";
+
+		EditablePanel *pPanels[2] = { m_pClassItems_Red[i], m_pClassItems_Blue[i] };
+		const char *pszTeams[2] = { "red", "blu" };
+		for ( int nSide = 0; nSide < 2; ++nSide )
+		{
+			CIconPanel *pIcon = dynamic_cast< CIconPanel * >( pPanels[nSide]->FindChildByName( "ClassIcon" ) );
+			if ( pIcon && pszIcon && pszIcon[0] )
+				pIcon->SetIcon( CFmtStr( "hud_menu_%s_%s", pszIcon, pszTeams[nSide] ) );
+
+			vgui::Label *pName = dynamic_cast< vgui::Label * >( pPanels[nSide]->FindChildByName( "ItemNameLabel" ) );
+			if ( !pName )
+				pName = dynamic_cast< vgui::Label * >( pPanels[nSide]->FindChildByName( "ItemName" ) );
+			if ( pName && pszName && pszName[0] )
+				pName->SetText( pszName );
+		}
 	}
 }
 
@@ -614,14 +675,9 @@ void CHudMenuSpyDisguise::FireGameEvent( IGameEvent *event )
 		if ( pPlayer )
 		{
 			bool bShowBlue = ( pPlayer->GetTeamNumber() == TF_TEAM_RED );
-
-			for ( int i=0; i<9; i++ )
-			{
-				m_pClassItems_Red[i]->SetVisible( !bShowBlue );
-				m_pClassItems_Blue[i]->SetVisible( bShowBlue );
-			}
-
 			m_iShowingTeam = ( bShowBlue ) ? TF_TEAM_BLUE : TF_TEAM_RED;
+			m_iClassPage = 0;
+			UpdateClassItems();
 
 			m_iGroupSelection = -1;
 			ToggleSelectionIcons( false );

@@ -510,7 +510,7 @@ END_SEND_TABLE()
 EXTERN_SEND_TABLE(DT_TFPlayerConditionListExclusive);
 BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerSharedLocal )
 	SendPropInt( SENDINFO( m_nDesiredDisguiseTeam ), 3, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO( m_nDesiredDisguiseClass ), 4, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO( m_nDesiredDisguiseClass ), 5, SPROP_UNSIGNED ),
 	SendPropBool( SENDINFO( m_bLastDisguisedAsOwnTeam ) ),
 	SendPropTime( SENDINFO( m_flStealthNoAttackExpire ) ),
 	SendPropTime( SENDINFO( m_flStealthNextChangeTime ) ),
@@ -575,7 +575,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	// Spy
 	SendPropTime( SENDINFO( m_flInvisChangeCompleteTime ) ),
 	SendPropInt( SENDINFO( m_nDisguiseTeam ), 3, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO( m_nDisguiseClass ), 4, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO( m_nDisguiseClass ), 5, SPROP_UNSIGNED ),
 	SendPropInt( SENDINFO( m_nDisguiseSkinOverride ), 1, SPROP_UNSIGNED ),
 	SendPropInt( SENDINFO( m_nMaskClass ), 4, SPROP_UNSIGNED ),
 	SendPropEHandle( SENDINFO( m_hDisguiseTarget ) ),
@@ -8160,7 +8160,7 @@ void CTFPlayerShared::Disguise( int nTeam, int nClass, CTFPlayer* pDesiredTarget
 	int nRealTeam = m_pOuter->GetTeamNumber();
 	int nRealClass = m_pOuter->GetPlayerClass()->GetClassIndex();
 
-	Assert ( ( nClass >= TF_CLASS_SCOUT ) && ( nClass <= TF_CLASS_ENGINEER ) );
+	Assert( IsValidTFPlayerClass( nClass ) );
 
 	// we're not a spy
 	if ( nRealClass != TF_CLASS_SPY )
@@ -8196,8 +8196,8 @@ void CTFPlayerShared::Disguise( int nTeam, int nClass, CTFPlayer* pDesiredTarget
 		return;
 	}
 
-	// invalid class
-	if ( nClass <= TF_CLASS_UNDEFINED || nClass >= TF_CLASS_COUNT )
+	// invalid class. Civilian is the sentinel after the real classes.
+	if ( !IsValidTFPlayerClass( nClass ) )
 	{
 		return;
 	}
@@ -8692,39 +8692,30 @@ void CTFPlayerShared::ProcessDisguiseImpulse( CTFPlayer *pPlayer )
 	if ( !pPlayer )
 		return;
 
-	if ( pPlayer->GetImpulse() > 200 )
-	{ 
-		char szImpulse[6];
-		Q_snprintf( szImpulse, sizeof( szImpulse ), "%d", pPlayer->GetImpulse() );
+	int nTeam = 0;
+	int nClass = 0;
+	if ( !DecodeDisguiseImpulse( pPlayer->GetImpulse(), nTeam, nClass ) )
+		return;
 
-		char szTeam[3];
-		Q_snprintf( szTeam, sizeof( szTeam ), "%c", szImpulse[1] );
-
-		char szClass[3];
-		Q_snprintf( szClass, sizeof( szClass ), "%c", szImpulse[2] );
-
-		// 'Your Eternal Reward' handling
-		bool bSwitchWeaponOnly = false;
-		if ( pPlayer->CanDisguise_OnKill() && pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) )
+	// 'Your Eternal Reward' handling
+	bool bSwitchWeaponOnly = false;
+	if ( pPlayer->CanDisguise_OnKill() && pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) )
+	{
+		// Only trying to change the disguise weapon via 'lastdisguise'
+		if ( nClass == pPlayer->m_Shared.GetDisguiseClass() && nTeam == pPlayer->m_Shared.GetDisguiseTeam() )
 		{
-			// Only trying to change the disguise weapon via 'lastdisguise'
-			if ( Q_atoi( szClass ) == pPlayer->m_Shared.GetDisguiseClass() && Q_atoi( szTeam ) == pPlayer->m_Shared.GetDisguiseTeam() )
-			{
-				bSwitchWeaponOnly = true;
-			}
+			bSwitchWeaponOnly = true;
 		}
+	}
 
-		if ( pPlayer->CanDisguise() || bSwitchWeaponOnly )
+	if ( pPlayer->CanDisguise() || bSwitchWeaponOnly )
+	{
+		pPlayer->m_Shared.Disguise( nTeam, nClass );
+
+		// Switch from the PDA to our previous weapon
+		if ( GetActiveTFWeapon() && GetActiveTFWeapon()->GetWeaponID() == TF_WEAPON_PDA_SPY )
 		{
-			// intercepting the team value and reassigning what gets passed into Disguise()
-			// because the team numbers in the client menu don't match the #define values for the teams
-			pPlayer->m_Shared.Disguise( Q_atoi( szTeam ), Q_atoi( szClass ) );
-
-			// Switch from the PDA to our previous weapon
-			if ( GetActiveTFWeapon() && GetActiveTFWeapon()->GetWeaponID() == TF_WEAPON_PDA_SPY )
-			{
-				pPlayer->SelectLastItem();
-			}
+			pPlayer->SelectLastItem();
 		}
 	}
 }

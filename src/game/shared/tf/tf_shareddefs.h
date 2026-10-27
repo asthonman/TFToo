@@ -220,10 +220,10 @@ enum ETFClass
 	// and g_aRawPlayerClassNames.
 	//
 	// The class menu does not pick a new class up by itself. Add it to
-	// g_ClassMenuPages in tf_classmenu.cpp. The letter is the page (A, then B,
+	// g_ClassMenuPages in tf_shareddefs.cpp. The letter is the page (A, then B,
 	// ...) and the number is the 1-9 key and the button on that page. Leave a
 	// number as TF_CLASS_UNDEFINED when it has no class. Key 0 is Random on
-	// every page.
+	// every page. The disguise menu uses the same pages.
 	TF_CLASS_MADCAP,
 	TF_CLASS_MOBSTER,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
@@ -288,6 +288,19 @@ extern const char g_szRomePromoItems_Hat[TF_LAST_NORMAL_CLASS][ MAX_PATH ];
 extern const char g_szRomePromoItems_Misc[TF_LAST_NORMAL_CLASS][ MAX_PATH ];
 
 int GetClassIndexFromString( const char *pClassName, int nLastClassIndex = TF_LAST_NORMAL_CLASS );
+
+// Class menu pages. Slot 0-8 is the 1-9 key on every page. The disguise menu
+// uses the same pages. A later page's class wears the original class's spy
+// mask, because that mask only exists for the first nine.
+int ClassMenuPageCount( void );
+int ClassMenuClassForPageSlot( int nPage, int nSlot );
+const char *ClassMenuPortraitShortName( int iClass );
+const char *ClassMenuHudIconName( int iClass );
+int GetDisguiseVisualClass( int iClass );
+
+// 221-239 are the original one-digit classes. 203-220 are classes 10-18.
+int EncodeDisguiseImpulse( int iTeam, int iClass );
+bool DecodeDisguiseImpulse( int iImpulse, int &iTeam, int &iClass );
 
 // menu buttons are not in the same order as the defines
 extern int iRemapIndexToClass[TF_CLASS_MENU_BUTTONS];

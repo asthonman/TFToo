@@ -111,6 +111,178 @@ const char *g_aRawPlayerClassNames[TF_CLASS_MENU_BUTTONS] =
 	"random"
 };
 
+//-----------------------------------------------------------------------------
+// Class pages. Column is the 1-9 key. TF_CLASS_UNDEFINED is an empty slot.
+// pszPortrait is optional class_sel / hud art. NULL uses the class's own name.
+// Madcap has no art yet, so B1 draws Scout. The disguise menu reads this too.
+//-----------------------------------------------------------------------------
+struct ClassMenuSlot_t
+{
+	int			iClass;
+	const char	*pszPortrait;
+};
+
+static const int kClassMenuSlots = 9;
+
+static const ClassMenuSlot_t g_ClassMenuPages[][kClassMenuSlots] =
+{
+	// A
+	{
+		{ TF_CLASS_SCOUT,			NULL },
+		{ TF_CLASS_SOLDIER,			NULL },
+		{ TF_CLASS_PYRO,			NULL },
+		{ TF_CLASS_DEMOMAN,			NULL },
+		{ TF_CLASS_HEAVYWEAPONS,	NULL },
+		{ TF_CLASS_ENGINEER,		NULL },
+		{ TF_CLASS_MEDIC,			NULL },
+		{ TF_CLASS_SNIPER,			NULL },
+		{ TF_CLASS_SPY,				NULL },
+	},
+	// B
+	{
+		{ TF_CLASS_MADCAP,			"scout" },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_MOBSTER,			"pyro" },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+	},
+};
+
+int ClassMenuPageCount( void )
+{
+	return ARRAYSIZE( g_ClassMenuPages );
+}
+
+int ClassMenuClassForPageSlot( int nPage, int nSlot )
+{
+	if ( nPage < 0 || nPage >= ClassMenuPageCount() )
+		return TF_CLASS_UNDEFINED;
+	if ( nSlot < 0 || nSlot >= kClassMenuSlots )
+		return TF_CLASS_UNDEFINED;
+
+	return g_ClassMenuPages[ nPage ][ nSlot ].iClass;
+}
+
+static const char *ClassMenuPortraitOverride( int iClass )
+{
+	const int nPages = ClassMenuPageCount();
+	for ( int nPage = 0; nPage < nPages; ++nPage )
+	{
+		for ( int nSlot = 0; nSlot < kClassMenuSlots; ++nSlot )
+		{
+			if ( g_ClassMenuPages[ nPage ][ nSlot ].iClass != iClass )
+				continue;
+
+			const char *pszPortrait = g_ClassMenuPages[ nPage ][ nSlot ].pszPortrait;
+			if ( pszPortrait && pszPortrait[0] )
+				return pszPortrait;
+		}
+	}
+
+	return NULL;
+}
+
+const char *ClassMenuPortraitShortName( int iClass )
+{
+	const char *pszPortrait = ClassMenuPortraitOverride( iClass );
+	if ( pszPortrait && pszPortrait[0] )
+		return pszPortrait;
+
+	if ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS && g_aRawPlayerClassNamesShort[ iClass ][0] )
+		return g_aRawPlayerClassNamesShort[ iClass ];
+
+	return "scout";
+}
+
+const char *ClassMenuHudIconName( int iClass )
+{
+	const char *pszPortrait = ClassMenuPortraitOverride( iClass );
+	if ( pszPortrait && pszPortrait[0] )
+		return pszPortrait;
+
+	switch ( iClass )
+	{
+	case TF_CLASS_SCOUT:			return "scout";
+	case TF_CLASS_SNIPER:			return "sniper";
+	case TF_CLASS_SOLDIER:			return "soldier";
+	case TF_CLASS_DEMOMAN:			return "demoman";
+	case TF_CLASS_MEDIC:			return "medic";
+	case TF_CLASS_HEAVYWEAPONS:		return "heavy";
+	case TF_CLASS_PYRO:				return "pyro";
+	case TF_CLASS_SPY:				return "spy";
+	case TF_CLASS_ENGINEER:			return "engineer";
+	default:
+		break;
+	}
+
+	return ClassMenuPortraitShortName( iClass );
+}
+
+int GetDisguiseVisualClass( int iClass )
+{
+	if ( iClass >= TF_CLASS_SCOUT && iClass <= TF_CLASS_ENGINEER )
+		return iClass;
+
+	const int nPages = ClassMenuPageCount();
+	for ( int nPage = 1; nPage < nPages; ++nPage )
+	{
+		for ( int nSlot = 0; nSlot < kClassMenuSlots; ++nSlot )
+		{
+			if ( g_ClassMenuPages[ nPage ][ nSlot ].iClass != iClass )
+				continue;
+
+			const int iAnchor = g_ClassMenuPages[ 0 ][ nSlot ].iClass;
+			if ( iAnchor >= TF_CLASS_SCOUT && iAnchor <= TF_CLASS_ENGINEER )
+				return iAnchor;
+		}
+	}
+
+	return TF_CLASS_SCOUT;
+}
+
+int EncodeDisguiseImpulse( int iTeam, int iClass )
+{
+	if ( ( iTeam != TF_TEAM_RED && iTeam != TF_TEAM_BLUE ) || iClass <= TF_CLASS_UNDEFINED )
+		return 0;
+
+	// Original menu: 2<team digit><class digit>, class is 1-9.
+	if ( iClass <= TF_CLASS_ENGINEER )
+		return 200 + iTeam * 10 + iClass;
+
+	// Classes 10-18. Nine red, then nine blue. Impulse is only 8 bits.
+	if ( iClass < 10 + kClassMenuSlots )
+		return 203 + ( iTeam == TF_TEAM_BLUE ? kClassMenuSlots : 0 ) + ( iClass - 10 );
+
+	return 0;
+}
+
+bool DecodeDisguiseImpulse( int iImpulse, int &iTeam, int &iClass )
+{
+	if ( iImpulse >= 203 && iImpulse <= 203 + ( kClassMenuSlots * 2 ) - 1 )
+	{
+		const int nOff = iImpulse - 203;
+		iTeam = ( nOff >= kClassMenuSlots ) ? TF_TEAM_BLUE : TF_TEAM_RED;
+		iClass = 10 + ( nOff % kClassMenuSlots );
+		return true;
+	}
+
+	if ( iImpulse <= 200 )
+		return false;
+
+	char szImpulse[6];
+	Q_snprintf( szImpulse, sizeof( szImpulse ), "%d", iImpulse );
+	if ( !szImpulse[1] || !szImpulse[2] )
+		return false;
+
+	iTeam = szImpulse[1] - '0';
+	iClass = szImpulse[2] - '0';
+	return iClass > 0;
+}
+
 const char g_szBotModels[][ MAX_PATH ] = 
 {
 	"", //TF_CLASS_UNDEFINED
@@ -236,7 +408,7 @@ int GetClassIndexFromString( const char *pClassName, int nLastClassIndex/*=TF_LA
 
 // menu buttons are not in the same order as the defines.
 // Slots 1-9 are the nine class-menu button positions (keys 1-9 on page A).
-// Which class sits on a later page is g_ClassMenuPages in tf_classmenu.cpp.
+// Which class sits on a later page is g_ClassMenuPages above.
 // Key 0 is not a slot.
 int iRemapIndexToClass[TF_CLASS_MENU_BUTTONS] =
 {

@@ -7850,7 +7850,10 @@ int C_TFPlayer::GetSkin()
 	{
 		if ( !IsEnemyPlayer() )
 		{
-			nSkin += 4 + ( ( m_Shared.GetDisguiseClass() - TF_FIRST_NORMAL_CLASS ) * 2 );
+			// Mask skins exist for the original nine only. A class on a later
+			// slat wears the mask of the original class in that slot.
+			const int iMaskClass = GetDisguiseVisualClass( m_Shared.GetDisguiseClass() );
+			nSkin += 4 + ( ( iMaskClass - TF_FIRST_NORMAL_CLASS ) * 2 );
 		}
 		else if ( m_Shared.GetDisguiseClass() == TF_CLASS_SPY )
 		{
@@ -8998,7 +9001,8 @@ void C_TFPlayer::ValidateModelIndex( void )
 	}
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && IsEnemyPlayer() )
 	{
-		TFPlayerClassData_t *pData = GetPlayerClassData( m_Shared.GetDisguiseClass() );
+		// Later classes have no disguise body yet. Use the original class on that slat.
+		TFPlayerClassData_t *pData = GetPlayerClassData( GetDisguiseVisualClass( m_Shared.GetDisguiseClass() ) );
 		m_nModelIndex = modelinfo->GetModelIndex( pData->GetModelName() );
 	}
 	else if ( m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) )
@@ -9620,7 +9624,7 @@ static void cc_tf_player_lastdisguise( const CCommand &args )
 			// exclude some undesirable classes
 			do
 			{
-				nClass = random->RandomInt( TF_FIRST_NORMAL_CLASS, TF_LAST_NORMAL_CLASS );
+				nClass = random->RandomInt( TF_FIRST_NORMAL_CLASS, TF_LAST_NORMAL_CLASS - 1 );
 			} while( nClass == TF_CLASS_SCOUT || nClass == TF_CLASS_SPY );
 
 			nTeam = iEnemyTeam;

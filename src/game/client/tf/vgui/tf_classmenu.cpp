@@ -731,48 +731,8 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 };
 
 //-----------------------------------------------------------------------------
-// Class pages. The row letter is the page (A, then B, ...). The column is the
-// button on that page and the 1-9 key that picks it. Key 0 is Random on every
-// page. TF_CLASS_UNDEFINED is an empty slot: the button stays hidden and the
-// key does nothing.
-//
-// Add a class by writing it into a slot. This table is not filled by walking
-// the class enum. pszPortrait is the class_sel short name; NULL uses the
-// class's own short name. Madcap has no class_sel art yet, so B1 draws Scout's.
+// Pages live in tf_shareddefs.cpp so the disguise menu can use the same slats.
 //-----------------------------------------------------------------------------
-struct ClassMenuSlot_t
-{
-	int			iClass;
-	const char	*pszPortrait;
-};
-
-static const ClassMenuSlot_t g_ClassMenuPages[][9] =
-{
-	// A
-	{
-		{ TF_CLASS_SCOUT,			NULL },		// A1
-		{ TF_CLASS_SOLDIER,			NULL },		// A2
-		{ TF_CLASS_PYRO,			NULL },		// A3
-		{ TF_CLASS_DEMOMAN,			NULL },		// A4
-		{ TF_CLASS_HEAVYWEAPONS,	NULL },		// A5
-		{ TF_CLASS_ENGINEER,		NULL },		// A6
-		{ TF_CLASS_MEDIC,			NULL },		// A7
-		{ TF_CLASS_SNIPER,			NULL },		// A8
-		{ TF_CLASS_SPY,				NULL },		// A9
-	},
-	// B
-	{
-		{ TF_CLASS_MADCAP,			"scout" },	// B1
-		{ TF_CLASS_UNDEFINED,		NULL },		// B2
-		{ TF_CLASS_MOBSTER,			"pyro" },	// B3
-		{ TF_CLASS_UNDEFINED,		NULL },		// B4
-		{ TF_CLASS_UNDEFINED,		NULL },		// B5
-		{ TF_CLASS_UNDEFINED,		NULL },		// B6
-		{ TF_CLASS_UNDEFINED,		NULL },		// B7
-		{ TF_CLASS_UNDEFINED,		NULL },		// B8
-		{ TF_CLASS_UNDEFINED,		NULL },		// B9
-	},
-};
 
 bool ClassMenuButtonBoundTo( ButtonCode_t code, const char *pszCommand )
 {
@@ -793,18 +753,13 @@ bool ClassMenuButtonBoundTo( ButtonCode_t code, const char *pszCommand )
 
 int CTFClassMenu::ClassPageCount( void )
 {
-	COMPILE_TIME_ASSERT( ARRAYSIZE( g_ClassMenuPages[0] ) == CLASS_MENU_SLOT_COUNT );
-	return ARRAYSIZE( g_ClassMenuPages );
+	COMPILE_TIME_ASSERT( CLASS_MENU_SLOT_COUNT == 9 );
+	return ClassMenuPageCount();
 }
 
 int CTFClassMenu::ClassForPageSlot( int nPage, int nSlot )
 {
-	if ( nPage < 0 || nPage >= ClassPageCount() )
-		return TF_CLASS_UNDEFINED;
-	if ( nSlot < 0 || nSlot >= CLASS_MENU_SLOT_COUNT )
-		return TF_CLASS_UNDEFINED;
-
-	return g_ClassMenuPages[ nPage ][ nSlot ].iClass;
+	return ClassMenuClassForPageSlot( nPage, nSlot );
 }
 
 int CTFClassMenu::PageForClass( int iClass )
@@ -817,7 +772,7 @@ int CTFClassMenu::PageForClass( int iClass )
 	{
 		for ( int nSlot = 0; nSlot < CLASS_MENU_SLOT_COUNT; ++nSlot )
 		{
-			if ( g_ClassMenuPages[ nPage ][ nSlot ].iClass == iClass )
+			if ( ClassForPageSlot( nPage, nSlot ) == iClass )
 				return nPage;
 		}
 	}
@@ -827,27 +782,7 @@ int CTFClassMenu::PageForClass( int iClass )
 
 const char *CTFClassMenu::PortraitShortName( int iClass )
 {
-	const int nPages = ClassPageCount();
-	for ( int nPage = 0; nPage < nPages; ++nPage )
-	{
-		for ( int nSlot = 0; nSlot < CLASS_MENU_SLOT_COUNT; ++nSlot )
-		{
-			if ( g_ClassMenuPages[ nPage ][ nSlot ].iClass != iClass )
-				continue;
-
-			const char *pszPortrait = g_ClassMenuPages[ nPage ][ nSlot ].pszPortrait;
-			if ( pszPortrait && pszPortrait[0] )
-				return pszPortrait;
-
-			if ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS && g_aRawPlayerClassNamesShort[ iClass ][0] )
-				return g_aRawPlayerClassNamesShort[ iClass ];
-		}
-	}
-
-	if ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS && g_aRawPlayerClassNamesShort[ iClass ][0] )
-		return g_aRawPlayerClassNamesShort[ iClass ];
-
-	return "scout";
+	return ClassMenuPortraitShortName( iClass );
 }
 
 int CTFClassMenu::ClassShownOnButton( int iButton ) const

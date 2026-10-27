@@ -45,6 +45,8 @@ public:
 private:
 	void SetSelectedItem( int iSlot );
 	void ToggleDisguiseTeam( void );
+	void ToggleClassPage( void );
+	void UpdateClassItems( void );
 	void ToggleSelectionIcons( bool bGroup );
 	void FindToggleBinding( void );
 
@@ -69,6 +71,8 @@ private:
 	int m_iSelectedItem;
 
 	int m_iGroupSelection;
+
+	int m_iClassPage;
 
 	bool m_bInConsoleMode;
 };
