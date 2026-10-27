@@ -1410,9 +1410,27 @@ void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
 	if ( m_bDeployed )
 		return;
 
+	// Placed models sit on +Z: open money bag, buff banner, and beer crate.
+	// Keep the throw's yaw and drop the tumble so they land right side up.
+	QAngle angLand = GetAbsAngles();
+	Vector vecForward = GetAbsVelocity();
+	vecForward.z = 0.f;
+	if ( vecForward.LengthSqr() < 1.f )
+	{
+		AngleVectors( GetAbsAngles(), &vecForward );
+		vecForward.z = 0.f;
+	}
+	if ( vecForward.LengthSqr() < 0.01f )
+		vecForward = Vector( 1.f, 0.f, 0.f );
+
+	VectorNormalize( vecForward );
+	VectorAngles( vecForward, Vector( 0.f, 0.f, 1.f ), angLand );
+
 	m_bDeployed = true;
 	SetAbsOrigin( vecOrigin );
+	SetAbsAngles( angLand );
 	SetAbsVelocity( vec3_origin );
+	SetLocalAngularVelocity( vec3_angle );
 	SetModel( GetOpenModel() );
 	SetModelScale( GetBagModelScale() );
 	ApplyTeamSkin();
@@ -1423,7 +1441,11 @@ void CTFProjectile_MoneyBag::Deploy( const Vector &vecOrigin )
 
 	IPhysicsObject *pPhys = VPhysicsGetObject();
 	if ( pPhys )
+	{
+		pPhys->SetVelocity( &vec3_origin, &vec3_origin );
+		pPhys->SetPosition( vecOrigin, angLand, true );
 		pPhys->EnableMotion( false );
+	}
 
 	SetMoveType( MOVETYPE_NONE );
 	AddSolidFlags( FSOLID_NOT_SOLID );
