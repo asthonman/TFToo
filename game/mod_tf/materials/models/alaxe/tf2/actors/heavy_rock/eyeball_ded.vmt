@@ -1,0 +1,34 @@
+"VertexLitGeneric"
+{
+	"$basetexture"               "models\alaxe\tf2\actors\heavy_rock/rock_eyeball_dead"			  // Iris color in RGB with cornea noise in A
+	"$bumpmap" 		"models/player/shared/shared_normal"
+				
+	
+	"$ambientocclusion" "1"
+	
+
+	"$phong" "1"
+	"$phongexponent" "20"
+	"$phongboost" "4"	
+	"$lightwarptexture"   "models/player/shared/eye_lightwarp.vtf"              // This enables TF NPR lighting
+	"$phongfresnelranges"	"[.3 1 8]"
+	"$halflambert" "0"
+	"$basemapalphaphongmask" "1"	
+
+
+	// DX8 ps.1.1 fallbacks, original HL2 eyes
+	"Eyes_dx8"
+	{
+		"$basetexture"	"models/player/shared/dxlevel80/eyeball_l"
+		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
+	}
+
+	// Cloaking
+	"$cloakPassEnabled" "1"
+	"Proxies"
+	{
+		"spy_invis"
+		{
+		}
+	}
+}

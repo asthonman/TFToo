@@ -10,6 +10,10 @@
 	}
 	"itemtest"
 	{
-		"viewed"		"5"
+		"viewed"		"14"
+	}
+	"koth_badlands"
+	{
+		"viewed"		"1"
 	}
 }

@@ -1,0 +1,13 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models\player\locker_lady/lady_lids"
+	"$bumpmap" "models/player/shared/shared_normal"
+	"$basemapalphaphongmask" "0"
+	"$phong" "1"
+	"$phongexponent" "50"
+	"$phongboost" ".1"	
+	"$phongfresnelranges"	"[.7 15 20]"
+}
+
+
+

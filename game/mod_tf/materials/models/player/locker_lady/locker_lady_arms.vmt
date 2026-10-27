@@ -1,0 +1,10 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "models\player\locker_lady/locker_lady_arms"
+	"$basemapalphaphongmask" "1"
+	"$phong" "1"
+	"$phongexponent" "6"
+	"$phongboost" ".5"	
+	"$phongfresnelranges"	"[.7 15 20]"
+}
+
