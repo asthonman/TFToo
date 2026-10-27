@@ -120,7 +120,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"models/weapons/w_moneybag_closed.mdl",
 		"models/weapons/w_moneybag_closed.mdl",
 		"moneybag",
-		1,
+		0,
 		s_MoneyBagAttrs,
 		ARRAYSIZE( s_MoneyBagAttrs ),
 	},
@@ -189,6 +189,28 @@ static void AddTypewriterAnimReplacements( KeyValues *pKV )
 	pKV->SetString( "anim_slot", "SECONDARY" );
 }
 
+static void AddMoneyBagAnimReplacements( KeyValues *pKV )
+{
+	// Body poses the item1 table asks for that this model did not compile.
+	// No item2 sequences exist. Walk, the bare jump, and an air throw fall back.
+	static const char *s_pszRepl[][2] =
+	{
+		{ "ACT_MP_WALK_ITEM1", "ACT_MP_RUN_ITEM1" },
+		{ "ACT_MP_JUMP_ITEM1", "ACT_MP_JUMP_FLOAT_ITEM1" },
+		{ "ACT_MP_ATTACK_AIRWALK_ITEM1", "ACT_MP_ATTACK_STAND_ITEM1" },
+	};
+
+	KeyValues *pVisuals = new KeyValues( "visuals" );
+	KeyValues *pRepl = new KeyValues( "animation_replacement" );
+	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
+	{
+		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
+	}
+	pVisuals->AddSubKey( pRepl );
+	pKV->AddSubKey( pVisuals );
+	pKV->SetString( "anim_slot", "ITEM1" );
+}
+
 void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> *pVecErrors )
 {
 	if ( !pSchema )
@@ -241,6 +263,10 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		if ( !Q_stricmp( desc.pszAltId, "b3" ) )
 		{
 			AddTypewriterAnimReplacements( pKV );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b4" ) )
+		{
+			AddMoneyBagAnimReplacements( pKV );
 		}
 
 		if ( !pSchema->AddRuntimeItemDefinition( pKV, pVecErrors ) )

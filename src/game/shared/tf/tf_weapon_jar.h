@@ -273,6 +273,9 @@ public:
 
 	virtual int			GetWeaponID( void ) const			{ return TF_WEAPON_CLEAVER; }
 	virtual const char*	GetEffectLabelText( void )			{ return "#TF_Weapon_MoneyBag"; }
+	// The player model only has item1 poses. The viewmodel is item3.
+	virtual int			GetActivityWeaponRole() const		{ return TF_WPN_TYPE_ITEM1; }
+	virtual Activity	TranslateViewmodelHandActivityInternal( Activity actBase );
 	virtual void		Precache( void );
 
 #ifdef GAME_DLL

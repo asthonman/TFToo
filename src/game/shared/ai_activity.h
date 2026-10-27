@@ -2363,6 +2363,9 @@ typedef enum
 	ACT_MP_CYOA_PDA_IDLE,
 	ACT_MP_CYOA_PDA_OUTRO,
 
+	// Money Bag throw. The viewmodel sequence is tagged with this name, and
+	// stock TF2 never registered it, so the throw could not be selected.
+	ACT_ITEM3_VM_THROW,
 
 	// this is the end of the global activities, private per-monster activities start here.
 	LAST_SHARED_ACTIVITY,

@@ -277,6 +277,34 @@ Activity CTFTypewriter::TranslateViewmodelHandActivityInternal( Activity actBase
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Stock reload will not start until the shot cooldown is over, and then
+// stretches the reload so it cannot finish before that leftover time.
+// Drop the wait so R, or an empty mag, starts a real reload immediately.
+// Leave the timer alone while the trigger is held or this frame fires again.
+//-----------------------------------------------------------------------------
+void CTFTypewriter::ItemPostFrame()
+{
+	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
+	if ( pOwner && !m_bInReload && UsesClipsForAmmo1() && m_flNextPrimaryAttack > gpGlobals->curtime
+		&& NeedsReloadForAmmo1( GetMaxClip1() ) )
+	{
+		const bool bReloadHeld = ( pOwner->m_nButtons & IN_RELOAD ) != 0;
+		const bool bTriggerHeld = ( pOwner->m_nButtons & IN_ATTACK ) != 0;
+		const bool bEmptyAuto = ( m_iClip1 == 0 )
+			&& ( pOwner->m_nButtons & ( IN_ATTACK | IN_ATTACK2 ) ) == 0
+			&& ( GetWeaponFlags() & ITEM_FLAG_NOAUTORELOAD ) == 0;
+
+		if ( ( bReloadHeld && !bTriggerHeld ) || bEmptyAuto )
+		{
+			m_flNextPrimaryAttack = gpGlobals->curtime;
+			m_flReloadPriorNextFire = gpGlobals->curtime;
+		}
+	}
+
+	BaseClass::ItemPostFrame();
+}
+
 void CTFTypewriter::Precache( void )
 {
 	BaseClass::Precache();

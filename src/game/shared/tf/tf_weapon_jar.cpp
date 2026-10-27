@@ -1223,6 +1223,33 @@ static const char *kMoneyBagOpenModel = "models/weapons/w_moneybag_open.mdl";
 static const char *kProtectionBugleModel = "models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl";
 static const char *kProtectionFlagModel = "models/workshop/weapons/c_models/c_battalion_buffbanner/c_battalion_buffbanner.mdl";
 
+//-----------------------------------------------------------------------------
+// v_moneybag has draw, idle, throw, and the secondary alt1 inspect set.
+// Throw is ACT_ITEM3_VM_THROW, which stock TF2 does not define. There is no
+// item2 sequence on this model or on the player.
+//-----------------------------------------------------------------------------
+Activity CTFMoneyBag::TranslateViewmodelHandActivityInternal( Activity actBase )
+{
+	switch ( actBase )
+	{
+	case ACT_VM_DRAW:
+		return ACT_ITEM3_VM_DRAW;
+	case ACT_VM_IDLE:
+		return ACT_ITEM3_VM_IDLE;
+	case ACT_VM_PRIMARYATTACK:
+	case ACT_VM_SECONDARYATTACK:
+		return ACT_ITEM3_VM_THROW;
+	case ACT_SECONDARY_VM_INSPECT_START:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_START;
+	case ACT_SECONDARY_VM_INSPECT_IDLE:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_IDLE;
+	case ACT_SECONDARY_VM_INSPECT_END:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_END;
+	default:
+		return BaseClass::TranslateViewmodelHandActivityInternal( actBase );
+	}
+}
+
 void CTFMoneyBag::Precache( void )
 {
 	BaseClass::Precache();

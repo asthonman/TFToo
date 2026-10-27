@@ -109,6 +109,7 @@ public:
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_HANDGUN_SCOUT_PRIMARY; }
 	virtual int		GetActivityWeaponRole() const		{ return TF_WPN_TYPE_SECONDARY; }
 	virtual Activity TranslateViewmodelHandActivityInternal( Activity actBase );
+	virtual void	ItemPostFrame();
 	virtual void	PlayWeaponShootSound( void );
 	virtual void	Precache( void );
 
