@@ -248,6 +248,35 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( tf_weapon_typewriter, CTFTypewriter );
 PRECACHE_WEAPON_REGISTER( tf_weapon_typewriter );
 
+//-----------------------------------------------------------------------------
+// The viewmodel only has the Shortstop's *_2 secondary sequences. The player
+// model tags those same poses as ACT_MP_*_SECONDARY, not primary.
+//-----------------------------------------------------------------------------
+Activity CTFTypewriter::TranslateViewmodelHandActivityInternal( Activity actBase )
+{
+	switch ( actBase )
+	{
+	case ACT_VM_DRAW:
+		return ACT_SECONDARY_VM_DRAW_2;
+	case ACT_VM_IDLE:
+		return ACT_SECONDARY_VM_IDLE_2;
+	case ACT_VM_PRIMARYATTACK:
+		return ACT_SECONDARY_VM_PRIMARYATTACK_2;
+	case ACT_VM_RELOAD:
+		return ACT_SECONDARY_VM_RELOAD_2;
+	case ACT_VM_SECONDARYATTACK:
+		return ACT_SECONDARY_VM_ALTATTACK;
+	case ACT_PRIMARY_VM_INSPECT_START:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_START;
+	case ACT_PRIMARY_VM_INSPECT_IDLE:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_IDLE;
+	case ACT_PRIMARY_VM_INSPECT_END:
+		return ACT_SECONDARY_ALT1_VM_INSPECT_END;
+	default:
+		return BaseClass::TranslateViewmodelHandActivityInternal( actBase );
+	}
+}
+
 void CTFTypewriter::Precache( void )
 {
 	BaseClass::Precache();

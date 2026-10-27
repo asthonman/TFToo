@@ -106,7 +106,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"models/weapons/w_typewriter.mdl",
 		"models/weapons/w_typewriter.mdl",
 		"typewriter",
-		1,
+		0,
 		s_TypewriterAttrs,
 		ARRAYSIZE( s_TypewriterAttrs ),
 	},
@@ -164,6 +164,31 @@ static bool NewItem_AddAttributeIfPresent( CTFItemSchema *pSchema, KeyValues *pA
 	return true;
 }
 
+static void AddTypewriterAnimReplacements( KeyValues *pKV )
+{
+	// Body poses that the secondary table asks for, but this model did not compile.
+	// Shove is the Shortstop push, not a normal secondary attack.
+	static const char *s_pszRepl[][2] =
+	{
+		{ "ACT_MP_WALK_SECONDARY", "ACT_MP_RUN_SECONDARY" },
+		{ "ACT_MP_JUMP_SECONDARY", "ACT_MP_JUMP_FLOAT_SECONDARY" },
+		{ "ACT_MP_ATTACK_AIRWALK_SECONDARY", "ACT_MP_ATTACK_STAND_SECONDARY" },
+		{ "ACT_MP_ATTACK_STAND_SECONDARYFIRE", "ACT_MP_PUSH_STAND_SECONDARY" },
+		{ "ACT_MP_ATTACK_CROUCH_SECONDARYFIRE", "ACT_MP_PUSH_CROUCH_SECONDARY" },
+		{ "ACT_MP_ATTACK_SWIM_SECONDARYFIRE", "ACT_MP_PUSH_SWIM_SECONDARY" },
+	};
+
+	KeyValues *pVisuals = new KeyValues( "visuals" );
+	KeyValues *pRepl = new KeyValues( "animation_replacement" );
+	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
+	{
+		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
+	}
+	pVisuals->AddSubKey( pRepl );
+	pKV->AddSubKey( pVisuals );
+	pKV->SetString( "anim_slot", "SECONDARY" );
+}
+
 void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> *pVecErrors )
 {
 	if ( !pSchema )
@@ -211,6 +236,11 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 				NewItem_AddAttributeIfPresent( pSchema, pAttrs, desc.pAttrs[a].pszName, desc.pAttrs[a].pszValue );
 			}
 			pKV->AddSubKey( pAttrs );
+		}
+
+		if ( !Q_stricmp( desc.pszAltId, "b3" ) )
+		{
+			AddTypewriterAnimReplacements( pKV );
 		}
 
 		if ( !pSchema->AddRuntimeItemDefinition( pKV, pVecErrors ) )
