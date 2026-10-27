@@ -832,7 +832,7 @@ int GetParticleSystemIndex( const char *pParticleSystemName )
 //-----------------------------------------------------------------------------
 const char *GetParticleSystemNameFromIndex( int nIndex )
 {
-	if ( nIndex < g_pStringTableParticleEffectNames->GetMaxStrings() )
+	if ( nIndex >= 0 && g_pStringTableParticleEffectNames && nIndex < g_pStringTableParticleEffectNames->GetMaxStrings() )
 		return g_pStringTableParticleEffectNames->GetString( nIndex );
 	return "error";
 }

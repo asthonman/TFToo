@@ -56,8 +56,11 @@ static const char *g_szBlueClassImages[] =
 	"../hud/class_pyroblue",
 	"../hud/class_spyblue",
 	"../hud/class_engiblue",
-	"../hud/class_scoutblue",
+	"../hud/class_scoutblue",	// Madcap
+	"../hud/class_pyroblue",	// Mobster
+	"",							// Civilian
 };
+COMPILE_TIME_ASSERT( ARRAYSIZE( g_szBlueClassImages ) == TF_CLASS_COUNT_ALL );
 
 static const char *g_szRedClassImages[] = 
 { 
@@ -71,8 +74,11 @@ static const char *g_szRedClassImages[] =
 	"../hud/class_pyrored",
 	"../hud/class_spyred",
 	"../hud/class_engired",
-	"../hud/class_scoutred",
+	"../hud/class_scoutred",	// Madcap
+	"../hud/class_pyrored",		// Mobster
+	"",							// Civilian
 };
+COMPILE_TIME_ASSERT( ARRAYSIZE( g_szRedClassImages ) == TF_CLASS_COUNT_ALL );
 
 enum
 {
@@ -1168,6 +1174,9 @@ void CTFClassImage::SetClass( int iTeam, int iClass, int iCloakstate )
 {
 	char szImage[128];
 	szImage[0] = '\0';
+
+	if ( iClass < 0 || iClass >= ARRAYSIZE( g_szBlueClassImages ) )
+		return;
 
 	if ( iTeam == TF_TEAM_BLUE )
 	{

@@ -83,7 +83,11 @@ StatMap_t* g_SteamStats_Class[] = {
 	g_SteamStats_Pyro,		// Pyro
 	g_SteamStats_Spy,		// Spy
 	g_SteamStats_Engineer,	// Engineer
+	NULL,					// Madcap
+	NULL,					// Mobster
+	NULL,					// Civilian
 };
+COMPILE_TIME_ASSERT( ARRAYSIZE( g_SteamStats_Class ) == TF_LAST_NORMAL_CLASS + 1 );
 
 // subset of map stats which we store in Steam
 StatMap_t g_SteamMapStats[] = {
