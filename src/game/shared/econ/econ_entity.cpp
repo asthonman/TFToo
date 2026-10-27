@@ -336,7 +336,7 @@ Activity CEconEntity::TranslateViewmodelHandActivity( Activity actBase )
 	if ( pItem && pItem->IsValid() )
 	{
 		GameItemDefinition_t *pStaticData = pItem->GetStaticData();
-		if ( pStaticData && pStaticData->ShouldAttachToHands() )
+		if ( pStaticData && ( pStaticData->ShouldAttachToHands() || WantsViewmodelActivityTranslation() ) )
 		{
 			return TranslateViewmodelHandActivityInternal(actBase);
 		}

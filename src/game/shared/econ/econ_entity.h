@@ -169,6 +169,9 @@ public:
 	virtual bool			UpdateBodygroups( CBaseCombatCharacter* pOwner, int iState );
 
 protected:
+	// Attach-to-hands weapons remap ACT_VM_* onto the class arms. A standalone
+	// viewmodel built with those same activity names needs the remap too.
+	virtual bool			WantsViewmodelActivityTranslation( void ) const { return false; }
 	virtual Activity		TranslateViewmodelHandActivityInternal( Activity actBase ) { return actBase; }
 	
 protected:

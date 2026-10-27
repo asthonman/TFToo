@@ -108,6 +108,8 @@ public:
 	// Same weapon id as the Shortstop so the bullet, crit, and damage tables stay put.
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_HANDGUN_SCOUT_PRIMARY; }
 	virtual int		GetActivityWeaponRole() const		{ return TF_WPN_TYPE_SECONDARY; }
+	// v_typewriter is not attached to the arms, but its sequences are still the Shortstop's *_2 set.
+	virtual bool	WantsViewmodelActivityTranslation( void ) const { return true; }
 	virtual Activity TranslateViewmodelHandActivityInternal( Activity actBase );
 	virtual void	ItemPostFrame();
 	virtual void	PlayWeaponShootSound( void );

@@ -77,6 +77,8 @@ public:
 
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
 	virtual void	Precache( void );
+	// v_leadpipe uses ACT_MELEE_VM_* and is not attached to the arms.
+	virtual bool	WantsViewmodelActivityTranslation( void ) const { return true; }
 
 #ifdef CLIENT_DLL
 	// v_leadpipe's bodygroup 0 has no mesh. The pipe is bodygroup 1.

@@ -275,6 +275,7 @@ public:
 	virtual const char*	GetEffectLabelText( void )			{ return "#TF_Weapon_MoneyBag"; }
 	// The player model only has item1 poses. The viewmodel is item3.
 	virtual int			GetActivityWeaponRole() const		{ return TF_WPN_TYPE_ITEM1; }
+	virtual bool		WantsViewmodelActivityTranslation( void ) const { return true; }
 	virtual Activity	TranslateViewmodelHandActivityInternal( Activity actBase );
 	virtual void		Precache( void );
 
