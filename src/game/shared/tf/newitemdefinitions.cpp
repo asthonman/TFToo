@@ -78,7 +78,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"models/weapons/w_models/w_nailgun.mdl",
 		"models/weapons/w_models/w_nailgun.mdl",
 		"nailgun",
-		0,
+		1,
 		NULL,
 		0,
 	},
@@ -92,7 +92,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"models/weapons/w_models/w_brick_scout.mdl",
 		"models/weapons/w_models/w_brick_scout.mdl",
 		"brick",
-		0,
+		1,
 		s_BrickAttrs,
 		ARRAYSIZE( s_BrickAttrs ),
 	},
@@ -260,7 +260,17 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 			pKV->AddSubKey( pAttrs );
 		}
 
-		if ( !Q_stricmp( desc.pszAltId, "b3" ) )
+		if ( !Q_stricmp( desc.pszAltId, "b1" ) )
+		{
+			// World model only. First person is Scout's arms, secondary slot.
+			pKV->SetString( "anim_slot", "SECONDARY" );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b2" ) )
+		{
+			// Same arms. The brick uses the item2 set, not secondary.
+			pKV->SetString( "anim_slot", "ITEM2" );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b3" ) )
 		{
 			AddTypewriterAnimReplacements( pKV );
 		}

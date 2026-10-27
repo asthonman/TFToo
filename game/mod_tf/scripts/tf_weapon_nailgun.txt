@@ -32,7 +32,7 @@
 	"HasTeamSkins_Worldmodel"		"0"
 	"MuzzleFlashParticleEffect"		""
 
-	// World model that still ships in tf2_misc_dir. There is no viewmodel left.
+	// No viewmodel. The item attaches this world model to c_scout_arms.
 	"viewmodel"			"models/weapons/w_models/w_nailgun.mdl"
 	"playermodel"		"models/weapons/w_models/w_nailgun.mdl"
 	"anim_prefix"		"ac"
