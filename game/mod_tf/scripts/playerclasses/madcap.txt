@@ -3,6 +3,8 @@
 // Primary: Nailgun. Secondary: Brick. Melee: Boston Basher.
 // Passives: Escape Plan speed tiers from missing health (up to +60%).
 // Weapon damage ramps from 100% at full health to 300% at 0. Self-damage does not ramp.
+// Class passives (unset here): "airdash" "1", "afterburn_immune" "1",
+// "knockback_scale" "0.5", "health_regen" "1".
 "PlayerClassData"
 {
 	"name"				"madcap"

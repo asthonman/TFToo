@@ -2,6 +2,8 @@
 // Primary: Tommy Gun. Secondary: Money Bag. Melee: Lead Pipe.
 // Airblast resistance is applied in InitClass.
 // Backstabs kill him like any other class.
+// Class passives (unset here): "airdash" "1", "afterburn_immune" "1",
+// "knockback_scale" "0.5", "health_regen" "1".
 "PlayerClassData"
 {
 	"name"				"mobster"

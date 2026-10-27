@@ -87,6 +87,13 @@ TFPlayerClassData_t::TFPlayerClassData_t()
 		m_aBuildable[iBuildable] = OBJ_LAST;
 	}
 
+	m_bDontDoAirwalk = false;
+	m_bDontDoNewJump = false;
+	m_bAirDash = false;
+	m_bAfterburnImmune = false;
+	m_flKnockbackScale = 1.0f;
+	m_bHealthRegen = false;
+
 	m_bParsed = false;
 }
 
@@ -146,6 +153,20 @@ void TFPlayerClassData_t::ParseData( KeyValues *pKeyValuesData )
 {
 	// Attributes.
 	Q_strncpy( m_szClassName, pKeyValuesData->GetString( "name" ), TF_NAME_LENGTH );
+
+	// Stock passives. The script keys below override these.
+	m_bAirDash = FStrEq( m_szClassName, "scout" );
+	m_bAfterburnImmune = FStrEq( m_szClassName, "pyro" );
+	m_flKnockbackScale = FStrEq( m_szClassName, "heavyweapons" ) ? 0.5f : 1.0f;
+	m_bHealthRegen = FStrEq( m_szClassName, "medic" );
+	if ( pKeyValuesData->FindKey( "airdash" ) )
+		m_bAirDash = pKeyValuesData->GetInt( "airdash" ) != 0;
+	if ( pKeyValuesData->FindKey( "afterburn_immune" ) )
+		m_bAfterburnImmune = pKeyValuesData->GetInt( "afterburn_immune" ) != 0;
+	if ( pKeyValuesData->FindKey( "knockback_scale" ) )
+		m_flKnockbackScale = pKeyValuesData->GetFloat( "knockback_scale", 1.0f );
+	if ( pKeyValuesData->FindKey( "health_regen" ) )
+		m_bHealthRegen = pKeyValuesData->GetInt( "health_regen" ) != 0;
 
 	// Load the high res model or the lower res model.
 	if ( !IsX360() )

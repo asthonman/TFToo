@@ -1793,8 +1793,8 @@ void CTFPlayer::RegenThink( void )
 
 	bool bShowRegen = true;
 
-	// Medic has a base regen amount
-	if ( GetPlayerClass()->GetClassIndex() == TF_CLASS_MEDIC )
+	// This class has a base regen amount
+	if ( GetPlayerClass()->GetData()->HasHealthRegen() )
 	{
 		// Heal faster if we haven't been in combat for a while.
 		float flTimeSinceDamage = gpGlobals->curtime - GetLastDamageReceivedTime();
@@ -9905,7 +9905,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			}
 		}
 
-		if ( IsPlayerClass( TF_CLASS_PYRO ) )
+		if ( GetPlayerClass()->GetData()->IsAfterburnImmune() )
 		{
 			m_Shared.AddCond( TF_COND_BURNING_PYRO, tf_afterburn_max_duration );
 		}
@@ -10389,10 +10389,11 @@ void CTFPlayer::ApplyPushFromDamage( const CTakeDamageInfo &info, Vector vecDir 
 				vecForce = vecDir * -DamageForce( WorldAlignSize(), info.GetDamage(), tf_damageforcescale_other.GetFloat() );
 			}
 
-			if ( IsPlayerClass( TF_CLASS_HEAVYWEAPONS ) )
+			// Classes with knockback resistance (Heavy is 0.5) take less push from non-sentry damage.
+			const float flKnockbackScale = GetPlayerClass()->GetData()->GetKnockbackScale();
+			if ( flKnockbackScale != 1.0f )
 			{
-				// Heavies take less push from non sentryguns
-				vecForce *= 0.5f;
+				vecForce *= flKnockbackScale;
 			}
 
 			CBaseEntity* pInflictor = info.GetInflictor();
@@ -11794,7 +11795,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	bool bElectrocuted = false;
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the rag doll to burn if the player was burning and was not a pyro (who only burns momentarily)
-	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && ( TF_CLASS_PYRO != GetPlayerClass()->GetClassIndex() );
+	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && !GetPlayerClass()->GetData()->IsAfterburnImmune();
 	CTFPlayer *pOriginalBurner = m_Shared.GetOriginalBurnAttacker();
 	CTFPlayer *pLastBurner = m_Shared.GetBurnAttacker();
 
@@ -15752,7 +15753,7 @@ void CTFPlayer::FeignDeath( const CTakeDamageInfo& info, bool bDeathnotice )
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED ) && (m_Shared.GetDisguiseTeam() == GetTeamNumber());
 
 	// We want the ragdoll to burn if the player was burning and was not disguised as a pyro.
-	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && (!bDisguised || (TF_CLASS_PYRO != m_Shared.GetDisguiseClass()));
+	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && ( !bDisguised || !GetPlayerClassData( m_Shared.GetDisguiseClass() )->IsAfterburnImmune() );
 
 	// Stop us from burning and other effects that would give the game away.
 	m_Shared.RemoveCond( TF_COND_BURNING );

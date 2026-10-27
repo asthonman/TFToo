@@ -1210,8 +1210,8 @@ bool CTFGameMovement::CheckJumpButton()
 	if ( !m_pTFPlayer->CanJump() )
 		return false;
 
-	// Check to see if the player is a scout.
-	bool bScout = m_pTFPlayer->GetPlayerClass()->IsClass( TF_CLASS_SCOUT );
+	// Check to see if this class can air dash.
+	bool bHasAirDash = m_pTFPlayer->GetPlayerClass()->GetData()->HasAirDash();
 	bool bAirDash = false;
 	bool bOnGround = ( player->GetGroundEntity() != NULL );
 
@@ -1221,7 +1221,7 @@ bool CTFGameMovement::CheckJumpButton()
 	if ( player->GetFlags() & FL_DUCKING )
 	{
 		// Let a scout do it.
-		bool bAllow = ( bScout && !bOnGround );
+		bool bAllow = ( bHasAirDash && !bOnGround );
 
 		if ( !bAllow )
 			return false;

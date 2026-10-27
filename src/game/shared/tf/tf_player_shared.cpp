@@ -2888,8 +2888,9 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		}
 		else if ( gpGlobals->curtime >= m_flFlameBurnTime )
 		{
-			// Burn the player (if not pyro, who does not take persistent burning damage)
-			if ( ( TF_CLASS_PYRO != m_pOuter->GetPlayerClass()->GetClassIndex() ) || InCond( TF_COND_BURNING_PYRO ) )
+			// Burn the player, unless this class is immune to afterburn.
+			// TF_COND_BURNING_PYRO is a burn that ignores that immunity.
+			if ( !m_pOuter->GetPlayerClass()->GetData()->IsAfterburnImmune() || InCond( TF_COND_BURNING_PYRO ) )
 			{
 				float flBurnDamage = TF_BURNING_DMG;
 				int nKillType = TF_DMG_CUSTOM_BURNING;
@@ -4589,7 +4590,7 @@ void CTFPlayerShared::OnRemoveRocketPack( void )
 void CTFPlayerShared::OnRemoveBurningPyro( void )
 {
 #ifdef GAME_DLL
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_PYRO) && InCond( TF_COND_BURNING ) )
+	if ( m_pOuter->GetPlayerClass()->GetData()->IsAfterburnImmune() && InCond( TF_COND_BURNING ) )
 	{
 		RemoveCond( TF_COND_BURNING );
 	}
@@ -6631,11 +6632,11 @@ void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon, float 
 	if ( InCond( TF_COND_PHASE ) || InCond( TF_COND_PASSTIME_INTERCEPTION ) )
 		return;
 
-	// pyros don't burn persistently or take persistent burning damage, but we show brief burn effect so attacker can tell they hit
-	bool bVictimIsImmunePyro = ( TF_CLASS_PYRO ==  m_pOuter->GetPlayerClass()->GetClassIndex() );
-	if ( bVictimIsImmunePyro )
+	// Afterburn-immune classes don't burn persistently or take persistent burning damage, but we show brief burn effect so attacker can tell they hit
+	bool bAfterburnImmune = m_pOuter->GetPlayerClass()->GetData()->IsAfterburnImmune();
+	if ( bAfterburnImmune )
 	{
-		bVictimIsImmunePyro = !InCond( TF_COND_BURNING_PYRO );
+		bAfterburnImmune = !InCond( TF_COND_BURNING_PYRO );
 	}
 
 #ifdef DEBUG
@@ -6654,7 +6655,7 @@ void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon, float 
 		AddCond( TF_COND_HEALING_DEBUFF, m_flAfterburnDuration, pAttacker );
 
 		// let the attacker know he burned me
-		if ( pAttacker && !bVictimIsImmunePyro )
+		if ( pAttacker && !bAfterburnImmune )
 		{
 			pAttacker->OnBurnOther( m_pOuter, pWeapon );
 
@@ -6667,7 +6668,7 @@ void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon, float 
 #endif // DEBUG
 	}
 
-	int bAfterburnImmunity = bVictimIsImmunePyro;
+	int bAfterburnImmunity = bAfterburnImmune;
 
 	// Check my weapon
 	if ( !bAfterburnImmunity )
@@ -12857,8 +12858,8 @@ bool CTFPlayer::CanAirDash( void ) const
 	if ( m_Shared.InCond( TF_COND_HALLOWEEN_SPEED_BOOST ) )
 		return true;
 
-	bool bScout = GetPlayerClass()->IsClass( TF_CLASS_SCOUT );
-	if ( !bScout )
+	bool bHasAirDash = GetPlayerClass()->GetData()->HasAirDash();
+	if ( !bHasAirDash )
 		return false;
 
 	if ( m_Shared.InCond( TF_COND_SODAPOPPER_HYPE ) )
