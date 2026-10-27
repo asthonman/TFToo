@@ -10874,8 +10874,12 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	}
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && !m_Shared.IsStealthed() )
 	{
-		float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;
-		maxfbspeed = MIN( flMaxDisguiseSpeed, maxfbspeed );
+		// Madcap's speed is a health ramp. Don't copy it. Spy stays at spy speed.
+		if ( m_Shared.GetDisguiseClass() != TF_CLASS_MADCAP )
+		{
+			float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;
+			maxfbspeed = MIN( flMaxDisguiseSpeed, maxfbspeed );
+		}
 	}
 
 	if ( !TFGameRules()->IsMannVsMachineMode() || !IsMiniBoss() ) // No aiming slowdown penalties for MiniBoss players in MVM

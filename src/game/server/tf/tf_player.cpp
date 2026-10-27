@@ -15909,7 +15909,7 @@ void CTFPlayer::CreateFeignDeathRagdoll( const CTakeDamageInfo& info, bool bGib,
 		if ( bDisguised )
 		{
 			pRagdoll->m_iTeam = m_Shared.GetDisguiseTeam();
-			pRagdoll->m_iClass = GetDisguiseVisualClass( m_Shared.GetDisguiseClass() );
+			pRagdoll->m_iClass = m_Shared.GetDisguiseClass();
 		}
 		else
 		{

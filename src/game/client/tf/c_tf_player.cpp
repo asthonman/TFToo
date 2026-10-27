@@ -9001,8 +9001,9 @@ void C_TFPlayer::ValidateModelIndex( void )
 	}
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && IsEnemyPlayer() )
 	{
-		// Later classes have no disguise body yet. Use the original class on that slat.
-		TFPlayerClassData_t *pData = GetPlayerClassData( GetDisguiseVisualClass( m_Shared.GetDisguiseClass() ) );
+		// Enemies see the disguised class's own body. Madcap still points at
+		// the Scout model until he has one.
+		TFPlayerClassData_t *pData = GetPlayerClassData( m_Shared.GetDisguiseClass() );
 		m_nModelIndex = modelinfo->GetModelIndex( pData->GetModelName() );
 	}
 	else if ( m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) )
