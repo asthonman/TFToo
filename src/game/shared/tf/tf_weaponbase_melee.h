@@ -119,7 +119,7 @@ public:
 	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
-	CTFResupplyWeapon() {}
+	CTFResupplyWeapon() : m_bSwingLeft( true ) {}
 
 	virtual void	Precache( void );
 	virtual void	Spawn( void );
@@ -140,6 +140,8 @@ public:
 
 private:
 	void			HideMesh( void );
+	// Alternates attackStand/Crouch_MELEE_L and _R. Server picks the sequence.
+	bool			m_bSwingLeft;
 
 	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
 };

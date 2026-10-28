@@ -72,6 +72,11 @@ enum PlayerAnimEvent_t
 
 	PLAYERANIMEVENT_ATTACK_PRIMARY_SUPER,
 
+	// Cabinette pulse swing. nData is the sequence index. Must stay last so
+	// existing event values do not shift. Included in IsCustomPlayerAnimEvent
+	// so the temp entity is not stripped from the swinger.
+	PLAYERANIMEVENT_RESUPPLY_SWING,
+
 	PLAYERANIMEVENT_COUNT
 };
 
@@ -103,7 +108,8 @@ struct GestureSlot_t
 inline bool IsCustomPlayerAnimEvent( PlayerAnimEvent_t event )
 {
 	return ( event == PLAYERANIMEVENT_CUSTOM ) || ( event == PLAYERANIMEVENT_CUSTOM_GESTURE ) ||
-		( event == PLAYERANIMEVENT_CUSTOM_SEQUENCE ) || ( event == PLAYERANIMEVENT_CUSTOM_GESTURE_SEQUENCE );
+		( event == PLAYERANIMEVENT_CUSTOM_SEQUENCE ) || ( event == PLAYERANIMEVENT_CUSTOM_GESTURE_SEQUENCE ) ||
+		( event == PLAYERANIMEVENT_RESUPPLY_SWING );
 }
 
 struct MultiPlayerPoseData_t

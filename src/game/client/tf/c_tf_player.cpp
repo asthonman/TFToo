@@ -6715,6 +6715,7 @@ bool C_TFPlayer::PlayAnimEventInPrediction( PlayerAnimEvent_t event )
 	case PLAYERANIMEVENT_CYOAPDA_BEGIN:
 	case PLAYERANIMEVENT_CYOAPDA_MIDDLE:
 	case PLAYERANIMEVENT_CYOAPDA_END:
+	case PLAYERANIMEVENT_RESUPPLY_SWING:
 		return true;
 	default:
 		return false;

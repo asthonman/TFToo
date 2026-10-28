@@ -1208,6 +1208,32 @@ void CTFPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 		}
 		break;
 
+	case PLAYERANIMEVENT_RESUPPLY_SWING:
+		{
+			// nData is a sequence index chosen on the server (attackStand/Crouch/Swim_MELEE).
+			// AddVCDSequenceToGestureSlot does not go through SelectWeightedSequence,
+			// which also matches the hidden easter-egg swings on this model.
+			CTFPlayer *pPlayer = GetTFPlayer();
+			if ( !pPlayer )
+				return;
+
+			CStudioHdr *pHdr = pPlayer->GetModelPtr();
+			if ( pHdr && nData >= 0 && nData < pHdr->GetNumSeq() )
+			{
+				AddVCDSequenceToGestureSlot( GESTURE_SLOT_ATTACK_AND_RELOAD, nData, 0.0f, true );
+			}
+			else
+			{
+				Activity fallback = ACT_MP_ATTACK_STAND_MELEE;
+				if ( pPlayer->GetWaterLevel() >= WL_Waist )
+					fallback = ACT_MP_ATTACK_SWIM_MELEE;
+				else if ( bInDuck )
+					fallback = ACT_MP_ATTACK_CROUCH_MELEE;
+				RestartGesture( GESTURE_SLOT_ATTACK_AND_RELOAD, fallback );
+			}
+			break;
+		}
+
 	case PLAYERANIMEVENT_VOICE_COMMAND_GESTURE:
 		{
 			if ( !IsGestureSlotActive( GESTURE_SLOT_ATTACK_AND_RELOAD ) )

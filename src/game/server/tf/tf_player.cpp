@@ -1281,15 +1281,12 @@ void CTFPlayer::ResupplyAuraThink( void )
 
 		pTarget->Regenerate();
 		pTarget->SetNextRegenTime( gpGlobals->curtime + 3.0f );
-
-		CSingleUserRecipientFilter filter( pTarget );
-		pTarget->EmitSound( filter, pTarget->entindex(), "Regenerate.Touch" );
 		bPulsedOther = true;
 	}
 
-	// One swing per pulse that actually reached someone else. The melee
-	// activity table turns this primary fire into ACT_MP_ATTACK_STAND_MELEE.
-	// +attack never calls this.
+	// One swing per pulse that actually reached someone else. The swing
+	// plays attackStand_MELEE by sequence and the locker sound. +attack
+	// never calls this, and she is not a target of the pulse.
 	if ( bPulsedOther && !IsTaunting() )
 	{
 		CTFResupplyWeapon *pPulse = dynamic_cast<CTFResupplyWeapon *>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );

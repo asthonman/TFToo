@@ -1185,6 +1185,7 @@ void CTFResupplyWeapon::Precache( void )
 {
 	BaseClass::Precache();
 	PrecacheModel( s_pszResupplyHiddenModel );
+	PrecacheScriptSound( "Regenerate.Touch" );
 }
 
 void CTFResupplyWeapon::HideMesh( void )
@@ -1235,7 +1236,33 @@ void CTFResupplyWeapon::PlayPulseSwing( void )
 	if ( pPlayer->GetActiveTFWeapon() != this )
 		pPlayer->Weapon_Switch( this );
 
-	// Primary fire, remapped by the melee activity table. No trace, no damage.
-	SendPlayerAnimEvent( pPlayer );
+	// Named sequences, not ACT_MP_ATTACK_STAND_MELEE. That activity also
+	// covers the hidden easter-egg swings, and ATTACK_PRIMARY never reaches
+	// the local player (the temp entity strips her, then prediction drops it).
+	const char *pszSequence = "attackStand_MELEE_L";
+	if ( pPlayer->GetWaterLevel() >= WL_Waist )
+	{
+		pszSequence = "attackSwim_MELEE";
+	}
+	else if ( pPlayer->GetFlags() & FL_DUCKING )
+	{
+		pszSequence = m_bSwingLeft ? "attackCrouch_MELEE_L" : "attackCrouch_MELEE_R";
+		m_bSwingLeft = !m_bSwingLeft;
+	}
+	else
+	{
+		pszSequence = m_bSwingLeft ? "attackStand_MELEE_L" : "attackStand_MELEE_R";
+		m_bSwingLeft = !m_bSwingLeft;
+	}
+
+	int iSeq = pPlayer->LookupSequence( pszSequence );
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_RESUPPLY_SWING, iSeq );
+
+#ifndef CLIENT_DLL
+	// Same script sound as func_regenerate. One shot per pulse, from her,
+	// so nearby players hear the locker open with the swing.
+	pPlayer->EmitSound( "Regenerate.Touch" );
+#endif
+
 	HideMesh();
 }
