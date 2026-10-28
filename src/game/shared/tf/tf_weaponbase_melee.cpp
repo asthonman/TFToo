@@ -6,6 +6,7 @@
 
 #include "cbase.h"
 #include "tf_weaponbase_melee.h"
+#include "baseviewmodel_shared.h"
 #include "effect_dispatch_data.h"
 #include "tf_gamerules.h"
 
@@ -1149,4 +1150,92 @@ char const *CTFWeaponBaseMelee::GetShootSound( int iIndex ) const
 	}
 
 	return BaseClass::GetShootSound(iIndex);
+}
+
+//=============================================================================
+// Resupply. A melee so the cabinette body resolves ACT_MP_ATTACK_STAND_MELEE.
+// There is no mesh on the item. The entity still needs a precached studio
+// model: CBaseCombatWeapon::Equip does SetModel(GetViewModel()), and an
+// empty name is a fatal UTIL_SetModel on the server. The bat is never drawn.
+//=============================================================================
+IMPLEMENT_NETWORKCLASS_ALIASED( TFResupplyWeapon, DT_TFWeaponResupply )
+
+BEGIN_NETWORK_TABLE( CTFResupplyWeapon, DT_TFWeaponResupply )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFResupplyWeapon )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_resupply, CTFResupplyWeapon );
+PRECACHE_WEAPON_REGISTER( tf_weapon_resupply );
+
+static const char *s_pszResupplyHiddenModel = "models/weapons/w_models/w_bat.mdl";
+
+const char *CTFResupplyWeapon::GetViewModel( int /*iViewModel*/ ) const
+{
+	return s_pszResupplyHiddenModel;
+}
+
+const char *CTFResupplyWeapon::GetWorldModel( void ) const
+{
+	return s_pszResupplyHiddenModel;
+}
+
+void CTFResupplyWeapon::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheModel( s_pszResupplyHiddenModel );
+}
+
+void CTFResupplyWeapon::HideMesh( void )
+{
+	AddEffects( EF_NODRAW );
+
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer )
+		return;
+
+	CBaseViewModel *vm = pPlayer->GetViewModel( m_nViewModelIndex );
+	if ( vm )
+		vm->AddEffects( EF_NODRAW );
+}
+
+void CTFResupplyWeapon::Spawn( void )
+{
+	BaseClass::Spawn();
+	AddEffects( EF_NODRAW );
+}
+
+void CTFResupplyWeapon::Equip( CBaseCombatCharacter *pOwner )
+{
+	BaseClass::Equip( pOwner );
+	HideMesh();
+}
+
+bool CTFResupplyWeapon::Deploy( void )
+{
+	// Weapon_Switch unhides the viewmodel after Deploy returns.
+	// ItemPostFrame puts EF_NODRAW back before the next draw.
+	bool bDeployed = BaseClass::Deploy();
+	HideMesh();
+	return bDeployed;
+}
+
+void CTFResupplyWeapon::ItemPostFrame( void )
+{
+	HideMesh();
+}
+
+void CTFResupplyWeapon::PlayPulseSwing( void )
+{
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer || pPlayer->IsTaunting() )
+		return;
+
+	if ( pPlayer->GetActiveTFWeapon() != this )
+		pPlayer->Weapon_Switch( this );
+
+	// Primary fire, remapped by the melee activity table. No trace, no damage.
+	SendPlayerAnimEvent( pPlayer );
+	HideMesh();
 }

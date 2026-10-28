@@ -65,6 +65,11 @@ static const NewItemAttribute_t s_MoneyBagAttrs[] =
 	{ "effect bar recharge rate increased", "6" },
 };
 
+static const NewItemAttribute_t s_ResupplyMeleeAttrs[] =
+{
+	{ "no_attack", "1" },
+};
+
 // Madcap. b1 is the Nailgun (primary). b2 is the Brick (secondary).
 static const NewItemDefDesc_t s_NewItems[] =
 {
@@ -151,6 +156,20 @@ static const NewItemDefDesc_t s_NewItems[] =
 		0,
 		NULL,
 		0,
+	},
+	{
+		"b7",
+		"tf_weapon_resupply",
+		"#TF_Weapon_Resupply",
+		"melee",
+		LOADOUT_POSITION_MELEE,
+		TF_CLASS_RESUPPLY,
+		"",
+		"",
+		"resupply",
+		0,
+		s_ResupplyMeleeAttrs,
+		ARRAYSIZE( s_ResupplyMeleeAttrs ),
 	},
 };
 
@@ -331,6 +350,13 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 			pBodygroups->SetInt( "hat", 1 );
 			pVisuals->AddSubKey( pBodygroups );
 			pKV->AddSubKey( pVisuals );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b7" ) )
+		{
+			// Melee activity set comes from the weapon script (WeaponType melee).
+			// FORCE_NOT_USED (-2) makes the class-select panel skip this item,
+			// so selectionMenu_StartPose / Anim01 still play.
+			pKV->SetString( "anim_slot", "FORCE_NOT_USED" );
 		}
 
 		// c_mobster_arms has a reference pose and no sequences. The three

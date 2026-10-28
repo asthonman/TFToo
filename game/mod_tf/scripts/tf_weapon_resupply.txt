@@ -1,0 +1,33 @@
+// Resupply's melee. She cannot fire it. The locker pulse plays the swing.
+// The item has no player or world model. This hidden bat only exists so
+// Equip/SetModel has a precached studio model. The weapon forces EF_NODRAW.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Resupply"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"melee"
+	"MeleeWeapon"		"1"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+	"SmackDelay"		"0.2"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"2"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/w_models/w_bat.mdl"
+	"playermodel"		"models/weapons/w_models/w_bat.mdl"
+	"anim_prefix"		"bat"
+}

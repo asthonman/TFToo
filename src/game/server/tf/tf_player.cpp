@@ -78,6 +78,7 @@
 #include "tf_gcmessages.h"
 #include "tf_obj_sentrygun.h"
 #include "tf_weapon_shovel.h"
+#include "tf_weaponbase_melee.h"
 #include "bot/tf_bot.h"
 #include "bot/tf_bot_manager.h"
 #include "NextBotUtil.h"
@@ -1286,11 +1287,14 @@ void CTFPlayer::ResupplyAuraThink( void )
 		bPulsedOther = true;
 	}
 
-	// Swing once per pulse that actually reaches someone else in the radius.
-	// The gesture is a primary fire, which her anim state turns into the melee attack.
+	// One swing per pulse that actually reached someone else. The melee
+	// activity table turns this primary fire into ACT_MP_ATTACK_STAND_MELEE.
+	// +attack never calls this.
 	if ( bPulsedOther && !IsTaunting() )
 	{
-		DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY );
+		CTFResupplyWeapon *pPulse = dynamic_cast<CTFResupplyWeapon *>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );
+		if ( pPulse )
+			pPulse->PlayPulseSwing();
 	}
 }
 

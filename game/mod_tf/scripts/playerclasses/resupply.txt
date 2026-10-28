@@ -1,6 +1,8 @@
-// Resupply. 150 health, 300 units/sec. No weapons.
-// Passive medic regen on herself. The 80 HU locker pulse does not heal her.
-// Class passives: "health_regen" "1". The other three stay off.
+// Resupply. 150 health, 300 units/sec.
+// Her melee is the stock item tf_weapon_resupply (schema b7), not one of
+// these class-script weapons. She cannot swing it. The 80 HU pulse plays
+// the swing when it resupplies someone else, and it does not heal her.
+// Passive medic regen on herself. "health_regen" "1". The other three stay off.
 "PlayerClassData"
 {
 	"name"				"resupply"

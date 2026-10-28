@@ -104,4 +104,44 @@ private:
 	CTFWeaponBaseMelee( const CTFWeaponBaseMelee & ) {}
 };
 
+#ifdef CLIENT_DLL
+#define CTFResupplyWeapon C_TFResupplyWeapon
+#endif
+
+//=============================================================================
+// Resupply melee. Occupies the melee anim slot so a pulse can play
+// ACT_MP_ATTACK_STAND_MELEE. +attack does not swing, trace, or deal damage.
+//=============================================================================
+class CTFResupplyWeapon : public CTFWeaponBaseMelee
+{
+public:
+	DECLARE_CLASS( CTFResupplyWeapon, CTFWeaponBaseMelee );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFResupplyWeapon() {}
+
+	virtual void	Precache( void );
+	virtual void	Spawn( void );
+	virtual void	Equip( CBaseCombatCharacter *pOwner );
+	virtual bool	Deploy( void );
+	virtual void	ItemPostFrame( void );
+	virtual void	PrimaryAttack( void ) {}
+	virtual void	SecondaryAttack( void ) {}
+	virtual const char *GetViewModel( int iViewModel = 0 ) const;
+	virtual const char *GetWorldModel( void ) const;
+
+#ifdef CLIENT_DLL
+	virtual bool	ShouldDraw( void ) { return false; }
+#endif
+
+	// Animation only. The aura calls this after it resupplies someone else.
+	void			PlayPulseSwing( void );
+
+private:
+	void			HideMesh( void );
+
+	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
+};
+
 #endif // TF_WEAPONBASE_MELEE_H
