@@ -1230,7 +1230,8 @@ bool CTFPlayer::CanBeForcedToLaugh( void )
 //-----------------------------------------------------------------------------
 // Resupply's locker. Same 3 second cooldown as func_regenerate, shared with
 // the spawn cabinet via m_flNextRegenerateTime. 80 HU, dispenser LOS and team
-// (a Spy disguised as her team counts). She is included, with no LOS check.
+// (a Spy disguised as her team counts). She is not a target: her own health
+// comes from the health_regen passive, not this pulse.
 //-----------------------------------------------------------------------------
 void CTFPlayer::ResupplyAuraThink( void )
 {
@@ -1246,7 +1247,7 @@ void CTFPlayer::ResupplyAuraThink( void )
 	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
 	{
 		CTFPlayer *pTarget = ToTFPlayer( UTIL_PlayerByIndex( i ) );
-		if ( !pTarget || !pTarget->IsAlive() )
+		if ( !pTarget || !pTarget->IsAlive() || pTarget == this )
 			continue;
 
 		if ( pTarget->GetNextRegenTime() > gpGlobals->curtime )
@@ -1271,23 +1272,18 @@ void CTFPlayer::ResupplyAuraThink( void )
 				continue;
 		}
 
-		if ( pTarget != this )
-		{
-			if ( ( pTarget->WorldSpaceCenter() - WorldSpaceCenter() ).LengthSqr() > flRadiusSqr )
-				continue;
+		if ( ( pTarget->WorldSpaceCenter() - WorldSpaceCenter() ).LengthSqr() > flRadiusSqr )
+			continue;
 
-			if ( !pTarget->FVisible( this, MASK_BLOCKLOS | CONTENTS_WINDOW ) )
-				continue;
-		}
+		if ( !pTarget->FVisible( this, MASK_BLOCKLOS | CONTENTS_WINDOW ) )
+			continue;
 
 		pTarget->Regenerate();
 		pTarget->SetNextRegenTime( gpGlobals->curtime + 3.0f );
 
 		CSingleUserRecipientFilter filter( pTarget );
 		pTarget->EmitSound( filter, pTarget->entindex(), "Regenerate.Touch" );
-
-		if ( pTarget != this )
-			bPulsedOther = true;
+		bPulsedOther = true;
 	}
 
 	// Swing once per pulse that actually reaches someone else in the radius.

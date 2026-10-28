@@ -1,5 +1,5 @@
 // Resupply. 150 health, 300 units/sec. No weapons.
-// Passive medic regen, plus an 80 HU locker pulse (see CTFPlayer::ResupplyAuraThink).
+// Passive medic regen on herself. The 80 HU locker pulse does not heal her.
 // Class passives: "health_regen" "1". The other three stay off.
 "PlayerClassData"
 {
