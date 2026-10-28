@@ -31,6 +31,8 @@
 #include "tf_dropped_weapon.h"
 #include "econ/econ_item_description.h"
 #include "inputsystem/iinputsystem.h"
+#include "tf_weapon_knife.h"
+#include "tf_item_constants.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -40,6 +42,7 @@ extern ConVar cl_hud_minmode;
 DECLARE_HUDELEMENT( CMainTargetID );
 DECLARE_HUDELEMENT( CSpectatorTargetID );
 DECLARE_HUDELEMENT( CSecondaryTargetID );
+DECLARE_HUDELEMENT( CTeamStatusIcons );
 
 using namespace vgui;
 
@@ -456,7 +459,16 @@ bool CTargetID::IsValidIDTarget( int nEntIndex, float flOldTargetRetainFOV, floa
 			}
 
 
-			if ( bShow || bHealthBarVisible )
+			if ( pPlayer && CTeamStatusIcons::CoversEntity( pPlayer ) )
+			{
+				// The always-on icon already draws this player.
+				if ( m_pFloatingHealthIcon )
+				{
+					m_pFloatingHealthIcon->MarkForDeletion();
+					m_pFloatingHealthIcon = NULL;
+				}
+			}
+			else if ( bShow || bHealthBarVisible )
 			{
 				// See if we're re-targeting our previous
 				if ( m_pFloatingHealthIcon )
@@ -1387,8 +1399,16 @@ CFloatingHealthIcon::CFloatingHealthIcon( vgui::Panel *parent, const char *name 
 {
 	m_flPrevHealth = -1.f;
 	m_nPrevLevel = 0;
+	m_bTeamStatus = false;
+	m_bShowAmmo = false;
+	m_bPositionValid = false;
+	m_iAnchorX = 0;
+	m_iAnchorY = 0;
+	m_hAmmoFont = 0;
+	m_clrAmmo = Color( 235, 226, 202, 255 );
 
 	SetVisible( false );
+	SetMouseInputEnabled( false );
 	SetBounds( 0, 0, 128, 128 );
 
 	vgui::ivgui()->AddTickSignal( GetVPanel(), 50 );
@@ -1448,6 +1468,44 @@ void CFloatingHealthIcon::ApplySchemeSettings( vgui::IScheme *pScheme )
 	BaseClass::ApplySchemeSettings( pScheme );
 
 	LoadControlSettings( "resource/UI/HealthIconPanel.res" );
+
+	m_hAmmoFont = pScheme->GetFont( "SpectatorVerySmall", IsProportional() );
+	if ( !m_hAmmoFont )
+		m_hAmmoFont = pScheme->GetFont( "DefaultVerySmall", IsProportional() );
+	m_clrAmmo = pScheme->GetColor( "TanLight", Color( 235, 226, 202, 255 ) );
+
+	// The stock icon is 32x32 and clips a larger health panel down to the cross.
+	// Ammo text has to sit outside that cross, so grow the panel and shift the
+	// health child. CalculatePosition pins the old bottom-center back onto the head.
+	int iBaseW = GetWide();
+	int iBaseH = GetTall();
+	if ( iBaseW < 8 )
+		iBaseW = 32;
+	if ( iBaseH < 8 )
+		iBaseH = 32;
+
+	int iTextW = 0;
+	int iTextH = 0;
+	if ( m_hAmmoFont )
+		surface()->GetTextSize( m_hAmmoFont, L"000/000", iTextW, iTextH );
+	int iPad = MAX( iTextW, iTextH ) + 6;
+	if ( iPad < 36 )
+		iPad = 36;
+
+	for ( int i = 0; i < GetChildCount(); ++i )
+	{
+		Panel *pChild = GetChild( i );
+		if ( !pChild )
+			continue;
+		int x, y;
+		pChild->GetPos( x, y );
+		pChild->SetPos( x + iPad, y + iPad );
+	}
+
+	SetSize( iBaseW + iPad * 2, iBaseH + iPad * 2 );
+	m_iAnchorX = iPad + ( iBaseW / 2 );
+	m_iAnchorY = iPad + iBaseH;
+
 	SetVisible( false );
 }
 
@@ -1470,8 +1528,14 @@ void CFloatingHealthIcon::OnTick( void )
 	C_TFPlayer *pTargetPlayer = ToTFPlayer( m_hEntity );
 	if ( pTargetPlayer && pTargetPlayer->m_Shared.IsStealthed() )
 	{
-		SetVisible( false );
-		return;
+		// Cloaked enemies stay hidden. Teammates can already see a friendly spy,
+		// so the always-on icons keep drawing them.
+		bool bFriendly = pLocalTFPlayer && pLocalTFPlayer->InSameTeam( pTargetPlayer );
+		if ( !m_bTeamStatus || !bFriendly )
+		{
+			SetVisible( false );
+			return;
+		}
 	}
 
 	// Defaults for all entities
@@ -1492,6 +1556,9 @@ void CFloatingHealthIcon::OnTick( void )
 		m_flPrevHealth = flHealth;
 	}
 
+	// Crosshair icons are shown by CTargetID. Always-on icons have no owner to do that.
+	if ( m_bTeamStatus )
+		SetVisible( true );
 }
 
 //-----------------------------------------------------------------------------
@@ -1500,10 +1567,19 @@ void CFloatingHealthIcon::OnTick( void )
 ConVar tf_healthicon_height_offset( "tf_healthicon_height_offset", "10", FCVAR_ARCHIVE, "Offset of the health icon away from the top of the target." );
 void CFloatingHealthIcon::Paint( void )
 {
-	if ( !CalculatePosition() )
+	m_bPositionValid = CalculatePosition();
+	if ( !m_bPositionValid )
 		return;
 
 	BaseClass::Paint();
+}
+
+void CFloatingHealthIcon::PostChildPaint( void )
+{
+	if ( !m_bPositionValid || !m_bShowAmmo )
+		return;
+
+	PaintAmmoCorners();
 }
 
 //-----------------------------------------------------------------------------
@@ -1526,7 +1602,10 @@ bool CFloatingHealthIcon::CalculatePosition( )
 
 	int iX, iY;
 	GetVectorInHudSpace( vecTarget, iX, iY );				// TODO: GetVectorInHudSpace or GetVectorInScreenSpace?
-	SetPos( iX - ( GetWide() / 2 ), iY - GetTall() );
+	if ( m_iAnchorX > 0 && m_iAnchorY > 0 )
+		SetPos( iX - m_iAnchorX, iY - m_iAnchorY );
+	else
+		SetPos( iX - ( GetWide() / 2 ), iY - GetTall() );
 
 	return true;
 }
@@ -1561,4 +1640,442 @@ bool CFloatingHealthIcon::IsVisible( void )
 		return false;
 
 	return BaseClass::IsVisible();
+}
+
+//-----------------------------------------------------------------------------
+// health_bg cross, measured from the attached 89x89 meter.
+// Vertical arm is x 29-59. Horizontal arm is y 28-60. The four empty
+// quadrants meet those arms at the pixels below.
+//-----------------------------------------------------------------------------
+static const int kHealthCrossRef = 89;
+static const int kHealthCrossArmLeft = 29;
+static const int kHealthCrossArmRight = 60;
+static const int kHealthCrossArmTop = 28;
+static const int kHealthCrossArmBottom = 61;
+
+enum
+{
+	AMMO_CORNER_TL = 0,	// primary, or the spy's secondary
+	AMMO_CORNER_TR,		// secondary, spy cloak, or a shield charge
+	AMMO_CORNER_BL,		// engineer metal
+	AMMO_CORNER_BR,		// consumable melee
+	AMMO_CORNER_COUNT
+};
+
+struct AmmoCornerInfo_t
+{
+	bool	bShow;
+	bool	bMeter;
+	int		iCurrent;
+	int		iMax;
+	float	flMeter;
+};
+
+static float ClampUnit( float flValue )
+{
+	if ( flValue < 0.f )
+		return 0.f;
+	if ( flValue > 1.f )
+		return 1.f;
+	return flValue;
+}
+
+static void ClearCorner( AmmoCornerInfo_t &out )
+{
+	out.bShow = false;
+	out.bMeter = false;
+	out.iCurrent = 0;
+	out.iMax = 0;
+	out.flMeter = 0.f;
+}
+
+static CTFWeaponBase *WeaponInLoadoutSlot( C_TFPlayer *pPlayer, int iSlot )
+{
+	if ( !pPlayer )
+		return NULL;
+
+	return dynamic_cast<CTFWeaponBase *>( pPlayer->GetEntityForLoadoutSlot( iSlot ) );
+}
+
+// Numeric ammo is clip + reserve over the max of both. Energy weapons, and
+// anything else the owner's HUD draws as a bar instead of a count, are meters.
+// Metal is the engineer's own corner, so a weapon that spends metal is skipped.
+static void FillCornerFromWeapon( C_TFPlayer *pPlayer, CTFWeaponBase *pWeapon, AmmoCornerInfo_t &out )
+{
+	ClearCorner( out );
+	if ( !pPlayer || !pWeapon )
+		return;
+
+	if ( pWeapon->IsEnergyWeapon() )
+	{
+		float flMax = pWeapon->Energy_GetMaxEnergy();
+		if ( flMax <= 0.f )
+			return;
+
+		out.bShow = true;
+		out.bMeter = true;
+		out.flMeter = ClampUnit( pWeapon->Energy_GetEnergy() / flMax );
+		return;
+	}
+
+	if ( !pWeapon->UsesPrimaryAmmo() )
+		return;
+
+	int iType = pWeapon->GetPrimaryAmmoType();
+	if ( iType <= TF_AMMO_DUMMY || iType >= TF_AMMO_COUNT || iType == TF_AMMO_METAL )
+		return;
+
+	int iReserve = pPlayer->GetSharedAmmoCount( iType );
+	int iMaxReserve = pPlayer->GetMaxAmmo( iType );
+	int iClip = pWeapon->Clip1();
+	int iMaxClip = pWeapon->GetMaxClip1();
+	if ( pWeapon->UsesClipsForAmmo1() && iClip >= 0 && iMaxClip > 0 )
+	{
+		out.iCurrent = iClip + iReserve;
+		out.iMax = iMaxClip + MAX( iMaxReserve, 0 );
+	}
+	else
+	{
+		out.iCurrent = iReserve;
+		out.iMax = MAX( iMaxReserve, 0 );
+	}
+
+	if ( out.iMax <= 0 )
+		return;
+
+	out.bShow = true;
+}
+
+static void FillMeleeCorner( C_TFPlayer *pPlayer, AmmoCornerInfo_t &out )
+{
+	ClearCorner( out );
+
+	CTFWeaponBase *pWeapon = WeaponInLoadoutSlot( pPlayer, LOADOUT_POSITION_MELEE );
+	if ( !pWeapon )
+		return;
+
+	// Spycicle's HUD is a regen meter, not a count.
+	CTFKnife *pKnife = dynamic_cast<CTFKnife *>( pWeapon );
+	if ( pKnife && pKnife->GetKnifeType() == KNIFE_ICICLE )
+	{
+		out.bShow = true;
+		out.bMeter = true;
+		out.flMeter = ClampUnit( pKnife->GetProgress() );
+		return;
+	}
+
+	// Caber is a single charge. A stock bottle breaking is not an ammo cache.
+	if ( pWeapon->GetWeaponID() == TF_WEAPON_STICKBOMB )
+	{
+		out.bShow = true;
+		out.iCurrent = pWeapon->IsBroken() ? 0 : 1;
+		out.iMax = 1;
+		return;
+	}
+
+	FillCornerFromWeapon( pPlayer, pWeapon, out );
+}
+
+static void GatherAmmoCorners( C_TFPlayer *pPlayer, AmmoCornerInfo_t out[AMMO_CORNER_COUNT] )
+{
+	for ( int i = 0; i < AMMO_CORNER_COUNT; ++i )
+		ClearCorner( out[i] );
+
+	if ( !pPlayer )
+		return;
+
+	if ( pPlayer->IsPlayerClass( TF_CLASS_SPY ) )
+	{
+		// Spy's visible gun is the secondary slot in this loadout. Fall back to
+		// primary so a schema that still puts the revolver there is not blank.
+		CTFWeaponBase *pGun = WeaponInLoadoutSlot( pPlayer, LOADOUT_POSITION_SECONDARY );
+		if ( !pGun || ( !pGun->IsEnergyWeapon() && !pGun->UsesPrimaryAmmo() ) )
+			pGun = WeaponInLoadoutSlot( pPlayer, LOADOUT_POSITION_PRIMARY );
+		FillCornerFromWeapon( pPlayer, pGun, out[AMMO_CORNER_TL] );
+
+		out[AMMO_CORNER_TR].bShow = true;
+		out[AMMO_CORNER_TR].bMeter = true;
+		out[AMMO_CORNER_TR].flMeter = ClampUnit( pPlayer->m_Shared.GetSpyCloakMeter() / 100.f );
+	}
+	else
+	{
+		FillCornerFromWeapon( pPlayer, WeaponInLoadoutSlot( pPlayer, LOADOUT_POSITION_PRIMARY ), out[AMMO_CORNER_TL] );
+
+		CTFWeaponBase *pSecondary = WeaponInLoadoutSlot( pPlayer, LOADOUT_POSITION_SECONDARY );
+		FillCornerFromWeapon( pPlayer, pSecondary, out[AMMO_CORNER_TR] );
+		if ( !out[AMMO_CORNER_TR].bShow && pPlayer->m_Shared.IsShieldEquipped() )
+		{
+			out[AMMO_CORNER_TR].bShow = true;
+			out[AMMO_CORNER_TR].bMeter = true;
+			out[AMMO_CORNER_TR].flMeter = ClampUnit( pPlayer->m_Shared.GetDemomanChargeMeter() / 100.f );
+		}
+	}
+
+	if ( pPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
+	{
+		int iMax = pPlayer->GetMaxAmmo( TF_AMMO_METAL );
+		if ( iMax > 0 )
+		{
+			out[AMMO_CORNER_BL].bShow = true;
+			out[AMMO_CORNER_BL].iCurrent = pPlayer->GetSharedAmmoCount( TF_AMMO_METAL );
+			out[AMMO_CORNER_BL].iMax = iMax;
+		}
+	}
+
+	FillMeleeCorner( pPlayer, out[AMMO_CORNER_BR] );
+}
+
+bool CFloatingHealthIcon::GetCrossBounds( int &x, int &y, int &w, int &h )
+{
+	Panel *pCross = NULL;
+	if ( m_pTargetHealth )
+	{
+		Panel *pBG = m_pTargetHealth->FindChildByName( "PlayerStatusHealthImageBG", true );
+		if ( pBG && pBG->IsVisible() && pBG->GetWide() >= 4 && pBG->GetTall() >= 4 )
+			pCross = pBG;
+
+		if ( !pCross )
+		{
+			Panel *pImage = m_pTargetHealth->FindChildByName( "PlayerStatusHealthImage", true );
+			if ( pImage && pImage->GetWide() >= 4 && pImage->GetTall() >= 4 )
+				pCross = pImage;
+		}
+	}
+
+	if ( pCross )
+	{
+		int sx, sy;
+		pCross->LocalToScreen( sx, sy );
+		ScreenToLocal( sx, sy );
+		x = sx;
+		y = sy;
+		w = pCross->GetWide();
+		h = pCross->GetTall();
+		return true;
+	}
+
+	// Stock spectator health draws a 24x24 cross at (4, 4).
+	if ( m_pTargetHealth )
+	{
+		int sx, sy;
+		m_pTargetHealth->LocalToScreen( sx, sy );
+		ScreenToLocal( sx, sy );
+		x = sx + 4;
+		y = sy + 4;
+		w = 24;
+		h = 24;
+		return true;
+	}
+
+	return false;
+}
+
+void CFloatingHealthIcon::PaintAmmoCorners( void )
+{
+	C_TFPlayer *pPlayer = ToTFPlayer( m_hEntity );
+	if ( !pPlayer || !m_hAmmoFont )
+		return;
+
+	int cx, cy, cw, ch;
+	if ( !GetCrossBounds( cx, cy, cw, ch ) )
+		return;
+
+	AmmoCornerInfo_t corners[AMMO_CORNER_COUNT];
+	GatherAmmoCorners( pPlayer, corners );
+
+	// Inner corner of each empty quadrant, in this panel's space.
+	const int iLeft = cx + ( cw * kHealthCrossArmLeft ) / kHealthCrossRef;
+	const int iRight = cx + ( cw * kHealthCrossArmRight ) / kHealthCrossRef;
+	const int iTop = cy + ( ch * kHealthCrossArmTop ) / kHealthCrossRef;
+	const int iBottom = cy + ( ch * kHealthCrossArmBottom ) / kHealthCrossRef;
+
+	int iSampleW = 0;
+	int iSampleH = 0;
+	surface()->GetTextSize( m_hAmmoFont, L"000/000", iSampleW, iSampleH );
+	int iBarW = MAX( iSampleW / 2, cw / 2 );
+	int iBarH = MAX( iSampleH / 3, 3 );
+
+	for ( int i = 0; i < AMMO_CORNER_COUNT; ++i )
+	{
+		if ( !corners[i].bShow )
+			continue;
+
+		// Text and meters grow away from the cross, out of the notch.
+		int iAnchorX = ( i == AMMO_CORNER_TL || i == AMMO_CORNER_BL ) ? ( iLeft - 1 ) : iRight;
+		int iAnchorY = ( i == AMMO_CORNER_TL || i == AMMO_CORNER_TR ) ? ( iTop - 1 ) : iBottom;
+		bool bToLeft = ( i == AMMO_CORNER_TL || i == AMMO_CORNER_BL );
+		bool bAbove = ( i == AMMO_CORNER_TL || i == AMMO_CORNER_TR );
+
+		if ( corners[i].bMeter )
+		{
+			int x = bToLeft ? ( iAnchorX - iBarW ) : iAnchorX;
+			int y = bAbove ? ( iAnchorY - iBarH ) : iAnchorY;
+			int iFill = (int)( iBarW * corners[i].flMeter );
+			if ( iFill < 0 )
+				iFill = 0;
+			if ( iFill > iBarW )
+				iFill = iBarW;
+
+			surface()->DrawSetColor( 0, 0, 0, 220 );
+			surface()->DrawFilledRect( x - 1, y - 1, x + iBarW + 1, y + iBarH + 1 );
+			surface()->DrawSetColor( 42, 39, 37, 255 );
+			surface()->DrawFilledRect( x, y, x + iBarW, y + iBarH );
+			if ( iFill > 0 )
+			{
+				surface()->DrawSetColor( m_clrAmmo );
+				surface()->DrawFilledRect( x, y, x + iFill, y + iBarH );
+			}
+			continue;
+		}
+
+		wchar_t wsz[32];
+		V_snwprintf( wsz, ARRAYSIZE( wsz ), L"%d/%d", corners[i].iCurrent, corners[i].iMax );
+		int iTextW = 0;
+		int iTextH = 0;
+		surface()->GetTextSize( m_hAmmoFont, wsz, iTextW, iTextH );
+
+		int x = bToLeft ? ( iAnchorX - iTextW ) : iAnchorX;
+		int y = bAbove ? ( iAnchorY - iTextH ) : iAnchorY;
+
+		surface()->DrawSetTextFont( m_hAmmoFont );
+		surface()->DrawSetTextColor( 0, 0, 0, 255 );
+		surface()->DrawSetTextPos( x + 1, y + 1 );
+		surface()->DrawPrintText( wsz, wcslen( wsz ), FONT_DRAW_NONADDITIVE );
+		surface()->DrawSetTextColor( m_clrAmmo );
+		surface()->DrawSetTextPos( x, y );
+		surface()->DrawPrintText( wsz, wcslen( wsz ), FONT_DRAW_NONADDITIVE );
+	}
+}
+
+//-----------------------------------------------------------------------------
+static bool AppearsAsTeammate( C_TFPlayer *pLocal, C_TFPlayer *pTarget )
+{
+	if ( !pLocal || !pTarget || pTarget == pLocal )
+		return false;
+
+	if ( !pTarget->IsAlive() || pTarget->IsDormant() )
+		return false;
+
+	if ( pLocal->InSameTeam( pTarget ) )
+		return true;
+
+	// An enemy spy disguised onto our team. Real ammo is not shown for them.
+	if ( pTarget->m_Shared.InCond( TF_COND_DISGUISED ) && pTarget->m_Shared.GetDisguiseTeam() == pLocal->GetTeamNumber() )
+		return true;
+
+	return false;
+}
+
+CTeamStatusIcons::CTeamStatusIcons( const char *pElementName )
+	: CHudElement( pElementName ), BaseClass( NULL, pElementName )
+{
+	SetParent( g_pClientMode->GetViewport() );
+	SetHiddenBits( HIDEHUD_MISCSTATUS );
+	SetVisible( false );
+	SetMouseInputEnabled( false );
+	SetKeyBoardInputEnabled( false );
+	SetBounds( 0, 0, 0, 0 );
+
+	for ( int i = 0; i < MAX_PLAYERS_ARRAY_SAFE; ++i )
+		m_pIcons[i] = NULL;
+
+	vgui::ivgui()->AddTickSignal( GetVPanel(), 50 );
+}
+
+CTeamStatusIcons::~CTeamStatusIcons()
+{
+	DestroyIcons();
+}
+
+void CTeamStatusIcons::DestroyIcons( void )
+{
+	for ( int i = 0; i < MAX_PLAYERS_ARRAY_SAFE; ++i )
+	{
+		if ( m_pIcons[i] )
+		{
+			m_pIcons[i]->MarkForDeletion();
+			m_pIcons[i] = NULL;
+		}
+	}
+}
+
+void CTeamStatusIcons::LevelShutdown( void )
+{
+	DestroyIcons();
+}
+
+bool CTeamStatusIcons::Covers( C_BaseEntity *pEnt ) const
+{
+	if ( !pEnt )
+		return false;
+
+	int iIndex = pEnt->entindex();
+	if ( iIndex <= 0 || iIndex >= MAX_PLAYERS_ARRAY_SAFE )
+		return false;
+
+	return m_pIcons[iIndex] != NULL;
+}
+
+bool CTeamStatusIcons::CoversEntity( C_BaseEntity *pEnt )
+{
+	CTeamStatusIcons *pIcons = GET_HUDELEMENT( CTeamStatusIcons );
+	if ( !pIcons )
+		return false;
+
+	return pIcons->Covers( pEnt );
+}
+
+void CTeamStatusIcons::OnTick( void )
+{
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	int nStatus = 0;
+	bool bActive = false;
+
+	if ( pLocal && pLocal->IsAlive() && pLocal->GetObserverMode() <= OBS_MODE_NONE &&
+		!( TFGameRules() && TFGameRules()->ShowMatchSummary() ) )
+	{
+		TFPlayerClassData_t *pData = pLocal->GetPlayerClass()->GetData();
+		if ( pData )
+			nStatus = pData->GetSeeTeammateStatus();
+		bActive = nStatus >= 1;
+	}
+
+	const int nMaxClients = gpGlobals->maxClients;
+	for ( int i = 1; i < MAX_PLAYERS_ARRAY_SAFE; ++i )
+	{
+		C_TFPlayer *pPlayer = NULL;
+		if ( bActive && i <= nMaxClients )
+			pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+
+		bool bShow = bActive && AppearsAsTeammate( pLocal, pPlayer );
+		if ( bShow && pPlayer->m_Shared.IsStealthed() && !pLocal->InSameTeam( pPlayer ) )
+			bShow = false;
+
+		if ( !bShow )
+		{
+			if ( m_pIcons[i] )
+			{
+				m_pIcons[i]->MarkForDeletion();
+				m_pIcons[i] = NULL;
+			}
+			continue;
+		}
+
+		if ( !m_pIcons[i] )
+		{
+			m_pIcons[i] = CFloatingHealthIcon::AddFloatingHealthIcon( pPlayer );
+			if ( !m_pIcons[i] )
+				continue;
+			m_pIcons[i]->SetTeamStatus( true );
+		}
+		else if ( m_pIcons[i]->GetEntity() != pPlayer )
+		{
+			m_pIcons[i]->SetEntity( pPlayer );
+		}
+
+		// Disguised enemies get the health cross only. Their real ammo would leak.
+		bool bAmmo = nStatus >= 2 && pLocal->InSameTeam( pPlayer );
+		m_pIcons[i]->SetShowAmmo( bAmmo );
+		m_pIcons[i]->OnTick();
+	}
 }

@@ -1184,6 +1184,9 @@ private:
 	bool				m_bAbortFreezeCam;
 	bool				m_bSeenRoundInfo;
 	CNetworkVar( bool, m_bRegenerating );
+	// Reserve ammo is local-only. This copy is sent to everyone so teammate
+	// status icons can draw current/max. Clips stay on the weapon.
+	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
 	bool				m_bRespawning;
 
 	// Items.

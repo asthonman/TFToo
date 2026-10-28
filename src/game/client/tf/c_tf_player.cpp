@@ -3833,6 +3833,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropInt( RECVINFO( m_iPlayerSkinOverride ) ),
 	RecvPropBool( RECVINFO( m_bViewingCYOAPDA ) ),
 	RecvPropBool( RECVINFO( m_bRegenerating ) ),
+	RecvPropArray3( RECVINFO_ARRAY( m_iSharedAmmo ), RecvPropInt( RECVINFO( m_iSharedAmmo[0] ) ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
 END_RECV_TABLE()
 
@@ -4041,6 +4042,18 @@ C_TFPlayer::C_TFPlayer() :
 	engine->AddPhonemeFile( "scripts/game_sounds_vo_phonemes.txt" );
 	engine->AddPhonemeFile( "scripts/game_sounds_vo_phonemes_local.txt" );	// Stomp over english for phoneme data
 	engine->AddPhonemeFile( NULL );			// Null indicates to engine that we are done loading phonemes if there are any present
+}
+
+int C_TFPlayer::GetSharedAmmoCount( int iAmmoIndex ) const
+{
+	if ( iAmmoIndex < 0 || iAmmoIndex >= TF_AMMO_COUNT )
+		return 0;
+
+	// Predicted reserve ammo is only valid for the local player.
+	if ( IsLocalPlayer() )
+		return GetAmmoCount( iAmmoIndex );
+
+	return m_iSharedAmmo[iAmmoIndex];
 }
 
 C_TFPlayer::~C_TFPlayer()

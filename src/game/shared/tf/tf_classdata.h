@@ -63,11 +63,13 @@ struct TFPlayerClassData_t
 
 	// Passives. Stock classes get these from their name. A class script can
 	// override them: "airdash" "1", "afterburn_immune" "1",
-	// "knockback_scale" "0.5", "health_regen" "1".
+	// "knockback_scale" "0.5", "health_regen" "1", "see_teammate_status" "1".
+	// see_teammate_status: 0 stock, 1 teammate health without aiming, 2 also ammo.
 	bool		m_bAirDash;
 	bool		m_bAfterburnImmune;
 	float		m_flKnockbackScale;
 	bool		m_bHealthRegen;
+	int			m_nSeeTeammateStatus;
 
 	bool		m_bParsed;
 	Vector		m_vecThirdPersonOffset;
@@ -83,6 +85,7 @@ struct TFPlayerClassData_t
 	bool		IsAfterburnImmune( void ) const		{ return m_bAfterburnImmune; }
 	float		GetKnockbackScale( void ) const		{ return m_flKnockbackScale; }
 	bool		HasHealthRegen( void ) const		{ return m_bHealthRegen; }
+	int			GetSeeTeammateStatus( void ) const	{ return m_nSeeTeammateStatus; }
 
 #ifdef GAME_DLL
 	const char *GetDeathSound( int nType );

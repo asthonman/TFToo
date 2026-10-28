@@ -406,6 +406,8 @@ public:
 	bool	EndClassSpecialSkill( void );
 	bool	CanGoInvisible( bool bAllowWhileCarryingFlag = false );
 	int		GetMaxAmmo( int iAmmoIndex, int iClassIndex = -1 );
+	// Local player reads predicted ammo. Everyone else reads m_iSharedAmmo.
+	int		GetSharedAmmoCount( int iAmmoIndex ) const;
 
 	//-----------------------------------------------------------------------------------------------------
 	// Return true if we are a "mini boss" in Mann Vs Machine mode
@@ -958,6 +960,7 @@ private:
 	CNetworkVar( float, m_flHelpmeButtonPressTime );
 	CNetworkVar( bool, m_bViewingCYOAPDA );
 	CNetworkVar( bool, m_bRegenerating );
+	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
 
 	bool m_bNotifiedWeaponInspectThisLife;
 

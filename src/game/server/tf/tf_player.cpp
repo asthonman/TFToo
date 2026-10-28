@@ -845,6 +845,7 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropInt( SENDINFO( m_iPlayerSkinOverride ) ),
 	SendPropBool( SENDINFO( m_bViewingCYOAPDA ) ),
 	SendPropBool( SENDINFO( m_bRegenerating ) ),
+	SendPropArray3( SENDINFO_ARRAY3( m_iSharedAmmo ), SendPropInt( SENDINFO_ARRAY( m_iSharedAmmo ), -1, SPROP_VARINT | SPROP_UNSIGNED ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),
 END_SEND_TABLE()
 
@@ -1306,6 +1307,13 @@ void CTFPlayer::TFPlayerThink()
 	}
 
 	ResupplyAuraThink();
+
+	for ( int iAmmo = 0; iAmmo < TF_AMMO_COUNT; ++iAmmo )
+	{
+		int nAmmo = GetAmmoCount( iAmmo );
+		if ( m_iSharedAmmo[iAmmo] != nAmmo )
+			m_iSharedAmmo.Set( iAmmo, nAmmo );
+	}
 
 	if ( m_flSendPickupWeaponMessageTime != -1.f && gpGlobals->curtime >= m_flSendPickupWeaponMessageTime )
 	{

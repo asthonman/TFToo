@@ -155,6 +155,7 @@ public:
 	virtual void ApplySchemeSettings( vgui::IScheme *pScheme );
 	virtual void OnTick( void );
 	virtual void Paint( void );
+	virtual void PostChildPaint( void );
 	virtual bool IsVisible( void );
 
 	virtual void SetVisible( bool state );
@@ -162,16 +163,51 @@ public:
 	void		Reset( void );
 	void		SetEntity( C_BaseEntity *pEntity );
 	C_BaseEntity *GetEntity( void ) { return m_hEntity; }
+	void		SetTeamStatus( bool bState ) { m_bTeamStatus = bState; }
+	void		SetShowAmmo( bool bState ) { m_bShowAmmo = bState; }
 
 	static CFloatingHealthIcon* AddFloatingHealthIcon( C_BaseEntity *pEntity );
 
 	bool		CalculatePosition();
 
 private:
+	bool		GetCrossBounds( int &x, int &y, int &w, int &h );
+	void		PaintAmmoCorners( void );
+
 	CTFSpectatorGUIHealth	*m_pTargetHealth;
 	CHandle< C_BaseEntity >	m_hEntity;
 	float					m_flPrevHealth;
 	int						m_nPrevLevel;
+	bool					m_bTeamStatus;
+	bool					m_bShowAmmo;
+	bool					m_bPositionValid;
+	int						m_iAnchorX;
+	int						m_iAnchorY;
+	vgui::HFont				m_hAmmoFont;
+	Color					m_clrAmmo;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: One health cross per teammate when the class can see them without aiming.
+//-----------------------------------------------------------------------------
+class CTeamStatusIcons : public CHudElement, public vgui::EditablePanel
+{
+	DECLARE_CLASS_SIMPLE( CTeamStatusIcons, vgui::EditablePanel );
+public:
+	CTeamStatusIcons( const char *pElementName );
+	virtual ~CTeamStatusIcons();
+
+	virtual void	LevelShutdown( void );
+	virtual bool	ShouldDraw( void ) { return false; }
+	virtual void	OnTick( void );
+
+	bool			Covers( C_BaseEntity *pEnt ) const;
+	static bool		CoversEntity( C_BaseEntity *pEnt );
+
+private:
+	void			DestroyIcons( void );
+
+	CFloatingHealthIcon	*m_pIcons[MAX_PLAYERS_ARRAY_SAFE];
 };
 
 #endif // TF_HUD_TARGET_ID_H

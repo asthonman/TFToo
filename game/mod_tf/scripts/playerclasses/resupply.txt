@@ -21,6 +21,8 @@
 	"DontDoAirwalk"		"0"
 	"DontDoNewJump"		"0"
 	"health_regen"		"1"
+	// 1 = teammate health without aiming (Medic). 2 = that, plus ammo at the cross corners.
+	"see_teammate_status"	"2"
 
 	"AmmoMax"
 	{
