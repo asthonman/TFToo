@@ -117,6 +117,153 @@ void CTFPlayerAnimState::ClearAnimationState( void )
 }
 
 //-----------------------------------------------------------------------------
+// Cabinette compiled melee activities only. Walk, airwalk, and the bare jump
+// are not in the mdl, so those fall back to run and jump-float.
+//-----------------------------------------------------------------------------
+static Activity ResupplyMeleeActivity( Activity act )
+{
+	switch ( act )
+	{
+	case ACT_MP_STAND_IDLE:
+	case ACT_MP_STAND_PRIMARY:
+	case ACT_MP_STAND_SECONDARY:
+	case ACT_MP_STAND_ITEM1:
+	case ACT_MP_STAND_ITEM2:
+	case ACT_MP_DEPLOYED_IDLE:
+	case ACT_MP_DEPLOYED:
+	case ACT_MP_STAND_LOSERSTATE:
+	case ACT_MP_COMPETITIVE_LOSERSTATE:
+	case ACT_MP_COMPETITIVE_WINNERSTATE:
+		return ACT_MP_STAND_MELEE;
+
+	case ACT_MP_CROUCH_IDLE:
+	case ACT_MP_CROUCH_PRIMARY:
+	case ACT_MP_CROUCH_SECONDARY:
+	case ACT_MP_CROUCH_ITEM1:
+	case ACT_MP_CROUCH_DEPLOYED:
+	case ACT_MP_CROUCH_LOSERSTATE:
+		return ACT_MP_CROUCH_MELEE;
+
+	case ACT_MP_RUN:
+	case ACT_MP_WALK:
+	case ACT_MP_RUN_PRIMARY:
+	case ACT_MP_WALK_PRIMARY:
+	case ACT_MP_RUN_SECONDARY:
+	case ACT_MP_WALK_SECONDARY:
+	case ACT_MP_RUN_MELEE:
+	case ACT_MP_WALK_MELEE:
+	case ACT_MP_RUN_ITEM1:
+	case ACT_MP_WALK_ITEM1:
+	case ACT_MP_RUN_ITEM2:
+	case ACT_MP_WALK_ITEM2:
+	case ACT_MP_RUN_LOSERSTATE:
+	case ACT_MP_WALK_LOSERSTATE:
+		return ACT_MP_RUN_MELEE;
+
+	case ACT_MP_CROUCHWALK:
+	case ACT_MP_CROUCHWALK_PRIMARY:
+	case ACT_MP_CROUCHWALK_SECONDARY:
+	case ACT_MP_CROUCHWALK_ITEM1:
+	case ACT_MP_CROUCHWALK_ITEM2:
+	case ACT_MP_CROUCHWALK_DEPLOYED:
+	case ACT_MP_CROUCHWALK_LOSERSTATE:
+		return ACT_MP_CROUCHWALK_MELEE;
+
+	case ACT_MP_AIRWALK:
+	case ACT_MP_AIRWALK_PRIMARY:
+	case ACT_MP_AIRWALK_SECONDARY:
+	case ACT_MP_AIRWALK_MELEE:
+	case ACT_MP_AIRWALK_ITEM1:
+	case ACT_MP_AIRWALK_ITEM2:
+	case ACT_MP_AIRWALK_LOSERSTATE:
+	case ACT_MP_JUMP:
+	case ACT_MP_JUMP_PRIMARY:
+	case ACT_MP_JUMP_LOSERSTATE:
+	case ACT_MP_JUMP_FLOAT:
+	case ACT_MP_JUMP_FLOAT_PRIMARY:
+	case ACT_MP_JUMP_FLOAT_SECONDARY:
+	case ACT_MP_JUMP_FLOAT_ITEM1:
+	case ACT_MP_JUMP_FLOAT_ITEM2:
+	case ACT_MP_JUMP_FLOAT_LOSERSTATE:
+	case ACT_MP_DOUBLEJUMP:
+		return ACT_MP_JUMP_FLOAT_MELEE;
+
+	case ACT_MP_JUMP_START:
+	case ACT_MP_JUMP_START_PRIMARY:
+	case ACT_MP_JUMP_START_SECONDARY:
+	case ACT_MP_JUMP_START_ITEM1:
+	case ACT_MP_JUMP_START_ITEM2:
+	case ACT_MP_JUMP_START_LOSERSTATE:
+		return ACT_MP_JUMP_START_MELEE;
+
+	case ACT_MP_JUMP_LAND:
+	case ACT_MP_JUMP_LAND_PRIMARY:
+	case ACT_MP_JUMP_LAND_SECONDARY:
+	case ACT_MP_JUMP_LAND_ITEM1:
+	case ACT_MP_JUMP_LAND_ITEM2:
+	case ACT_MP_JUMP_LAND_LOSERSTATE:
+		return ACT_MP_JUMP_LAND_MELEE;
+
+	case ACT_MP_SWIM:
+	case ACT_MP_SWIM_PRIMARY:
+	case ACT_MP_SWIM_SECONDARY:
+	case ACT_MP_SWIM_DEPLOYED:
+	case ACT_MP_SWIM_LOSERSTATE:
+		return ACT_MP_SWIM_MELEE;
+
+	case ACT_MP_ATTACK_STAND_PRIMARYFIRE:
+	case ACT_MP_ATTACK_STAND_PRIMARYFIRE_DEPLOYED:
+	case ACT_MP_ATTACK_AIRWALK_PRIMARYFIRE:
+		return ACT_MP_ATTACK_STAND_MELEE;
+
+	case ACT_MP_ATTACK_CROUCH_PRIMARYFIRE:
+	case ACT_MP_ATTACK_CROUCH_PRIMARYFIRE_DEPLOYED:
+		return ACT_MP_ATTACK_CROUCH_MELEE;
+
+	case ACT_MP_ATTACK_SWIM_PRIMARYFIRE:
+		return ACT_MP_ATTACK_SWIM_MELEE;
+
+	case ACT_MP_GESTURE_VC_HANDMOUTH:
+		return ACT_MP_GESTURE_VC_HANDMOUTH_MELEE;
+
+	case ACT_MP_GESTURE_VC_FISTPUMP:
+	case ACT_MP_GESTURE_VC_FINGERPOINT:
+	case ACT_MP_GESTURE_VC_THUMBSUP:
+	case ACT_MP_GESTURE_VC_NODYES:
+	case ACT_MP_GESTURE_VC_NODNO:
+		return ACT_MP_GESTURE_VC_FISTPUMP_MELEE;
+
+	case ACT_MP_GESTURE_FLINCH:
+	case ACT_MP_GESTURE_FLINCH_PRIMARY:
+	case ACT_MP_GESTURE_FLINCH_SECONDARY:
+	case ACT_MP_GESTURE_FLINCH_MELEE:
+	case ACT_MP_GESTURE_FLINCH_HEAD:
+	case ACT_MP_GESTURE_FLINCH_STOMACH:
+	case ACT_MP_GESTURE_FLINCH_LEFTARM:
+	case ACT_MP_GESTURE_FLINCH_RIGHTARM:
+		return ACT_MP_GESTURE_FLINCH_CHEST;
+
+	default:
+		return act;
+	}
+}
+
+static bool UsesResupplyLocomotion( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+#ifdef CLIENT_DLL
+	// Enemies see the cabinette body. Teammates still see the Spy.
+	if ( pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pPlayer->IsEnemyPlayer()
+		&& pPlayer->m_Shared.GetDisguiseClass() == TF_CLASS_RESUPPLY )
+		return true;
+#endif
+
+	return pPlayer->IsPlayerClass( TF_CLASS_RESUPPLY );
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : actDesired - 
 // Output : Activity
@@ -148,6 +295,17 @@ Activity CTFPlayerAnimState::TranslateActivity( Activity actDesired )
 		{
 			translateActivity = ACT_MP_COMPETITIVE_WINNERSTATE;
 		}
+	}
+
+	// No weapon, so the anim state asks for unsuffixed ACT_MP_*. The mdl only
+	// has the melee set. A disguised Spy's weapon can also ask for a slot the
+	// body does not have. Keep a sequence that is actually in the model.
+	if ( UsesResupplyLocomotion( pPlayer ) && pPlayer->GetModelPtr()
+		&& pPlayer->SelectWeightedSequence( translateActivity ) < 0 )
+	{
+		Activity meleeActivity = ResupplyMeleeActivity( translateActivity );
+		if ( meleeActivity != translateActivity && pPlayer->SelectWeightedSequence( meleeActivity ) >= 0 )
+			translateActivity = meleeActivity;
 	}
 
 	return translateActivity;

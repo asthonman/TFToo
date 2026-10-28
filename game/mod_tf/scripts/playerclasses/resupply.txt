@@ -1,0 +1,29 @@
+// Resupply. 150 health, 300 units/sec. No weapons.
+// Passive medic regen, plus an 80 HU locker pulse (see CTFPlayer::ResupplyAuraThink).
+// Class passives: "health_regen" "1". The other three stay off.
+"PlayerClassData"
+{
+	"name"				"resupply"
+	"model"				"models/alaxe/tf2/actors/cabinette.mdl"
+	"model_hwm"			"models/alaxe/tf2/actors/cabinette.mdl"
+	"model_hands"		""
+	"localize_name"		"#TF_Class_Name_Resupply"
+	"speed_max"			"300"
+	"health_max"		"150"
+	"armor_max"			"0"
+	"weapon1"			"tf_weapon_none"
+	"weapon2"			"tf_weapon_none"
+	"weapon3"			"tf_weapon_none"
+	"grenade1"			"tf_weapon_none"
+	"grenade2"			"tf_weapon_none"
+	"DontDoAirwalk"		"0"
+	"DontDoNewJump"		"0"
+	"health_regen"		"1"
+
+	"AmmoMax"
+	{
+		"TF_AMMO_PRIMARY"		"0"
+		"TF_AMMO_SECONDARY"		"0"
+		"TF_AMMO_METAL"			"0"
+	}
+}

@@ -712,6 +712,7 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"tf_weapon_wrench",						// TF_CLASS_ENGINEER,
 	"",										// TF_CLASS_MADCAP,
 	"",										// TF_CLASS_MOBSTER,
+	"",										// TF_CLASS_RESUPPLY,
 };
 
 int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
@@ -728,6 +729,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_ENGINEER,
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MADCAP,
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MOBSTER,
+	LOADOUT_POSITION_MELEE,			// TF_CLASS_RESUPPLY,
 };
 
 //-----------------------------------------------------------------------------
@@ -1654,6 +1656,7 @@ int g_ClassDefinesRemap[] = {
 
 	TF_CLASS_MADCAP,
 	TF_CLASS_MOBSTER,
+	TF_CLASS_RESUPPLY,
 	TF_CLASS_CIVILIAN,
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_ClassDefinesRemap ) == TF_LAST_NORMAL_CLASS + 1 );

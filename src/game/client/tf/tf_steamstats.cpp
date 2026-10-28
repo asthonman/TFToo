@@ -85,6 +85,7 @@ StatMap_t* g_SteamStats_Class[] = {
 	g_SteamStats_Engineer,	// Engineer
 	NULL,					// Madcap
 	NULL,					// Mobster
+	NULL,					// Resupply
 	NULL,					// Civilian
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_SteamStats_Class ) == TF_LAST_NORMAL_CLASS + 1 );

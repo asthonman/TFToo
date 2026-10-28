@@ -1228,6 +1228,66 @@ bool CTFPlayer::CanBeForcedToLaugh( void )
 }
 
 //-----------------------------------------------------------------------------
+// Resupply's locker. Same 3 second cooldown as func_regenerate, shared with
+// the spawn cabinet via m_flNextRegenerateTime. 80 HU, dispenser LOS and team
+// (a Spy disguised as her team counts). She is included, with no LOS check.
+//-----------------------------------------------------------------------------
+void CTFPlayer::ResupplyAuraThink( void )
+{
+	if ( !IsAlive() || !IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		return;
+
+	if ( !TFGameRules() || TFGameRules()->InStalemate() )
+		return;
+
+	const float flRadiusSqr = 80.f * 80.f;
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pTarget = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pTarget || !pTarget->IsAlive() )
+			continue;
+
+		if ( pTarget->GetNextRegenTime() > gpGlobals->curtime )
+			continue;
+
+		if ( pTarget->IsTaunting() || pTarget->IsInPurgatory() )
+			continue;
+
+		if ( TFGameRules()->State_Get() == GR_STATE_TEAM_WIN )
+		{
+			// Losing team gets nothing. Disguise does not count, same as the locker.
+			if ( TFGameRules()->GetWinningTeam() != pTarget->GetTeamNumber() )
+				continue;
+		}
+		else
+		{
+			int iTeam = GetTeamNumber();
+			int iPlayerTeam = pTarget->GetTeamNumber();
+			if ( iPlayerTeam != iTeam && pTarget->m_Shared.InCond( TF_COND_DISGUISED ) )
+				iPlayerTeam = pTarget->m_Shared.GetDisguiseTeam();
+			if ( iPlayerTeam != iTeam )
+				continue;
+		}
+
+		if ( pTarget != this )
+		{
+			if ( ( pTarget->WorldSpaceCenter() - WorldSpaceCenter() ).LengthSqr() > flRadiusSqr )
+				continue;
+
+			if ( !pTarget->FVisible( this, MASK_BLOCKLOS | CONTENTS_WINDOW ) )
+				continue;
+		}
+
+		pTarget->Regenerate();
+		pTarget->SetNextRegenTime( gpGlobals->curtime + 3.0f );
+
+		CSingleUserRecipientFilter filter( pTarget );
+		pTarget->EmitSound( filter, pTarget->entindex(), "Regenerate.Touch" );
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFPlayer::TFPlayerThink()
@@ -1236,6 +1296,8 @@ void CTFPlayer::TFPlayerThink()
 	{
 		(this->*m_pStateInfo->pfnThink)();
 	}
+
+	ResupplyAuraThink();
 
 	if ( m_flSendPickupWeaponMessageTime != -1.f && gpGlobals->curtime >= m_flSendPickupWeaponMessageTime )
 	{
@@ -2939,6 +3001,7 @@ void CTFPlayer::PrecacheTFPlayer()
 	PrecacheScriptSound( "Player.Spawn" );
 	PrecacheScriptSound( "TFPlayer.Pain" );
 	PrecacheScriptSound( "Mobster.LeaveSpawn" );
+	PrecacheScriptSound( "Regenerate.Touch" );
 	PrecacheScriptSound( "TFPlayer.CritHit" );
 	PrecacheScriptSound( "TFPlayer.CritHitMini" );
 	PrecacheScriptSound( "TFPlayer.DoubleDonk" );

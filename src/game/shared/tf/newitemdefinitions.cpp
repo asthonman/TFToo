@@ -138,6 +138,20 @@ static const NewItemDefDesc_t s_NewItems[] =
 		NULL,
 		0,
 	},
+	{
+		"b6",
+		"tf_wearable",
+		"#TF_Hat_NurseNellsDomeShine",
+		"head",
+		LOADOUT_POSITION_HEAD,
+		TF_CLASS_RESUPPLY,
+		"",
+		"",
+		"nursenell",
+		0,
+		NULL,
+		0,
+	},
 };
 
 static const NewItemDefDesc_t *NewItem_FindDesc( item_definition_index_t iIndex )
@@ -262,8 +276,10 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		pKV->SetInt( "max_ilevel", 1 );
 		pKV->SetInt( "act_as_weapon", 1 );
 		pKV->SetInt( "attach_to_hands", desc.iAttachToHands );
-		pKV->SetString( "model_player", desc.pszPlayerModel );
-		pKV->SetString( "model_world", desc.pszWorldModel );
+		if ( desc.pszPlayerModel && desc.pszPlayerModel[0] )
+			pKV->SetString( "model_player", desc.pszPlayerModel );
+		if ( desc.pszWorldModel && desc.pszWorldModel[0] )
+			pKV->SetString( "model_world", desc.pszWorldModel );
 
 		KeyValues *pClasses = new KeyValues( "used_by_classes" );
 		const CUtlVector<const char *> &classes = pSchema->GetClassUsabilityStrings();
@@ -302,6 +318,19 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		else if ( !Q_stricmp( desc.pszAltId, "b5" ) )
 		{
 			AddLeadPipeAnimReplacements( pKV );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b6" ) )
+		{
+			// Hatless hat. No mesh. Bodygroup 1 on Hat is the empty submodel,
+			// which is the same trick as Baseball Bill's Sports Shine.
+			pKV->SetInt( "act_as_weapon", 0 );
+			pKV->SetInt( "baseitem", 0 );
+			pKV->SetString( "item_type_name", "#TF_Wearable_Hat" );
+			KeyValues *pVisuals = new KeyValues( "visuals" );
+			KeyValues *pBodygroups = new KeyValues( "player_bodygroups" );
+			pBodygroups->SetInt( "hat", 1 );
+			pVisuals->AddSubKey( pBodygroups );
+			pKV->AddSubKey( pVisuals );
 		}
 
 		// c_mobster_arms has a reference pose and no sequences. The three

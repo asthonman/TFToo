@@ -511,6 +511,7 @@ public:
 	virtual IResponseSystem *GetResponseSystem();
 	virtual bool			SpeakConceptIfAllowed( int iConcept, const char *modifiers = NULL, char *pszOutResponseChosen = NULL, size_t bufsize = 0, IRecipientFilter *filter = NULL );
 	void					MobsterLeaveSpawnVoice( void );
+	void					ResupplyAuraThink( void );
 
 	virtual bool CanSpeakVoiceCommand( void );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );

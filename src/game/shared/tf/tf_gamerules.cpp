@@ -176,6 +176,7 @@ static int g_TauntCamRagdollAchievements[] =
 
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
+	0,		// TF_CLASS_RESUPPLY,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -195,6 +196,7 @@ static int g_TauntCamAchievements[] =
 	ACHIEVEMENT_TF_ENGINEER_FREEZECAM_TAUNT,	// TF_CLASS_ENGINEER,
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
+	0,		// TF_CLASS_RESUPPLY,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -216,6 +218,7 @@ static int g_TauntCamAchievements2[] =
 
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
+	0,		// TF_CLASS_RESUPPLY,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -1377,6 +1380,7 @@ Vector g_TFClassViewVectors[TF_CLASS_COUNT_ALL] =
 
 	Vector( 0, 0, 65 ),		// TF_CLASS_MADCAP,			// Scout height for now
 	Vector( 0, 0, 65 ),		// TF_CLASS_MOBSTER,		// same height as Scout
+	Vector( 0, 0, 75 ),		// TF_CLASS_RESUPPLY,
 	Vector( 0, 0, 65 ),		// TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 };
 
@@ -11329,6 +11333,7 @@ static kill_eater_event_t g_eClassKillEvents[] =
 	kKillEaterEvent_EngineerKill,				// TF_CLASS_ENGINEER
 	kKillEaterEvent_ScoutKill,					// TF_CLASS_MADCAP, no dedicated strange part yet
 	kKillEaterEvent_ScoutKill,					// TF_CLASS_MOBSTER, no dedicated strange part yet
+	kKillEaterEvent_SniperKill,					// TF_CLASS_RESUPPLY, no dedicated strange part yet
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 
@@ -11346,6 +11351,7 @@ static kill_eater_event_t g_eRobotClassKillEvents[] =
 	kKillEaterEvent_RobotEngineerKill,				// TF_CLASS_ENGINEER
 	kKillEaterEvent_RobotScoutKill,					// TF_CLASS_MADCAP
 	kKillEaterEvent_RobotScoutKill,					// TF_CLASS_MOBSTER
+	kKillEaterEvent_RobotSniperKill,				// TF_CLASS_RESUPPLY
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eRobotClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 
