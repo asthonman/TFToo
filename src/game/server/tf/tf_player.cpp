@@ -1241,6 +1241,7 @@ void CTFPlayer::ResupplyAuraThink( void )
 		return;
 
 	const float flRadiusSqr = 80.f * 80.f;
+	bool bPulsedOther = false;
 
 	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
 	{
@@ -1284,6 +1285,16 @@ void CTFPlayer::ResupplyAuraThink( void )
 
 		CSingleUserRecipientFilter filter( pTarget );
 		pTarget->EmitSound( filter, pTarget->entindex(), "Regenerate.Touch" );
+
+		if ( pTarget != this )
+			bPulsedOther = true;
+	}
+
+	// Swing once per pulse that actually reaches someone else in the radius.
+	// The gesture is a primary fire, which her anim state turns into the melee attack.
+	if ( bPulsedOther && !IsTaunting() )
+	{
+		DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY );
 	}
 }
 

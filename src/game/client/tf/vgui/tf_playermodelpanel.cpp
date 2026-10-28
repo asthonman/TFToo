@@ -125,6 +125,8 @@ CTFPlayerModelPanel::CTFPlayerModelPanel( vgui::Panel *pParent, const char *pNam
 	InitPhonemeMappings();
 
 	m_pScene = NULL;
+	m_flClassSelectSequenceEnd = -1.f;
+	m_flClassSelectLastTime = 0.f;
 	ClearScene();
 	memset( m_flexWeight, 0, sizeof( m_flexWeight ) );
 
@@ -302,7 +304,135 @@ void CTFPlayerModelPanel::HoldFirstValidItem( bool bPreserveModelOverride /*= fa
 	if ( pItem && pItem->IsValid() )
 	{
 		SwitchHeldItemTo( pItem, bPreserveModelOverride );
+		return;
 	}
+
+	// No weapon. Stand in the melee idle if the model has one (Resupply),
+	// and if the class menu asked for class_select, play that sequence by
+	// name. She has no stock weapon, so the VCD in SwitchHeldItemTo never starts.
+	SetWeaponlessIdleSequence();
+	if ( m_pszVCD && V_stricmp( m_pszVCD, "class_select" ) == 0 )
+	{
+		BeginClassSelectSequence();
+	}
+	else
+	{
+		m_flClassSelectSequenceEnd = -1.f;
+		SetSequenceLayers( NULL, 0 );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Body idle for a class with no weapon. Cabinette has no unsuffixed
+// stand, so use the melee one. Models without it are left alone.
+//-----------------------------------------------------------------------------
+void CTFPlayerModelPanel::SetWeaponlessIdleSequence( void )
+{
+	if ( !m_RootMDL.m_pStudioHdr )
+		return;
+
+	int iSequence = LookupSequence( m_RootMDL.m_pStudioHdr, "stand_MELEE" );
+	if ( iSequence >= 0 )
+	{
+		// Don't reset the panel clock. SetMDL already zeroed the cycle start,
+		// and a reset here makes m_flTime jump on the next tick.
+		SetSequence( iSequence, false );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: selectionMenu_StartPose then selectionMenu_Anim01. Neither sequence
+// has an activity, and neither is flagged to loop, so the panel restarts
+// Anim01 itself. Playback rate on the panel is already 30 fps.
+//-----------------------------------------------------------------------------
+void CTFPlayerModelPanel::PlayClassSelectSequence( int iSequence, bool bWaitForClock )
+{
+	if ( !m_RootMDL.m_pStudioHdr || iSequence < 0 )
+	{
+		m_flClassSelectSequenceEnd = -1.f;
+		return;
+	}
+
+	const float flNow = m_RootMDL.m_MDL.m_flTime;
+
+	MDLSquenceLayer_t layer;
+	layer.m_nSequenceIndex = iSequence;
+	layer.m_flWeight = 1.0f;
+	layer.m_bNoLoop = true;
+	layer.m_flCycleBeganAt = bWaitForClock ? 0.f : flNow;
+	SetSequenceLayers( &layer, 1 );
+
+	if ( bWaitForClock )
+	{
+		// SetMDL zeroes the cycle start without updating m_flTime, so the next
+		// tick jumps the clock. Wait until two paints agree before starting.
+		m_flClassSelectSequenceEnd = -2.f;
+		m_flClassSelectLastTime = 0.f;
+		return;
+	}
+
+	float flDuration = Studio_Duration( m_RootMDL.m_pStudioHdr, iSequence, NULL );
+	if ( flDuration <= 0.f )
+		flDuration = 1.f;
+	m_flClassSelectSequenceEnd = flNow + flDuration;
+}
+
+void CTFPlayerModelPanel::BeginClassSelectSequence( void )
+{
+	if ( !m_RootMDL.m_pStudioHdr )
+		return;
+
+	int iStart = LookupSequence( m_RootMDL.m_pStudioHdr, "selectionMenu_StartPose" );
+	int iLoop = LookupSequence( m_RootMDL.m_pStudioHdr, "selectionMenu_Anim01" );
+	int iPlay = ( iStart >= 0 ) ? iStart : iLoop;
+	if ( iPlay < 0 )
+	{
+		m_flClassSelectSequenceEnd = -1.f;
+		return;
+	}
+
+	PlayClassSelectSequence( iPlay, true );
+}
+
+void CTFPlayerModelPanel::AdvanceClassSelectSequence( void )
+{
+	if ( m_flClassSelectSequenceEnd == -1.f )
+		return;
+	if ( !m_RootMDL.m_pStudioHdr || m_nNumSequenceLayers < 1 )
+		return;
+
+	const float flNow = m_RootMDL.m_MDL.m_flTime;
+
+	// -2: take a sample. -3: start once the clock moves by less than a quarter second.
+	if ( m_flClassSelectSequenceEnd < -1.5f )
+	{
+		if ( m_flClassSelectSequenceEnd < -2.5f && flNow > 0.f && fabs( flNow - m_flClassSelectLastTime ) < 0.25f )
+		{
+			m_SequenceLayers[0].m_flCycleBeganAt = flNow;
+			float flDuration = Studio_Duration( m_RootMDL.m_pStudioHdr, m_SequenceLayers[0].m_nSequenceIndex, NULL );
+			if ( flDuration <= 0.f )
+				flDuration = 1.f;
+			m_flClassSelectSequenceEnd = flNow + flDuration;
+			m_flClassSelectLastTime = flNow;
+			return;
+		}
+
+		m_flClassSelectLastTime = flNow;
+		m_flClassSelectSequenceEnd = -3.f;
+		return;
+	}
+
+	if ( flNow < m_flClassSelectSequenceEnd )
+		return;
+
+	int iLoop = LookupSequence( m_RootMDL.m_pStudioHdr, "selectionMenu_Anim01" );
+	if ( iLoop < 0 )
+	{
+		m_flClassSelectSequenceEnd = -1.f;
+		return;
+	}
+
+	PlayClassSelectSequence( iLoop, false );
 }
 
 //-----------------------------------------------------------------------------
@@ -399,6 +529,8 @@ void CTFPlayerModelPanel::ClearScene( void )
 	m_flSceneEndTime = 0;
 	m_flLastTickTime = 0;
 	m_bLoopScene = true;
+	m_flClassSelectSequenceEnd = -1.f;
+	m_flClassSelectLastTime = 0.f;
 	//memset( m_flexWeight, 0, sizeof( m_flexWeight ) );
 }
 
@@ -2281,6 +2413,8 @@ float CTFPlayerModelPanel::GetFlexWeight( LocalFlexController_t index )
 //-----------------------------------------------------------------------------
 void CTFPlayerModelPanel::SetupFlexWeights( void )
 {
+	AdvanceClassSelectSequence();
+
 	if ( m_RootMDL.m_MDL.GetMDL() == MDLHANDLE_INVALID )
 		return;
 

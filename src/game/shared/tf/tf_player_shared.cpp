@@ -10875,7 +10875,9 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	}
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && !m_Shared.IsStealthed() )
 	{
-		// Madcap's speed is a health ramp. Don't copy it. Spy stays at spy speed.
+		// Spy is 320. Any slower disguise, including Engineer, Pyro, Sniper, and
+		// Resupply (all 300), caps him there. Madcap's speed is a health ramp,
+		// so that disguise does not copy the ramp and Spy stays at spy speed.
 		if ( m_Shared.GetDisguiseClass() != TF_CLASS_MADCAP )
 		{
 			float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;

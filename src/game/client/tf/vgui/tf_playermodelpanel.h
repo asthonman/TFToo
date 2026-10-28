@@ -127,6 +127,10 @@ private:
 	void	SetupMappings( char const *pchFileRoot );
 
 	void	HoldFirstValidItem( bool bPreserveModelOverride = false );
+	void	SetWeaponlessIdleSequence( void );
+	void	BeginClassSelectSequence( void );
+	void	AdvanceClassSelectSequence( void );
+	void	PlayClassSelectSequence( int iSequence, bool bWaitForClock );
 	void	EquipAllWearables( CEconItemView *pHeldItem );
 	void	EquipItem( CEconItemView *pItem );
 	bool	UpdateHeldItem( int iDesiredSlot, bool bPreserveModelOverride = false );
@@ -176,6 +180,10 @@ private:
 	float			m_flSceneEndTime;
 	float			m_flLastTickTime;
 	bool			m_bLoopScene;
+	// Panel-clock time when the current class-select sequence ends.
+	// -1 idle. -2/-3 wait until the panel clock is stable after SetMDL.
+	float			m_flClassSelectSequenceEnd;
+	float			m_flClassSelectLastTime;
 
 	CUtlVector< CRefCountedModelIndex > m_vecDynamicAssetsLoaded;
 	CUtlVector< CEconItemView* > m_vecItemsLoaded;
