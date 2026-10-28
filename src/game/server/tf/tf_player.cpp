@@ -50,7 +50,6 @@
 #include "tf_weapon_buff_item.h"
 #include "tf_weapon_flamethrower.h"
 #include "tf_weapon_laser_pointer.h"
-#include "tf_weapon_flaregun.h"
 #include "tf_projectile_flare.h"
 #include "trigger_area_capture.h"
 #include "triggers.h"
@@ -8883,25 +8882,27 @@ void HandleRageGain( CTFPlayer *pPlayer, unsigned int iRequiredBuffFlags, float 
 
 }
 
-// Soldier and Demoman, from the class. The Wrangler and the Detonator grant
-// the same airborne self-blast resist (tf_damagescale_self_soldier).
-static bool PlayerHasBlastJumpDmgResist( CTFPlayer *pPlayer )
+// Class scale, or the Wrangler's copy of tf_damagescale_self_soldier.
+// The Detonator already has blast_dmg_to_self (1.5) and does not get this.
+// The lower scale wins, so the two do not stack.
+static float PlayerBlastJumpDmgScale( CTFPlayer *pPlayer )
 {
+	float flScale = 1.0f;
 	if ( !pPlayer )
-		return false;
+		return flScale;
 
 	TFPlayerClassData_t *pData = pPlayer->GetPlayerClass()->GetData();
-	if ( pData && pData->HasBlastJumpDmgResist() )
-		return true;
+	if ( pData )
+		flScale = pData->GetBlastJumpDmgResist();
 
 	if ( pPlayer->Weapon_OwnsThisID( TF_WEAPON_LASER_POINTER ) )
-		return true;
+	{
+		const float flWrangler = tf_damagescale_self_soldier.GetFloat();
+		if ( flWrangler < flScale )
+			flScale = flWrangler;
+	}
 
-	CTFFlareGun *pFlare = dynamic_cast<CTFFlareGun *>( pPlayer->Weapon_OwnsThisID( TF_WEAPON_FLAREGUN ) );
-	if ( pFlare && pFlare->GetFlareGunType() == FLAREGUN_DETONATE )
-		return true;
-
-	return false;
+	return flScale;
 }
 
 // we want to ship this...do not remove
@@ -9273,11 +9274,12 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		}
 	}
 
-	// Airborne self-blast. Class attribute, or the Wrangler / Detonator.
-	// Gunboats still stack later, and only when nobody else was hit.
-	if ( bAirborneSelfBlast && PlayerHasBlastJumpDmgResist( this ) )
+	// Airborne self-blast. The scale is the class value (0.6 for Soldier and
+	// Demoman). The Wrangler grants that same scale. Gunboats still stack
+	// later, and only when nobody else was hit.
+	if ( bAirborneSelfBlast )
 	{
-		info.SetDamage( info.GetDamage() * tf_damagescale_self_soldier.GetFloat() );
+		info.SetDamage( info.GetDamage() * PlayerBlastJumpDmgScale( this ) );
 	}
 
 	if ( bIsSoldierRocketJumping || bIsDemomanPipeJumping )
