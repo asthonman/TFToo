@@ -899,7 +899,8 @@ void C_BaseObject::GetTargetIDString( OUT_Z_BYTECAP( iMaxLenInBytes ) wchar_t *s
 	if ( !pLocalPlayer )
 		return;
 	
-	if ( pLocalPlayer->InSameDisguisedTeam( this ) || pLocalPlayer->IsPlayerClass( TF_CLASS_SPY ) || bSpectator )
+	TFPlayerClassData_t *pClassData = pLocalPlayer->GetPlayerClass()->GetData();
+	if ( pLocalPlayer->InSameDisguisedTeam( this ) || ( pClassData && pClassData->CanSeeEnemyHealth() ) || bSpectator )
 	{
 		wchar_t wszBuilderName[ MAX_PLAYER_NAME_LENGTH ];
 

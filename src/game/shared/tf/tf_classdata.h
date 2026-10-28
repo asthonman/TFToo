@@ -63,13 +63,17 @@ struct TFPlayerClassData_t
 
 	// Passives. Stock classes get these from their name. A class script can
 	// override them: "airdash" "1", "afterburn_immune" "1",
-	// "knockback_scale" "0.5", "health_regen" "1", "see_teammate_status" "1".
+	// "knockback_scale" "0.5", "health_regen" "1", "see_teammate_status" "1",
+	// "see_enemy_health" "1", "blast_jump_dmg_resist" "1".
 	// see_teammate_status: 0 stock, 1 teammate health without aiming, 2 also ammo.
+	// blast_jump_dmg_resist: airborne self-blast uses tf_damagescale_self_soldier.
 	bool		m_bAirDash;
 	bool		m_bAfterburnImmune;
 	float		m_flKnockbackScale;
 	bool		m_bHealthRegen;
 	int			m_nSeeTeammateStatus;
+	bool		m_bSeeEnemyHealth;
+	bool		m_bBlastJumpDmgResist;
 
 	bool		m_bParsed;
 	Vector		m_vecThirdPersonOffset;
@@ -86,6 +90,8 @@ struct TFPlayerClassData_t
 	float		GetKnockbackScale( void ) const		{ return m_flKnockbackScale; }
 	bool		HasHealthRegen( void ) const		{ return m_bHealthRegen; }
 	int			GetSeeTeammateStatus( void ) const	{ return m_nSeeTeammateStatus; }
+	bool		CanSeeEnemyHealth( void ) const		{ return m_bSeeEnemyHealth; }
+	bool		HasBlastJumpDmgResist( void ) const	{ return m_bBlastJumpDmgResist; }
 
 #ifdef GAME_DLL
 	const char *GetDeathSound( int nType );

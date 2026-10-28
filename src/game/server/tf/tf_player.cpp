@@ -50,6 +50,7 @@
 #include "tf_weapon_buff_item.h"
 #include "tf_weapon_flamethrower.h"
 #include "tf_weapon_laser_pointer.h"
+#include "tf_weapon_flaregun.h"
 #include "tf_projectile_flare.h"
 #include "trigger_area_capture.h"
 #include "triggers.h"
@@ -8882,6 +8883,27 @@ void HandleRageGain( CTFPlayer *pPlayer, unsigned int iRequiredBuffFlags, float 
 
 }
 
+// Soldier and Demoman, from the class. The Wrangler and the Detonator grant
+// the same airborne self-blast resist (tf_damagescale_self_soldier).
+static bool PlayerHasBlastJumpDmgResist( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+	TFPlayerClassData_t *pData = pPlayer->GetPlayerClass()->GetData();
+	if ( pData && pData->HasBlastJumpDmgResist() )
+		return true;
+
+	if ( pPlayer->Weapon_OwnsThisID( TF_WEAPON_LASER_POINTER ) )
+		return true;
+
+	CTFFlareGun *pFlare = dynamic_cast<CTFFlareGun *>( pPlayer->Weapon_OwnsThisID( TF_WEAPON_FLAREGUN ) );
+	if ( pFlare && pFlare->GetFlareGunType() == FLAREGUN_DETONATE )
+		return true;
+
+	return false;
+}
+
 // we want to ship this...do not remove
 ConVar tf_debug_damage( "tf_debug_damage", "0", FCVAR_CHEAT );
 
@@ -9013,8 +9035,9 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 
 	m_iHealthBefore = GetHealth();
 
-	bool bIsSoldierRocketJumping = ( IsPlayerClass( TF_CLASS_SOLDIER ) && (pAttacker == this) && !(GetFlags() & FL_ONGROUND) && !(GetFlags() & FL_INWATER)) && (inputInfo.GetDamageType() & DMG_BLAST);
-	bool bIsDemomanPipeJumping = ( IsPlayerClass( TF_CLASS_DEMOMAN) && (pAttacker == this) && !(GetFlags() & FL_ONGROUND) && !(GetFlags() & FL_INWATER)) && (inputInfo.GetDamageType() & DMG_BLAST);
+	const bool bAirborneSelfBlast = ( pAttacker == this ) && !( GetFlags() & FL_ONGROUND ) && !( GetFlags() & FL_INWATER ) && ( inputInfo.GetDamageType() & DMG_BLAST );
+	bool bIsSoldierRocketJumping = IsPlayerClass( TF_CLASS_SOLDIER ) && bAirborneSelfBlast;
+	bool bIsDemomanPipeJumping = IsPlayerClass( TF_CLASS_DEMOMAN ) && bAirborneSelfBlast;
 	
 	if ( bDebug )
 	{
@@ -9250,17 +9273,20 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		}
 	}
 
+	// Airborne self-blast. Class attribute, or the Wrangler / Detonator.
+	// Gunboats still stack later, and only when nobody else was hit.
+	if ( bAirborneSelfBlast && PlayerHasBlastJumpDmgResist( this ) )
+	{
+		info.SetDamage( info.GetDamage() * tf_damagescale_self_soldier.GetFloat() );
+	}
+
 	if ( bIsSoldierRocketJumping || bIsDemomanPipeJumping )
 	{
 		int nJumpType = 0;
 
-		// If this is our own rocket, scale down the damage if we're rocket jumping
 		if ( bIsSoldierRocketJumping ) 
 		{
-			float flDamage = info.GetDamage() * tf_damagescale_self_soldier.GetFloat();
-			info.SetDamage( flDamage );
-
-			if ( m_iHealthBefore - flDamage > 0 )
+			if ( m_iHealthBefore - info.GetDamage() > 0 )
 			{
 				nJumpType = TF_PLAYER_ROCKET_JUMPED;
 			}

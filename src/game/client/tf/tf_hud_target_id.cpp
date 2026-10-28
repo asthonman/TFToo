@@ -78,6 +78,15 @@ ConVar tf_hud_target_id_offset( "tf_hud_target_id_offset", "0", FCVAR_ARCHIVE, "
 ConVar tf_hud_target_id_show_avatars( "tf_hud_target_id_show_avatars", "2", FCVAR_ARCHIVE, "Display Steam avatars on TargetID when using floating health icons.  1 = everyone, 2 = friends only." );
 
 
+static bool PlayerCanSeeEnemyHealth( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer || !pPlayer->GetPlayerClass() )
+		return false;
+
+	TFPlayerClassData_t *pData = pPlayer->GetPlayerClass()->GetData();
+	return pData && pData->CanSeeEnemyHealth();
+}
+
 bool ShouldHealthBarBeVisible( CBaseEntity *pTarget, CTFPlayer *pLocalPlayer )
 {
 	if ( !pTarget || !pLocalPlayer )
@@ -97,7 +106,7 @@ bool ShouldHealthBarBeVisible( CBaseEntity *pTarget, CTFPlayer *pLocalPlayer )
 	if ( ( iHideEnemyHealth > 0 ) && !pLocalPlayer->InSameTeam( pTarget ) )
 		return false;
 
-	if ( pLocalPlayer->IsPlayerClass( TF_CLASS_SPY ) )
+	if ( PlayerCanSeeEnemyHealth( pLocalPlayer ) )
 		return true;
 
 	if ( pLocalPlayer->InSameTeam( pTarget ) )
@@ -380,7 +389,7 @@ bool CTargetID::IsValidIDTarget( int nEntIndex, float flOldTargetRetainFOV, floa
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pLocalTFPlayer, iHideEnemyHealth, hide_enemy_health );
 
 			bool bInSameTeam = pLocalTFPlayer->InSameDisguisedTeam( pEnt );	
-			bool bSpy = pLocalTFPlayer->IsPlayerClass( TF_CLASS_SPY ) && iHideEnemyHealth == 0;
+			bool bSpy = PlayerCanSeeEnemyHealth( pLocalTFPlayer ) && iHideEnemyHealth == 0;
 
 			if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() )
 			{
@@ -807,7 +816,7 @@ void CTargetID::UpdateID( void )
 			}
 
 			bool bInSameTeam = pLocalTFPlayer->InSameDisguisedTeam( pEnt );
-			bool bSpy = pLocalTFPlayer->IsPlayerClass( TF_CLASS_SPY );
+			bool bSpy = PlayerCanSeeEnemyHealth( pLocalTFPlayer );
 			bool bMedic = pLocalTFPlayer->IsPlayerClass( TF_CLASS_MEDIC );
 			bool bHeavy = pLocalTFPlayer->IsPlayerClass( TF_CLASS_HEAVYWEAPONS );
 

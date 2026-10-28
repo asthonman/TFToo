@@ -96,6 +96,8 @@ TFPlayerClassData_t::TFPlayerClassData_t()
 	m_flKnockbackScale = 1.0f;
 	m_bHealthRegen = false;
 	m_nSeeTeammateStatus = 0;
+	m_bSeeEnemyHealth = false;
+	m_bBlastJumpDmgResist = false;
 
 	m_bParsed = false;
 }
@@ -164,6 +166,10 @@ void TFPlayerClassData_t::ParseData( KeyValues *pKeyValuesData )
 	m_bHealthRegen = FStrEq( m_szClassName, "medic" );
 	// Medic sees teammate health without aiming. Resupply's script raises this to 2.
 	m_nSeeTeammateStatus = FStrEq( m_szClassName, "medic" ) ? 1 : 0;
+	m_bSeeEnemyHealth = FStrEq( m_szClassName, "spy" );
+	// Soldier's airborne self-blast is scaled by tf_damagescale_self_soldier.
+	// Demoman uses the same resist. Scripts can turn it off.
+	m_bBlastJumpDmgResist = FStrEq( m_szClassName, "soldier" ) || FStrEq( m_szClassName, "demoman" );
 	if ( pKeyValuesData->FindKey( "airdash" ) )
 		m_bAirDash = pKeyValuesData->GetInt( "airdash" ) != 0;
 	if ( pKeyValuesData->FindKey( "afterburn_immune" ) )
@@ -174,6 +180,10 @@ void TFPlayerClassData_t::ParseData( KeyValues *pKeyValuesData )
 		m_bHealthRegen = pKeyValuesData->GetInt( "health_regen" ) != 0;
 	if ( pKeyValuesData->FindKey( "see_teammate_status" ) )
 		m_nSeeTeammateStatus = pKeyValuesData->GetInt( "see_teammate_status" );
+	if ( pKeyValuesData->FindKey( "see_enemy_health" ) )
+		m_bSeeEnemyHealth = pKeyValuesData->GetInt( "see_enemy_health" ) != 0;
+	if ( pKeyValuesData->FindKey( "blast_jump_dmg_resist" ) )
+		m_bBlastJumpDmgResist = pKeyValuesData->GetInt( "blast_jump_dmg_resist" ) != 0;
 
 	// Load the high res model or the lower res model.
 	if ( !IsX360() )
