@@ -144,14 +144,14 @@ static const ClassMenuSlot_t g_ClassMenuPages[][kClassMenuSlots] =
 	},
 	// B
 	{
-		{ TF_CLASS_MADCAP,			"scout" },
+		{ TF_CLASS_MADCAP,			NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
-		{ TF_CLASS_MOBSTER,			"pyro" },
-		{ TF_CLASS_UNDEFINED,		NULL },
-		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_MOBSTER,			NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
-		{ TF_CLASS_RESUPPLY,		"sniper" },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_RESUPPLY,		NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
 	},
 };
@@ -2149,9 +2149,9 @@ const char *g_pszItemClassImagesRed[] =
 	"class_portraits/pyro",			// TF_CLASS_PYRO,
 	"class_portraits/spy",			// TF_CLASS_SPY,
 	"class_portraits/engineer",		// TF_CLASS_ENGINEER,
-	"class_portraits/scout",			// TF_CLASS_MADCAP,
-	"class_portraits/pyro",			// TF_CLASS_MOBSTER,
-	"class_portraits/sniper",		// TF_CLASS_RESUPPLY,
+	"class_portraits/madcap",			// TF_CLASS_MADCAP,
+	"class_portraits/mobster",			// TF_CLASS_MOBSTER,
+	"class_portraits/resupply",		// TF_CLASS_RESUPPLY,
 	"class_portraits/scout_grey",		// TF_CLASS_SCOUT,			
 	"class_portraits/sniper_grey",		// TF_CLASS_SNIPER,
 	"class_portraits/soldier_grey",		// TF_CLASS_SOLDIER,
@@ -2161,9 +2161,9 @@ const char *g_pszItemClassImagesRed[] =
 	"class_portraits/pyro_grey",		// TF_CLASS_PYRO,
 	"class_portraits/spy_grey",			// TF_CLASS_SPY,
 	"class_portraits/engineer_grey",	// TF_CLASS_ENGINEER,
-	"class_portraits/scout_grey",		// TF_CLASS_MADCAP,
-	"class_portraits/pyro_grey",		// TF_CLASS_MOBSTER,
-	"class_portraits/sniper_grey",		// TF_CLASS_RESUPPLY,
+	"class_portraits/madcap_grey",		// TF_CLASS_MADCAP,
+	"class_portraits/mobster_grey",		// TF_CLASS_MOBSTER,
+	"class_portraits/resupply_grey",		// TF_CLASS_RESUPPLY,
 };
 
 const char *g_pszItemClassImagesBlue[] =
@@ -2178,9 +2178,9 @@ const char *g_pszItemClassImagesBlue[] =
 	"class_portraits/pyro_blue",		// TF_CLASS_PYRO,
 	"class_portraits/spy_blue",			// TF_CLASS_SPY,
 	"class_portraits/engineer_blue",	// TF_CLASS_ENGINEER,
-	"class_portraits/scout_blue",		// TF_CLASS_MADCAP,
-	"class_portraits/pyro_blue",		// TF_CLASS_MOBSTER,
-	"class_portraits/sniper_blue",		// TF_CLASS_RESUPPLY,
+	"class_portraits/madcap_blue",		// TF_CLASS_MADCAP,
+	"class_portraits/mobster_blue",		// TF_CLASS_MOBSTER,
+	"class_portraits/resupply_blue",		// TF_CLASS_RESUPPLY,
 	"class_portraits/scout_blue_grey",		// TF_CLASS_SCOUT,			
 	"class_portraits/sniper_blue_grey",		// TF_CLASS_SNIPER,
 	"class_portraits/soldier_blue_grey",	// TF_CLASS_SOLDIER,
@@ -2190,9 +2190,9 @@ const char *g_pszItemClassImagesBlue[] =
 	"class_portraits/pyro_blue_grey",		// TF_CLASS_PYRO,
 	"class_portraits/spy_blue_grey",		// TF_CLASS_SPY,
 	"class_portraits/engineer_blue_grey",	// TF_CLASS_ENGINEER,
-	"class_portraits/scout_blue_grey",	// TF_CLASS_MADCAP,
-	"class_portraits/pyro_blue_grey",	// TF_CLASS_MOBSTER,
-	"class_portraits/sniper_blue_grey",	// TF_CLASS_RESUPPLY,
+	"class_portraits/madcap_blue_grey",		// TF_CLASS_MADCAP,
+	"class_portraits/mobster_blue_grey",	// TF_CLASS_MOBSTER,
+	"class_portraits/resupply_blue_grey",	// TF_CLASS_RESUPPLY,
 };
 
 const char *g_pszCompetitiveMedalImages[] =
