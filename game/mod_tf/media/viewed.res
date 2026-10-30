@@ -18,6 +18,6 @@
 	}
 	"cp_junction_final"
 	{
-		"viewed"		"2"
+		"viewed"		"3"
 	}
 }
