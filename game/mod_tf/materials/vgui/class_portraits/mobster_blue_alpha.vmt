@@ -1,6 +1,6 @@
 "UnlitGeneric"
 {
-	"$basetexture" "vgui/class_portraits/mobster_blue"
+	"$basetexture" "vgui/class_portraits/mobster_blu"
 	"$vertexcolor" 1
 	"$no_fullbright" 1
 	"$ignorez" 1

@@ -1,6 +1,6 @@
 "UnlitGeneric"
 {
-	"$basetexture" "vgui/class_portraits/brick_grey"
+	"$basetexture" "vgui/class_sel_sm_brick_inactive"
 	"$translucent" 1
 	"$ignorez" 1
 	"$vertexalpha" 1
