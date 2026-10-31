@@ -1,14 +1,15 @@
 // Brick. 550 health. Speed is Heavy's 230; it was not specified.
 // Melee is the slam (schema b9, tf_weapon_brickslam). Secondary is the
 // throwable brick (schema b8). Class-script weapons stay empty so the
-// schema items fill the loadout. No arm model, so first person is hidden.
+// schema items fill the loadout. First person on the brick is Scout's arms.
 // Right click grows him. Passives: afterburn immune, half knockback, medic regen.
+// Airblast resist is the Mantreads attribute on the slam, not knockback_scale.
 "PlayerClassData"
 {
 	"name"				"brick"
 	"model"				"models/alaxe/tf2/actors/brick_mann.mdl"
 	"model_hwm"			"models/alaxe/tf2/actors/brick_mann.mdl"
-	"model_hands"		""
+	"model_hands"		"models/weapons/c_models/c_scout_arms.mdl"
 	"localize_name"		"#TF_Class_Name_Brick"
 	"speed_max"			"230"
 	"health_max"		"550"

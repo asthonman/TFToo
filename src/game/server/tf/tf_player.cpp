@@ -1418,34 +1418,53 @@ void CTFPlayer::ThinkBrickGrow( void )
 		return;
 	}
 
-	if ( !IsAlive() )
-		return;
-
-	extern ConVar tf_spy_cloak_consume_rate;
-	extern ConVar tf_spy_cloak_regen_rate;
-
-	if ( m_bBrickGrown )
+	if ( IsAlive() )
 	{
-		if ( GetModelScale() != TF_BRICK_GROW_SCALE )
-			SetModelScale( TF_BRICK_GROW_SCALE );
+		extern ConVar tf_spy_cloak_consume_rate;
+		extern ConVar tf_spy_cloak_regen_rate;
 
-		m_flBrickGrowMeter -= gpGlobals->frametime * tf_spy_cloak_consume_rate.GetFloat();
-		if ( m_flBrickGrowMeter <= 0.f )
+		if ( m_bBrickGrown )
 		{
-			m_flBrickGrowMeter = 0.f;
-			m_bBrickGrown = false;
-			SetModelScale( 1.0f );
+			if ( GetModelScale() != TF_BRICK_GROW_SCALE )
+				SetModelScale( TF_BRICK_GROW_SCALE );
+
+			m_flBrickGrowMeter -= gpGlobals->frametime * tf_spy_cloak_consume_rate.GetFloat();
+			if ( m_flBrickGrowMeter <= 0.f )
+			{
+				m_flBrickGrowMeter = 0.f;
+				m_bBrickGrown = false;
+				SetModelScale( 1.0f );
+			}
+		}
+		else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
+		{
+			if ( GetModelScale() != 1.0f )
+				SetModelScale( 1.0f );
+
+			m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
+			if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
+				m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 		}
 	}
-	else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
-	{
-		if ( GetModelScale() != 1.0f )
-			SetModelScale( 1.0f );
 
-		m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
-		if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
-			m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	// Taunt cam value 1. HandleTaunting owns the camera, so a real taunt still wins.
+	// Dead clears it; leaving it at 1 would turn the cam on and off every frame.
+	bool bThirdPerson = false;
+	if ( IsAlive() )
+	{
+		if ( m_bBrickGrown )
+			bThirdPerson = true;
+		else
+		{
+			CTFBrickSlamWeapon *pSlam = dynamic_cast<CTFBrickSlamWeapon *>( GetActiveWeapon() );
+			if ( pSlam && pSlam->IsSlamming() )
+				bThirdPerson = true;
+		}
 	}
+
+	const int nCam = bThirdPerson ? 1 : 0;
+	if ( m_nForceTauntCam != nCam )
+		SetForcedTauntCam( nCam );
 }
 
 void CTFPlayer::HandleBrickGrowInput( void )

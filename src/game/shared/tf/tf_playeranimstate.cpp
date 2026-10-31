@@ -186,6 +186,7 @@ static Activity ResupplyMeleeActivity( Activity act )
 	case ACT_MP_JUMP_FLOAT_ITEM1:
 	case ACT_MP_JUMP_FLOAT_ITEM2:
 	case ACT_MP_JUMP_FLOAT_LOSERSTATE:
+	case ACT_MP_JUMP_ITEM1:
 	case ACT_MP_DOUBLEJUMP:
 		return ACT_MP_JUMP_FLOAT_MELEE;
 
@@ -208,6 +209,7 @@ static Activity ResupplyMeleeActivity( Activity act )
 	case ACT_MP_SWIM:
 	case ACT_MP_SWIM_PRIMARY:
 	case ACT_MP_SWIM_SECONDARY:
+	case ACT_MP_SWIM_ITEM1:
 	case ACT_MP_SWIM_DEPLOYED:
 	case ACT_MP_SWIM_LOSERSTATE:
 		return ACT_MP_SWIM_MELEE;
@@ -215,13 +217,17 @@ static Activity ResupplyMeleeActivity( Activity act )
 	case ACT_MP_ATTACK_STAND_PRIMARYFIRE:
 	case ACT_MP_ATTACK_STAND_PRIMARYFIRE_DEPLOYED:
 	case ACT_MP_ATTACK_AIRWALK_PRIMARYFIRE:
+	case ACT_MP_ATTACK_STAND_ITEM1:
+	case ACT_MP_ATTACK_AIRWALK_ITEM1:
 		return ACT_MP_ATTACK_STAND_MELEE;
 
 	case ACT_MP_ATTACK_CROUCH_PRIMARYFIRE:
 	case ACT_MP_ATTACK_CROUCH_PRIMARYFIRE_DEPLOYED:
+	case ACT_MP_ATTACK_CROUCH_ITEM1:
 		return ACT_MP_ATTACK_CROUCH_MELEE;
 
 	case ACT_MP_ATTACK_SWIM_PRIMARYFIRE:
+	case ACT_MP_ATTACK_SWIM_ITEM1:
 		return ACT_MP_ATTACK_SWIM_MELEE;
 
 	case ACT_MP_GESTURE_VC_HANDMOUTH:
@@ -238,6 +244,7 @@ static Activity ResupplyMeleeActivity( Activity act )
 	case ACT_MP_GESTURE_FLINCH_PRIMARY:
 	case ACT_MP_GESTURE_FLINCH_SECONDARY:
 	case ACT_MP_GESTURE_FLINCH_MELEE:
+	case ACT_MP_GESTURE_FLINCH_ITEM1:
 	case ACT_MP_GESTURE_FLINCH_HEAD:
 	case ACT_MP_GESTURE_FLINCH_STOMACH:
 	case ACT_MP_GESTURE_FLINCH_LEFTARM:
@@ -262,6 +269,23 @@ static bool UsesResupplyLocomotion( CTFPlayer *pPlayer )
 #endif
 
 	return pPlayer->IsPlayerClass( TF_CLASS_RESUPPLY );
+}
+
+// brick_mann only has the melee set. The throwable asks for ITEM1 so the
+// viewmodel can use Scout's arms; the body falls back when that sequence
+// is missing. A spy disguised as Brick is the same model to enemies.
+static bool UsesBrickLocomotion( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+#ifdef CLIENT_DLL
+	if ( pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pPlayer->IsEnemyPlayer()
+		&& pPlayer->m_Shared.GetDisguiseClass() == TF_CLASS_BRICK )
+		return true;
+#endif
+
+	return pPlayer->IsPlayerClass( TF_CLASS_BRICK );
 }
 
 //-----------------------------------------------------------------------------
@@ -300,8 +324,9 @@ Activity CTFPlayerAnimState::TranslateActivity( Activity actDesired )
 
 	// No weapon, so the anim state asks for unsuffixed ACT_MP_*. The mdl only
 	// has the melee set. A disguised Spy's weapon can also ask for a slot the
-	// body does not have. Keep a sequence that is actually in the model.
-	if ( UsesResupplyLocomotion( pPlayer ) && pPlayer->GetModelPtr()
+	// body does not have. Brick's throwable is ITEM1 for the Scout arms, and
+	// brick_mann has no ITEM1 sequences either. Keep a sequence that is in the model.
+	if ( ( UsesResupplyLocomotion( pPlayer ) || UsesBrickLocomotion( pPlayer ) ) && pPlayer->GetModelPtr()
 		&& pPlayer->SelectWeightedSequence( translateActivity ) < 0 )
 	{
 		Activity meleeActivity = ResupplyMeleeActivity( translateActivity );

@@ -1759,11 +1759,6 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 				{ pTarget->m_Shared.AddCond( TF_COND_LOST_FOOTING, flLoseFooting ); }
 			pTarget->m_Shared.AddCond( TF_COND_AIR_CURRENT );
 			pTarget->m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR );
-			{
-				const float flKnock = pTarget->GetPlayerClass()->GetData()->GetKnockbackScale();
-				if ( flKnock != 1.0f )
-					vecForce *= flKnock;
-			}
 			pTarget->ApplyAbsVelocityImpulse( vecForce );
 		}
 		else
@@ -1829,12 +1824,6 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 
 			// Old airblast only - stomp velocity before applying
 			pTarget->SetAbsVelocity( vec3_origin );
-
-			{
-				const float flKnock = pTarget->GetPlayerClass()->GetData()->GetKnockbackScale();
-				if ( flKnock != 1.0f )
-					vecForce *= flKnock;
-			}
 
 			// Apply GenericPushback
 			pTarget->ApplyGenericPushbackImpulse( vecForce, pOwner );
