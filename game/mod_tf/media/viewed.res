@@ -10,10 +10,14 @@
 	}
 	"itemtest"
 	{
-		"viewed"		"14"
+		"viewed"		"15"
 	}
 	"koth_badlands"
 	{
-		"viewed"		"1"
+		"viewed"		"3"
+	}
+	"cp_junction_final"
+	{
+		"viewed"		"3"
 	}
 }
