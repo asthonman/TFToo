@@ -3836,6 +3836,8 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropArray3( RECVINFO_ARRAY( m_iSharedAmmo ), RecvPropInt( RECVINFO( m_iSharedAmmo[0] ) ) ),
 	RecvPropFloat( RECVINFO( m_flNextResupplyPulse ) ),
 	RecvPropFloat( RECVINFO( m_flResupplyThrowMeter ) ),
+	RecvPropBool( RECVINFO( m_bBrickGrown ) ),
+	RecvPropFloat( RECVINFO( m_flBrickGrowMeter ) ),
 	RecvPropString( RECVINFO( m_szTauntSequence ) ),
 	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
@@ -3953,6 +3955,8 @@ C_TFPlayer::C_TFPlayer() :
 	m_nPrevTauntSequenceParity = 0;
 	m_flNextResupplyPulse = 0.f;
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
+	m_bBrickGrown = false;
+	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 
 	m_flWaterImpactTime = 0.0f;
 //	m_rtSpottedInPVSTime = 0;
@@ -6764,6 +6768,7 @@ bool C_TFPlayer::PlayAnimEventInPrediction( PlayerAnimEvent_t event )
 	case PLAYERANIMEVENT_CYOAPDA_MIDDLE:
 	case PLAYERANIMEVENT_CYOAPDA_END:
 	case PLAYERANIMEVENT_RESUPPLY_SWING:
+	case PLAYERANIMEVENT_BRICK_SLAM:
 		return true;
 	default:
 		return false;

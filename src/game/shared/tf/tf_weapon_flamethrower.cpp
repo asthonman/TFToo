@@ -1759,6 +1759,11 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 				{ pTarget->m_Shared.AddCond( TF_COND_LOST_FOOTING, flLoseFooting ); }
 			pTarget->m_Shared.AddCond( TF_COND_AIR_CURRENT );
 			pTarget->m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR );
+			{
+				const float flKnock = pTarget->GetPlayerClass()->GetData()->GetKnockbackScale();
+				if ( flKnock != 1.0f )
+					vecForce *= flKnock;
+			}
 			pTarget->ApplyAbsVelocityImpulse( vecForce );
 		}
 		else
@@ -1824,6 +1829,12 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 
 			// Old airblast only - stomp velocity before applying
 			pTarget->SetAbsVelocity( vec3_origin );
+
+			{
+				const float flKnock = pTarget->GetPlayerClass()->GetData()->GetKnockbackScale();
+				if ( flKnock != 1.0f )
+					vecForce *= flKnock;
+			}
 
 			// Apply GenericPushback
 			pTarget->ApplyGenericPushbackImpulse( vecForce, pOwner );
@@ -2920,6 +2931,24 @@ void CTFFlameEntity::FlameThink( void )
 		enginetrace->EnumerateEntities( rayEnt, false, &eFlameEnum );
 
 		bool bHitSomething = false;
+		float flBrickBlockDistSqr = 1.0e12f;
+		CBaseEntity *pBrickBlock = NULL;
+		FOR_EACH_VEC( eFlameEnum.GetTargets(), iBrick )
+		{
+			CBaseEntity *pEnt = eFlameEnum.GetTargets()[iBrick];
+			CTFPlayer *pTF = ToTFPlayer( pEnt );
+			if ( !pTF || !pTF->IsPlayerClass( TF_CLASS_BRICK ) || pTF->InSameTeam( pAttacker ) )
+				continue;
+
+			const float flDistSqr = ( pTF->WorldSpaceCenter() - m_vecPrevPos ).LengthSqr();
+			if ( flDistSqr < flBrickBlockDistSqr )
+			{
+				flBrickBlockDistSqr = flDistSqr;
+				pBrickBlock = pTF;
+			}
+		}
+
+		bool bStoppedByBrick = false;
 		FOR_EACH_VEC( eFlameEnum.GetTargets(), i )
 		{
 			CBaseEntity *pEnt = eFlameEnum.GetTargets()[i];
@@ -2928,6 +2957,14 @@ void CTFFlameEntity::FlameThink( void )
 			int iIndex = m_hEntitiesBurnt.Find( pEnt );
 			if ( iIndex != m_hEntitiesBurnt.InvalidIndex() )
 				continue;
+
+			// Enemy Brick stops the flame. Friendly Brick does not.
+			if ( pBrickBlock && pEnt != pBrickBlock )
+			{
+				const float flDistSqr = ( pEnt->WorldSpaceCenter() - m_vecPrevPos ).LengthSqr();
+				if ( flDistSqr > flBrickBlockDistSqr )
+					continue;
+			}
 
 			// if we're removing the flame this frame from hitting world, check if we hit this ent before hitting the world
 			if ( bHitWorld )
@@ -2950,6 +2987,14 @@ void CTFFlameEntity::FlameThink( void )
 			}
 
 			bHitSomething = true;
+			if ( pEnt == pBrickBlock )
+				bStoppedByBrick = true;
+		}
+
+		if ( bStoppedByBrick )
+		{
+			RemoveFlame();
+			return;
 		}
 
 		// now, let's see if the flame visual could have actually hit this player.  Trace backward from the

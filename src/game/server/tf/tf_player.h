@@ -519,6 +519,10 @@ public:
 	float					GetResupplyThrowMeter( void ) const;
 	bool					SpendResupplyThrowMeter( float flCost );
 	bool					AddResupplyThrowMeter( float flGain );
+	void					ThinkBrickGrow( void );
+	void					HandleBrickGrowInput( void );
+	bool					IsBrickGrown( void ) const { return m_bBrickGrown; }
+	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 
 	virtual bool CanSpeakVoiceCommand( void );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );
@@ -1200,6 +1204,9 @@ private:
 	CNetworkVar( float, m_flNextResupplyPulse );
 	// Thrown ammo and health. 0-100, refills at Spy's cloak rate.
 	CNetworkVar( float, m_flResupplyThrowMeter );
+	// Brick grow. Same 0-100 meter and the same rates as Spy's cloak.
+	CNetworkVar( bool, m_bBrickGrown );
+	CNetworkVar( float, m_flBrickGrowMeter );
 	// Named sequence taunts for classes that have no response-rule scene.
 	// Parity bumps even when the sequence name repeats, so the client restarts it.
 	CNetworkString( m_szTauntSequence, 64 );

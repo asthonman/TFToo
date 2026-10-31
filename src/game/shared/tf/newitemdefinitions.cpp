@@ -171,6 +171,34 @@ static const NewItemDefDesc_t s_NewItems[] =
 		s_ResupplyMeleeAttrs,
 		ARRAYSIZE( s_ResupplyMeleeAttrs ),
 	},
+	{
+		"b8",
+		"tf_weapon_throwable_brick",
+		"#TF_Weapon_Brick",
+		"secondary",
+		LOADOUT_POSITION_SECONDARY,
+		TF_CLASS_BRICK,
+		"models/weapons/w_models/w_brick_scout.mdl",
+		"models/weapons/w_models/w_brick_scout.mdl",
+		"brick",
+		0,
+		s_BrickAttrs,
+		ARRAYSIZE( s_BrickAttrs ),
+	},
+	{
+		"b9",
+		"tf_weapon_brickslam",
+		"#TF_Weapon_BrickSlam",
+		"melee",
+		LOADOUT_POSITION_MELEE,
+		TF_CLASS_BRICK,
+		"",
+		"",
+		"brickslam",
+		0,
+		NULL,
+		0,
+	},
 };
 
 static const NewItemDefDesc_t *NewItem_FindDesc( item_definition_index_t iIndex )
@@ -357,6 +385,12 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 			// FORCE_NOT_USED (-2) makes the class-select panel skip this item,
 			// so selectionMenu_StartPose / Anim01 still play.
 			pKV->SetString( "anim_slot", "FORCE_NOT_USED" );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b8" ) || !Q_stricmp( desc.pszAltId, "b9" ) )
+		{
+			// brick_mann has no ITEM1 sequences. Both weapons use the melee set.
+			// b9 must not be FORCE_NOT_USED or the body never plays the slam.
+			pKV->SetString( "anim_slot", "MELEE" );
 		}
 
 		// c_mobster_arms has a reference pose and no sequences. The three

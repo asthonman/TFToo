@@ -58,6 +58,7 @@ const char *g_aClassNames[] =
 	"TF_CLASS_MADCAP",
 	"TF_CLASS_MOBSTER",
 	"TF_CLASS_RESUPPLY",
+	"TF_CLASS_BRICK",
 	"TF_CLASS_CIVILIAN",
 };
 

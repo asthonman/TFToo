@@ -323,6 +323,7 @@ static const char *kClassTags[TF_LAST_NORMAL_CLASS] = {
 	"Scout",	// TF_CLASS_MADCAP
 	"Scout",	// TF_CLASS_MOBSTER
 	"Resupply",	// TF_CLASS_RESUPPLY
+	"Brick",	// TF_CLASS_BRICK
 };
 
 struct TagPair_t

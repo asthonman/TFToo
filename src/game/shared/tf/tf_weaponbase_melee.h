@@ -149,4 +149,61 @@ private:
 	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
 };
 
+#ifdef CLIENT_DLL
+#define CTFBrickSlamWeapon C_TFBrickSlamWeapon
+#endif
+
+//=============================================================================
+// Brick's melee. Primary fire plays attack*_MELEE_L for the whole slam.
+// In the air the gesture holds at smash_slow_start's end until he lands.
+// The hurtbox stays up the entire slam. He cannot step or jump during it.
+// Right click is not this weapon. Grow is a player-level meter.
+//=============================================================================
+class CTFBrickSlamWeapon : public CTFWeaponBaseMelee
+{
+public:
+	DECLARE_CLASS( CTFBrickSlamWeapon, CTFWeaponBaseMelee );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFBrickSlamWeapon();
+
+	virtual void	Precache( void );
+	virtual void	Spawn( void );
+	virtual void	Equip( CBaseCombatCharacter *pOwner );
+	virtual bool	Deploy( void );
+	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
+	virtual bool	CanHolster( void ) const;
+	virtual void	ItemPostFrame( void );
+	virtual void	PrimaryAttack( void );
+	virtual const char *GetViewModel( int iViewModel = 0 ) const;
+	virtual const char *GetWorldModel( void ) const;
+
+	bool			IsSlamming( void ) const { return m_bSlamming; }
+	// Airborne, so the swing holds instead of finishing.
+	bool			IsSlamFrozen( void ) const;
+	void			NoteFallSpeed( float flSpeed );
+
+#ifdef CLIENT_DLL
+	virtual bool	ShouldDraw( void ) { return false; }
+#endif
+
+private:
+	void			HideMesh( void );
+	void			StartSlam( void );
+	void			UpdateSlam( void );
+	void			EndSlam( void );
+#ifdef GAME_DLL
+	void			SlamDamage( void );
+	CUtlVector<EHANDLE> m_hSlamVictims;
+	float			m_flSlamFallSpeed;
+#endif
+
+	CNetworkVar( bool, m_bSlamming );
+	int				m_iSlamSequence;
+	float			m_flSlamStartTime;
+
+	CTFBrickSlamWeapon( const CTFBrickSlamWeapon & ) {}
+};
+
 #endif // TF_WEAPONBASE_MELEE_H

@@ -227,6 +227,7 @@ enum ETFClass
 	TF_CLASS_MADCAP,
 	TF_CLASS_MOBSTER,
 	TF_CLASS_RESUPPLY,
+	TF_CLASS_BRICK,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
 
@@ -241,6 +242,18 @@ enum ETFClass
 #define TF_RESUPPLY_THROW_COST		50.0f
 // Sandvich is 500, which lands next to her. 1000 is about four times as far.
 #define TF_RESUPPLY_THROW_SPEED		1000.0f
+
+// Brick's grow. Same 0-100 meter and the same rates as Spy's cloak.
+// Right click toggles it. He cannot start a grow below the Spy's cloak floor.
+#define TF_BRICK_GROW_MAX			100.0f
+#define TF_BRICK_GROW_MIN_START		8.0f
+#define TF_BRICK_GROW_SCALE			2.0f
+#define TF_BRICK_GROW_INVIS			0.5f
+// attackStand_MELEE_L is 2.067s. smash_slow_start is 1.033s, so the air
+// freeze is exactly halfway through the swing.
+#define TF_BRICK_SLAM_TIME			2.067f
+#define TF_BRICK_SLAM_FREEZE_CYCLE	0.5f
+#define TF_BRICK_SLAM_DAMAGE		140.0f
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }

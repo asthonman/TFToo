@@ -1349,3 +1349,340 @@ void CTFResupplyWeapon::PlaySwing( char chSwing )
 
 	HideMesh();
 }
+
+//=============================================================================
+// Brick slam. Hidden bat so Equip has a model. The body plays attack*_MELEE_L.
+//=============================================================================
+IMPLEMENT_NETWORKCLASS_ALIASED( TFBrickSlamWeapon, DT_TFWeaponBrickSlam )
+
+BEGIN_NETWORK_TABLE( CTFBrickSlamWeapon, DT_TFWeaponBrickSlam )
+#if defined( CLIENT_DLL )
+	RecvPropBool( RECVINFO( m_bSlamming ) ),
+#else
+	SendPropBool( SENDINFO( m_bSlamming ) ),
+#endif
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFBrickSlamWeapon )
+	DEFINE_PRED_FIELD( m_bSlamming, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_brickslam, CTFBrickSlamWeapon );
+PRECACHE_WEAPON_REGISTER( tf_weapon_brickslam );
+
+static const char *s_pszBrickHiddenModel = "models/weapons/w_models/w_bat.mdl";
+
+// Attack sequence bbox in model space, plus a player radius so the test
+// against WorldSpaceCenter still covers someone standing in the swing.
+static const Vector s_vecBrickSlamMins( -24.0f, -61.0f, -14.7f );
+static const Vector s_vecBrickSlamMaxs( 91.8f, 61.0f, 107.9f );
+static const float s_flBrickSlamPad = 24.0f;
+
+CTFBrickSlamWeapon::CTFBrickSlamWeapon()
+{
+	m_bSlamming = false;
+	m_iSlamSequence = -1;
+	m_flSlamStartTime = 0.f;
+#ifdef GAME_DLL
+	m_flSlamFallSpeed = 0.f;
+#endif
+}
+
+const char *CTFBrickSlamWeapon::GetViewModel( int /*iViewModel*/ ) const
+{
+	return s_pszBrickHiddenModel;
+}
+
+const char *CTFBrickSlamWeapon::GetWorldModel( void ) const
+{
+	return s_pszBrickHiddenModel;
+}
+
+void CTFBrickSlamWeapon::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheModel( s_pszBrickHiddenModel );
+}
+
+void CTFBrickSlamWeapon::HideMesh( void )
+{
+	AddEffects( EF_NODRAW );
+
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer )
+		return;
+
+	CBaseViewModel *vm = pPlayer->GetViewModel( m_nViewModelIndex );
+	if ( vm )
+		vm->AddEffects( EF_NODRAW );
+}
+
+void CTFBrickSlamWeapon::Spawn( void )
+{
+	BaseClass::Spawn();
+	AddEffects( EF_NODRAW );
+}
+
+void CTFBrickSlamWeapon::Equip( CBaseCombatCharacter *pOwner )
+{
+	BaseClass::Equip( pOwner );
+	HideMesh();
+}
+
+bool CTFBrickSlamWeapon::Deploy( void )
+{
+	bool bDeployed = BaseClass::Deploy();
+	HideMesh();
+	return bDeployed;
+}
+
+bool CTFBrickSlamWeapon::CanHolster( void ) const
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( m_bSlamming && pOwner && pOwner->IsAlive() )
+		return false;
+
+	return BaseClass::CanHolster();
+}
+
+bool CTFBrickSlamWeapon::Holster( CBaseCombatWeapon *pSwitchingTo )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( m_bSlamming && pOwner && pOwner->IsAlive() )
+		return false;
+
+	return BaseClass::Holster( pSwitchingTo );
+}
+
+bool CTFBrickSlamWeapon::IsSlamFrozen( void ) const
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner || !m_bSlamming )
+		return false;
+
+	if ( pOwner->GetFlags() & FL_ONGROUND )
+		return false;
+
+	if ( pOwner->GetWaterLevel() >= WL_Waist )
+		return false;
+
+	return true;
+}
+
+void CTFBrickSlamWeapon::NoteFallSpeed( float flSpeed )
+{
+#ifdef GAME_DLL
+	if ( flSpeed > m_flSlamFallSpeed )
+		m_flSlamFallSpeed = flSpeed;
+#else
+	(void)flSpeed;
+#endif
+}
+
+static int BrickSlam_FindSequence( CTFPlayer *pPlayer )
+{
+	// L only. Crouch if he is ducked. There is no attack_stand_melee sequence.
+	// Swim falls back to the standing swing. brick_mann has no ITEM1 set.
+	const char *pszSeq = "attackStand_MELEE_L";
+	if ( pPlayer->GetFlags() & FL_DUCKING )
+		pszSeq = "attackCrouch_MELEE_L";
+
+	int iSeq = pPlayer->LookupSequence( pszSeq );
+	if ( iSeq < 0 )
+		iSeq = pPlayer->LookupSequence( "attackStand_MELEE_L" );
+	return iSeq;
+}
+
+void CTFBrickSlamWeapon::ItemPostFrame( void )
+{
+	HideMesh();
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner || !pOwner->IsAlive() )
+	{
+		if ( m_bSlamming )
+			EndSlam();
+		return;
+	}
+
+	// Do not call BaseClass::ItemPostFrame. That traces a stock melee hit.
+	if ( m_bSlamming )
+	{
+		UpdateSlam();
+		return;
+	}
+
+	if ( ( pOwner->m_afButtonPressed & IN_ATTACK ) && m_flNextPrimaryAttack <= gpGlobals->curtime )
+		PrimaryAttack();
+}
+
+void CTFBrickSlamWeapon::PrimaryAttack( void )
+{
+	StartSlam();
+}
+
+void CTFBrickSlamWeapon::StartSlam( void )
+{
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer || !pPlayer->IsAlive() )
+		return;
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_TAUNTING ) )
+		return;
+
+	if ( m_flNextPrimaryAttack > gpGlobals->curtime )
+		return;
+
+	m_iSlamSequence = BrickSlam_FindSequence( pPlayer );
+	m_flSlamStartTime = gpGlobals->curtime;
+	m_bSlamming = true;
+	m_flNextPrimaryAttack = gpGlobals->curtime + 100.f;
+
+#ifdef GAME_DLL
+	m_flSlamFallSpeed = pPlayer->m_Local.m_flFallVelocity;
+	m_hSlamVictims.RemoveAll();
+#endif
+
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_BRICK_SLAM, m_iSlamSequence );
+	HideMesh();
+}
+
+void CTFBrickSlamWeapon::EndSlam( void )
+{
+	m_bSlamming = false;
+	m_flNextPrimaryAttack = gpGlobals->curtime + 0.4f;
+	m_flNextSecondaryAttack = m_flNextPrimaryAttack;
+}
+
+void CTFBrickSlamWeapon::UpdateSlam( void )
+{
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer )
+	{
+		EndSlam();
+		return;
+	}
+
+	if ( m_flSlamStartTime <= 0.f )
+	{
+		m_flSlamStartTime = gpGlobals->curtime;
+		if ( m_iSlamSequence < 0 )
+			m_iSlamSequence = BrickSlam_FindSequence( pPlayer );
+	}
+
+	NoteFallSpeed( pPlayer->m_Local.m_flFallVelocity );
+
+#ifdef GAME_DLL
+	SlamDamage();
+#endif
+
+	const bool bLanded = ( pPlayer->GetFlags() & FL_ONGROUND ) || pPlayer->GetWaterLevel() >= WL_Waist;
+	if ( !bLanded )
+		return;
+
+#ifdef CLIENT_DLL
+	C_AnimationLayer *pLayer = pPlayer->GetAnimOverlay( GESTURE_SLOT_ATTACK_AND_RELOAD );
+#else
+	CAnimationLayer *pLayer = pPlayer->GetAnimOverlay( GESTURE_SLOT_ATTACK_AND_RELOAD );
+#endif
+
+	const bool bGesture = pLayer && m_iSlamSequence >= 0 && pLayer->m_nSequence == m_iSlamSequence;
+	if ( bGesture && pLayer->m_flCycle >= 0.98f )
+	{
+		EndSlam();
+		return;
+	}
+
+	// No matching gesture (missing sequence). Don't use this while airborne:
+	// the hold can last longer than the swing.
+	if ( !bGesture && gpGlobals->curtime >= m_flSlamStartTime + TF_BRICK_SLAM_TIME )
+		EndSlam();
+}
+
+#ifdef GAME_DLL
+void CTFBrickSlamWeapon::SlamDamage( void )
+{
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer || !pPlayer->IsAlive() )
+		return;
+
+	float flScale = pPlayer->GetModelScale();
+	if ( flScale < 0.1f )
+		flScale = 1.f;
+
+	const Vector mins = ( s_vecBrickSlamMins - Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flScale;
+	const Vector maxs = ( s_vecBrickSlamMaxs + Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flScale;
+
+	Vector vecForward, vecRight, vecUp;
+	QAngle angYaw( 0.f, pPlayer->GetAbsAngles().y, 0.f );
+	AngleVectors( angYaw, &vecForward, &vecRight, &vecUp );
+	const Vector vecLeft = -vecRight;
+	const Vector org = pPlayer->GetAbsOrigin();
+
+	Vector worldMins( FLT_MAX, FLT_MAX, FLT_MAX );
+	Vector worldMaxs( -FLT_MAX, -FLT_MAX, -FLT_MAX );
+	for ( int ix = 0; ix < 2; ++ix )
+	{
+		for ( int iy = 0; iy < 2; ++iy )
+		{
+			for ( int iz = 0; iz < 2; ++iz )
+			{
+				Vector local( ix ? maxs.x : mins.x, iy ? maxs.y : mins.y, iz ? maxs.z : mins.z );
+				Vector world = org + vecForward * local.x + vecLeft * local.y + vecUp * local.z;
+				VectorMin( worldMins, world, worldMins );
+				VectorMax( worldMaxs, world, worldMaxs );
+			}
+		}
+	}
+
+	CBaseEntity *pList[32];
+	int nCount = UTIL_EntitiesInBox( pList, ARRAYSIZE( pList ), worldMins, worldMaxs, FL_CLIENT );
+
+	// Same fall-damage term as the Mantreads, without the random spread.
+	// 140 when he has not fallen past the safe speed.
+	float flFallDamage = 0.f;
+	if ( m_flSlamFallSpeed > 650.f )
+	{
+		flFallDamage = 5.f * ( m_flSlamFallSpeed / 300.f );
+		flFallDamage *= (float)pPlayer->GetMaxHealth() / 100.f;
+	}
+	const float flDamage = TF_BRICK_SLAM_DAMAGE + flFallDamage * 3.f;
+
+	for ( int i = 0; i < nCount; ++i )
+	{
+		CTFPlayer *pVictim = ToTFPlayer( pList[i] );
+		if ( !pVictim || pVictim == pPlayer || !pVictim->IsAlive() )
+			continue;
+
+		if ( pVictim->GetTeamNumber() == pPlayer->GetTeamNumber() )
+			continue;
+
+		bool bAlready = false;
+		FOR_EACH_VEC( m_hSlamVictims, n )
+		{
+			if ( m_hSlamVictims[n] == pVictim )
+			{
+				bAlready = true;
+				break;
+			}
+		}
+		if ( bAlready )
+			continue;
+
+		const Vector delta = pVictim->WorldSpaceCenter() - org;
+		const float x = DotProduct( delta, vecForward );
+		const float y = DotProduct( delta, vecLeft );
+		const float z = DotProduct( delta, vecUp );
+		if ( x < mins.x || x > maxs.x || y < mins.y || y > maxs.y || z < mins.z || z > maxs.z )
+			continue;
+
+		Vector vecAim;
+		AngleVectors( pPlayer->EyeAngles(), &vecAim );
+		CTakeDamageInfo info( pPlayer, pPlayer, this, flDamage, DMG_CLUB, TF_DMG_CUSTOM_NONE );
+		CalculateMeleeDamageForce( &info, vecAim, pVictim->WorldSpaceCenter(), 1.0f / flDamage * GetForceScale() );
+		pVictim->TakeDamage( info );
+		m_hSlamVictims.AddToTail( pVictim );
+	}
+}
+#endif
+

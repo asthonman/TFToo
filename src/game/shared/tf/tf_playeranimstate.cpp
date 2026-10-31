@@ -17,6 +17,7 @@
 #include "in_buttons.h"
 #include "debugoverlay_shared.h"
 #include "tf_weapon_passtime_gun.h"
+#include "tf_weaponbase_melee.h"
 
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
@@ -670,6 +671,42 @@ void CTFPlayerAnimState::Update( float eyeYaw, float eyePitch )
 	}
 
 #endif
+
+	HoldBrickSlam();
+}
+
+//-----------------------------------------------------------------------------
+// Airborne slam holds attackStand_MELEE_L at the end of smash_slow_start.
+// That is halfway through the 2.067s swing. Landing puts the rate back.
+//-----------------------------------------------------------------------------
+void CTFPlayerAnimState::HoldBrickSlam()
+{
+	CTFPlayer *pPlayer = GetTFPlayer();
+	if ( !pPlayer )
+		return;
+
+	CTFBrickSlamWeapon *pSlam = dynamic_cast<CTFBrickSlamWeapon *>( pPlayer->GetActiveTFWeapon() );
+	if ( !pSlam || !pSlam->IsSlamming() )
+		return;
+
+#ifdef CLIENT_DLL
+	C_AnimationLayer *pLayer = pPlayer->GetAnimOverlay( GESTURE_SLOT_ATTACK_AND_RELOAD );
+#else
+	CAnimationLayer *pLayer = pPlayer->GetAnimOverlay( GESTURE_SLOT_ATTACK_AND_RELOAD );
+#endif
+	if ( !pLayer )
+		return;
+
+	if ( pSlam->IsSlamFrozen() )
+	{
+		if ( pLayer->m_flCycle > TF_BRICK_SLAM_FREEZE_CYCLE )
+			pLayer->m_flCycle = TF_BRICK_SLAM_FREEZE_CYCLE;
+		pLayer->m_flPlaybackRate = 0.0f;
+	}
+	else if ( pLayer->m_flPlaybackRate <= 0.0f )
+	{
+		pLayer->m_flPlaybackRate = 1.0f;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1209,6 +1246,7 @@ void CTFPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 		break;
 
 	case PLAYERANIMEVENT_RESUPPLY_SWING:
+	case PLAYERANIMEVENT_BRICK_SLAM:
 		{
 			// nData is a sequence index chosen on the server (attackStand/Crouch/Swim_MELEE).
 			// AddVCDSequenceToGestureSlot does not go through SelectWeightedSequence,

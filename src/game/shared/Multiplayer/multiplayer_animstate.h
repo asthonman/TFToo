@@ -77,6 +77,9 @@ enum PlayerAnimEvent_t
 	// so the temp entity is not stripped from the swinger.
 	PLAYERANIMEVENT_RESUPPLY_SWING,
 
+	// Brick slam. nData is attackStand/Crouch_MELEE_L. Same temp-entity rule.
+	PLAYERANIMEVENT_BRICK_SLAM,
+
 	PLAYERANIMEVENT_COUNT
 };
 
@@ -109,7 +112,7 @@ inline bool IsCustomPlayerAnimEvent( PlayerAnimEvent_t event )
 {
 	return ( event == PLAYERANIMEVENT_CUSTOM ) || ( event == PLAYERANIMEVENT_CUSTOM_GESTURE ) ||
 		( event == PLAYERANIMEVENT_CUSTOM_SEQUENCE ) || ( event == PLAYERANIMEVENT_CUSTOM_GESTURE_SEQUENCE ) ||
-		( event == PLAYERANIMEVENT_RESUPPLY_SWING );
+		( event == PLAYERANIMEVENT_RESUPPLY_SWING ) || ( event == PLAYERANIMEVENT_BRICK_SLAM );
 }
 
 struct MultiPlayerPoseData_t

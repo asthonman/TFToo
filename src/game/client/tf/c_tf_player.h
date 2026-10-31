@@ -200,6 +200,8 @@ public:
 	float			GetNextResupplyPulse( void ) const { return m_flNextResupplyPulse; }
 	float			GetResupplyCharge( void ) const;
 	float			GetResupplyThrowMeter( void ) const { return m_flResupplyThrowMeter; }
+	bool			IsBrickGrown( void ) const { return m_bBrickGrown; }
+	float			GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 
 	virtual void	InitPhonemeMappings();
 
@@ -970,6 +972,8 @@ private:
 	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
 	CNetworkVar( float, m_flNextResupplyPulse );
 	CNetworkVar( float, m_flResupplyThrowMeter );
+	CNetworkVar( bool, m_bBrickGrown );
+	CNetworkVar( float, m_flBrickGrowMeter );
 
 	bool m_bNotifiedWeaponInspectThisLife;
 

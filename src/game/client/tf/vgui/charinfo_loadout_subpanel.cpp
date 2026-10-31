@@ -345,9 +345,11 @@ CCharInfoLoadoutSubPanel::CCharInfoLoadoutSubPanel(Panel *parent) : vgui::Proper
 	m_pClassButtons[ TF_CLASS_MADCAP ] = new CImageButton( this, "madcap" );
 	m_pClassButtons[ TF_CLASS_MOBSTER ] = new CImageButton( this, "mobster" );
 	m_pClassButtons[ TF_CLASS_RESUPPLY ] = new CImageButton( this, "resupply" );
+	m_pClassButtons[ TF_CLASS_BRICK ] = new CImageButton( this, "brick" );
 	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_MADCAP ] );
 	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_MOBSTER ] );
 	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_RESUPPLY ] );
+	InitExtraLoadoutClassButton( m_pClassButtons[ TF_CLASS_BRICK ] );
 
 	for( int i = 0; i < Q_ARRAYSIZE( m_pClassButtons ); i++ )
 	{

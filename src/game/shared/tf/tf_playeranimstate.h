@@ -47,6 +47,7 @@ public:
 
 	void CheckPasstimeThrowAnimation();
 	void CheckCYOAPDAAnimtion();
+	void HoldBrickSlam();
 
 	virtual float GetCurrentMaxGroundSpeed();
 	virtual float GetGesturePlaybackRate( void );

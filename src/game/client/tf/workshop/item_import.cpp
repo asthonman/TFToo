@@ -69,6 +69,7 @@ static const char *kClassFolders[TF_LAST_NORMAL_CLASS] = {
 	"scout",	// TF_CLASS_MADCAP, Scout body for now
 	"scout",	// TF_CLASS_MOBSTER, Scout body for now
 	"resupply",	// TF_CLASS_RESUPPLY
+	"brick",	// TF_CLASS_BRICK
 };
 static const char *kClassFolderMulticlass = "all_class";
 

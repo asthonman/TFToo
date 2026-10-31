@@ -848,6 +848,8 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropArray3( SENDINFO_ARRAY3( m_iSharedAmmo ), SendPropInt( SENDINFO_ARRAY( m_iSharedAmmo ), -1, SPROP_VARINT | SPROP_UNSIGNED ) ),
 	SendPropFloat( SENDINFO( m_flNextResupplyPulse ) ),
 	SendPropFloat( SENDINFO( m_flResupplyThrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
+	SendPropBool( SENDINFO( m_bBrickGrown ) ),
+	SendPropFloat( SENDINFO( m_flBrickGrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropString( SENDINFO( m_szTauntSequence ) ),
 	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),
@@ -1006,6 +1008,8 @@ CTFPlayer::CTFPlayer()
 	m_flNextChangeTeamTime = 0.0f;
 	m_flNextResupplyPulse = 0.0f;
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
+	m_bBrickGrown = false;
+	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_szTauntSequence.GetForModify()[0] = '\0';
 	m_nTauntSequenceParity = 0;
 
@@ -1384,6 +1388,96 @@ void CTFPlayer::RegenResupplyThrowMeter( void )
 }
 
 //-----------------------------------------------------------------------------
+// Brick grow. Right click toggles it. The meter matches Spy's cloak.
+//-----------------------------------------------------------------------------
+static bool BrickGrowHullFits( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+	const bool bDucking = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
+	const Vector &hullMin = bDucking ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN;
+	const Vector &hullMax = bDucking ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX;
+	const Vector mins = hullMin * TF_BRICK_GROW_SCALE;
+	const Vector maxs = hullMax * TF_BRICK_GROW_SCALE;
+
+	trace_t tr;
+	UTIL_TraceHull( pPlayer->GetAbsOrigin(), pPlayer->GetAbsOrigin(), mins, maxs, MASK_PLAYERSOLID, pPlayer, COLLISION_GROUP_PLAYER_MOVEMENT, &tr );
+	return !tr.startsolid && tr.fraction >= 1.f;
+}
+
+void CTFPlayer::ThinkBrickGrow( void )
+{
+	if ( !IsPlayerClass( TF_CLASS_BRICK ) )
+	{
+		if ( m_bBrickGrown )
+		{
+			m_bBrickGrown = false;
+			SetModelScale( 1.0f );
+		}
+		return;
+	}
+
+	if ( !IsAlive() )
+		return;
+
+	extern ConVar tf_spy_cloak_consume_rate;
+	extern ConVar tf_spy_cloak_regen_rate;
+
+	if ( m_bBrickGrown )
+	{
+		if ( GetModelScale() != TF_BRICK_GROW_SCALE )
+			SetModelScale( TF_BRICK_GROW_SCALE );
+
+		m_flBrickGrowMeter -= gpGlobals->frametime * tf_spy_cloak_consume_rate.GetFloat();
+		if ( m_flBrickGrowMeter <= 0.f )
+		{
+			m_flBrickGrowMeter = 0.f;
+			m_bBrickGrown = false;
+			SetModelScale( 1.0f );
+		}
+	}
+	else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
+	{
+		if ( GetModelScale() != 1.0f )
+			SetModelScale( 1.0f );
+
+		m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
+		if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
+			m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	}
+}
+
+void CTFPlayer::HandleBrickGrowInput( void )
+{
+	if ( !IsPlayerClass( TF_CLASS_BRICK ) || !IsAlive() )
+		return;
+
+	if ( m_Shared.InCond( TF_COND_TAUNTING ) )
+		return;
+
+	if ( !( m_afButtonPressed & IN_ATTACK2 ) )
+		return;
+
+	if ( m_bBrickGrown )
+	{
+		m_bBrickGrown = false;
+		SetModelScale( 1.0f );
+		return;
+	}
+
+	// Same floor Spy needs before he can cloak.
+	if ( m_flBrickGrowMeter <= TF_BRICK_GROW_MIN_START )
+		return;
+
+	if ( !BrickGrowHullFits( this ) )
+		return;
+
+	m_bBrickGrown = true;
+	SetModelScale( TF_BRICK_GROW_SCALE );
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFPlayer::TFPlayerThink()
@@ -1395,6 +1489,7 @@ void CTFPlayer::TFPlayerThink()
 
 	ResupplyAuraThink();
 	RegenResupplyThrowMeter();
+	ThinkBrickGrow();
 
 	for ( int iAmmo = 0; iAmmo < TF_AMMO_COUNT; ++iAmmo )
 	{
@@ -3355,6 +3450,8 @@ void CTFPlayer::PlayerRunCommand( CUserCmd *ucmd, IMoveHelper *moveHelper )
 
 	BaseClass::PlayerRunCommand( ucmd, moveHelper );
 
+	HandleBrickGrowInput();
+
 	// try to play taunt remap on input after updating user command
 	if ( IsTaunting() && m_flNextAllowTauntRemapInputTime >= 0.f && m_flNextAllowTauntRemapInputTime <= gpGlobals->curtime )
 	{
@@ -3747,6 +3844,7 @@ void CTFPlayer::Spawn()
 	m_flSpawnTime = gpGlobals->curtime;
 
 	SetModelScale( 1.0f );
+	m_bBrickGrown = false;
 	UpdateModel();
 
 	SetMoveType( MOVETYPE_WALK );
@@ -3881,6 +3979,8 @@ void CTFPlayer::Spawn()
 
 	m_Shared.SetSpyCloakMeter( 100.0f );
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
+	m_bBrickGrown = false;
+	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 	m_Shared.SetScoutHypeMeter( 0.0f );
 	m_Shared.StopScoutHypeDrain();
@@ -4268,6 +4368,9 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 
 		m_Shared.SetSpyCloakMeter( 100.0f );
 		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
+		m_bBrickGrown = false;
+		m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+		SetModelScale( 1.0f );
 		m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 		m_Shared.SetDemomanChargeMeter( 100.0f );
 
