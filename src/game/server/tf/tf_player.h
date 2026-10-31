@@ -512,6 +512,10 @@ public:
 	virtual bool			SpeakConceptIfAllowed( int iConcept, const char *modifiers = NULL, char *pszOutResponseChosen = NULL, size_t bufsize = 0, IRecipientFilter *filter = NULL );
 	void					MobsterLeaveSpawnVoice( void );
 	void					ResupplyAuraThink( void );
+	// 0 is empty, 1 is ready to pulse. Ammo pickups fill it the way they fill Spy's cloak.
+	float					GetResupplyCharge( void ) const;
+	bool					SpendResupplyCharge( float flCost );
+	bool					AddResupplyCharge( float flGain );
 
 	virtual bool CanSpeakVoiceCommand( void );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );

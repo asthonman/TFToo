@@ -235,6 +235,8 @@ enum ETFClass
 
 // Resupply's locker pulse. Same window as func_regenerate.
 #define TF_RESUPPLY_PULSE_INTERVAL	3.0f
+// Primary throws a medium ammo pack, secondary a medium health kit.
+#define TF_RESUPPLY_THROW_COST		0.5f
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }

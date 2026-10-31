@@ -3864,6 +3864,15 @@ END_PREDICTION_DATA()
 // C_TFPlayer implementation.
 // ------------------------------------------------------------------------------------------ //
 
+float C_TFPlayer::GetResupplyCharge( void ) const
+{
+	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
+	if ( flLeft <= 0.f )
+		return 1.f;
+
+	return clamp( 1.f - ( flLeft / TF_RESUPPLY_PULSE_INTERVAL ), 0.f, 1.f );
+}
+
 C_TFPlayer::C_TFPlayer() : 
 	m_iv_angEyeAngles( "C_TFPlayer::m_iv_angEyeAngles" ),
 	m_mapOverheadEffects( DefLessFunc( const char * ) )

@@ -88,6 +88,12 @@ bool CAmmoPack::MyTouch( CBasePlayer *pPlayer )
 			bSuccess = true;
 		}
 
+		// Same fraction of her locker meter as the cloak this pack would give a Spy.
+		if ( pTFPlayer->AddResupplyCharge( flPackRatio ) )
+		{
+			bSuccess = true;
+		}
+
 		if ( pTFPlayer->AddToSpyKnife( 100.0f * flPackRatio, false ) )
 		{
 			bSuccess = true;

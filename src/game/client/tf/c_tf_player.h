@@ -198,6 +198,7 @@ public:
 	bool			IsViewingCYOAPDA( void ) const { return m_bViewingCYOAPDA; }
 	bool			IsRegenerating( void ) const { return m_bRegenerating; }
 	float			GetNextResupplyPulse( void ) const { return m_flNextResupplyPulse; }
+	float			GetResupplyCharge( void ) const;
 
 	virtual void	InitPhonemeMappings();
 

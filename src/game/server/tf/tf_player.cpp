@@ -1317,6 +1317,51 @@ void CTFPlayer::ResupplyAuraThink( void )
 }
 
 //-----------------------------------------------------------------------------
+// 0 empty, 1 ready. Same clock the aura and the throws spend.
+//-----------------------------------------------------------------------------
+float CTFPlayer::GetResupplyCharge( void ) const
+{
+	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
+	if ( flLeft <= 0.f )
+		return 1.f;
+
+	return clamp( 1.f - ( flLeft / TF_RESUPPLY_PULSE_INTERVAL ), 0.f, 1.f );
+}
+
+bool CTFPlayer::SpendResupplyCharge( float flCost )
+{
+	if ( flCost <= 0.f )
+		return true;
+
+	if ( GetResupplyCharge() + 0.001f < flCost )
+		return false;
+
+	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
+	if ( flLeft < 0.f )
+		flLeft = 0.f;
+
+	m_flNextResupplyPulse = gpGlobals->curtime + flLeft + ( flCost * TF_RESUPPLY_PULSE_INTERVAL );
+	return true;
+}
+
+bool CTFPlayer::AddResupplyCharge( float flGain )
+{
+	if ( !IsPlayerClass( TF_CLASS_RESUPPLY ) || flGain <= 0.f )
+		return false;
+
+	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
+	if ( flLeft <= 0.f )
+		return false;
+
+	flLeft -= flGain * TF_RESUPPLY_PULSE_INTERVAL;
+	if ( flLeft < 0.f )
+		flLeft = 0.f;
+
+	m_flNextResupplyPulse = gpGlobals->curtime + flLeft;
+	return true;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFPlayer::TFPlayerThink()

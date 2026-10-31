@@ -16,6 +16,7 @@
 #include "tf_gamestats.h"
 #include "ilagcompensationmanager.h"
 #include "tf_passtime_logic.h"
+#include "tf_powerup.h"
 // Client specific.
 #else
 #include "c_tf_gamestats.h"
@@ -1186,6 +1187,10 @@ void CTFResupplyWeapon::Precache( void )
 	BaseClass::Precache();
 	PrecacheModel( s_pszResupplyHiddenModel );
 	PrecacheScriptSound( "Regenerate.Touch" );
+#ifndef CLIENT_DLL
+	UTIL_PrecacheOther( "item_ammopack_medium" );
+	UTIL_PrecacheOther( "item_healthkit_medium" );
+#endif
 }
 
 void CTFResupplyWeapon::HideMesh( void )
@@ -1225,9 +1230,83 @@ bool CTFResupplyWeapon::Deploy( void )
 void CTFResupplyWeapon::ItemPostFrame( void )
 {
 	HideMesh();
+
+	CTFPlayer *pOwner = ToTFPlayer( GetOwner() );
+	if ( !pOwner || !pOwner->IsAlive() )
+		return;
+
+	// Press, not hold, so a full meter does not dump both packs at once.
+	if ( pOwner->m_afButtonPressed & IN_ATTACK )
+		PrimaryAttack();
+	else if ( pOwner->m_afButtonPressed & IN_ATTACK2 )
+		SecondaryAttack();
+}
+
+void CTFResupplyWeapon::PrimaryAttack( void )
+{
+	ThrowPack( "item_ammopack_medium" );
+}
+
+void CTFResupplyWeapon::SecondaryAttack( void )
+{
+	ThrowPack( "item_healthkit_medium" );
+}
+
+//-----------------------------------------------------------------------------
+// Sandvich throw: eye height, a slight upward bias, 500 units forward,
+// and a short delay before the thrower can pick it back up.
+//-----------------------------------------------------------------------------
+void CTFResupplyWeapon::ThrowPack( const char *pszEntClass )
+{
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer || !pPlayer->IsAlive() || !pszEntClass )
+		return;
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_TAUNTING ) )
+		return;
+
+	if ( m_flNextPrimaryAttack > gpGlobals->curtime )
+		return;
+
+	if ( pPlayer->GetResupplyCharge() + 0.001f < TF_RESUPPLY_THROW_COST )
+		return;
+
+#ifndef CLIENT_DLL
+	Vector vecSrc = pPlayer->EyePosition() + Vector( 0, 0, -8 );
+	QAngle angForward = pPlayer->EyeAngles() + QAngle( -10, 0, 0 );
+
+	CBaseEntity *pPack = CBaseEntity::Create( pszEntClass, vecSrc, angForward, pPlayer );
+	CTFPowerup *pPowerup = dynamic_cast<CTFPowerup *>( pPack );
+	if ( !pPowerup )
+	{
+		if ( pPack )
+			UTIL_Remove( pPack );
+		return;
+	}
+
+	if ( !pPlayer->SpendResupplyCharge( TF_RESUPPLY_THROW_COST ) )
+	{
+		UTIL_Remove( pPack );
+		return;
+	}
+
+	Vector vecForward, vecRight, vecUp;
+	AngleVectors( angForward, &vecForward, &vecRight, &vecUp );
+	Vector vecVelocity = vecForward * 500.f;
+	pPowerup->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
+	PlaySwing( false );
+#endif
+
+	m_flNextPrimaryAttack = gpGlobals->curtime + 0.5f;
+	m_flNextSecondaryAttack = m_flNextPrimaryAttack;
 }
 
 void CTFResupplyWeapon::PlayPulseSwing( void )
+{
+	PlaySwing( true );
+}
+
+void CTFResupplyWeapon::PlaySwing( bool bLockerSound )
 {
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 	if ( !pPlayer || pPlayer->IsTaunting() )
@@ -1260,8 +1339,10 @@ void CTFResupplyWeapon::PlayPulseSwing( void )
 
 #ifndef CLIENT_DLL
 	// Same script sound as func_regenerate. One shot per pulse, from her,
-	// so nearby players hear the locker open with the swing.
-	pPlayer->EmitSound( "Regenerate.Touch" );
+	// so nearby players hear the locker open with the swing. A thrown pack
+	// is just the swing.
+	if ( bLockerSound )
+		pPlayer->EmitSound( "Regenerate.Touch" );
 #endif
 
 	HideMesh();

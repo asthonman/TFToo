@@ -85,6 +85,7 @@ public:
 	CHudItemEffectMeter_Resupply( const char *pszElementName, C_TFPlayer *pPlayer )
 		: CHudItemEffectMeter( pszElementName, pPlayer )
 	{
+		m_pSecondChunk = NULL;
 	}
 
 	virtual bool IsEnabled( void ) OVERRIDE
@@ -94,19 +95,84 @@ public:
 
 	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Weapon_Resupply"; }
 	virtual bool ShouldBeep( void ) OVERRIDE { return true; }
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
+	virtual void Update( C_TFPlayer *pPlayer ) OVERRIDE;
 
 	virtual float GetProgress( void ) OVERRIDE
 	{
 		if ( !m_pPlayer )
 			return 1.f;
 
-		const float flLeft = m_pPlayer->GetNextResupplyPulse() - gpGlobals->curtime;
-		if ( flLeft <= 0.f )
-			return 1.f;
-
-		return clamp( 1.f - ( flLeft / TF_RESUPPLY_PULSE_INTERVAL ), 0.f, 1.f );
+		return m_pPlayer->GetResupplyCharge();
 	}
+
+private:
+	// Vaccinator-style chunks. The first one filling means a throw is ready.
+	vgui::ContinuousProgressBar *m_pSecondChunk;
 };
+
+//-----------------------------------------------------------------------------
+// Two chunks with a gap, same idea as the Vaccinator's uber segments.
+// The left chunk filling is half a meter, which is one thrown pack.
+//-----------------------------------------------------------------------------
+void CHudItemEffectMeter_Resupply::ApplySchemeSettings( vgui::IScheme *pScheme )
+{
+	BaseClass::ApplySchemeSettings( pScheme );
+
+	ContinuousProgressBar *pFirst = m_vecProgressBars.Count() ? m_vecProgressBars[0] : NULL;
+	if ( !pFirst )
+		return;
+
+	int x, y, w, h;
+	pFirst->GetBounds( x, y, w, h );
+	if ( w < 8 )
+		return;
+
+	int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 3 );
+	if ( iGap < 2 )
+		iGap = 2;
+	if ( iGap > w / 3 )
+		iGap = 2;
+
+	int iHalf = ( w - iGap ) / 2;
+	pFirst->SetBounds( x, y, iHalf, h );
+
+	if ( !m_pSecondChunk )
+		m_pSecondChunk = new ContinuousProgressBar( this, "ItemEffectMeter2" );
+
+	m_pSecondChunk->SetBounds( x + iHalf + iGap, y, w - iHalf - iGap, h );
+	m_pSecondChunk->SetZPos( pFirst->GetZPos() );
+	m_pSecondChunk->SetFgColor( pFirst->GetFgColor() );
+	m_pSecondChunk->SetBgColor( pFirst->GetBgColor() );
+	m_pSecondChunk->SetProgressDirection( pFirst->GetProgressDirection() );
+	m_pSecondChunk->SetVisible( pFirst->IsVisible() );
+}
+
+void CHudItemEffectMeter_Resupply::Update( C_TFPlayer *pPlayer )
+{
+	BaseClass::Update( pPlayer );
+
+	if ( !m_pSecondChunk || m_vecProgressBars.Count() < 1 )
+		return;
+
+	float flProgress = GetProgress();
+	ContinuousProgressBar *pBars[2] = { m_vecProgressBars[0], m_pSecondChunk };
+	for ( int i = 0; i < 2; ++i )
+	{
+		float flChunk = flProgress - ( 0.5f * i );
+		if ( flChunk < 0.f )
+			flChunk = 0.f;
+		if ( flChunk > 0.5f )
+			flChunk = 0.5f;
+
+		pBars[i]->SetProgress( flChunk / 0.5f );
+		// A full chunk is bright. A partial one stays dim, like the Vaccinator.
+		if ( flChunk >= 0.5f )
+			pBars[i]->SetFgColor( Color( 255, 255, 255, 255 ) );
+		else
+			pBars[i]->SetFgColor( Color( 190, 190, 190, 255 ) );
+	}
+}
 
 IMPLEMENT_AUTO_LIST( IHudItemEffectMeterAutoList );
 											

@@ -173,6 +173,7 @@ public:
 private:
 	bool		GetCrossBounds( int &x, int &y, int &w, int &h );
 	void		PaintAmmoCorners( void );
+	void		EnsureAmmoPadding( void );
 
 	CTFSpectatorGUIHealth	*m_pTargetHealth;
 	vgui::Panel				*m_pHealthClip;

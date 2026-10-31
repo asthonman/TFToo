@@ -1506,9 +1506,13 @@ void CFloatingHealthIcon::ApplySchemeSettings( vgui::IScheme *pScheme )
 	int iTextH = 0;
 	if ( m_hAmmoFont )
 		surface()->GetTextSize( m_hAmmoFont, L"000/000", iTextW, iTextH );
-	int iPad = MAX( iTextW, iTextH ) + 6;
-	if ( iPad < 36 )
-		iPad = 36;
+	int iPad = MAX( iTextW, iTextH ) + 8;
+	if ( iPad < 40 )
+		iPad = 40;
+	// The beige cross sits on the left of the stock clip, so a pad sized
+	// for the label still clips the primary count. Budget another label.
+	if ( iTextW > 0 )
+		iPad += iTextW;
 
 	if ( !m_pHealthClip )
 		m_pHealthClip = new vgui::Panel( this, "HealthClip" );
@@ -1588,6 +1592,9 @@ void CFloatingHealthIcon::OnTick( void )
 	// Crosshair icons are shown by CTargetID. Always-on icons have no owner to do that.
 	if ( m_bTeamStatus )
 		SetVisible( true );
+
+	if ( m_bShowAmmo )
+		EnsureAmmoPadding();
 }
 
 //-----------------------------------------------------------------------------
@@ -1998,6 +2005,67 @@ void CFloatingHealthIcon::PaintAmmoCorners( void )
 		surface()->DrawSetTextPos( x, y );
 		surface()->DrawPrintText( wsz, wcslen( wsz ), FONT_DRAW_NONADDITIVE );
 	}
+}
+
+//-----------------------------------------------------------------------------
+// The stock cross is left-aligned inside the clip, and the panel scissor
+// cuts any label that starts left of x = 0. Grow this panel (not during
+// Paint) until "000/000" fits on both sides of the cross.
+//-----------------------------------------------------------------------------
+void CFloatingHealthIcon::EnsureAmmoPadding( void )
+{
+	if ( !m_hAmmoFont || !m_pHealthClip )
+		return;
+
+	int cx, cy, cw, ch;
+	if ( !GetCrossBounds( cx, cy, cw, ch ) )
+		return;
+
+	int iTextW = 0;
+	int iTextH = 0;
+	surface()->GetTextSize( m_hAmmoFont, L"000/000", iTextW, iTextH );
+	if ( iTextW < 8 || iTextH < 4 )
+		return;
+
+	const int iLeft = cx + ( cw * kHealthCrossArmLeft ) / kHealthCrossRef;
+	const int iRight = cx + ( cw * kHealthCrossArmRight ) / kHealthCrossRef;
+	const int iTop = cy + ( ch * kHealthCrossArmTop ) / kHealthCrossRef;
+	const int iBottom = cy + ( ch * kHealthCrossArmBottom ) / kHealthCrossRef;
+	const int iNeed = 6;
+
+	int iMissLeft = ( iTextW + iNeed ) - iLeft;
+	int iMissRight = ( iTextW + iNeed ) - ( GetWide() - iRight );
+	int iMissTop = ( iTextH + iNeed ) - iTop;
+	int iMissBottom = ( iTextH + iNeed ) - ( GetTall() - iBottom );
+	if ( iMissLeft < 0 )
+		iMissLeft = 0;
+	if ( iMissRight < 0 )
+		iMissRight = 0;
+	if ( iMissTop < 0 )
+		iMissTop = 0;
+	if ( iMissBottom < 0 )
+		iMissBottom = 0;
+
+	// A bad cross rect must not walk the panel across the screen.
+	if ( iMissLeft > 160 )
+		iMissLeft = 160;
+	if ( iMissRight > 160 )
+		iMissRight = 160;
+	if ( iMissTop > 80 )
+		iMissTop = 80;
+	if ( iMissBottom > 80 )
+		iMissBottom = 80;
+
+	if ( iMissLeft == 0 && iMissRight == 0 && iMissTop == 0 && iMissBottom == 0 )
+		return;
+
+	int iClipX, iClipY;
+	m_pHealthClip->GetPos( iClipX, iClipY );
+	m_pHealthClip->SetPos( iClipX + iMissLeft, iClipY + iMissTop );
+
+	SetSize( GetWide() + iMissLeft + iMissRight, GetTall() + iMissTop + iMissBottom );
+	m_iAnchorX += iMissLeft;
+	m_iAnchorY += iMissTop;
 }
 
 //-----------------------------------------------------------------------------

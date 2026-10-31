@@ -368,6 +368,11 @@ void CTFAmmoPack::PackTouch( CBaseEntity *pOther )
 		iAmmoTaken++;
 	}
 
+	if ( pPlayer->AddResupplyCharge( m_flAmmoRatio ) )
+	{
+		iAmmoTaken++;
+	}
+
 	if ( pPlayer->AddToSpyKnife( 100.0f * m_flAmmoRatio, false ) )
 	{
 		iAmmoTaken++;

@@ -270,6 +270,11 @@ bool CHealthAmmoKit::MyTouch( CBasePlayer *pPlayer )
 					bAmmoSuccess = true;
 				}
 
+				if ( pTFPlayer->AddResupplyCharge( flPackRatio ) )
+				{
+					bAmmoSuccess = true;
+				}
+
 				if ( pTFPlayer->AddToSpyKnife( 100.0f * flPackRatio, false ) )
 				{
 					bAmmoSuccess = true;

@@ -110,7 +110,8 @@ private:
 
 //=============================================================================
 // Resupply melee. Occupies the melee anim slot so a pulse can play
-// ACT_MP_ATTACK_STAND_MELEE. +attack does not swing, trace, or deal damage.
+// ACT_MP_ATTACK_STAND_MELEE. +attack throws a medium ammo pack and
+// +attack2 a medium health kit. Neither traces or deals damage.
 //=============================================================================
 class CTFResupplyWeapon : public CTFWeaponBaseMelee
 {
@@ -126,8 +127,8 @@ public:
 	virtual void	Equip( CBaseCombatCharacter *pOwner );
 	virtual bool	Deploy( void );
 	virtual void	ItemPostFrame( void );
-	virtual void	PrimaryAttack( void ) {}
-	virtual void	SecondaryAttack( void ) {}
+	virtual void	PrimaryAttack( void );
+	virtual void	SecondaryAttack( void );
 	virtual const char *GetViewModel( int iViewModel = 0 ) const;
 	virtual const char *GetWorldModel( void ) const;
 
@@ -140,6 +141,8 @@ public:
 
 private:
 	void			HideMesh( void );
+	void			ThrowPack( const char *pszEntClass );
+	void			PlaySwing( bool bLockerSound );
 	// Alternates attackStand/Crouch_MELEE_L and _R. Server picks the sequence.
 	bool			m_bSwingLeft;
 
