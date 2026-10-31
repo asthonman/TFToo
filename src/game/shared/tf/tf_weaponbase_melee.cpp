@@ -9,6 +9,7 @@
 #include "baseviewmodel_shared.h"
 #include "effect_dispatch_data.h"
 #include "tf_gamerules.h"
+#include "in_buttons.h"
 
 // Server specific.
 #if !defined( CLIENT_DLL )
@@ -1244,19 +1245,20 @@ void CTFResupplyWeapon::ItemPostFrame( void )
 
 void CTFResupplyWeapon::PrimaryAttack( void )
 {
-	ThrowPack( "item_ammopack_medium" );
+	ThrowPack( "item_ammopack_medium", 'L' );
 }
 
 void CTFResupplyWeapon::SecondaryAttack( void )
 {
-	ThrowPack( "item_healthkit_medium" );
+	ThrowPack( "item_healthkit_medium", 'R' );
 }
 
 //-----------------------------------------------------------------------------
 // Sandvich throw: eye height, a slight upward bias, 500 units forward,
 // and a short delay before the thrower can pick it back up.
+// chSwing is the body sequence suffix: L for ammo, R for health.
 //-----------------------------------------------------------------------------
-void CTFResupplyWeapon::ThrowPack( const char *pszEntClass )
+void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
 {
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 	if ( !pPlayer || !pPlayer->IsAlive() || !pszEntClass )
@@ -1294,7 +1296,7 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass )
 	AngleVectors( angForward, &vecForward, &vecRight, &vecUp );
 	Vector vecVelocity = vecForward * 500.f;
 	pPowerup->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
-	PlaySwing( false );
+	PlaySwing( chSwing );
 #endif
 
 	m_flNextPrimaryAttack = gpGlobals->curtime + 0.5f;
@@ -1303,10 +1305,10 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass )
 
 void CTFResupplyWeapon::PlayPulseSwing( void )
 {
-	PlaySwing( true );
+	PlaySwing( 'U' );
 }
 
-void CTFResupplyWeapon::PlaySwing( bool bLockerSound )
+void CTFResupplyWeapon::PlaySwing( char chSwing )
 {
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 	if ( !pPlayer || pPlayer->IsTaunting() )
@@ -1318,31 +1320,31 @@ void CTFResupplyWeapon::PlaySwing( bool bLockerSound )
 	// Named sequences, not ACT_MP_ATTACK_STAND_MELEE. That activity also
 	// covers the hidden easter-egg swings, and ATTACK_PRIMARY never reaches
 	// the local player (the temp entity strips her, then prediction drops it).
-	const char *pszSequence = "attackStand_MELEE_L";
-	if ( pPlayer->GetWaterLevel() >= WL_Waist )
-	{
-		pszSequence = "attackSwim_MELEE";
-	}
-	else if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		pszSequence = m_bSwingLeft ? "attackCrouch_MELEE_L" : "attackCrouch_MELEE_R";
-		m_bSwingLeft = !m_bSwingLeft;
-	}
-	else
-	{
-		pszSequence = m_bSwingLeft ? "attackStand_MELEE_L" : "attackStand_MELEE_R";
-		m_bSwingLeft = !m_bSwingLeft;
-	}
+	// L is primary, R is secondary, U is the aura pulse.
+	if ( chSwing != 'L' && chSwing != 'R' )
+		chSwing = 'U';
 
-	int iSeq = pPlayer->LookupSequence( pszSequence );
+	const char *pszBody = "Stand";
+	bool bSwimming = pPlayer->GetWaterLevel() >= WL_Waist;
+	if ( bSwimming )
+		pszBody = "Swim";
+	else if ( pPlayer->GetFlags() & FL_DUCKING )
+		pszBody = "Crouch";
+
+	char szSequence[32];
+	Q_snprintf( szSequence, sizeof( szSequence ), "attack%s_MELEE_%c", pszBody, chSwing );
+
+	int iSeq = pPlayer->LookupSequence( szSequence );
+	// The swim set may only have the unsuffixed swing.
+	if ( iSeq < 0 && bSwimming )
+		iSeq = pPlayer->LookupSequence( "attackSwim_MELEE" );
+
 	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_RESUPPLY_SWING, iSeq );
 
 #ifndef CLIENT_DLL
-	// Same script sound as func_regenerate. One shot per pulse, from her,
-	// so nearby players hear the locker open with the swing. A thrown pack
-	// is just the swing.
-	if ( bLockerSound )
-		pPlayer->EmitSound( "Regenerate.Touch" );
+	// Same script sound as func_regenerate. Throws and the pulse both
+	// open the locker, so nearby players hear it with the swing.
+	pPlayer->EmitSound( "Regenerate.Touch" );
 #endif
 
 	HideMesh();

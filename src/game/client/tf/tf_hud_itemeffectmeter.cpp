@@ -117,7 +117,8 @@ private:
 //-----------------------------------------------------------------------------
 void CHudItemEffectMeter_Resupply::ApplySchemeSettings( vgui::IScheme *pScheme )
 {
-	BaseClass::ApplySchemeSettings( pScheme );
+	// CHudItemEffectMeter::BaseClass is private, so the meter has to be named.
+	CHudItemEffectMeter::ApplySchemeSettings( pScheme );
 
 	ContinuousProgressBar *pFirst = m_vecProgressBars.Count() ? m_vecProgressBars[0] : NULL;
 	if ( !pFirst )
@@ -150,7 +151,7 @@ void CHudItemEffectMeter_Resupply::ApplySchemeSettings( vgui::IScheme *pScheme )
 
 void CHudItemEffectMeter_Resupply::Update( C_TFPlayer *pPlayer )
 {
-	BaseClass::Update( pPlayer );
+	CHudItemEffectMeter::Update( pPlayer );
 
 	if ( !m_pSecondChunk || m_vecProgressBars.Count() < 1 )
 		return;

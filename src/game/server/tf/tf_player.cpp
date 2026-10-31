@@ -1305,9 +1305,9 @@ void CTFPlayer::ResupplyAuraThink( void )
 
 	m_flNextResupplyPulse = gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL;
 
-	// One swing per pulse that actually reached someone else. The swing
-	// plays attackStand_MELEE by sequence and the locker sound. +attack
-	// never calls this, and she is not a target of the pulse.
+	// One swing per pulse that actually reached someone else. That swing
+	// is attack*_MELEE_U and the locker sound. Throws use L and R.
+	// +attack never calls this, and she is not a target of the pulse.
 	if ( !IsTaunting() )
 	{
 		CTFResupplyWeapon *pPulse = dynamic_cast<CTFResupplyWeapon *>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );

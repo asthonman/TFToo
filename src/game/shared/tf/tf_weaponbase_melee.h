@@ -110,8 +110,9 @@ private:
 
 //=============================================================================
 // Resupply melee. Occupies the melee anim slot so a pulse can play
-// ACT_MP_ATTACK_STAND_MELEE. +attack throws a medium ammo pack and
-// +attack2 a medium health kit. Neither traces or deals damage.
+// a named swing. +attack throws a medium ammo pack (swing L) and
+// +attack2 a medium health kit (swing R). The aura plays swing U.
+// All three play the resupply locker sound. Neither traces or deals damage.
 //=============================================================================
 class CTFResupplyWeapon : public CTFWeaponBaseMelee
 {
@@ -120,7 +121,7 @@ public:
 	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
-	CTFResupplyWeapon() : m_bSwingLeft( true ) {}
+	CTFResupplyWeapon() {}
 
 	virtual void	Precache( void );
 	virtual void	Spawn( void );
@@ -141,10 +142,9 @@ public:
 
 private:
 	void			HideMesh( void );
-	void			ThrowPack( const char *pszEntClass );
-	void			PlaySwing( bool bLockerSound );
-	// Alternates attackStand/Crouch_MELEE_L and _R. Server picks the sequence.
-	bool			m_bSwingLeft;
+	void			ThrowPack( const char *pszEntClass, char chSwing );
+	// chSwing is L (primary), R (secondary), or U (pulse).
+	void			PlaySwing( char chSwing );
 
 	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
 };

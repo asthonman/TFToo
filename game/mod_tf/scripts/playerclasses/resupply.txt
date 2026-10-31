@@ -1,9 +1,9 @@
 // Resupply. 150 health, 300 units/sec.
 // Her melee is the stock item tf_weapon_resupply (schema b7), not one of
-// these class-script weapons. +attack throws a medium ammo pack and
-// +attack2 throws a medium health kit, each for half her meter. The 80 HU
-// pulse still plays the swing when it resupplies someone else, and it
-// does not heal her.
+// these class-script weapons. +attack throws a medium ammo pack (swing L)
+// and +attack2 throws a medium health kit (swing R), each for half her
+// meter, and both play the locker sound. The 80 HU pulse plays swing U
+// when it resupplies someone else, and it does not heal her.
 // Passive medic regen on herself. "health_regen" "1". The other three stay off.
 "PlayerClassData"
 {
