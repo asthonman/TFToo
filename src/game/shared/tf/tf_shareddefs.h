@@ -249,9 +249,11 @@ enum ETFClass
 #define TF_BRICK_GROW_MIN_START		8.0f
 #define TF_BRICK_GROW_SCALE			2.0f
 #define TF_BRICK_GROW_INVIS			0.5f
-// attackStand_MELEE_L is 2.067s. smash_slow_start is 1.033s, so the air
-// freeze is exactly halfway through the swing.
+// attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is
+// halfway. In the air the swing holds there. The hurtbox opens at that
+// same time: one tick on the ground, or until he lands if he is airborne.
 #define TF_BRICK_SLAM_TIME			2.067f
+#define TF_BRICK_SLAM_IMPACT_TIME	1.033f
 #define TF_BRICK_SLAM_FREEZE_CYCLE	0.5f
 #define TF_BRICK_SLAM_DAMAGE		140.0f
 

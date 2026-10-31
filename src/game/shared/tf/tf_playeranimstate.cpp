@@ -701,8 +701,8 @@ void CTFPlayerAnimState::Update( float eyeYaw, float eyePitch )
 }
 
 //-----------------------------------------------------------------------------
-// Airborne slam holds attackStand_MELEE_L at the end of smash_slow_start.
-// That is halfway through the 2.067s swing. Landing puts the rate back.
+// Airborne slam holds attack*_MELEE_L at 1.033s, the end of smash_slow_start.
+// The windup still plays. Landing puts the rate back.
 //-----------------------------------------------------------------------------
 void CTFPlayerAnimState::HoldBrickSlam()
 {
@@ -724,9 +724,15 @@ void CTFPlayerAnimState::HoldBrickSlam()
 
 	if ( pSlam->IsSlamFrozen() )
 	{
-		if ( pLayer->m_flCycle > TF_BRICK_SLAM_FREEZE_CYCLE )
+		// Hold smash_slow_start's last frame until he lands. Snap back even
+		// if the gesture already stepped past it; a missed tick used to
+		// leave the swing running and the hurtbox never lined up with it.
+		const int iSeq = pSlam->SlamSequence();
+		if ( iSeq < 0 || pLayer->m_nSequence == iSeq )
+		{
 			pLayer->m_flCycle = TF_BRICK_SLAM_FREEZE_CYCLE;
-		pLayer->m_flPlaybackRate = 0.0f;
+			pLayer->m_flPlaybackRate = 0.0f;
+		}
 	}
 	else if ( pLayer->m_flPlaybackRate <= 0.0f )
 	{

@@ -1358,14 +1358,20 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFBrickSlamWeapon, DT_TFWeaponBrickSlam )
 BEGIN_NETWORK_TABLE( CTFBrickSlamWeapon, DT_TFWeaponBrickSlam )
 #if defined( CLIENT_DLL )
 	RecvPropBool( RECVINFO( m_bSlamming ) ),
+	RecvPropInt( RECVINFO( m_iSlamSequence ) ),
+	RecvPropFloat( RECVINFO( m_flSlamStartTime ) ),
 #else
 	SendPropBool( SENDINFO( m_bSlamming ) ),
+	SendPropInt( SENDINFO( m_iSlamSequence ) ),
+	SendPropFloat( SENDINFO( m_flSlamStartTime ) ),
 #endif
 END_NETWORK_TABLE()
 
 BEGIN_PREDICTION_DATA( CTFBrickSlamWeapon )
 #ifdef CLIENT_DLL
 	DEFINE_PRED_FIELD( m_bSlamming, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_iSlamSequence, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flSlamStartTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 #endif
 END_PREDICTION_DATA()
 
@@ -1387,6 +1393,7 @@ CTFBrickSlamWeapon::CTFBrickSlamWeapon()
 	m_flSlamStartTime = 0.f;
 #ifdef GAME_DLL
 	m_flSlamFallSpeed = 0.f;
+	m_bSlamGroundSwingDone = false;
 #endif
 }
 
@@ -1456,10 +1463,23 @@ bool CTFBrickSlamWeapon::Holster( CBaseCombatWeapon *pSwitchingTo )
 	return BaseClass::Holster( pSwitchingTo );
 }
 
+bool CTFBrickSlamWeapon::HasSlamImpacted( void ) const
+{
+	// Real time, not the gesture cycle. Cycle 0.5 is the same frame only
+	// while attack*_MELEE_L is playing at rate 1. The hurtbox was opening
+	// early whenever the cycle got ahead of 1.033s.
+	return m_bSlamming && m_flSlamStartTime > 0.f
+		&& gpGlobals->curtime >= m_flSlamStartTime + TF_BRICK_SLAM_IMPACT_TIME;
+}
+
 bool CTFBrickSlamWeapon::IsSlamFrozen( void ) const
 {
 	CTFPlayer *pOwner = GetTFPlayerOwner();
 	if ( !pOwner || !m_bSlamming )
+		return false;
+
+	// The windup plays in the air. The hold starts at 1.033s.
+	if ( !HasSlamImpacted() )
 		return false;
 
 	if ( pOwner->GetFlags() & FL_ONGROUND )
@@ -1543,6 +1563,7 @@ void CTFBrickSlamWeapon::StartSlam( void )
 #ifdef GAME_DLL
 	m_flSlamFallSpeed = pPlayer->m_Local.m_flFallVelocity;
 	m_hSlamVictims.RemoveAll();
+	m_bSlamGroundSwingDone = false;
 #endif
 
 	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_BRICK_SLAM, m_iSlamSequence );
@@ -1607,6 +1628,22 @@ void CTFBrickSlamWeapon::SlamDamage( void )
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 	if ( !pPlayer || !pPlayer->IsAlive() )
 		return;
+
+	// Nothing until smash_slow_start ends. Before this the box was tested
+	// from the first frame of the windup.
+	if ( !HasSlamImpacted() )
+		return;
+
+	const bool bAirborne = !( pPlayer->GetFlags() & FL_ONGROUND ) && pPlayer->GetWaterLevel() < WL_Waist;
+	if ( !bAirborne )
+	{
+		// Grounded, this is a killtaunt: one tick, then the box is gone.
+		// An airborne slam falls through here on the landing tick, so the
+		// hit still connects, and stays quiet after that.
+		if ( m_bSlamGroundSwingDone )
+			return;
+		m_bSlamGroundSwingDone = true;
+	}
 
 	float flScale = pPlayer->GetModelScale();
 	if ( flScale < 0.1f )

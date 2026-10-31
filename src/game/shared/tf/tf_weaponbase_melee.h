@@ -154,9 +154,10 @@ private:
 #endif
 
 //=============================================================================
-// Brick's melee. Primary fire plays attack*_MELEE_L for the whole slam.
-// In the air the gesture holds at smash_slow_start's end until he lands.
-// The hurtbox stays up the entire slam. He cannot step or jump during it.
+// Brick's melee. Primary fire plays attack*_MELEE_L.
+// In the air the gesture holds at 1.033s (smash_slow_start's end) until he
+// lands. The hurtbox opens then: one tick on the ground, or until he lands
+// if he is still airborne. He cannot step or jump during the slam.
 // Right click is not this weapon. Grow is a player-level meter.
 //=============================================================================
 class CTFBrickSlamWeapon : public CTFWeaponBaseMelee
@@ -180,8 +181,11 @@ public:
 	virtual const char *GetWorldModel( void ) const;
 
 	bool			IsSlamming( void ) const { return m_bSlamming; }
-	// Airborne, so the swing holds instead of finishing.
+	// Airborne past 1.033s, so the swing holds instead of finishing.
 	bool			IsSlamFrozen( void ) const;
+	// True once 1.033s have passed. That is smash_slow_start's end.
+	bool			HasSlamImpacted( void ) const;
+	int				SlamSequence( void ) const { return m_iSlamSequence; }
 	void			NoteFallSpeed( float flSpeed );
 
 #ifdef CLIENT_DLL
@@ -197,11 +201,15 @@ private:
 	void			SlamDamage( void );
 	CUtlVector<EHANDLE> m_hSlamVictims;
 	float			m_flSlamFallSpeed;
+	// Ground swings get one damage tick, the way a kill taunt does.
+	bool			m_bSlamGroundSwingDone;
 #endif
 
 	CNetworkVar( bool, m_bSlamming );
-	int				m_iSlamSequence;
-	float			m_flSlamStartTime;
+	// Predicted on the client too. The freeze and the hurtbox both key off
+	// this clock, and a missed prediction used to let the swing play through.
+	CNetworkVar( int, m_iSlamSequence );
+	CNetworkVar( float, m_flSlamStartTime );
 
 	CTFBrickSlamWeapon( const CTFBrickSlamWeapon & ) {}
 };
