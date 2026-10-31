@@ -157,7 +157,8 @@ private:
 // Brick's melee. Primary fire plays attack*_MELEE_L.
 // In the air the gesture holds at 1.033s (smash_slow_start's end) until he
 // lands. The hurtbox opens then: one tick on the ground, or until he lands
-// if he is still airborne. He cannot step or jump during the slam.
+// if he is still airborne. For the first 1.033s in the air he does not fall.
+// After that he drops and can air-strafe, but he cannot step or jump.
 // Right click is not this weapon. Grow is a player-level meter.
 //=============================================================================
 class CTFBrickSlamWeapon : public CTFWeaponBaseMelee

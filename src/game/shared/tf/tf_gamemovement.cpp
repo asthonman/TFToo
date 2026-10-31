@@ -166,6 +166,8 @@ private:
 	Vector		m_vecWaterPoint;
 	CTFPlayer  *m_pTFPlayer;
 	bool		m_isPassingThroughEnemies;
+	// Airborne slam windup. Set in ProcessMovement, read while gravity is applied.
+	bool		m_bBrickSlamHang;
 };
 
 
@@ -184,6 +186,7 @@ CTFGameMovement::CTFGameMovement()
 {
 	m_pTFPlayer = NULL;
 	m_isPassingThroughEnemies = false;
+	m_bBrickSlamHang = false;
 
 }
 
@@ -311,14 +314,31 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// The max speed is currently set to the scout - if this changes we need to change this!
 	mv->m_flMaxSpeed = TF_MAX_SPEED;
 
-	// Brick cannot step or jump during a slam. Gravity still pulls him down.
+	// Brick's slam. On the ground he stays planted. In the air the first
+	// 1.033s hang with no gravity, then he drops and can air-strafe.
+	m_bBrickSlamHang = false;
 	CTFBrickSlamWeapon *pBrickSlam = dynamic_cast<CTFBrickSlamWeapon *>( m_pTFPlayer->GetActiveTFWeapon() );
 	if ( pBrickSlam && pBrickSlam->IsSlamming() )
 	{
-		mv->m_flForwardMove = 0.f;
-		mv->m_flSideMove = 0.f;
+		const bool bAirborne = ( m_pTFPlayer->GetGroundEntity() == NULL ) && ( m_pTFPlayer->GetWaterLevel() < WL_Waist );
+		m_bBrickSlamHang = bAirborne && !pBrickSlam->HasSlamImpacted();
+
+		// Leave the move keys once he is falling so AirMove can steer him.
+		if ( !bAirborne || m_bBrickSlamHang )
+		{
+			mv->m_flForwardMove = 0.f;
+			mv->m_flSideMove = 0.f;
+			mv->m_flUpMove = 0.f;
+		}
+
 		mv->m_nButtons &= ~IN_JUMP;
 		m_pTFPlayer->m_nButtons &= ~IN_JUMP;
+
+		// Kill whatever vertical speed he already had. Gravity is cancelled
+		// again in FullWalkMove, or this frame still drops him.
+		if ( m_bBrickSlamHang )
+			mv->m_vecVelocity[2] = 0.f;
+
 		pBrickSlam->NoteFallSpeed( m_pTFPlayer->m_Local.m_flFallVelocity );
 	}
 
@@ -2651,6 +2671,9 @@ void CTFGameMovement::FullWalkMove()
 		}
 
 		StartGravity();
+		// Windup hangs. StartGravity already added half a frame of drop.
+		if ( m_bBrickSlamHang )
+			mv->m_vecVelocity[2] = 0.f;
 	}
 
 	// If we are leaping out of the water, just update the counters.
@@ -2702,6 +2725,8 @@ void CTFGameMovement::FullWalkMove()
 	if ( !InWater() )
 	{
 		FinishGravity();
+		if ( m_bBrickSlamHang )
+			mv->m_vecVelocity[2] = 0.f;
 	}
 
 	// If we are on ground, no downward velocity.
