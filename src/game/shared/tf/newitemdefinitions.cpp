@@ -323,8 +323,8 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		}
 		else if ( !Q_stricmp( desc.pszAltId, "b2" ) )
 		{
-			// Same arms. The brick uses the item2 set, not secondary.
-			pKV->SetString( "anim_slot", "ITEM2" );
+			// Same arms as Mad Milk. Scout's item1 set is the hold and the throw.
+			pKV->SetString( "anim_slot", "ITEM1" );
 		}
 		else if ( !Q_stricmp( desc.pszAltId, "b3" ) )
 		{

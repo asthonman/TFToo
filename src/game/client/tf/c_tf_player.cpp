@@ -3834,6 +3834,9 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropBool( RECVINFO( m_bViewingCYOAPDA ) ),
 	RecvPropBool( RECVINFO( m_bRegenerating ) ),
 	RecvPropArray3( RECVINFO_ARRAY( m_iSharedAmmo ), RecvPropInt( RECVINFO( m_iSharedAmmo[0] ) ) ),
+	RecvPropFloat( RECVINFO( m_flNextResupplyPulse ) ),
+	RecvPropString( RECVINFO( m_szTauntSequence ) ),
+	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
 END_RECV_TABLE()
 
@@ -3935,6 +3938,10 @@ C_TFPlayer::C_TFPlayer() :
 	m_angTauntPredViewAngles.Init();
 	m_angTauntEngViewAngles.Init();
 	m_pTauntSoundLoop = NULL;
+	m_szTauntSequence[0] = '\0';
+	m_nTauntSequenceParity = 0;
+	m_nPrevTauntSequenceParity = 0;
+	m_flNextResupplyPulse = 0.f;
 
 	m_flWaterImpactTime = 0.0f;
 //	m_rtSpottedInPVSTime = 0;
@@ -4352,9 +4359,17 @@ void C_TFPlayer::SetDormant( bool bDormant )
 	{
 		SetBodygroupsDirty();
 
-		if ( IsTaunting() )
+		if ( IsTaunting() && m_szTauntSequence[0] )
 		{
+			int iSequence = LookupSequence( m_szTauntSequence );
 			float flCycle = 0.f;
+			if ( iSequence >= 0 )
+			{
+				m_nTauntSequence = iSequence;
+				if ( m_flTauntDuration <= 0.f )
+					m_flTauntDuration = SequenceDuration( iSequence );
+			}
+
 			if ( m_flTauntDuration > 0.f )
 			{
 				float dt = gpGlobals->curtime - m_flTauntStartTime;
@@ -4366,8 +4381,11 @@ void C_TFPlayer::SetDormant( bool bDormant )
 				flCycle = clamp( flCycle, 0.f, 1.0f );
 			}
 
-			m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
-			m_PlayerAnimState->AddVCDSequenceToGestureSlot( GESTURE_SLOT_VCD, m_nTauntSequence, flCycle, true );
+			if ( m_nTauntSequence >= 0 )
+			{
+				m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
+				m_PlayerAnimState->AddVCDSequenceToGestureSlot( GESTURE_SLOT_VCD, m_nTauntSequence, flCycle, true );
+			}
 		}
 	}
 
@@ -4468,6 +4486,12 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 		if ( m_nPrevTauntSlot != m_nActiveTauntSlot || m_iPrevTauntItemDefIndex != m_iTauntItemDefIndex )
 		{
 			UpdateTauntItem();
+		}
+
+		if ( m_nPrevTauntSequenceParity != m_nTauntSequenceParity )
+		{
+			m_nPrevTauntSequenceParity = m_nTauntSequenceParity;
+			PlayNetworkedTauntSequence();
 		}
 
 		if ( m_iOldKartHealth != m_iKartHealth )
@@ -9500,6 +9524,29 @@ bool C_TFPlayer::StartGestureSceneEvent( CSceneEventInfo *info, CChoreoScene *sc
 	m_flTauntStartTime = gpGlobals->curtime;
 
 	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Classes without a taunt VCD network the sequence name instead.
+//-----------------------------------------------------------------------------
+void C_TFPlayer::PlayNetworkedTauntSequence( void )
+{
+	if ( !m_szTauntSequence[0] || !m_PlayerAnimState )
+		return;
+
+	int iSequence = LookupSequence( m_szTauntSequence );
+	if ( iSequence < 0 )
+		return;
+
+	float flDuration = SequenceDuration( iSequence );
+	if ( flDuration < 0.1f )
+		flDuration = 0.1f;
+
+	m_nTauntSequence = iSequence;
+	m_flTauntDuration = flDuration;
+	m_flTauntStartTime = gpGlobals->curtime;
+	m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
+	m_PlayerAnimState->AddVCDSequenceToGestureSlot( GESTURE_SLOT_VCD, iSequence, 0.0f, true );
 }
 
 //-----------------------------------------------------------------------------

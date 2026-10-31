@@ -1407,18 +1407,24 @@ void CSpectatorTargetID::PerformLayout( void )
 CFloatingHealthIcon::CFloatingHealthIcon( vgui::Panel *parent, const char *name ) : EditablePanel( parent, name )
 {
 	m_flPrevHealth = -1.f;
+	m_nPrevMaxBuffed = -1;
 	m_nPrevLevel = 0;
 	m_bTeamStatus = false;
 	m_bShowAmmo = false;
 	m_bPositionValid = false;
 	m_iAnchorX = 0;
 	m_iAnchorY = 0;
+	m_iHealthClipW = 32;
+	m_iHealthClipH = 32;
 	m_hAmmoFont = 0;
 	m_clrAmmo = Color( 235, 226, 202, 255 );
 
 	SetVisible( false );
 	SetMouseInputEnabled( false );
 	SetBounds( 0, 0, 128, 128 );
+	// Ammo is drawn after the health child. Panels do not run PostChildPaint
+	// unless this is set, so the corners never showed up.
+	SetPostChildPaintEnabled( true );
 
 	vgui::ivgui()->AddTickSignal( GetVPanel(), 50 );
 	OnTick();
@@ -1483,9 +1489,10 @@ void CFloatingHealthIcon::ApplySchemeSettings( vgui::IScheme *pScheme )
 		m_hAmmoFont = pScheme->GetFont( "DefaultVerySmall", IsProportional() );
 	m_clrAmmo = pScheme->GetColor( "TanLight", Color( 235, 226, 202, 255 ) );
 
-	// The stock icon is 32x32 and clips a larger health panel down to the cross.
-	// Ammo text has to sit outside that cross, so grow the panel and shift the
-	// health child. CalculatePosition pins the old bottom-center back onto the head.
+	// Stock HealthIconPanel is 32x32 and clips a 128x128 health child, which is
+	// what keeps the overheal cross from growing out of the beige meter. Keep
+	// that clip. Grow only this panel, and park the clipped child inside the
+	// padding so ammo can sit in the four corners without covering the cross.
 	int iBaseW = GetWide();
 	int iBaseH = GetTall();
 	if ( iBaseW < 8 )
@@ -1501,16 +1508,14 @@ void CFloatingHealthIcon::ApplySchemeSettings( vgui::IScheme *pScheme )
 	if ( iPad < 36 )
 		iPad = 36;
 
-	for ( int i = 0; i < GetChildCount(); ++i )
+	if ( m_pTargetHealth )
 	{
-		Panel *pChild = GetChild( i );
-		if ( !pChild )
-			continue;
-		int x, y;
-		pChild->GetPos( x, y );
-		pChild->SetPos( x + iPad, y + iPad );
+		m_pTargetHealth->SetPos( iPad, iPad );
+		m_pTargetHealth->SetSize( iBaseW, iBaseH );
 	}
 
+	m_iHealthClipW = iBaseW;
+	m_iHealthClipH = iBaseH;
 	SetSize( iBaseW + iPad * 2, iBaseH + iPad * 2 );
 	m_iAnchorX = iPad + ( iBaseW / 2 );
 	m_iAnchorY = iPad + iBaseH;
@@ -1550,19 +1555,29 @@ void CFloatingHealthIcon::OnTick( void )
 	// Defaults for all entities
 	float flHealth = m_hEntity->GetHealth();
 	float flMaxHealth = m_hEntity->GetMaxHealth();
-	float iMaxBuffedHealth = m_hEntity->GetMaxHealth();
+	int iMaxBuffedHealth = m_hEntity->GetMaxHealth();
 
-	if ( pTargetPlayer && pTargetPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pTargetPlayer->IsEnemyPlayer() )
+	if ( pTargetPlayer )
 	{
-		flHealth = (float)pTargetPlayer->m_Shared.GetDisguiseHealth();
-		flMaxHealth = (float)pTargetPlayer->m_Shared.GetDisguiseMaxHealth();
-		iMaxBuffedHealth = pTargetPlayer->m_Shared.GetDisguiseMaxBuffedHealth();
+		// Passing max health here makes any overheal divide by zero and snap
+		// the bonus image to full size. Target ID uses the buff cap instead.
+		if ( pTargetPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pTargetPlayer->IsEnemyPlayer() )
+		{
+			flHealth = (float)pTargetPlayer->m_Shared.GetDisguiseHealth();
+			flMaxHealth = (float)pTargetPlayer->m_Shared.GetDisguiseMaxHealth();
+			iMaxBuffedHealth = pTargetPlayer->m_Shared.GetDisguiseMaxBuffedHealth();
+		}
+		else
+		{
+			iMaxBuffedHealth = pTargetPlayer->m_Shared.GetMaxBuffedHealth();
+		}
 	}
-		
-	if ( flHealth != m_flPrevHealth )
- 	{
+
+	if ( flHealth != m_flPrevHealth || iMaxBuffedHealth != m_nPrevMaxBuffed )
+	{
 		m_pTargetHealth->SetHealth( flHealth, flMaxHealth, iMaxBuffedHealth );
 		m_flPrevHealth = flHealth;
+		m_nPrevMaxBuffed = iMaxBuffedHealth;
 	}
 
 	// Crosshair icons are shown by CTargetID. Always-on icons have no owner to do that.
@@ -1576,6 +1591,21 @@ void CFloatingHealthIcon::OnTick( void )
 ConVar tf_healthicon_height_offset( "tf_healthicon_height_offset", "10", FCVAR_ARCHIVE, "Offset of the health icon away from the top of the target." );
 void CFloatingHealthIcon::Paint( void )
 {
+	// Scheme reloads want this child at 128x128. Force the stock 32x32 clip
+	// every frame so the overheal cross cannot spill over the ammo corners.
+	if ( m_pTargetHealth && m_iHealthClipW > 0 && m_iHealthClipH > 0 )
+	{
+		int iX = m_iAnchorX - ( m_iHealthClipW / 2 );
+		int iY = m_iAnchorY - m_iHealthClipH;
+		int iCurX, iCurY;
+		m_pTargetHealth->GetPos( iCurX, iCurY );
+		if ( iCurX != iX || iCurY != iY || m_pTargetHealth->GetWide() != m_iHealthClipW || m_pTargetHealth->GetTall() != m_iHealthClipH )
+		{
+			m_pTargetHealth->SetPos( iX, iY );
+			m_pTargetHealth->SetSize( m_iHealthClipW, m_iHealthClipH );
+		}
+	}
+
 	m_bPositionValid = CalculatePosition();
 	if ( !m_bPositionValid )
 		return;
@@ -1703,7 +1733,28 @@ static CTFWeaponBase *WeaponInLoadoutSlot( C_TFPlayer *pPlayer, int iSlot )
 	if ( !pPlayer )
 		return NULL;
 
-	return dynamic_cast<CTFWeaponBase *>( pPlayer->GetEntityForLoadoutSlot( iSlot ) );
+	CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase *>( pPlayer->GetEntityForLoadoutSlot( iSlot ) );
+	if ( pWeapon )
+		return pWeapon;
+
+	// Other players sometimes have the weapon entity before its econ item
+	// resolves, so the loadout lookup misses and every corner stays blank.
+	// Primary, secondary, and melee use the same slot index as the loadout.
+	if ( iSlot != LOADOUT_POSITION_PRIMARY && iSlot != LOADOUT_POSITION_SECONDARY && iSlot != LOADOUT_POSITION_MELEE )
+		return NULL;
+
+	for ( int i = 0; i < MAX_WEAPONS; ++i )
+	{
+		CBaseCombatWeapon *pBase = pPlayer->GetWeapon( i );
+		if ( !pBase || pBase->GetSlot() != iSlot )
+			continue;
+
+		pWeapon = dynamic_cast<CTFWeaponBase *>( pBase );
+		if ( pWeapon )
+			return pWeapon;
+	}
+
+	return NULL;
 }
 
 // Numeric ammo is clip + reserve over the max of both. Energy weapons, and

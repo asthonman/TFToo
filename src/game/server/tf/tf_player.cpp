@@ -846,6 +846,9 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropBool( SENDINFO( m_bViewingCYOAPDA ) ),
 	SendPropBool( SENDINFO( m_bRegenerating ) ),
 	SendPropArray3( SENDINFO_ARRAY3( m_iSharedAmmo ), SendPropInt( SENDINFO_ARRAY( m_iSharedAmmo ), -1, SPROP_VARINT | SPROP_UNSIGNED ) ),
+	SendPropFloat( SENDINFO( m_flNextResupplyPulse ) ),
+	SendPropString( SENDINFO( m_szTauntSequence ) ),
+	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),
 END_SEND_TABLE()
 
@@ -1000,6 +1003,9 @@ CTFPlayer::CTFPlayer()
 
 	m_flNextChangeClassTime = 0.0f;
 	m_flNextChangeTeamTime = 0.0f;
+	m_flNextResupplyPulse = 0.0f;
+	m_szTauntSequence.GetForModify()[0] = '\0';
+	m_nTauntSequenceParity = 0;
 
 	m_iOldStunFlags = 0;
 	m_iLastWeaponSlot = 1;
@@ -1230,10 +1236,11 @@ bool CTFPlayer::CanBeForcedToLaugh( void )
 }
 
 //-----------------------------------------------------------------------------
-// Resupply's locker. Same 3 second cooldown as func_regenerate, shared with
-// the spawn cabinet via m_flNextRegenerateTime. 80 HU, dispenser LOS and team
-// (a Spy disguised as her team counts). She is not a target: her own health
-// comes from the health_regen passive, not this pulse.
+// Resupply's locker. One 3 second pulse for her, not a per-target clock.
+// The meter on her HUD fills across TF_RESUPPLY_PULSE_INTERVAL and stays full
+// while nobody in range can take it. A target's own cabinet cooldown still
+// applies, so a locker and her pulse cannot stack inside that window. She is
+// not a target: her own health comes from the health_regen passive.
 //-----------------------------------------------------------------------------
 void CTFPlayer::ResupplyAuraThink( void )
 {
@@ -1243,8 +1250,11 @@ void CTFPlayer::ResupplyAuraThink( void )
 	if ( !TFGameRules() || TFGameRules()->InStalemate() )
 		return;
 
+	if ( m_flNextResupplyPulse > gpGlobals->curtime )
+		return;
+
 	const float flRadiusSqr = 80.f * 80.f;
-	bool bPulsedOther = false;
+	CUtlVector< CTFPlayer * > vecTargets;
 
 	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
 	{
@@ -1280,15 +1290,25 @@ void CTFPlayer::ResupplyAuraThink( void )
 		if ( !pTarget->FVisible( this, MASK_BLOCKLOS | CONTENTS_WINDOW ) )
 			continue;
 
-		pTarget->Regenerate();
-		pTarget->SetNextRegenTime( gpGlobals->curtime + 3.0f );
-		bPulsedOther = true;
+		vecTargets.AddToTail( pTarget );
 	}
+
+	// Nobody to spend it on. Leave the meter full.
+	if ( vecTargets.Count() == 0 )
+		return;
+
+	FOR_EACH_VEC( vecTargets, i )
+	{
+		vecTargets[i]->Regenerate();
+		vecTargets[i]->SetNextRegenTime( gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL );
+	}
+
+	m_flNextResupplyPulse = gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL;
 
 	// One swing per pulse that actually reached someone else. The swing
 	// plays attackStand_MELEE by sequence and the locker sound. +attack
 	// never calls this, and she is not a target of the pulse.
-	if ( bPulsedOther && !IsTaunting() )
+	if ( !IsTaunting() )
 	{
 		CTFResupplyWeapon *pPulse = dynamic_cast<CTFResupplyWeapon *>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );
 		if ( pPulse )
@@ -17509,6 +17529,159 @@ int CTFPlayer::GetTauntConcept( CEconItemDefinition *pItemDef )
 }
 
 //-----------------------------------------------------------------------------
+// Custom classes are not in the stock taunt scene lists. Borrow a class that
+// has the scene. Single-actor scenes bind to the player who started them, and
+// the sequence name is looked up on this model (taunt_conga, taunt_laugh, ...).
+//-----------------------------------------------------------------------------
+static int DonorTauntClass( const CTFTauntInfo *pTauntData, int iClass, bool bPartner )
+{
+	if ( !pTauntData || iClass < 0 || iClass >= LOADOUT_COUNT )
+		return iClass;
+
+	const bool bHas = bPartner
+		? ( pTauntData->GetPartnerTauntInitiatorSceneCount( iClass ) > 0 && pTauntData->GetPartnerTauntReceiverSceneCount( iClass ) > 0 )
+		: ( pTauntData->GetIntroSceneCount( iClass ) > 0 );
+	if ( bHas )
+		return iClass;
+
+	static const int s_nDonors[] =
+	{
+		TF_CLASS_PYRO,
+		TF_CLASS_SCOUT,
+		TF_CLASS_HEAVYWEAPONS,
+		TF_CLASS_SOLDIER,
+		TF_CLASS_DEMOMAN,
+		TF_CLASS_ENGINEER,
+		TF_CLASS_MEDIC,
+		TF_CLASS_SNIPER,
+		TF_CLASS_SPY,
+	};
+
+	for ( int i = 0; i < ARRAYSIZE( s_nDonors ); ++i )
+	{
+		const int iDonor = s_nDonors[i];
+		if ( iDonor < 0 || iDonor >= LOADOUT_COUNT )
+			continue;
+
+		const bool bDonorHas = bPartner
+			? ( pTauntData->GetPartnerTauntInitiatorSceneCount( iDonor ) > 0 && pTauntData->GetPartnerTauntReceiverSceneCount( iDonor ) > 0 )
+			: ( pTauntData->GetIntroSceneCount( iDonor ) > 0 );
+		if ( bDonorHas )
+			return iDonor;
+	}
+
+	return iClass;
+}
+
+//-----------------------------------------------------------------------------
+// vip_mobster.nut speeds two all-class taunts so the sequence lasts the scene.
+// 1106 is Square Dance. 1182 is Yeti Punch.
+//-----------------------------------------------------------------------------
+static void ApplyMobsterTauntSpeed( CTFPlayer *pPlayer, item_definition_index_t iDef )
+{
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_MOBSTER ) )
+		return;
+
+	float flSpeed = 0.f;
+	if ( iDef == 1106 )
+		flSpeed = 0.7f;
+	else if ( iDef == 1182 )
+		flSpeed = 1.08f;
+
+	if ( flSpeed > 0.f )
+		pPlayer->AddCustomAttribute( "gesture speed increase", flSpeed, -1.f );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+bool CTFPlayer::PlayNamedTauntSequence( const char *pszSequence )
+{
+	if ( !pszSequence || !pszSequence[0] )
+		return false;
+
+	const int iSeq = LookupSequence( pszSequence );
+	if ( iSeq < 0 )
+		return false;
+
+	float flDuration = SequenceDuration( iSeq );
+	if ( flDuration < 0.1f )
+		flDuration = 0.1f;
+
+	V_strncpy( m_szTauntSequence.GetForModify(), pszSequence, sizeof( m_szTauntSequence ) );
+	m_nTauntSequenceParity = m_nTauntSequenceParity + 1;
+
+	m_hTauntItem = NULL;
+	m_iTauntItemDefIndex = INVALID_ITEM_DEF_INDEX;
+	m_TauntEconItemView.Invalidate();
+	m_bInitTaunt = false;
+	m_flTauntAttackTime = 0.f;
+	m_iTauntAttack = TAUNTATK_NONE;
+
+	m_Shared.m_iTauntIndex = TAUNT_BASE_WEAPON;
+	m_Shared.m_iTauntConcept.Set( MP_CONCEPT_PLAYER_TAUNT );
+	m_flTauntStartTime = gpGlobals->curtime;
+	m_flTauntNextStartTime = m_flTauntStartTime + flDuration;
+	m_flTauntRemoveTime = m_flTauntStartTime + flDuration;
+	m_bAllowedToRemoveTaunt = true;
+	m_Shared.m_unTauntSourceItemID_Low = 0;
+	m_Shared.m_unTauntSourceItemID_High = 0;
+
+	m_angTauntCamera = EyeAngles();
+	SetTauntYaw( GetAbsAngles()[YAW] );
+	m_vecTauntStartPosition = GetAbsOrigin();
+	SetAbsVelocity( vec3_origin );
+
+	m_Shared.AddCond( TF_COND_TAUNTING );
+
+	if ( m_PlayerAnimState )
+	{
+		m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
+		m_PlayerAnimState->AddVCDSequenceToGestureSlot( GESTURE_SLOT_VCD, iSeq, 0.f, true );
+	}
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Weapon taunt sequences on the custom models. Activities were never
+// set on these, so a stock class VCD cannot find them.
+//-----------------------------------------------------------------------------
+bool CTFPlayer::PlayClassSequenceTaunt( void )
+{
+	if ( IsPlayerClass( TF_CLASS_MOBSTER ) )
+	{
+		const bool bHalloween = TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_Halloween );
+		// Scream Fortress sometimes uses the extra taunt instead of the weapon one.
+		if ( bHalloween && RandomInt( 0, 4 ) == 0 && PlayNamedTauntSequence( "taunt06" ) )
+			return true;
+
+		CTFWeaponBase *pWeapon = GetActiveTFWeapon();
+		const int iSlot = pWeapon ? pWeapon->GetSlot() : 0;
+		if ( iSlot == 1 )
+			return PlayNamedTauntSequence( "taunt02" );
+		if ( iSlot == 2 )
+			return PlayNamedTauntSequence( "taunt05" );
+
+		if ( RandomInt( 0, 1 ) == 0 && PlayNamedTauntSequence( "taunt01" ) )
+			return true;
+		return PlayNamedTauntSequence( "taunt01_alt" );
+	}
+
+	if ( IsPlayerClass( TF_CLASS_RESUPPLY ) )
+	{
+		const bool bHalloween = TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_Halloween );
+		if ( bHalloween && RandomInt( 0, 3 ) == 0 && PlayNamedTauntSequence( "taunt07_Halloween" ) )
+			return true;
+		if ( PlayNamedTauntSequence( "taunt01" ) )
+			return true;
+		return PlayNamedTauntSequence( "taunt_generic_full" );
+	}
+
+	return false;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 bool CTFPlayer::PlayTauntSceneFromItem( const CEconItemView *pEconItemView )
@@ -17528,6 +17701,7 @@ bool CTFPlayer::PlayTauntSceneFromItem( const CEconItemView *pEconItemView )
 		return false;
 
 	int iClass = GetPlayerClass()->GetClassIndex();
+	iClass = DonorTauntClass( pTauntData, iClass, false );
 	
 	// If we didn't find any custom taunts, then we're done
 	if ( pTauntData->GetIntroSceneCount( iClass ) == 0 )
@@ -17664,6 +17838,7 @@ bool CTFPlayer::PlayTauntSceneFromItem( const CEconItemView *pEconItemView )
 
 		float flSceneDuration = PlayScene( pszScene );
 		OnTauntSucceeded( pszScene, iTauntIndex, iTauntConcept );
+		ApplyMobsterTauntSpeed( this, pEconItemView->GetItemDefIndex() );
 
 		m_flNextAllowTauntRemapInputTime = iTauntIndex == TAUNT_LONG ? gpGlobals->curtime + flSceneDuration : -1.f;
 
@@ -17773,7 +17948,7 @@ float CTFPlayer::PlayTauntRemapInputScene()
 		return -1.f;
 	}
 
-	int iClass = GetPlayerClass()->GetClassIndex();
+	int iClass = DonorTauntClass( pTaunt, GetPlayerClass()->GetClassIndex(), false );
 
 	const char *pszCurrentSceneFileName = GetSceneFilename( m_hTauntScene );
 	
@@ -17978,6 +18153,12 @@ void CTFPlayer::Taunt( taunts_t iTauntIndex, int iTauntConcept )
 			}
 		}
 	}
+
+	// Mobster and Resupply have no taunt scene for the weapon concept. Their
+	// response (if any) is a one-shot voice line, so the taunt condition ends
+	// on the next tick and the animation never starts. Play the model sequence.
+	if ( iTauntIndex == TAUNT_BASE_WEAPON && PlayClassSequenceTaunt() )
+		return;
 
 	// Allow voice commands, etc to be interrupted.
 	CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
@@ -18318,6 +18499,8 @@ void CTFPlayer::StopTaunt( bool bForceRemoveProp /* = true */ )
 	m_flCurrentTauntMoveSpeed = 0.f;
 	m_nActiveTauntSlot = LOADOUT_POSITION_INVALID;
 	m_iTauntItemDefIndex = INVALID_ITEM_DEF_INDEX;
+	m_szTauntSequence.GetForModify()[0] = '\0';
+	RemoveCustomAttribute( "gesture speed increase" );
 	m_TauntStage = TAUNT_NONE;
 }
 
@@ -18335,6 +18518,8 @@ void CTFPlayer::EndLongTaunt()
 	CTFTauntInfo *pTauntData = m_TauntEconItemView.GetStaticData()->GetTauntData();
 	if ( pTauntData )
 	{
+		iClass = DonorTauntClass( pTauntData, iClass, false );
+
 		// Make sure press-and-hold taunts last a minimum amount of time
 		float flMinTime = pTauntData->GetMinTauntTime();
 		if ( m_flTauntStartTime + flMinTime > gpGlobals->curtime )
@@ -18363,6 +18548,7 @@ float CTFPlayer::PlayTauntOutroScene()
 	CTFTauntInfo *pTauntData = m_TauntEconItemView.GetStaticData()->GetTauntData();
 	if ( pTauntData )
 	{
+		iClass = DonorTauntClass( pTauntData, iClass, false );
 		if ( pTauntData->GetOutroSceneCount( iClass ) > 0 )
 		{
 			// play outro
@@ -21801,10 +21987,12 @@ static bool SelectPartnerTaunt( const GameItemDefinition_t *pItemDef, CTFPlayer 
 
 	int iInitiatorClass = initiator->GetPlayerClass()->GetClassIndex();
 	int iReceiverClass = receiver->GetPlayerClass()->GetClassIndex();
+	const int iInitiatorSceneClass = DonorTauntClass( pTauntData, iInitiatorClass, true );
+	const int iReceiverSceneClass = DonorTauntClass( pTauntData, iReceiverClass, true );
 
 	// check if we have any scene
-	const int iInitiatorSceneCount = pTauntData->GetPartnerTauntInitiatorSceneCount( iInitiatorClass );
-	const int iReceiverSceneCount = pTauntData->GetPartnerTauntReceiverSceneCount( iReceiverClass );
+	const int iInitiatorSceneCount = pTauntData->GetPartnerTauntInitiatorSceneCount( iInitiatorSceneClass );
+	const int iReceiverSceneCount = pTauntData->GetPartnerTauntReceiverSceneCount( iReceiverSceneClass );
 	if ( iInitiatorSceneCount == 0 ||
 		 iReceiverSceneCount == 0 )
 	{
@@ -21864,8 +22052,8 @@ static bool SelectPartnerTaunt( const GameItemDefinition_t *pItemDef, CTFPlayer 
 		}
 	}
 
-	*pszInitiatorScene = pTauntData->GetPartnerTauntInitiatorScene( iInitiatorClass, iInitiator );
-	*pszReceiverScene = pTauntData->GetPartnerTauntReceiverScene( iReceiverClass, iReceiver );
+	*pszInitiatorScene = pTauntData->GetPartnerTauntInitiatorScene( iInitiatorSceneClass, iInitiator );
+	*pszReceiverScene = pTauntData->GetPartnerTauntReceiverScene( iReceiverSceneClass, iReceiver );
 
 	return true;
 }

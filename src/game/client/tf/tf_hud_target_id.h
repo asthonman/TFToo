@@ -177,12 +177,15 @@ private:
 	CTFSpectatorGUIHealth	*m_pTargetHealth;
 	CHandle< C_BaseEntity >	m_hEntity;
 	float					m_flPrevHealth;
+	int						m_nPrevMaxBuffed;
 	int						m_nPrevLevel;
 	bool					m_bTeamStatus;
 	bool					m_bShowAmmo;
 	bool					m_bPositionValid;
 	int						m_iAnchorX;
 	int						m_iAnchorY;
+	int						m_iHealthClipW;
+	int						m_iHealthClipH;
 	vgui::HFont				m_hAmmoFont;
 	Color					m_clrAmmo;
 };

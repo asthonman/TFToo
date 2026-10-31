@@ -188,6 +188,7 @@ public:
 	virtual void	CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov );
 	bool			StartGestureSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget );
 	bool			StopGestureSceneEvent( CSceneEventInfo *info, bool fastKill, bool canceled );
+	void			PlayNetworkedTauntSequence( void );
 	void			TurnOnTauntCam( void );
 	void			TurnOnTauntCam_Finish( void );
 	void			TurnOffTauntCam( void );
@@ -196,6 +197,7 @@ public:
 
 	bool			IsViewingCYOAPDA( void ) const { return m_bViewingCYOAPDA; }
 	bool			IsRegenerating( void ) const { return m_bRegenerating; }
+	float			GetNextResupplyPulse( void ) const { return m_flNextResupplyPulse; }
 
 	virtual void	InitPhonemeMappings();
 
@@ -705,6 +707,9 @@ private:
 	int				m_nTauntSequence;
 	float			m_flTauntStartTime;
 	float			m_flTauntDuration;
+	char			m_szTauntSequence[64];
+	int				m_nTauntSequenceParity;
+	int				m_nPrevTauntSequenceParity;
 
 	CEconItemView	m_TauntEconItemView;
 
@@ -961,6 +966,7 @@ private:
 	CNetworkVar( bool, m_bViewingCYOAPDA );
 	CNetworkVar( bool, m_bRegenerating );
 	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
+	CNetworkVar( float, m_flNextResupplyPulse );
 
 	bool m_bNotifiedWeaponInspectThisLife;
 

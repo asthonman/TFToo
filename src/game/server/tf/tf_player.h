@@ -746,6 +746,8 @@ public:
 	
 	void				OnTauntSucceeded( const char* pszSceneName, int iTauntIndex = 0, int iTauntConcept = 0 );
 	void				Taunt( taunts_t iTauntIndex = TAUNT_BASE_WEAPON, int iTauntConcept = 0 );
+	bool				PlayClassSequenceTaunt( void );
+	bool				PlayNamedTauntSequence( const char *pszSequence );
 	void				ScriptTaunt( int iTauntIndex, int iTauntConcept ) { Taunt((taunts_t)iTauntIndex, iTauntConcept); }
 	bool				IsTaunting( void ) const { return m_Shared.InCond( TF_COND_TAUNTING ); }
 	void				DoTauntAttack( void );
@@ -1187,6 +1189,12 @@ private:
 	// Reserve ammo is local-only. This copy is sent to everyone so teammate
 	// status icons can draw current/max. Clips stay on the weapon.
 	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
+	// Absolute time her next locker pulse can fire. 0 means the meter is full.
+	CNetworkVar( float, m_flNextResupplyPulse );
+	// Named sequence taunts for classes that have no response-rule scene.
+	// Parity bumps even when the sequence name repeats, so the client restarts it.
+	CNetworkString( m_szTauntSequence, 64 );
+	CNetworkVar( int, m_nTauntSequenceParity );
 	bool				m_bRespawning;
 
 	// Items.

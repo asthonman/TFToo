@@ -233,6 +233,9 @@ enum ETFClass
 	TF_CLASS_RANDOM
 };
 
+// Resupply's locker pulse. Same window as func_regenerate.
+#define TF_RESUPPLY_PULSE_INTERVAL	3.0f
+
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
 

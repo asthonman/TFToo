@@ -75,6 +75,39 @@ extern ConVar tf_rocketpack_cost;
 
 using namespace vgui;
 
+//-----------------------------------------------------------------------------
+// Purpose: Resupply's locker pulse. Full when she can pulse, then refills over
+// the same 3 seconds as a resupply cabinet.
+//-----------------------------------------------------------------------------
+class CHudItemEffectMeter_Resupply : public CHudItemEffectMeter
+{
+public:
+	CHudItemEffectMeter_Resupply( const char *pszElementName, C_TFPlayer *pPlayer )
+		: CHudItemEffectMeter( pszElementName, pPlayer )
+	{
+	}
+
+	virtual bool IsEnabled( void ) OVERRIDE
+	{
+		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_RESUPPLY );
+	}
+
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Weapon_Resupply"; }
+	virtual bool ShouldBeep( void ) OVERRIDE { return true; }
+
+	virtual float GetProgress( void ) OVERRIDE
+	{
+		if ( !m_pPlayer )
+			return 1.f;
+
+		const float flLeft = m_pPlayer->GetNextResupplyPulse() - gpGlobals->curtime;
+		if ( flLeft <= 0.f )
+			return 1.f;
+
+		return clamp( 1.f - ( flLeft / TF_RESUPPLY_PULSE_INTERVAL ), 0.f, 1.f );
+	}
+};
+
 IMPLEMENT_AUTO_LIST( IHudItemEffectMeterAutoList );
 											
 CItemEffectMeterManager g_ItemEffectMeterManager;
@@ -341,6 +374,16 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 	case TF_CLASS_MEDIC:
 		DECLARE_ITEM_EFFECT_METER( CWeaponMedigun, TF_WEAPON_MEDIGUN, true, "resource/UI/HudItemEffectMeter_Scout.res" );
 		DECLARE_ITEM_EFFECT_METER( CTFBonesaw, TF_WEAPON_BONESAW, false, "resource/UI/HUDItemEffectMeter_Organs.res" );
+		break;
+
+	case TF_CLASS_RESUPPLY:
+		hNewMeter = new CHudItemEffectMeter_Resupply( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
 		break;
 	}
 
