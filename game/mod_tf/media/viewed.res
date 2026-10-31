@@ -14,10 +14,10 @@
 	}
 	"koth_badlands"
 	{
-		"viewed"		"3"
+		"viewed"		"4"
 	}
 	"cp_junction_final"
 	{
-		"viewed"		"3"
+		"viewed"		"8"
 	}
 }
