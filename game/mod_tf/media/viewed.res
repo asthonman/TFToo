@@ -14,7 +14,7 @@
 	}
 	"koth_badlands"
 	{
-		"viewed"		"4"
+		"viewed"		"5"
 	}
 	"cp_junction_final"
 	{
