@@ -177,6 +177,7 @@ static int g_TauntCamRagdollAchievements[] =
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
 	0,		// TF_CLASS_RESUPPLY,
+	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -197,6 +198,7 @@ static int g_TauntCamAchievements[] =
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
 	0,		// TF_CLASS_RESUPPLY,
+	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -219,6 +221,7 @@ static int g_TauntCamAchievements2[] =
 	0,		// TF_CLASS_MADCAP,
 	0,		// TF_CLASS_MOBSTER,
 	0,		// TF_CLASS_RESUPPLY,
+	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -1381,6 +1384,7 @@ Vector g_TFClassViewVectors[TF_CLASS_COUNT_ALL] =
 	Vector( 0, 0, 65 ),		// TF_CLASS_MADCAP,			// Scout height for now
 	Vector( 0, 0, 65 ),		// TF_CLASS_MOBSTER,		// same height as Scout
 	Vector( 0, 0, 75 ),		// TF_CLASS_RESUPPLY,
+	Vector( 0, 0, 75 ),		// TF_CLASS_BRICK,			// model top is about 85
 	Vector( 0, 0, 65 ),		// TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 };
 
@@ -5806,6 +5810,39 @@ void CTFRadiusDamageInfo::CalculateFalloff( void )
 //-----------------------------------------------------------------------------
 // Purpose: Attempt to apply the radius damage to the specified entity
 //-----------------------------------------------------------------------------
+// IgnorePlayers lets every blast pass through every player. Enemy Brick is
+// the exception: he stops it. The player being damaged is still visible to
+// the trace, so a friendly Brick in the blast still gets hit.
+class CTraceFilterRadiusBrick : public CTraceFilterIgnorePlayers
+{
+public:
+	CTraceFilterRadiusBrick( const IHandleEntity *passentity, int collisionGroup, CBaseEntity *pTarget, int iInflictorTeam )
+		: CTraceFilterIgnorePlayers( passentity, collisionGroup ), m_pTarget( pTarget ), m_iTeam( iInflictorTeam )
+	{
+	}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pServerEntity, int contentsMask )
+	{
+		CBaseEntity *pEntity = EntityFromEntityHandle( pServerEntity );
+		if ( pEntity && pEntity->IsPlayer() )
+		{
+			if ( pEntity == m_pTarget )
+				return CTraceFilterSimple::ShouldHitEntity( pServerEntity, contentsMask );
+
+			CTFPlayer *pTF = ToTFPlayer( pEntity );
+			if ( pTF && pTF->IsPlayerClass( TF_CLASS_BRICK ) && pTF->GetTeamNumber() != m_iTeam )
+				return CTraceFilterSimple::ShouldHitEntity( pServerEntity, contentsMask );
+
+			return false;
+		}
+
+		return CTraceFilterIgnorePlayers::ShouldHitEntity( pServerEntity, contentsMask );
+	}
+
+	CBaseEntity *m_pTarget;
+	int m_iTeam;
+};
+
 int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 {
 	if ( pEntity == pEntityIgnore || pEntity->m_takedamage == DAMAGE_NO )
@@ -5816,7 +5853,7 @@ int CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 
 	// Check that the explosion can 'see' this entity.
 	Vector vecSpot = pEntity->BodyTarget( vecSrc, false );
-	CTraceFilterIgnorePlayers filterPlayers( pInflictor, COLLISION_GROUP_PROJECTILE );
+	CTraceFilterRadiusBrick filterPlayers( pInflictor, COLLISION_GROUP_PROJECTILE, pEntity, pInflictor ? pInflictor->GetTeamNumber() : TEAM_UNASSIGNED );
 	CTraceFilterIgnoreProjectiles filterProjectiles( pInflictor, COLLISION_GROUP_PROJECTILE );
 	CTraceFilterIgnoreFriendlyCombatItems filterCombatItems( pInflictor, COLLISION_GROUP_PROJECTILE, pInflictor->GetTeamNumber() );
 	CTraceFilterChain filterPlayersAndProjectiles( &filterPlayers, &filterProjectiles );
@@ -6848,6 +6885,17 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			float flDmgMult = 1.f;
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pVictim, flDmgMult, energy_buff_dmg_taken_multiplier );
 			flDamage *= flDmgMult;
+		}
+
+		// Brick takes a full critical as a normal hit. Mini-crits still apply.
+		if ( pVictim && pVictim->IsPlayerClass( TF_CLASS_BRICK ) && info.GetCritType() != CTakeDamageInfo::CRIT_MINI )
+		{
+			flCritDamage = 0.f;
+			flBonusDamage = 0.f;
+			bitsDamage &= ~DMG_CRITICAL;
+			info.SetDamageType( info.GetDamageType() & ~DMG_CRITICAL );
+			info.SetCritType( CTakeDamageInfo::CRIT_NONE );
+			info.SetDamageBonus( 0.f, NULL );
 		}
 
 		flDamage += flCritDamage;
@@ -11334,6 +11382,7 @@ static kill_eater_event_t g_eClassKillEvents[] =
 	kKillEaterEvent_ScoutKill,					// TF_CLASS_MADCAP, no dedicated strange part yet
 	kKillEaterEvent_ScoutKill,					// TF_CLASS_MOBSTER, no dedicated strange part yet
 	kKillEaterEvent_SniperKill,					// TF_CLASS_RESUPPLY, no dedicated strange part yet
+	kKillEaterEvent_HeavyKill,					// TF_CLASS_BRICK, no dedicated strange part yet
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 
@@ -11352,6 +11401,7 @@ static kill_eater_event_t g_eRobotClassKillEvents[] =
 	kKillEaterEvent_RobotScoutKill,					// TF_CLASS_MADCAP
 	kKillEaterEvent_RobotScoutKill,					// TF_CLASS_MOBSTER
 	kKillEaterEvent_RobotSniperKill,				// TF_CLASS_RESUPPLY
+	kKillEaterEvent_RobotHeavyKill,				// TF_CLASS_BRICK
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eRobotClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 

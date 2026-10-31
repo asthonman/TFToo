@@ -50,6 +50,14 @@ static const NewItemAttribute_t s_BrickAttrs[] =
 	{ "throwable recharge time", "6" },
 };
 
+// Always equipped, so the player hook sees it with either weapon out.
+// Same attribute names as the Mantreads, at 0.75. Not on b8, or the two would stack.
+static const NewItemAttribute_t s_BrickSlamAttrs[] =
+{
+	{ "airblast vulnerability multiplier", "0.75" },
+	{ "airblast vertical vulnerability multiplier", "0.75" },
+};
+
 static const NewItemAttribute_t s_TypewriterAttrs[] =
 {
 	{ "bullets per shot bonus", "0.75" },
@@ -170,6 +178,34 @@ static const NewItemDefDesc_t s_NewItems[] =
 		0,
 		s_ResupplyMeleeAttrs,
 		ARRAYSIZE( s_ResupplyMeleeAttrs ),
+	},
+	{
+		"b8",
+		"tf_weapon_throwable_brick",
+		"#TF_Weapon_Brick",
+		"secondary",
+		LOADOUT_POSITION_SECONDARY,
+		TF_CLASS_BRICK,
+		"models/weapons/w_models/w_brick_scout.mdl",
+		"models/weapons/w_models/w_brick_scout.mdl",
+		"brick",
+		1,
+		s_BrickAttrs,
+		ARRAYSIZE( s_BrickAttrs ),
+	},
+	{
+		"b9",
+		"tf_weapon_brickslam",
+		"#TF_Weapon_BrickSlam",
+		"melee",
+		LOADOUT_POSITION_MELEE,
+		TF_CLASS_BRICK,
+		"",
+		"",
+		"brickslam",
+		0,
+		s_BrickSlamAttrs,
+		ARRAYSIZE( s_BrickSlamAttrs ),
 	},
 };
 
@@ -357,6 +393,17 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 			// FORCE_NOT_USED (-2) makes the class-select panel skip this item,
 			// so selectionMenu_StartPose / Anim01 still play.
 			pKV->SetString( "anim_slot", "FORCE_NOT_USED" );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b8" ) )
+		{
+			// Scout's c_scout_arms item1 set is the hold and the throw.
+			// brick_mann has no ITEM1 sequences; the body falls back to melee.
+			pKV->SetString( "anim_slot", "ITEM1" );
+		}
+		else if ( !Q_stricmp( desc.pszAltId, "b9" ) )
+		{
+			// b9 must not be FORCE_NOT_USED or the body never plays the slam.
+			pKV->SetString( "anim_slot", "MELEE" );
 		}
 
 		// c_mobster_arms has a reference pose and no sequences. The three

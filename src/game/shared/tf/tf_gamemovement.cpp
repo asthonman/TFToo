@@ -22,6 +22,7 @@
 #include "tf_weapon_buff_item.h"
 #include "halloween/tf_weapon_spellbook.h"
 #include "tf_logic_player_destruction.h"
+#include "tf_weaponbase_melee.h"
 
 #ifdef CLIENT_DLL
 	#include "c_tf_player.h"
@@ -309,6 +310,17 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 
 	// The max speed is currently set to the scout - if this changes we need to change this!
 	mv->m_flMaxSpeed = TF_MAX_SPEED;
+
+	// Brick cannot step or jump during a slam. Gravity still pulls him down.
+	CTFBrickSlamWeapon *pBrickSlam = dynamic_cast<CTFBrickSlamWeapon *>( m_pTFPlayer->GetActiveTFWeapon() );
+	if ( pBrickSlam && pBrickSlam->IsSlamming() )
+	{
+		mv->m_flForwardMove = 0.f;
+		mv->m_flSideMove = 0.f;
+		mv->m_nButtons &= ~IN_JUMP;
+		m_pTFPlayer->m_nButtons &= ~IN_JUMP;
+		pBrickSlam->NoteFallSpeed( m_pTFPlayer->m_Local.m_flFallVelocity );
+	}
 
 	// Handle charging demomens
 	ChargeMove();

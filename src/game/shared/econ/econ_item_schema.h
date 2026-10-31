@@ -2825,10 +2825,11 @@ protected:
 	// does not touch the schema CRC. Account index must stay above the new end.
 	void ExtendLastValidClass( equipped_class_t unClass )
 	{
-		if ( unClass > m_unLastValidClass && unClass < m_unAccoutClassIndex )
-		{
+		// The account slot is its own equip type, not the last playable
+		// class. Stock items_game leaves it at 11, which is already inside
+		// the extra classes. A later class still has to be equippable.
+		if ( unClass > m_unLastValidClass && unClass != m_unAccoutClassIndex )
 			m_unLastValidClass = unClass;
-		}
 	}
 
 	virtual void Reset( void );

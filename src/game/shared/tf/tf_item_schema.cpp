@@ -1728,6 +1728,7 @@ static PlayerClassInfo_t gs_PlayerClassData[] =
 	{ "Madcap",		"#TF_Class_Name_Madcap" },
 	{ "Mobster",	"#TF_Class_Name_Mobster" },
 	{ "Resupply",	"#TF_Class_Name_Resupply" },
+	{ "Brick",		"#TF_Class_Name_Brick" },
 	{ "Invalid",	"" }						// lots of code loops over these classes based on LOADOUT_COUNT, which is wrong, but this allows them to do it safely
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( gs_PlayerClassData ) == LOADOUT_COUNT );
@@ -2032,7 +2033,7 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	// items_game.txt still ends the equippable range at Engineer. Classes added
 	// after that use the same loadout slots, so Equip() has to accept them.
 	// Leave the file alone; the schema CRC was already computed from it.
-	ExtendLastValidClass( TF_CLASS_RESUPPLY );
+	ExtendLastValidClass( TF_CLASS_BRICK );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );

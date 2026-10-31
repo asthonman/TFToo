@@ -8040,6 +8040,10 @@ void CTFPlayerShared::InvisibilityThink( void )
 	m_flPrevInvisibility = m_flInvisibility;
 	m_flInvisibility = clamp( flTargetInvis, 0.0f, 1.0f );
 
+	// Grown Brick stays half-visible. Not TF_COND_STEALTHED: that path forces
+	// non-spies back to fully visible, and teammates can already shoot through him.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) && m_pOuter->IsBrickGrown() )
+		m_flInvisibility = TF_BRICK_GROW_INVIS;
 }
 
 

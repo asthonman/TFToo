@@ -50,6 +50,7 @@ const char *g_aPlayerClassNames[TF_CLASS_MENU_BUTTONS] =
 	"#TF_Class_Name_Madcap",
 	"#TF_Class_Name_Mobster",
 	"#TF_Class_Name_Resupply",
+	"#TF_Class_Name_Brick",
 	"#TF_Class_Name_Civilian",
 	"",
 	"#TF_Random"
@@ -70,6 +71,7 @@ const char *g_aPlayerClassNames_NonLocalized[TF_CLASS_MENU_BUTTONS] =
 	"Madcap",
 	"Mobster",
 	"Resupply",
+	"Brick",
 	"Civilian",
 	"",
 	"Random"
@@ -90,6 +92,7 @@ const char *g_aRawPlayerClassNamesShort[TF_CLASS_MENU_BUTTONS] =
 	"madcap",
 	"mobster",
 	"resupply",
+	"brick",
 	"civilian",
 	"",
 	"random"
@@ -110,6 +113,7 @@ const char *g_aRawPlayerClassNames[TF_CLASS_MENU_BUTTONS] =
 	"madcap",
 	"mobster",
 	"resupply",
+	"brick",
 	"civilian",
 	"",
 	"random"
@@ -148,7 +152,7 @@ static const ClassMenuSlot_t g_ClassMenuPages[][kClassMenuSlots] =
 		{ TF_CLASS_UNDEFINED,		NULL },
 		{ TF_CLASS_MOBSTER,			NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
-		{ TF_CLASS_UNDEFINED,		NULL },
+		{ TF_CLASS_BRICK,			NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
 		{ TF_CLASS_UNDEFINED,		NULL },
 		{ TF_CLASS_RESUPPLY,		NULL },
@@ -303,6 +307,7 @@ const char g_szBotModels[][ MAX_PATH ] =
 	"models/bots/scout/bot_scout.mdl", // Madcap, Scout model for now
 	"models/vip_mobster/player/mobster.mdl", // Mobster
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
+	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 };
 
 const char g_szPlayerRobotModels[][MAX_PATH] =
@@ -321,6 +326,7 @@ const char g_szPlayerRobotModels[][MAX_PATH] =
 	"models/bots/scout/bot_scout_human_anim.mdl", // Madcap
 	"models/vip_mobster/player/mobster.mdl", // Mobster
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
+	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 };
 
 const char g_szBotBossModels[][ MAX_PATH ] = 
@@ -339,6 +345,7 @@ const char g_szBotBossModels[][ MAX_PATH ] =
 	"models/bots/scout/bot_scout.mdl", // Madcap
 	"models/vip_mobster/player/mobster.mdl", // Mobster
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
+	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 };
 
 const char g_szBotBossSentryBusterModel[ MAX_PATH ] = "models/bots/demo/bot_sentry_buster.mdl";
@@ -360,6 +367,7 @@ const char g_szRomePromoItems_Hat[][ MAX_PATH ] =
 	"tw_scoutbot_hat", // Madcap
 	"tw_pyrobot_helmet", // Mobster, no promo hat
 	"tw_sniperbot_helmet", // Resupply
+	"tw_heavybot_helmet", // Brick
 };
 
 const char g_szRomePromoItems_Misc[][ MAX_PATH ] = 
@@ -378,6 +386,7 @@ const char g_szRomePromoItems_Misc[][ MAX_PATH ] =
 	"tw_scoutbot_armor", // Madcap
 	"tw_pyrobot_armor", // Mobster
 	"tw_sniperbot_armor", // Resupply
+	"tw_heavybot_armor", // Brick
 };
 
 const char *g_pszBreadModels[] = 
@@ -394,6 +403,7 @@ const char *g_pszBreadModels[] =
 	"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl",	// Madcap
 	"models/vip_mobster/bread_garlic.mdl",				// Mobster
 	"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl",	// Resupply
+	"models/weapons/c_models/c_bread/c_bread_plainloaf.mdl",	// Brick
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_pszBreadModels ) == ( TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS ) );
 
@@ -432,6 +442,7 @@ int iRemapIndexToClass[TF_CLASS_MENU_BUTTONS] =
 		TF_CLASS_MEDIC,
 		TF_CLASS_SNIPER,
 		TF_CLASS_SPY,
+		0,
 		0,
 		0,
 		0,
@@ -1857,6 +1868,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_MADCAP,
 			"",							// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
+			"",							// TF_CLASS_BRICK,
 		}
 	},
 
@@ -1876,6 +1888,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_MADCAP,
 			"",							// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
+			"",							// TF_CLASS_BRICK,
 		}
 	},
 
@@ -1895,6 +1908,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_MADCAP,
 			"",							// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
+			"",							// TF_CLASS_BRICK,
 		}
 	},
 	{
@@ -1913,6 +1927,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_MADCAP,
 			"",							// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
+			"",							// TF_CLASS_BRICK,
 		}
 	},
 	{
@@ -1931,6 +1946,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_MADCAP,
 			"tf_weapon_leadpipe",		// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
+			"",							// TF_CLASS_BRICK,
 		}
 	},
 	{
@@ -1949,6 +1965,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",											// TF_CLASS_MADCAP,
 			"",											// TF_CLASS_MOBSTER,
 			"",											// TF_CLASS_RESUPPLY,
+			"",											// TF_CLASS_BRICK,
 		}
 	},
 	{
@@ -1967,6 +1984,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",			// TF_CLASS_MADCAP,
 			"",			// TF_CLASS_MOBSTER,
 			"",			// TF_CLASS_RESUPPLY,
+			"",			// TF_CLASS_BRICK,
 		}
 	},
 	{
@@ -1985,6 +2003,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",											// TF_CLASS_MADCAP,
 			"",											// TF_CLASS_MOBSTER,
 			"",											// TF_CLASS_RESUPPLY,
+			"",											// TF_CLASS_BRICK,
 		}
 	},
 };
@@ -2152,6 +2171,7 @@ const char *g_pszItemClassImagesRed[] =
 	"class_portraits/madcap",			// TF_CLASS_MADCAP,
 	"class_portraits/mobster",			// TF_CLASS_MOBSTER,
 	"class_portraits/resupply",		// TF_CLASS_RESUPPLY,
+	"class_portraits/brick",		// TF_CLASS_BRICK,
 	"class_portraits/scout_grey",		// TF_CLASS_SCOUT,			
 	"class_portraits/sniper_grey",		// TF_CLASS_SNIPER,
 	"class_portraits/soldier_grey",		// TF_CLASS_SOLDIER,
@@ -2164,6 +2184,7 @@ const char *g_pszItemClassImagesRed[] =
 	"class_portraits/madcap_grey",		// TF_CLASS_MADCAP,
 	"class_portraits/mobster_grey",		// TF_CLASS_MOBSTER,
 	"class_portraits/resupply_grey",		// TF_CLASS_RESUPPLY,
+	"class_portraits/brick_grey",		// TF_CLASS_BRICK,
 };
 
 const char *g_pszItemClassImagesBlue[] =
@@ -2181,6 +2202,7 @@ const char *g_pszItemClassImagesBlue[] =
 	"class_portraits/madcap_blue",		// TF_CLASS_MADCAP,
 	"class_portraits/mobster_blue",		// TF_CLASS_MOBSTER,
 	"class_portraits/resupply_blue",		// TF_CLASS_RESUPPLY,
+	"class_portraits/brick_blue",		// TF_CLASS_BRICK,
 	"class_portraits/scout_blue_grey",		// TF_CLASS_SCOUT,			
 	"class_portraits/sniper_blue_grey",		// TF_CLASS_SNIPER,
 	"class_portraits/soldier_blue_grey",	// TF_CLASS_SOLDIER,
@@ -2193,6 +2215,7 @@ const char *g_pszItemClassImagesBlue[] =
 	"class_portraits/madcap_blue_grey",		// TF_CLASS_MADCAP,
 	"class_portraits/mobster_blue_grey",	// TF_CLASS_MOBSTER,
 	"class_portraits/resupply_blue_grey",	// TF_CLASS_RESUPPLY,
+	"class_portraits/brick_blue_grey",	// TF_CLASS_BRICK,
 };
 
 const char *g_pszCompetitiveMedalImages[] =

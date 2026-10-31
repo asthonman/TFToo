@@ -148,6 +148,34 @@ private:
 };
 
 //-----------------------------------------------------------------------------
+// Brick's grow. One bar, same shape as Spy's cloak meter.
+//-----------------------------------------------------------------------------
+class CHudItemEffectMeter_BrickGrow : public CHudItemEffectMeter
+{
+public:
+	CHudItemEffectMeter_BrickGrow( const char *pszElementName, C_TFPlayer *pPlayer )
+		: CHudItemEffectMeter( pszElementName, pPlayer )
+	{
+	}
+
+	virtual bool IsEnabled( void ) OVERRIDE
+	{
+		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_BRICK );
+	}
+
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Brick_Grow"; }
+	virtual bool ShouldBeep( void ) OVERRIDE { return true; }
+
+	virtual float GetProgress( void ) OVERRIDE
+	{
+		if ( !m_pPlayer )
+			return 1.f;
+
+		return m_pPlayer->GetBrickGrowMeter() / TF_BRICK_GROW_MAX;
+	}
+};
+
+//-----------------------------------------------------------------------------
 // Two chunks with a gap, same idea as the Vaccinator's uber segments.
 // The left chunk filling is half a meter, which is one thrown pack.
 // This meter sits above the pulse meter so the two bars don't overlap.
@@ -512,6 +540,16 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 		}
 
 		hNewMeter = new CHudItemEffectMeter_ResupplyThrow( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
+		break;
+
+	case TF_CLASS_BRICK:
+		hNewMeter = new CHudItemEffectMeter_BrickGrow( pszElementName, pPlayer );
 		if ( hNewMeter )
 		{
 			gHUD.AddHudElement( hNewMeter );
