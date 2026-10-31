@@ -77,7 +77,7 @@ using namespace vgui;
 
 //-----------------------------------------------------------------------------
 // Purpose: Resupply's locker pulse. Full when she can pulse, then refills over
-// the same 3 seconds as a resupply cabinet.
+// the same 3 seconds as a resupply cabinet. Throws do not spend this.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_Resupply : public CHudItemEffectMeter
 {
@@ -85,7 +85,6 @@ public:
 	CHudItemEffectMeter_Resupply( const char *pszElementName, C_TFPlayer *pPlayer )
 		: CHudItemEffectMeter( pszElementName, pPlayer )
 	{
-		m_pSecondChunk = NULL;
 	}
 
 	virtual bool IsEnabled( void ) OVERRIDE
@@ -95,8 +94,6 @@ public:
 
 	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Weapon_Resupply"; }
 	virtual bool ShouldBeep( void ) OVERRIDE { return true; }
-	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
-	virtual void Update( C_TFPlayer *pPlayer ) OVERRIDE;
 
 	virtual float GetProgress( void ) OVERRIDE
 	{
@@ -105,20 +102,63 @@ public:
 
 		return m_pPlayer->GetResupplyCharge();
 	}
+};
+
+//-----------------------------------------------------------------------------
+// Thrown packs. 0-100 like Spy's cloak, so a full bar is about 30 seconds.
+// The left chunk filling is half a meter, which is one thrown pack.
+//-----------------------------------------------------------------------------
+class CHudItemEffectMeter_ResupplyThrow : public CHudItemEffectMeter
+{
+public:
+	CHudItemEffectMeter_ResupplyThrow( const char *pszElementName, C_TFPlayer *pPlayer )
+		: CHudItemEffectMeter( pszElementName, pPlayer )
+	{
+		m_pSecondChunk = NULL;
+		m_bRestPosSaved = false;
+		m_iRestX = 0;
+		m_iRestY = 0;
+	}
+
+	virtual bool IsEnabled( void ) OVERRIDE
+	{
+		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_RESUPPLY );
+	}
+
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Resupply_Throw"; }
+	virtual bool ShouldBeep( void ) OVERRIDE { return true; }
+	virtual bool ShouldAutoAdjustPosition() const OVERRIDE { return false; }
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
+	virtual void PerformLayout() OVERRIDE;
+	virtual void Update( C_TFPlayer *pPlayer ) OVERRIDE;
+
+	virtual float GetProgress( void ) OVERRIDE
+	{
+		if ( !m_pPlayer )
+			return 1.f;
+
+		return m_pPlayer->GetResupplyThrowMeter() / TF_RESUPPLY_THROW_MAX;
+	}
 
 private:
-	// Vaccinator-style chunks. The first one filling means a throw is ready.
 	vgui::ContinuousProgressBar *m_pSecondChunk;
+	bool m_bRestPosSaved;
+	int m_iRestX;
+	int m_iRestY;
 };
 
 //-----------------------------------------------------------------------------
 // Two chunks with a gap, same idea as the Vaccinator's uber segments.
 // The left chunk filling is half a meter, which is one thrown pack.
+// This meter sits above the pulse meter so the two bars don't overlap.
 //-----------------------------------------------------------------------------
-void CHudItemEffectMeter_Resupply::ApplySchemeSettings( vgui::IScheme *pScheme )
+void CHudItemEffectMeter_ResupplyThrow::ApplySchemeSettings( vgui::IScheme *pScheme )
 {
 	// CHudItemEffectMeter::BaseClass is private, so the meter has to be named.
 	CHudItemEffectMeter::ApplySchemeSettings( pScheme );
+
+	GetPos( m_iRestX, m_iRestY );
+	m_bRestPosSaved = true;
 
 	ContinuousProgressBar *pFirst = m_vecProgressBars.Count() ? m_vecProgressBars[0] : NULL;
 	if ( !pFirst )
@@ -149,7 +189,26 @@ void CHudItemEffectMeter_Resupply::ApplySchemeSettings( vgui::IScheme *pScheme )
 	m_pSecondChunk->SetVisible( pFirst->IsVisible() );
 }
 
-void CHudItemEffectMeter_Resupply::Update( C_TFPlayer *pPlayer )
+void CHudItemEffectMeter_ResupplyThrow::PerformLayout()
+{
+	CHudItemEffectMeter::PerformLayout();
+
+	if ( !m_bRestPosSaved )
+		return;
+
+	int w, h;
+	GetSize( w, h );
+	if ( h < 1 )
+		return;
+
+	int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 2 );
+	if ( iGap < 2 )
+		iGap = 2;
+
+	SetPos( m_iRestX, m_iRestY - h - iGap );
+}
+
+void CHudItemEffectMeter_ResupplyThrow::Update( C_TFPlayer *pPlayer )
 {
 	CHudItemEffectMeter::Update( pPlayer );
 
@@ -445,6 +504,14 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 
 	case TF_CLASS_RESUPPLY:
 		hNewMeter = new CHudItemEffectMeter_Resupply( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
+
+		hNewMeter = new CHudItemEffectMeter_ResupplyThrow( pszElementName, pPlayer );
 		if ( hNewMeter )
 		{
 			gHUD.AddHudElement( hNewMeter );

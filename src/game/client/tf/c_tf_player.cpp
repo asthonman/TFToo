@@ -3835,6 +3835,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropBool( RECVINFO( m_bRegenerating ) ),
 	RecvPropArray3( RECVINFO_ARRAY( m_iSharedAmmo ), RecvPropInt( RECVINFO( m_iSharedAmmo[0] ) ) ),
 	RecvPropFloat( RECVINFO( m_flNextResupplyPulse ) ),
+	RecvPropFloat( RECVINFO( m_flResupplyThrowMeter ) ),
 	RecvPropString( RECVINFO( m_szTauntSequence ) ),
 	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
@@ -3951,6 +3952,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_nTauntSequenceParity = 0;
 	m_nPrevTauntSequenceParity = 0;
 	m_flNextResupplyPulse = 0.f;
+	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 
 	m_flWaterImpactTime = 0.0f;
 //	m_rtSpottedInPVSTime = 0;

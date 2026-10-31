@@ -235,8 +235,12 @@ enum ETFClass
 
 // Resupply's locker pulse. Same window as func_regenerate.
 #define TF_RESUPPLY_PULSE_INTERVAL	3.0f
-// Primary throws a medium ammo pack, secondary a medium health kit.
-#define TF_RESUPPLY_THROW_COST		0.5f
+// Thrown packs use their own 0-100 meter, not the pulse. It refills at
+// tf_spy_cloak_regen_rate (3.3/s, about 30s empty to full). One throw is half.
+#define TF_RESUPPLY_THROW_MAX		100.0f
+#define TF_RESUPPLY_THROW_COST		50.0f
+// Sandvich is 500, which lands next to her. 1000 is about four times as far.
+#define TF_RESUPPLY_THROW_SPEED		1000.0f
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }

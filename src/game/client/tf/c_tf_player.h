@@ -199,6 +199,7 @@ public:
 	bool			IsRegenerating( void ) const { return m_bRegenerating; }
 	float			GetNextResupplyPulse( void ) const { return m_flNextResupplyPulse; }
 	float			GetResupplyCharge( void ) const;
+	float			GetResupplyThrowMeter( void ) const { return m_flResupplyThrowMeter; }
 
 	virtual void	InitPhonemeMappings();
 
@@ -968,6 +969,7 @@ private:
 	CNetworkVar( bool, m_bRegenerating );
 	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
 	CNetworkVar( float, m_flNextResupplyPulse );
+	CNetworkVar( float, m_flResupplyThrowMeter );
 
 	bool m_bNotifiedWeaponInspectThisLife;
 

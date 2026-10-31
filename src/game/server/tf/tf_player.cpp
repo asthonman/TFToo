@@ -847,6 +847,7 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropBool( SENDINFO( m_bRegenerating ) ),
 	SendPropArray3( SENDINFO_ARRAY3( m_iSharedAmmo ), SendPropInt( SENDINFO_ARRAY( m_iSharedAmmo ), -1, SPROP_VARINT | SPROP_UNSIGNED ) ),
 	SendPropFloat( SENDINFO( m_flNextResupplyPulse ) ),
+	SendPropFloat( SENDINFO( m_flResupplyThrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropString( SENDINFO( m_szTauntSequence ) ),
 	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),
@@ -1004,6 +1005,7 @@ CTFPlayer::CTFPlayer()
 	m_flNextChangeClassTime = 0.0f;
 	m_flNextChangeTeamTime = 0.0f;
 	m_flNextResupplyPulse = 0.0f;
+	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_szTauntSequence.GetForModify()[0] = '\0';
 	m_nTauntSequenceParity = 0;
 
@@ -1306,8 +1308,9 @@ void CTFPlayer::ResupplyAuraThink( void )
 	m_flNextResupplyPulse = gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL;
 
 	// One swing per pulse that actually reached someone else. That swing
-	// is attack*_MELEE_U and the locker sound. Throws use L and R.
-	// +attack never calls this, and she is not a target of the pulse.
+	// is attack*_MELEE_U and the locker sound. Throws use L and R and do
+	// not spend this meter. +attack never calls this, and she is not a
+	// target of the pulse.
 	if ( !IsTaunting() )
 	{
 		CTFResupplyWeapon *pPulse = dynamic_cast<CTFResupplyWeapon *>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );
@@ -1317,7 +1320,7 @@ void CTFPlayer::ResupplyAuraThink( void )
 }
 
 //-----------------------------------------------------------------------------
-// 0 empty, 1 ready. Same clock the aura and the throws spend.
+// 0 empty, 1 ready. The aura spends this. Thrown packs do not.
 //-----------------------------------------------------------------------------
 float CTFPlayer::GetResupplyCharge( void ) const
 {
@@ -1328,37 +1331,56 @@ float CTFPlayer::GetResupplyCharge( void ) const
 	return clamp( 1.f - ( flLeft / TF_RESUPPLY_PULSE_INTERVAL ), 0.f, 1.f );
 }
 
-bool CTFPlayer::SpendResupplyCharge( float flCost )
+//-----------------------------------------------------------------------------
+// Thrown packs. Same 0-100 scale and per-second refill as Spy's cloak.
+//-----------------------------------------------------------------------------
+float CTFPlayer::GetResupplyThrowMeter( void ) const
+{
+	return m_flResupplyThrowMeter;
+}
+
+bool CTFPlayer::SpendResupplyThrowMeter( float flCost )
 {
 	if ( flCost <= 0.f )
 		return true;
 
-	if ( GetResupplyCharge() + 0.001f < flCost )
+	if ( m_flResupplyThrowMeter + 0.001f < flCost )
 		return false;
 
-	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
-	if ( flLeft < 0.f )
-		flLeft = 0.f;
+	m_flResupplyThrowMeter -= flCost;
+	if ( m_flResupplyThrowMeter < 0.f )
+		m_flResupplyThrowMeter = 0.f;
 
-	m_flNextResupplyPulse = gpGlobals->curtime + flLeft + ( flCost * TF_RESUPPLY_PULSE_INTERVAL );
 	return true;
 }
 
-bool CTFPlayer::AddResupplyCharge( float flGain )
+bool CTFPlayer::AddResupplyThrowMeter( float flGain )
 {
 	if ( !IsPlayerClass( TF_CLASS_RESUPPLY ) || flGain <= 0.f )
 		return false;
 
-	float flLeft = m_flNextResupplyPulse - gpGlobals->curtime;
-	if ( flLeft <= 0.f )
+	if ( m_flResupplyThrowMeter >= TF_RESUPPLY_THROW_MAX )
 		return false;
 
-	flLeft -= flGain * TF_RESUPPLY_PULSE_INTERVAL;
-	if ( flLeft < 0.f )
-		flLeft = 0.f;
+	m_flResupplyThrowMeter += flGain;
+	if ( m_flResupplyThrowMeter > TF_RESUPPLY_THROW_MAX )
+		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 
-	m_flNextResupplyPulse = gpGlobals->curtime + flLeft;
 	return true;
+}
+
+void CTFPlayer::RegenResupplyThrowMeter( void )
+{
+	if ( !IsAlive() || !IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		return;
+
+	if ( m_flResupplyThrowMeter >= TF_RESUPPLY_THROW_MAX )
+		return;
+
+	extern ConVar tf_spy_cloak_regen_rate;
+	m_flResupplyThrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
+	if ( m_flResupplyThrowMeter > TF_RESUPPLY_THROW_MAX )
+		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 }
 
 //-----------------------------------------------------------------------------
@@ -1372,6 +1394,7 @@ void CTFPlayer::TFPlayerThink()
 	}
 
 	ResupplyAuraThink();
+	RegenResupplyThrowMeter();
 
 	for ( int iAmmo = 0; iAmmo < TF_AMMO_COUNT; ++iAmmo )
 	{
@@ -3857,6 +3880,7 @@ void CTFPlayer::Spawn()
 	m_bAllowInstantSpawn = false;
 
 	m_Shared.SetSpyCloakMeter( 100.0f );
+	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 	m_Shared.SetScoutHypeMeter( 0.0f );
 	m_Shared.StopScoutHypeDrain();
@@ -4243,6 +4267,7 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 
 
 		m_Shared.SetSpyCloakMeter( 100.0f );
+		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 		m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 		m_Shared.SetDemomanChargeMeter( 100.0f );
 

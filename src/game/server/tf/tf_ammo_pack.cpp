@@ -368,7 +368,7 @@ void CTFAmmoPack::PackTouch( CBaseEntity *pOther )
 		iAmmoTaken++;
 	}
 
-	if ( pPlayer->AddResupplyCharge( m_flAmmoRatio ) )
+	if ( pPlayer->AddResupplyThrowMeter( 100.0f * m_flAmmoRatio ) )
 	{
 		iAmmoTaken++;
 	}

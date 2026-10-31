@@ -512,10 +512,13 @@ public:
 	virtual bool			SpeakConceptIfAllowed( int iConcept, const char *modifiers = NULL, char *pszOutResponseChosen = NULL, size_t bufsize = 0, IRecipientFilter *filter = NULL );
 	void					MobsterLeaveSpawnVoice( void );
 	void					ResupplyAuraThink( void );
-	// 0 is empty, 1 is ready to pulse. Ammo pickups fill it the way they fill Spy's cloak.
+	void					RegenResupplyThrowMeter( void );
+	// 0 is empty, 1 is ready to pulse. Throws do not spend this.
 	float					GetResupplyCharge( void ) const;
-	bool					SpendResupplyCharge( float flCost );
-	bool					AddResupplyCharge( float flGain );
+	// 0-100, same scale as Spy's cloak. Half of it throws one pack.
+	float					GetResupplyThrowMeter( void ) const;
+	bool					SpendResupplyThrowMeter( float flCost );
+	bool					AddResupplyThrowMeter( float flGain );
 
 	virtual bool CanSpeakVoiceCommand( void );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );
@@ -1195,6 +1198,8 @@ private:
 	CNetworkArray( int, m_iSharedAmmo, TF_AMMO_COUNT );
 	// Absolute time her next locker pulse can fire. 0 means the meter is full.
 	CNetworkVar( float, m_flNextResupplyPulse );
+	// Thrown ammo and health. 0-100, refills at Spy's cloak rate.
+	CNetworkVar( float, m_flResupplyThrowMeter );
 	// Named sequence taunts for classes that have no response-rule scene.
 	// Parity bumps even when the sequence name repeats, so the client restarts it.
 	CNetworkString( m_szTauntSequence, 64 );

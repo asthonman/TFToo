@@ -270,7 +270,7 @@ bool CHealthAmmoKit::MyTouch( CBasePlayer *pPlayer )
 					bAmmoSuccess = true;
 				}
 
-				if ( pTFPlayer->AddResupplyCharge( flPackRatio ) )
+				if ( pTFPlayer->AddResupplyThrowMeter( 100.0f * flPackRatio ) )
 				{
 					bAmmoSuccess = true;
 				}

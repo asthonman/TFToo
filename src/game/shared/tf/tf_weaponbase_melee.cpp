@@ -1254,8 +1254,8 @@ void CTFResupplyWeapon::SecondaryAttack( void )
 }
 
 //-----------------------------------------------------------------------------
-// Sandvich throw: eye height, a slight upward bias, 500 units forward,
-// and a short delay before the thrower can pick it back up.
+// Sandvich throw: eye height and a slight upward bias. Faster than the
+// sandvich so the pack travels. Short delay before she can pick it back up.
 // chSwing is the body sequence suffix: L for ammo, R for health.
 //-----------------------------------------------------------------------------
 void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
@@ -1270,7 +1270,7 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
 	if ( m_flNextPrimaryAttack > gpGlobals->curtime )
 		return;
 
-	if ( pPlayer->GetResupplyCharge() + 0.001f < TF_RESUPPLY_THROW_COST )
+	if ( pPlayer->GetResupplyThrowMeter() + 0.001f < TF_RESUPPLY_THROW_COST )
 		return;
 
 #ifndef CLIENT_DLL
@@ -1286,7 +1286,7 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
 		return;
 	}
 
-	if ( !pPlayer->SpendResupplyCharge( TF_RESUPPLY_THROW_COST ) )
+	if ( !pPlayer->SpendResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
 	{
 		UTIL_Remove( pPack );
 		return;
@@ -1294,7 +1294,7 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
 
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( angForward, &vecForward, &vecRight, &vecUp );
-	Vector vecVelocity = vecForward * 500.f;
+	Vector vecVelocity = vecForward * TF_RESUPPLY_THROW_SPEED;
 	pPowerup->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
 	PlaySwing( chSwing );
 #endif
