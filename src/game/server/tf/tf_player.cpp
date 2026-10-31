@@ -18155,10 +18155,23 @@ void CTFPlayer::Taunt( taunts_t iTauntIndex, int iTauntConcept )
 	}
 
 	// Mobster and Resupply have no taunt scene for the weapon concept. Their
-	// response (if any) is a one-shot voice line, so the taunt condition ends
-	// on the next tick and the animation never starts. Play the model sequence.
+	// response (if any) is a one-shot voice line, so running it through
+	// OnTauntSucceeded ends the taunt on the next tick. The model sequence is
+	// already playing. Speak the same concept so Mobster.MeleeDare still
+	// plays, without sizing the taunt to that line.
 	if ( iTauntIndex == TAUNT_BASE_WEAPON && PlayClassSequenceTaunt() )
+	{
+		CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
+		if ( pExpresser )
+			pExpresser->AllowMultipleScenes();
+
+		m_bInitTaunt = false;
+		SpeakConceptIfAllowed( MP_CONCEPT_PLAYER_TAUNT );
+
+		if ( pExpresser )
+			pExpresser->DisallowMultipleScenes();
 		return;
+	}
 
 	// Allow voice commands, etc to be interrupted.
 	CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
