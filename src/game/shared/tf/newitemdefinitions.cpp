@@ -51,11 +51,11 @@ static const NewItemAttribute_t s_BrickAttrs[] =
 };
 
 // Always equipped, so the player hook sees it with either weapon out.
-// Same names and 0.5 values as the Mantreads. Not on b8, or the two would stack.
+// Same attribute names as the Mantreads, at 0.75. Not on b8, or the two would stack.
 static const NewItemAttribute_t s_BrickSlamAttrs[] =
 {
-	{ "airblast vulnerability multiplier", "0.5" },
-	{ "airblast vertical vulnerability multiplier", "0.5" },
+	{ "airblast vulnerability multiplier", "0.75" },
+	{ "airblast vertical vulnerability multiplier", "0.75" },
 };
 
 static const NewItemAttribute_t s_TypewriterAttrs[] =

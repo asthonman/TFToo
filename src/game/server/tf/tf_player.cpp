@@ -10675,6 +10675,15 @@ void CTFPlayer::ApplyPushFromDamage( const CTakeDamageInfo &info, Vector vecDir 
 				}
 			}
 			vecForce = vecDir * -DamageForce( WorldAlignSize(), info.GetDamage(), flSentryPushMultiplier );
+
+			// Heavy's knockback resistance does not apply to sentry bullets.
+			// Brick's does.
+			if ( IsPlayerClass( TF_CLASS_BRICK ) )
+			{
+				const float flKnockbackScale = GetPlayerClass()->GetData()->GetKnockbackScale();
+				if ( flKnockbackScale != 1.0f )
+					vecForce *= flKnockbackScale;
+			}
 		}
 		else
 		{
