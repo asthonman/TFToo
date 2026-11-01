@@ -1662,6 +1662,12 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 		if ( pTarget->m_Shared.IsImmuneToPushback() )
 			return false;
 
+		// Fully grown Brick is not airblasted at all. A size that is still
+		// changing keeps a fraction of the push, below.
+		const float flBrickGrow = pTarget->IsPlayerClass( TF_CLASS_BRICK ) ? TFBrickGrowFraction( pTarget->GetModelScale() ) : 0.f;
+		if ( flBrickGrow >= 1.f )
+			return false;
+
 		int iReverseBlast = 0;
 		CALL_ATTRIB_HOOK_INT( iReverseBlast, reverse_airblast );
 
@@ -1736,6 +1742,7 @@ bool CTFFlameThrower::DeflectPlayer( CTFPlayer *pTarget, CTFPlayer *pOwner, Vect
 			}
 
 			ComputeCrayAirBlastForce( pTarget, pOwner, vecPushDirection, /* out */ vecForce );
+			vecForce *= ( 1.f - flBrickGrow );
 
 			// This is bypassing ApplyGenericPushbackImpulse because it implements its own pushback logic.
 			pTarget->RemoveFlag( FL_ONGROUND );

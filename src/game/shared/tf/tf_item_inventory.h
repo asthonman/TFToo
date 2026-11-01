@@ -81,6 +81,9 @@ public:
 #endif
 	void				EquipLocal(uint64 ulItemID, equipped_class_t unClass, equipped_slot_t unSlot);
 	void				UnequipLocal(uint64 ulItemID);
+	// Schema unlocks are not Steam items, so an inventory refresh will not
+	// unequip them. Drop those slots before applying a fresh loadout.
+	void				ClearFakeLoadoutItems( void );
 
 	void				OnHasNewQuest();
 

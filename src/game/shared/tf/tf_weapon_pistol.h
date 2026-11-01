@@ -19,6 +19,7 @@
 #define CTFPistol_ScoutPrimary C_TFPistol_ScoutPrimary
 #define CTFPistol_ScoutSecondary C_TFPistol_ScoutSecondary
 #define CTFTypewriter C_TFTypewriter
+#define CTFBrickShove C_TFBrickShove
 #endif
 
 // We allow the pistol to fire as fast as the player can click.
@@ -94,7 +95,6 @@ protected:
 	virtual bool	ShouldPlayClientReloadSound() { return true; }
 #endif
 
-private:
 	float			m_flPushTime;
 };
 
@@ -118,6 +118,21 @@ public:
 protected:
 	virtual float	GetPushDamage( void ) const			{ return 65.f; }
 	virtual int		GetPushDamageFlags( void ) const	{ return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB | DMG_PREVENT_PHYSICS_FORCE; }
+};
+
+// Brick secondary unlock. Primary fire is the Shortstop shove.
+// Right click stays the class grow, so this has no secondary attack.
+class CTFBrickShove : public CTFPistol_ScoutPrimary
+{
+public:
+	DECLARE_CLASS( CTFBrickShove, CTFPistol_ScoutPrimary );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_HANDGUN_SCOUT_PRIMARY; }
+	virtual void	PrimaryAttack( void );
+	virtual void	SecondaryAttack( void ) {}
+	virtual void	ItemPostFrame();
 };
 
 class CTFPistol_ScoutSecondary : public CTFPistol_Scout

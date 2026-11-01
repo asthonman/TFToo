@@ -39,6 +39,7 @@
 #include "gcsdk/gcclientsdk.h"
 #include "econ_gcmessages.h"
 #include "newitemdefinitions.h"
+#include "newitemdefinitions.h"
 #include "tf_gamerules.h"
 #include "tf_gcmessages.h"
 #include "econ_item.h"
@@ -328,6 +329,22 @@ int	CTFInventoryManager::GetAllUsableItemsForSlot( int iClass, int iSlot, CUtlVe
 			continue;
 
 		pList->AddToTail( m_LocalInventory.GetItem(i) );
+	}
+
+	// Schema unlocks are not backpack items. The stock weapon is added later
+	// by the selection panel, so this list is only the extras. Slot -1 is
+	// "everything this class can equip."
+	if ( !bIsAccountIndex )
+	{
+		if ( iSlot >= 0 )
+		{
+			NewItem_AddStockItemsForSlot( iClass, iSlot, pList );
+		}
+		else
+		{
+			for ( int s = 0; s < CLASS_LOADOUT_POSITION_COUNT; ++s )
+				NewItem_AddStockItemsForSlot( iClass, s, pList );
+		}
 	}
 
 	return pList->Count();
@@ -965,7 +982,7 @@ void CTFPlayerInventory::LoadLocalLoadout()
 					m_LoadoutItems[iClass][iSlot] = uItemId;
 
 					CEconItemView *pItem = GetInventoryItemByItemID(uItemId);
-					if (pItem) {
+					if ( pItem && pItem->GetSOCData() ) {
 						pItem->GetSOCData()->Equip(iClass, iSlot);
 					}
 				}
@@ -1046,19 +1063,21 @@ void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, e
 {
 	// These interactions normally result from a round-trip with the GC.
 	// We will never get those messages, so we do everything locally.
+	if ( ulItemID == INVALID_ITEM_ID )
+		ulItemID = LOADOUT_SLOT_USE_BASE_ITEM;
 
 	// Unequip whatever was previously in the slot.
 	{
 		itemid_t ulPreviousItem = m_LoadoutItems[unClass][unSlot];
 		CEconItemView *pPreviousItem = GetInventoryItemByItemID(ulPreviousItem);
-		if (pPreviousItem) {
+		if ( pPreviousItem && pPreviousItem->GetSOCData() ) {
 			pPreviousItem->GetSOCData()->UnequipFromClass(unClass);
 		}
 	}
 
 	// Equip the new item and add it to our loadout.
 	CEconItemView *pItem = GetInventoryItemByItemID(ulItemID);
-	if ( pItem )
+	if ( pItem && pItem->GetSOCData() )
 	{
 		pItem->GetSOCData()->Equip(unClass, unSlot);
 	}
@@ -1082,6 +1101,18 @@ void CTFPlayerInventory::UnequipLocal(uint64 ulItemID)
 			if (m_LoadoutItems[iClass][iSlot] == ulItemID) {
 				m_LoadoutItems[iClass][iSlot] = 0;
 			}
+		}
+	}
+}
+
+void CTFPlayerInventory::ClearFakeLoadoutItems( void )
+{
+	for ( int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass )
+	{
+		for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+		{
+			if ( NewItem_IsFakeItemID( m_LoadoutItems[iClass][iSlot] ) )
+				m_LoadoutItems[iClass][iSlot] = LOADOUT_SLOT_USE_BASE_ITEM;
 		}
 	}
 }

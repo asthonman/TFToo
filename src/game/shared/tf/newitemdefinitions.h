@@ -53,6 +53,23 @@ inline item_definition_index_t ItemDefIndexFromAltId( const char *pszAltId )
 	return (item_definition_index_t)( kNewItemDefBase + n );
 }
 
+inline item_definition_index_t NewItem_DefIndexFromFakeItemID( itemid_t id )
+{
+	return (item_definition_index_t)( id & 0xFFFF );
+}
+
+// Unlocks are not Steam items. 0xB1 in the top 16 bits is how the local
+// loadout remembers them. The low 16 bits are the definition index.
+inline itemid_t NewItem_FakeItemID( item_definition_index_t iIndex )
+{
+	return 0xB100000000000000ULL | (itemid_t)iIndex;
+}
+
+inline bool NewItem_IsFakeItemID( itemid_t id )
+{
+	return ( id & 0xFFFF000000000000ULL ) == 0xB100000000000000ULL;
+}
+
 inline bool IsNewItemDefinitionIndex( item_definition_index_t iIndex )
 {
 	return iIndex > kNewItemDefBase && iIndex < (item_definition_index_t)( kNewItemDefBase + 0x1000 );
@@ -62,6 +79,7 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 
 // New-schema items are stock. The player always owns them.
 CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex );
+CEconItemView *NewItem_ViewForFakeItemID( itemid_t id );
 void NewItem_AddStockItemsForSlot( int iClass, int iSlot, CUtlVector<CEconItemView *> *pList );
 
 #endif // NEWITEMDEFINITIONS_H

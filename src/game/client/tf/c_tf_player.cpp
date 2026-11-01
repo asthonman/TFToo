@@ -5803,6 +5803,19 @@ void C_TFPlayer::TauntCamInterpolation()
 
 	if ( pLocalPlayer && m_bTauntInterpolating )
 	{
+		// Brick's camera sits back in proportion to his size, including
+		// while that size is still moving.
+		if ( IsPlayerClass( TF_CLASS_BRICK ) && m_nForceTauntCam && !m_Shared.InCond( TF_COND_TAUNTING ) )
+		{
+			float flScale = GetModelScale();
+			if ( flScale < 1.f )
+				flScale = 1.f;
+			const float flDesired = tf_tauntcam_dist.GetFloat() * flScale;
+			if ( m_flTauntCamCurrentDist > 1.f && m_flTauntCamTargetDist > 1.f && flDesired != m_flTauntCamTargetDist )
+				m_flTauntCamCurrentDist *= flDesired / m_flTauntCamTargetDist;
+			m_flTauntCamTargetDist = flDesired;
+			m_TauntCameraData.m_flDist = flDesired;
+		}
 		if ( m_flTauntCamCurrentDist != m_flTauntCamTargetDist )
 		{
 			m_flTauntCamCurrentDist += Sign( m_flTauntCamTargetDist - m_flTauntCamCurrentDist ) * gpGlobals->frametime * tf_tauntcam_speed.GetFloat();
@@ -6970,6 +6983,10 @@ Vector C_TFPlayer::GetObserverCamOrigin( void )
 float C_TFPlayer::GetEffectiveInvisibilityLevel( void )
 {
 	float flPercentInvisible = GetPercentInvisible();
+
+	// Brick's grow cloak is for him and his team. Enemies see him solid.
+	if ( IsPlayerClass( TF_CLASS_BRICK ) && IsEnemyPlayer() )
+		flPercentInvisible = 0.f;
 
 	// Crude way to limit Halloween spell
 	bool bHalloweenSpellStealth = TFGameRules()->IsHalloweenScenario( CTFGameRules::HALLOWEEN_SCENARIO_HIGHTOWER ) && m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF );

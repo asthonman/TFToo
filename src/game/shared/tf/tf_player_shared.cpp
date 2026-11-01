@@ -7915,6 +7915,10 @@ bool CTFPlayerShared::CanFallStomp( void )
 	if ( InCond( TF_COND_ROCKETPACK ) )
 		return true;
 
+	// The class lands like the Mantreads, whichever weapon is out.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) )
+		return true;
+
 	int iHeadStomp = 0;
 	CALL_ATTRIB_HOOK_INT_ON_OTHER( m_pOuter, iHeadStomp, boots_falling_stomp );
 
@@ -8042,10 +8046,16 @@ void CTFPlayerShared::InvisibilityThink( void )
 	m_flPrevInvisibility = m_flInvisibility;
 	m_flInvisibility = clamp( flTargetInvis, 0.0f, 1.0f );
 
-	// Grown Brick stays half-visible. Not TF_COND_STEALTHED: that path forces
-	// non-spies back to fully visible, and teammates can already shoot through him.
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) && m_pOuter->IsBrickGrown() )
-		m_flInvisibility = TF_BRICK_GROW_INVIS;
+	// Grown Brick is partly invisible to himself and his team. The amount
+	// follows the size, so the quarter-second scale fades the cloak too.
+	// Enemies ignore this on the client. Not TF_COND_STEALTHED: that path
+	// forces non-spies back to fully visible.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) )
+	{
+		const float flGrow = TFBrickGrowFraction( m_pOuter->GetModelScale() );
+		if ( flGrow > 0.f )
+			m_flInvisibility = TF_BRICK_GROW_INVIS * flGrow;
+	}
 }
 
 

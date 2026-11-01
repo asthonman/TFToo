@@ -1,4 +1,5 @@
-// Madcap's stock secondary. Charge time and recharge come from the item attributes.
+// The Mason's Missile. Madcap's stock secondary and the Brick class's stock secondary.
+// Charge time and recharge come from the item attributes.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Brick"

@@ -244,12 +244,16 @@ enum ETFClass
 // Sandvich is 500, which lands next to her. 1000 is about four times as far.
 #define TF_RESUPPLY_THROW_SPEED		1000.0f
 
-// Brick's grow. Same 0-100 meter and the same rates as Spy's cloak.
-// Right click toggles it. He cannot start a grow below the Spy's cloak floor.
+// Brick's grow. 0-100, and he cannot start one below the Spy's cloak floor.
+// It does not drain over time. Damage while big spends it, 1 point per
+// damage. The size, the team-only cloak, and the knockback resist all
+// move together over TF_BRICK_GROW_TIME.
 #define TF_BRICK_GROW_MAX			100.0f
 #define TF_BRICK_GROW_MIN_START		8.0f
 #define TF_BRICK_GROW_SCALE			2.0f
-#define TF_BRICK_GROW_INVIS			0.5f
+#define TF_BRICK_GROW_TIME			0.25f
+// 75% cloaked. Enemies do not get this; they see him solid.
+#define TF_BRICK_GROW_INVIS			0.75f
 // attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is
 // halfway. In the air the swing holds there. The hurtbox opens at that
 // same time: one tick on the ground, or until he lands if he is airborne.
@@ -257,6 +261,18 @@ enum ETFClass
 #define TF_BRICK_SLAM_IMPACT_TIME	1.033f
 #define TF_BRICK_SLAM_FREEZE_CYCLE	0.5f
 #define TF_BRICK_SLAM_DAMAGE		140.0f
+// The slam volume is the attack pose's bbox, plus a pad, then this.
+#define TF_BRICK_SLAM_BOX_SCALE		1.5f
+
+// 0 at normal size, 1 at full grow. Used while the scale is still moving.
+inline float TFBrickGrowFraction( float flModelScale )
+{
+	if ( flModelScale <= 1.0f )
+		return 0.0f;
+	if ( flModelScale >= TF_BRICK_GROW_SCALE )
+		return 1.0f;
+	return ( flModelScale - 1.0f ) / ( TF_BRICK_GROW_SCALE - 1.0f );
+}
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }

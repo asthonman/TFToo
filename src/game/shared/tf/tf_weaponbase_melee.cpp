@@ -1653,6 +1653,7 @@ CTFBrickSlamWeapon::CTFBrickSlamWeapon()
 #ifdef GAME_DLL
 	m_flSlamFallSpeed = 0.f;
 	m_bSlamGroundSwingDone = false;
+	m_bSlamAerial = false;
 #endif
 }
 
@@ -1823,6 +1824,7 @@ void CTFBrickSlamWeapon::StartSlam( void )
 	m_flSlamFallSpeed = pPlayer->m_Local.m_flFallVelocity;
 	m_hSlamVictims.RemoveAll();
 	m_bSlamGroundSwingDone = false;
+	m_bSlamAerial = !( pPlayer->GetFlags() & FL_ONGROUND ) && pPlayer->GetWaterLevel() < WL_Waist;
 #endif
 
 	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_BRICK_SLAM, m_iSlamSequence );
@@ -1855,6 +1857,8 @@ void CTFBrickSlamWeapon::UpdateSlam( void )
 	NoteFallSpeed( pPlayer->m_Local.m_flFallVelocity );
 
 #ifdef GAME_DLL
+	if ( !( pPlayer->GetFlags() & FL_ONGROUND ) && pPlayer->GetWaterLevel() < WL_Waist )
+		m_bSlamAerial = true;
 	SlamDamage();
 #endif
 
@@ -1908,8 +1912,9 @@ void CTFBrickSlamWeapon::SlamDamage( void )
 	if ( flScale < 0.1f )
 		flScale = 1.f;
 
-	const Vector mins = ( s_vecBrickSlamMins - Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flScale;
-	const Vector maxs = ( s_vecBrickSlamMaxs + Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flScale;
+	const float flBox = flScale * TF_BRICK_SLAM_BOX_SCALE;
+	const Vector mins = ( s_vecBrickSlamMins - Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flBox;
+	const Vector maxs = ( s_vecBrickSlamMaxs + Vector( s_flBrickSlamPad, s_flBrickSlamPad, s_flBrickSlamPad ) ) * flBox;
 
 	Vector vecForward, vecRight, vecUp;
 	QAngle angYaw( 0.f, pPlayer->GetAbsAngles().y, 0.f );
@@ -1971,12 +1976,32 @@ void CTFBrickSlamWeapon::SlamDamage( void )
 		const float x = DotProduct( delta, vecForward );
 		const float y = DotProduct( delta, vecLeft );
 		const float z = DotProduct( delta, vecUp );
-		if ( x < mins.x || x > maxs.x || y < mins.y || y > maxs.y || z < mins.z || z > maxs.z )
+		const bool bCenterHit = ( x >= mins.x && x <= maxs.x && y >= mins.y && y <= maxs.y && z >= mins.z && z <= maxs.z );
+
+		// Projectile collision is the player hull. A mid-air slam crits when
+		// that box's top face is inside the swing and he is above them.
+		// The landing frame is already on the ground; m_bSlamAerial covers it.
+		Vector vecHullMins, vecHullMaxs;
+		pVictim->CollisionProp()->WorldSpaceSurroundingBounds( &vecHullMins, &vecHullMaxs );
+		const Vector vecTop( ( vecHullMins.x + vecHullMaxs.x ) * 0.5f, ( vecHullMins.y + vecHullMaxs.y ) * 0.5f, vecHullMaxs.z );
+		const Vector topDelta = vecTop - org;
+		const float topX = DotProduct( topDelta, vecForward );
+		const float topY = DotProduct( topDelta, vecLeft );
+		const float topZ = DotProduct( topDelta, vecUp );
+		const bool bTopHit = ( topX >= mins.x && topX <= maxs.x && topY >= mins.y && topY <= maxs.y && topZ >= mins.z && topZ <= maxs.z );
+		const bool bFromAbove = m_bSlamAerial && pPlayer->GetAbsOrigin().z > pVictim->GetAbsOrigin().z && bTopHit;
+		if ( !bCenterHit && !bFromAbove )
 			continue;
 
 		Vector vecAim;
 		AngleVectors( pPlayer->EyeAngles(), &vecAim );
 		CTakeDamageInfo info( pPlayer, pPlayer, this, flDamage, DMG_CLUB, TF_DMG_CUSTOM_NONE );
+		if ( bFromAbove )
+		{
+			// The damage rules add the crit bonus. Do not also multiply here.
+			info.AddDamageType( DMG_CRITICAL );
+			info.SetCritType( CTakeDamageInfo::CRIT_FULL );
+		}
 		CalculateMeleeDamageForce( &info, vecAim, pVictim->WorldSpaceCenter(), 1.0f / flDamage * GetForceScale() );
 		pVictim->TakeDamage( info );
 		m_hSlamVictims.AddToTail( pVictim );

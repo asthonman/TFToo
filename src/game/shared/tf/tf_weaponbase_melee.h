@@ -211,6 +211,9 @@ private:
 	float			m_flSlamFallSpeed;
 	// Ground swings get one damage tick, the way a kill taunt does.
 	bool			m_bSlamGroundSwingDone;
+	// Set if any frame of this swing was airborne, including the windup.
+	// The landing tick is on the ground, and that hit can still crit.
+	bool			m_bSlamAerial;
 #endif
 
 	CNetworkVar( bool, m_bSlamming );

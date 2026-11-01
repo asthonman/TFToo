@@ -351,6 +351,45 @@ void CTFTypewriter::PlayWeaponShootSound( void )
 }
 
 //============================
+// Brick's Shove. Shortstop push on primary fire. No bullets.
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFBrickShove, DT_WeaponBrickShove )
+
+BEGIN_NETWORK_TABLE( CTFBrickShove, DT_WeaponBrickShove )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFBrickShove )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_brickshove, CTFBrickShove );
+PRECACHE_WEAPON_REGISTER( tf_weapon_brickshove );
+
+void CTFBrickShove::PrimaryAttack( void )
+{
+	// The Shortstop shove is its secondary. This gun has no bullets.
+	CTFPistol_ScoutPrimary::SecondaryAttack();
+}
+
+void CTFBrickShove::ItemPostFrame()
+{
+	// The parent frame would fire the handgun. Only the delayed shove runs.
+	if ( m_flPushTime > -1.f && gpGlobals->curtime > m_flPushTime )
+	{
+		Push();
+		m_flPushTime = -1.f;
+	}
+
+	CTFPlayer *pOwner = ToTFPlayer( GetPlayerOwner() );
+	if ( !pOwner )
+		return;
+
+	if ( ( pOwner->m_nButtons & IN_ATTACK ) && m_flNextPrimaryAttack <= gpGlobals->curtime )
+		PrimaryAttack();
+	else if ( ( pOwner->m_nButtons & IN_ATTACK ) == 0 )
+		WeaponIdle();
+}
+
+//============================
 
 IMPLEMENT_NETWORKCLASS_ALIASED( TFPistol_ScoutSecondary, DT_WeaponPistol_ScoutSecondary )
 

@@ -1,10 +1,14 @@
 // Brick. 550 health. Speed is Heavy's 230; it was not specified.
-// Melee is the slam (schema b9, tf_weapon_brickslam). Secondary is the
-// throwable brick (schema b8). Class-script weapons stay empty so the
-// schema items fill the loadout. First person on the brick is Scout's arms.
-// Right click grows him. Passives: afterburn immune, 0.75 knockback
-// (including sentry bullets; Heavy's resistance still ignores sentries), medic regen.
-// Airblast resist is the Mantreads attributes on the slam, at 0.75. Not knockback_scale.
+// Melee is the slam (schema b9, tf_weapon_brickslam). Stock secondary is
+// The Mason's Missile (schema b8, shared with Madcap). Shove (schema b10)
+// is the secondary unlock. Class-script weapons stay empty so the schema
+// items fill the loadout. First person on the secondary is Scout's arms.
+// Right click grows him from 1x to 2x over 0.25s. The meter refills at the
+// Spy cloak rate while small and drains 1 point per health lost while big.
+// Passives: afterburn immune, 0.75 knockback while small (including sentry
+// bullets). Full size ignores knockback and airblast; the in-between size
+// scales that force down. Landing on an enemy deals Mantreads stomp damage.
+// Airblast attributes on the slam are the small-size 0.75.
 "PlayerClassData"
 {
 	"name"				"brick"

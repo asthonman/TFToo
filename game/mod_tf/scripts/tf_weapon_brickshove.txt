@@ -1,0 +1,31 @@
+// Brick's secondary unlock. Primary fire is the Shortstop shove.
+// No ammo, so the weapon frame still calls the attack.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Shove"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.8"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/c_models/c_shortstop/c_shortstop.mdl"
+	"playermodel"		"models/weapons/c_models/c_shortstop/c_shortstop.mdl"
+	"anim_prefix"		"pis"
+}

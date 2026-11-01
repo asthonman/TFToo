@@ -1423,39 +1423,31 @@ void CTFPlayer::ThinkBrickGrow( void )
 
 	if ( IsAlive() )
 	{
-		extern ConVar tf_spy_cloak_consume_rate;
 		extern ConVar tf_spy_cloak_regen_rate;
 
 		if ( m_bBrickGrown )
 		{
-			if ( GetModelScale() != TF_BRICK_GROW_SCALE )
-				SetModelScale( TF_BRICK_GROW_SCALE );
-
-			m_flBrickGrowMeter -= gpGlobals->frametime * tf_spy_cloak_consume_rate.GetFloat();
-			if ( m_flBrickGrowMeter <= 0.f )
-			{
-				m_flBrickGrowMeter = 0.f;
-				m_bBrickGrown = false;
-				SetModelScale( 1.0f );
-			}
+			// Damage spends the meter. ThinkBrickGrow does not.
 		}
 		else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
 		{
-			if ( GetModelScale() != 1.0f )
-				SetModelScale( 1.0f );
-
 			m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
 			if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
 				m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 		}
 	}
+	else if ( m_bBrickGrown || GetModelScale() != 1.0f )
+	{
+		m_bBrickGrown = false;
+		SetModelScale( 1.0f );
+	}
 
-	// Taunt cam value 1. HandleTaunting owns the camera, so a real taunt still wins.
-	// Dead clears it; leaving it at 1 would turn the cam on and off every frame.
+	// Third person while big, while the size is still changing, and during a slam.
+	// A real taunt still wins: HandleTaunting owns the camera then.
 	bool bThirdPerson = false;
 	if ( IsAlive() )
 	{
-		if ( m_bBrickGrown )
+		if ( m_bBrickGrown || GetModelScale() > 1.01f )
 			bThirdPerson = true;
 		else
 		{
@@ -1484,7 +1476,7 @@ void CTFPlayer::HandleBrickGrowInput( void )
 	if ( m_bBrickGrown )
 	{
 		m_bBrickGrown = false;
-		SetModelScale( 1.0f );
+		SetModelScale( 1.0f, TF_BRICK_GROW_TIME );
 		return;
 	}
 
@@ -1496,7 +1488,7 @@ void CTFPlayer::HandleBrickGrowInput( void )
 		return;
 
 	m_bBrickGrown = true;
-	SetModelScale( TF_BRICK_GROW_SCALE );
+	SetModelScale( TF_BRICK_GROW_SCALE, TF_BRICK_GROW_TIME );
 }
 
 //-----------------------------------------------------------------------------
@@ -3667,6 +3659,11 @@ void CTFPlayer::ApplyGenericPushbackImpulse( const Vector &vecImpulse, CTFPlayer
 			return;
 	}
 	
+	// Fully grown, nothing pushes him. While the size is changing, the
+	// force scales down with it, including the Mantreads-style airblast.
+	if ( IsPlayerClass( TF_CLASS_BRICK ) && TFBrickGrowFraction( GetModelScale() ) >= 1.f )
+		return;
+
 	Vector vForce = vecImpulse;
 
 	float flScale = 1.0f;
@@ -3681,6 +3678,9 @@ void CTFPlayer::ApplyGenericPushbackImpulse( const Vector &vecImpulse, CTFPlayer
 	}
 	
 	CALL_ATTRIB_HOOK_FLOAT( vForce.z, airblast_vertical_vulnerability_multiplier );
+
+	if ( IsPlayerClass( TF_CLASS_BRICK ) )
+		vForce *= ( 1.f - TFBrickGrowFraction( GetModelScale() ) );
 
 	RemoveFlag( FL_ONGROUND );
 	m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR );
@@ -10823,6 +10823,9 @@ void CTFPlayer::ApplyPushFromDamage( const CTakeDamageInfo &info, Vector vecDir 
 		float flDamageForceReduction = 1.f;
 		CALL_ATTRIB_HOOK_FLOAT( flDamageForceReduction, damage_force_reduction );
 		vecForce *= flDamageForceReduction;
+
+		if ( IsPlayerClass( TF_CLASS_BRICK ) )
+			vecForce *= ( 1.f - TFBrickGrowFraction( GetModelScale() ) );
 	}
 
 	ApplyAbsVelocityImpulse( vecForce );
@@ -10945,6 +10948,23 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		// Take damage - round to the nearest integer.
 		int iOldHealth = m_iHealth;
 		m_iHealth -= ( realDamage + 0.5f );
+
+		// Grown Brick's meter is spent by damage, not by time. 1 point per
+		// health lost. Empty starts the quarter-second shrink.
+		if ( m_bBrickGrown && IsPlayerClass( TF_CLASS_BRICK ) )
+		{
+			const int iHealthLost = iOldHealth - Max( m_iHealth, 0 );
+			if ( iHealthLost > 0 )
+			{
+				m_flBrickGrowMeter -= iHealthLost;
+				if ( m_flBrickGrowMeter <= 0.f )
+				{
+					m_flBrickGrowMeter = 0.f;
+					m_bBrickGrown = false;
+					SetModelScale( 1.0f, TF_BRICK_GROW_TIME );
+				}
+			}
+		}
 
 		if ( IsHeadshot( info.GetDamageCustom() ) && (m_iHealth <= 0) && (iOldHealth != 1) )
 		{

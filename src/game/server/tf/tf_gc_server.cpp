@@ -36,6 +36,7 @@
 #include "tf_gc_shared.h"
 #include "tf_party.h"
 #include "iserver.h"
+#include "newitemdefinitions.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -4372,6 +4373,10 @@ void CTFGCServerSystem::SDK_ApplyLocalLoadout(CGCClientSharedObjectCache* pCache
 		return;
 	}
 
+	// The unequip pass only sees Steam items. A schema unlock would otherwise
+	// stay equipped when the client switched back to the stock weapon.
+	pTFInventory->ClearFakeLoadoutItems();
+
 	FOR_EACH_TRUE_SUBKEY(pLoadoutKV, pClassKey)
 	{
 		const char *pszClass = pClassKey->GetName();
@@ -4390,6 +4395,10 @@ void CTFGCServerSystem::SDK_ApplyLocalLoadout(CGCClientSharedObjectCache* pCache
 
 			CEconItem* pItem = (CEconItem*) pItemCache->FindSharedObject(soIndex);
 			if (pItem) {
+				pTFInventory->EquipLocal(uItemId, iClass, iSlot);
+			}
+			else if ( NewItem_IsFakeItemID( uItemId ) ) {
+				// Schema unlock. Not a Steam item, so it is not in the cache.
 				pTFInventory->EquipLocal(uItemId, iClass, iSlot);
 			}
 			else {

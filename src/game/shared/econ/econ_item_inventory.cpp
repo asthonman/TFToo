@@ -40,6 +40,7 @@
 #include "tf_ladder_data.h"
 #include "tf_rating_data.h"
 #include "econ_quests.h"
+#include "newitemdefinitions.h"
 #endif
 
 
@@ -1946,6 +1947,16 @@ CEconItemView *CPlayerInventory::GetInventoryItemByItemID( itemid_t iIndex, int 
 			return &m_aInventoryItems[i];
 		}
 	}
+
+#if defined(TF_CLIENT_DLL) || defined(TF_DLL)
+	// Unlock views are not rows in m_aInventoryItems. Callers that want an
+	// index (RemoveItem) must not be handed one.
+	if ( !pIndex )
+	{
+		if ( CEconItemView *pStock = NewItem_ViewForFakeItemID( iIndex ) )
+			return pStock;
+	}
+#endif
 
 	return NULL;
 }
