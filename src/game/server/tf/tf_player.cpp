@@ -1338,7 +1338,8 @@ float CTFPlayer::GetResupplyCharge( void ) const
 }
 
 //-----------------------------------------------------------------------------
-// Thrown packs. Same 0-100 scale and per-second refill as Spy's cloak.
+// Thrown packs. 0-100. One pack is half the bar and refills in the same
+// 30 seconds as Heavy's sandvich, so both packs take 60 seconds.
 //-----------------------------------------------------------------------------
 float CTFPlayer::GetResupplyThrowMeter( void ) const
 {
@@ -1383,8 +1384,8 @@ void CTFPlayer::RegenResupplyThrowMeter( void )
 	if ( m_flResupplyThrowMeter >= TF_RESUPPLY_THROW_MAX )
 		return;
 
-	extern ConVar tf_spy_cloak_regen_rate;
-	m_flResupplyThrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
+	// Half a bar (one pack) in TF_SANDWICH_REGENTIME seconds.
+	m_flResupplyThrowMeter += gpGlobals->frametime * ( TF_RESUPPLY_THROW_COST / TF_SANDWICH_REGENTIME );
 	if ( m_flResupplyThrowMeter > TF_RESUPPLY_THROW_MAX )
 		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 }

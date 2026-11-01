@@ -112,6 +112,7 @@ private:
 // Resupply melee. Occupies the melee anim slot so a pulse can play
 // a named swing. +attack throws a medium ammo pack (swing L) and
 // +attack2 a medium health kit (swing R). The aura plays swing U.
+// Throws are sandviches: she gets the throw back by picking up her own pack.
 // All three play the resupply locker sound. Neither traces or deals damage.
 //=============================================================================
 class CTFResupplyWeapon : public CTFWeaponBaseMelee
@@ -130,6 +131,7 @@ public:
 	virtual void	ItemPostFrame( void );
 	virtual void	PrimaryAttack( void );
 	virtual void	SecondaryAttack( void );
+	virtual void	UpdateOnRemove( void );
 	virtual const char *GetViewModel( int iViewModel = 0 ) const;
 	virtual const char *GetWorldModel( void ) const;
 
@@ -142,9 +144,13 @@ public:
 
 private:
 	void			HideMesh( void );
-	void			ThrowPack( const char *pszEntClass, char chSwing );
+	void			ThrowPack( bool bAmmo, char chSwing );
 	// chSwing is L (primary), R (secondary), or U (pulse).
 	void			PlaySwing( char chSwing );
+
+	// One of each. Throwing that kind again deletes the previous one.
+	EHANDLE			m_hThrownHealth;
+	EHANDLE			m_hThrownAmmo;
 
 	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
 };

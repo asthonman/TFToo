@@ -11,6 +11,7 @@
 #include "tf_team.h"
 #include "engine/IEngineSound.h"
 #include "entity_healthkit.h"
+#include "entity_ammopack.h"
 #include "tf_weapon_lunchbox.h"
 #include "tf_gamestats.h"
 
@@ -43,6 +44,7 @@ IMPLEMENT_AUTO_LIST( IHealthKitAutoList );
 //-----------------------------------------------------------------------------
 void CHealthKit::Spawn( void )
 {
+	m_iResupplyThrow = RESUPPLY_THROW_NONE;
 	BaseClass::Spawn();
 }
 
@@ -52,12 +54,116 @@ void CHealthKit::Spawn( void )
 void CHealthKit::Precache( void )
 {
 	PrecacheScriptSound( TF_HEALTHKIT_PICKUP_SOUND );
+	PrecacheScriptSound( TF_AMMOPACK_PICKUP_SOUND );
 	PrecacheModel( TF_MEDKIT_LARGE_BDAY ); // always precache this for PyroVision
 	PrecacheModel( TF_MEDKIT_LARGE_HALLOWEEN ); // always precache this for Halloween
 
 	BaseClass::Precache();
 
 	UpdateModelIndexOverrides();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Resupply's throw. Same owner rules as a sandvich, but the model
+// stays a kit. Health reapplies this class's birthday and vision skins,
+// which a sandvich throw would have wiped. Ammo uses the medium ammo pack,
+// including its birthday skin, and does not heal.
+//-----------------------------------------------------------------------------
+void CHealthKit::ConfigureAsResupplyThrow( bool bAmmo )
+{
+	m_iResupplyThrow = bAmmo ? RESUPPLY_THROW_AMMO : RESUPPLY_THROW_HEALTH;
+
+	if ( !bAmmo )
+	{
+		SetModel( GetDefaultPowerupModel() );
+		UpdateModelIndexOverrides();
+		return;
+	}
+
+	const bool bBirthday = TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday );
+	const char *pszModel = bBirthday ? TF_AMMOPACK_MEDIUM_BDAY : "models/items/ammopack_medium.mdl";
+	PrecacheModel( TF_AMMOPACK_MEDIUM_BDAY );
+	PrecacheModel( "models/items/ammopack_medium.mdl" );
+	SetModel( pszModel );
+
+	if ( modelinfo )
+	{
+		const int iWorld = modelinfo->GetModelIndex( pszModel );
+		SetModelIndexOverride( VISION_MODE_NONE, iWorld );
+		// Ammo packs have no halloween model. Pyrovision still uses the cake.
+		SetModelIndexOverride( VISION_MODE_HALLOWEEN, iWorld );
+		SetModelIndexOverride( VISION_MODE_PYRO, modelinfo->GetModelIndex( TF_AMMOPACK_MEDIUM_BDAY ) );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Medium ammo pack pickup, for a health kit wearing that skin.
+//-----------------------------------------------------------------------------
+static bool ResupplyThrownAmmoTouch( CHealthKit *pKit, CBasePlayer *pPlayer, CTFPlayer *pTFPlayer )
+{
+	bool bSuccess = false;
+	const float flPackRatio = PackRatios[pKit->GetPowerupSize()];
+
+	int iMaxPrimary = pTFPlayer->GetMaxAmmo( TF_AMMO_PRIMARY );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxPrimary * flPackRatio ), TF_AMMO_PRIMARY, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	int iMaxSecondary = pTFPlayer->GetMaxAmmo( TF_AMMO_SECONDARY );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxSecondary * flPackRatio ), TF_AMMO_SECONDARY, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	int iMaxMetal = pTFPlayer->GetMaxAmmo( TF_AMMO_METAL );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxMetal * flPackRatio ), TF_AMMO_METAL, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	if ( pTFPlayer->m_Shared.AddToSpyCloakMeter( 100.0f * flPackRatio ) )
+		bSuccess = true;
+
+	if ( pTFPlayer->AddResupplyThrowMeter( 100.0f * flPackRatio ) )
+		bSuccess = true;
+
+	if ( pTFPlayer->AddToSpyKnife( 100.0f * flPackRatio, false ) )
+		bSuccess = true;
+
+	int iAmmoIsCharge = 0;
+	CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFPlayer, iAmmoIsCharge, ammo_gives_charge );
+	if ( iAmmoIsCharge )
+	{
+		float flCurrentCharge = pTFPlayer->m_Shared.GetDemomanChargeMeter();
+		if ( flCurrentCharge < 100.0f )
+		{
+			float flChargeRatio = flPackRatio;
+			if ( TFGameRules() && TFGameRules()->IsPowerupMode() )
+				flChargeRatio *= 0.2f;
+			pTFPlayer->m_Shared.SetDemomanChargeMeter( flCurrentCharge + flChargeRatio * 100.0f );
+			bSuccess = true;
+		}
+	}
+
+	if ( pTFPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
+	{
+		int iMaxGrenades1 = pTFPlayer->GetMaxAmmo( TF_AMMO_GRENADES1 );
+		if ( pTFPlayer->GiveAmmo( ceil( iMaxGrenades1 * flPackRatio ), TF_AMMO_GRENADES1, true, kAmmoSource_Pickup ) )
+			bSuccess = true;
+	}
+
+	if ( !bSuccess )
+		return false;
+
+	CSingleUserRecipientFilter filter( pPlayer );
+	pKit->EmitSound( filter, pKit->entindex(), TF_AMMOPACK_PICKUP_SOUND );
+
+	CTF_GameStats.Event_PlayerAmmokitPickup( pTFPlayer );
+
+	IGameEvent *event = gameeventmanager->CreateEvent( "item_pickup" );
+	if ( event )
+	{
+		event->SetInt( "userid", pPlayer->GetUserID() );
+		event->SetString( "item", "ammopack_medium" );
+		gameeventmanager->FireEvent( event );
+	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -71,6 +177,38 @@ bool CHealthKit::MyTouch( CBasePlayer *pPlayer )
 	{
 		CTFPlayer *pTFPlayer = ToTFPlayer( pPlayer );
 		Assert( pTFPlayer );
+		if ( !pTFPlayer )
+			return false;
+
+		// Her own thrown pack. Same idea as Heavy picking up his sandvich:
+		// the cooldown comes back, and the pack is not consumed if it is
+		// already full so a teammate can still take it.
+		if ( m_iResupplyThrow != RESUPPLY_THROW_NONE && GetOwnerEntity() == pPlayer && pTFPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		{
+			if ( !pTFPlayer->AddResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
+				return false;
+
+			CSingleUserRecipientFilter user( pPlayer );
+			EmitSound( user, entindex(), ( m_iResupplyThrow == RESUPPLY_THROW_AMMO ) ? TF_AMMOPACK_PICKUP_SOUND : TF_HEALTHKIT_PICKUP_SOUND );
+
+			user.MakeReliable();
+			UserMessageBegin( user, "ItemPickup" );
+			WRITE_STRING( GetClassname() );
+			MessageEnd();
+
+			IGameEvent *event = gameeventmanager->CreateEvent( "item_pickup" );
+			if ( event )
+			{
+				event->SetInt( "userid", pPlayer->GetUserID() );
+				event->SetString( "item", ( m_iResupplyThrow == RESUPPLY_THROW_AMMO ) ? "ammopack_medium" : GetHealthKitName() );
+				gameeventmanager->FireEvent( event );
+			}
+
+			return true;
+		}
+
+		if ( m_iResupplyThrow == RESUPPLY_THROW_AMMO )
+			return ResupplyThrownAmmoTouch( this, pPlayer, pTFPlayer );
 
 		const bool bIsAnyHeavyWithSandvichEquippedPickingUp = pTFPlayer->Weapon_OwnsThisID( TF_WEAPON_LUNCHBOX ) && pTFPlayer->IsPlayerClass( TF_CLASS_HEAVYWEAPONS );
 

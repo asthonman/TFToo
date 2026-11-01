@@ -105,8 +105,8 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Thrown packs. 0-100 like Spy's cloak, so a full bar is about 30 seconds.
-// The left chunk filling is half a meter, which is one thrown pack.
+// Thrown packs. One chunk is one pack, and that chunk refills in 30 seconds,
+// the same as Heavy's sandvich. A full bar is both packs, 60 seconds.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_ResupplyThrow : public CHudItemEffectMeter
 {

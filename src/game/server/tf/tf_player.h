@@ -515,7 +515,7 @@ public:
 	void					RegenResupplyThrowMeter( void );
 	// 0 is empty, 1 is ready to pulse. Throws do not spend this.
 	float					GetResupplyCharge( void ) const;
-	// 0-100, same scale as Spy's cloak. Half of it throws one pack.
+	// 0-100. Half of it throws one pack, and that half refills in 30 seconds.
 	float					GetResupplyThrowMeter( void ) const;
 	bool					SpendResupplyThrowMeter( float flCost );
 	bool					AddResupplyThrowMeter( float flGain );

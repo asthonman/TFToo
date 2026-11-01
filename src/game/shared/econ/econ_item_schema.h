@@ -1452,6 +1452,8 @@ public:
 	void UseWornIdentity( const char *pszItemName, const char *pszItemDesc, const char *pszPlayerModel, const char *pszInventoryImage, bool bProperName );
 	void StripStaticAttributeClass( const char *pszAttributeClass );
 	bool AddStaticAttribute( const char *pszName, const char *pszValue );
+	// String pointer must outlive the schema.
+	void SetItemClass( const char *pszItemClass );
 
 
 #if defined(CLIENT_DLL) || defined(GAME_DLL)

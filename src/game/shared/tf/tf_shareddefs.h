@@ -236,8 +236,9 @@ enum ETFClass
 
 // Resupply's locker pulse. Same window as func_regenerate.
 #define TF_RESUPPLY_PULSE_INTERVAL	3.0f
-// Thrown packs use their own 0-100 meter, not the pulse. It refills at
-// tf_spy_cloak_regen_rate (3.3/s, about 30s empty to full). One throw is half.
+// Thrown packs use their own 0-100 meter, not the pulse. One throw is half
+// the bar and refills in TF_SANDWICH_REGENTIME (30s), same as a sandvich.
+// Both throws from empty take 60s. Picking up ammo still fills it.
 #define TF_RESUPPLY_THROW_MAX		100.0f
 #define TF_RESUPPLY_THROW_COST		50.0f
 // Sandvich is 500, which lands next to her. 1000 is about four times as far.

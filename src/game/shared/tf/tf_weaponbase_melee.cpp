@@ -18,6 +18,7 @@
 #include "ilagcompensationmanager.h"
 #include "tf_passtime_logic.h"
 #include "tf_powerup.h"
+#include "entity_healthkit.h"
 // Client specific.
 #else
 #include "c_tf_gamestats.h"
@@ -1189,8 +1190,11 @@ void CTFResupplyWeapon::Precache( void )
 	PrecacheModel( s_pszResupplyHiddenModel );
 	PrecacheScriptSound( "Regenerate.Touch" );
 #ifndef CLIENT_DLL
-	UTIL_PrecacheOther( "item_ammopack_medium" );
 	UTIL_PrecacheOther( "item_healthkit_medium" );
+	// The ammo throw is that health kit wearing an ammo pack.
+	PrecacheModel( "models/items/ammopack_medium.mdl" );
+	PrecacheModel( "models/items/ammopack_medium_bday.mdl" );
+	PrecacheScriptSound( "AmmoPack.Touch" );
 #endif
 }
 
@@ -1245,23 +1249,24 @@ void CTFResupplyWeapon::ItemPostFrame( void )
 
 void CTFResupplyWeapon::PrimaryAttack( void )
 {
-	ThrowPack( "item_ammopack_medium", 'L' );
+	ThrowPack( true, 'L' );
 }
 
 void CTFResupplyWeapon::SecondaryAttack( void )
 {
-	ThrowPack( "item_healthkit_medium", 'R' );
+	ThrowPack( false, 'R' );
 }
 
 //-----------------------------------------------------------------------------
-// Sandvich throw: eye height and a slight upward bias. Faster than the
-// sandvich so the pack travels. Short delay before she can pick it back up.
-// chSwing is the body sequence suffix: L for ammo, R for health.
+// Sandvich throw: a medium health kit, eye height, and a slight upward bias.
+// Faster than the sandvich so the pack travels. She cannot pick it up for
+// 0.3s. Picking up her own pack later refunds this throw. Throwing the same
+// kind again removes the previous one. chSwing is L for ammo, R for health.
 //-----------------------------------------------------------------------------
-void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
+void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 {
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
-	if ( !pPlayer || !pPlayer->IsAlive() || !pszEntClass )
+	if ( !pPlayer || !pPlayer->IsAlive() )
 		return;
 
 	if ( pPlayer->m_Shared.InCond( TF_COND_TAUNTING ) )
@@ -1277,30 +1282,51 @@ void CTFResupplyWeapon::ThrowPack( const char *pszEntClass, char chSwing )
 	Vector vecSrc = pPlayer->EyePosition() + Vector( 0, 0, -8 );
 	QAngle angForward = pPlayer->EyeAngles() + QAngle( -10, 0, 0 );
 
-	CBaseEntity *pPack = CBaseEntity::Create( pszEntClass, vecSrc, angForward, pPlayer );
-	CTFPowerup *pPowerup = dynamic_cast<CTFPowerup *>( pPack );
-	if ( !pPowerup )
+	CBaseEntity *pCreated = CBaseEntity::Create( "item_healthkit_medium", vecSrc, angForward, pPlayer );
+	CHealthKit *pKit = dynamic_cast<CHealthKit *>( pCreated );
+	if ( !pKit )
 	{
-		if ( pPack )
-			UTIL_Remove( pPack );
+		if ( pCreated )
+			UTIL_Remove( pCreated );
 		return;
 	}
 
 	if ( !pPlayer->SpendResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
 	{
-		UTIL_Remove( pPack );
+		UTIL_Remove( pKit );
 		return;
 	}
+
+	pKit->ConfigureAsResupplyThrow( bAmmo );
+
+	EHANDLE *phPrevious = bAmmo ? &m_hThrownAmmo : &m_hThrownHealth;
+	if ( *phPrevious )
+		UTIL_Remove( *phPrevious );
 
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( angForward, &vecForward, &vecRight, &vecUp );
 	Vector vecVelocity = vecForward * TF_RESUPPLY_THROW_SPEED;
-	pPowerup->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
+	pKit->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
+	*phPrevious = pKit;
 	PlaySwing( chSwing );
 #endif
 
 	m_flNextPrimaryAttack = gpGlobals->curtime + 0.5f;
 	m_flNextSecondaryAttack = m_flNextPrimaryAttack;
+}
+
+void CTFResupplyWeapon::UpdateOnRemove( void )
+{
+#ifndef CLIENT_DLL
+	// Same as the sandvich. Removing the weapon (class change, disconnect)
+	// must not leave a pack she can no longer pick up for the cooldown.
+	if ( m_hThrownHealth )
+		UTIL_Remove( m_hThrownHealth );
+	if ( m_hThrownAmmo )
+		UTIL_Remove( m_hThrownAmmo );
+#endif
+
+	BaseClass::UpdateOnRemove();
 }
 
 void CTFResupplyWeapon::PlayPulseSwing( void )

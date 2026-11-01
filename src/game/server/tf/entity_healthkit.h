@@ -37,6 +37,18 @@ public:
 	virtual void Precache( void );
 	virtual bool MyTouch( CBasePlayer *pPlayer );
 
+	// Thrown by Resupply, in the same way Heavy throws a sandvich. 0 is a
+	// normal kit. Health keeps this kit's holiday skins. Ammo wears a medium
+	// ammo pack and refills ammo instead of health. She gets the throw back
+	// by walking over her own pack, and does not heal or reload from it.
+	enum
+	{
+		RESUPPLY_THROW_NONE = 0,
+		RESUPPLY_THROW_HEALTH,
+		RESUPPLY_THROW_AMMO,
+	};
+	void	ConfigureAsResupplyThrow( bool bAmmo );
+
 	virtual void UpdateModelIndexOverrides( void )
 	{
 		if ( modelinfo )
@@ -61,6 +73,8 @@ public:
 	virtual const char *GetHealthKitName( void ) { return "medkit_large"; }
 
 	virtual float	GetRespawnDelay( void );
+
+	int		m_iResupplyThrow;
 };
 
 class CHealthKitSmall : public CHealthKit

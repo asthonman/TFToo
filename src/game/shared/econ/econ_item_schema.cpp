@@ -2533,6 +2533,16 @@ bool CEconItemDefinition::AddStaticAttribute( const char *pszName, const char *p
 	return true;
 }
 
+void CEconItemDefinition::SetItemClass( const char *pszItemClass )
+{
+	if ( !pszItemClass || !pszItemClass[0] )
+		return;
+
+	m_pszItemClassname = pszItemClass;
+	if ( m_pKVItem )
+		m_pKVItem->SetString( "item_class", pszItemClass );
+}
+
 animation_on_wearable_t *GetOrCreateAnimationActivity( perteamvisuals_t *pVisData, const char *pszActivityName )
 {
 	FOR_EACH_VEC( pVisData->m_Animations, i )

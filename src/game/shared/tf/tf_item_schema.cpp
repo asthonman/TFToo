@@ -2079,6 +2079,136 @@ static void GiveMadcapTheBootAndShieldUnlocks( CTFItemSchema *pSchema )
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: "Cannot share your food in this game" on every Heavy lunchbox.
+// The attribute has to exist before items are parsed. Drinks are a different
+// item class, and Resupply's packs are not lunchboxes, so neither is blocked.
+//-----------------------------------------------------------------------------
+static void EnsureLunchboxNoThrowAttribute( KeyValues *pKVRawDefinition )
+{
+	KeyValues *pKVAttributes = pKVRawDefinition ? pKVRawDefinition->FindKey( "attributes" ) : NULL;
+	if ( !pKVAttributes )
+		return;
+
+	int iMax = 0;
+	for ( KeyValues *pKV = pKVAttributes->GetFirstTrueSubKey(); pKV; pKV = pKV->GetNextTrueSubKey() )
+	{
+		const int iIndex = Q_atoi( pKV->GetName() );
+		if ( iIndex > iMax )
+			iMax = iIndex;
+		if ( !Q_stricmp( pKV->GetString( "name" ), "cannot throw lunchbox" ) )
+			return;
+	}
+
+	char szIndex[16];
+	Q_snprintf( szIndex, sizeof( szIndex ), "%d", iMax + 1 );
+
+	KeyValues *pNew = new KeyValues( szIndex );
+	pNew->SetString( "name", "cannot throw lunchbox" );
+	pNew->SetString( "attribute_class", "lunchbox_no_throw" );
+	pNew->SetString( "description_string", "#Attrib_LunchboxNoThrow" );
+	pNew->SetString( "description_format", "value_is_or" );
+	pNew->SetString( "effect_type", "negative" );
+	pNew->SetInt( "hidden", 0 );
+	pNew->SetInt( "stored_as_integer", 0 );
+	pKVAttributes->AddSubKey( pNew );
+}
+
+static void ForbidHeavyLunchboxThrows( CTFItemSchema *pSchema )
+{
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !pTF )
+			continue;
+
+		const char *pszClass = pTF->GetItemClass();
+		if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_lunchbox" ) )
+			continue;
+		if ( !pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
+			continue;
+
+		pTF->AddStaticAttribute( "cannot throw lunchbox", "1" );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Family Business equips like the Panic Attack: Soldier and Pyro
+// secondary, Engineer primary, Heavy keeps it. tf_weapon_shotgun is what
+// the Panic Attack uses, so each class spawns its own shotgun entity.
+//-----------------------------------------------------------------------------
+static int PanicAttackSlotOr( const CTFItemDefinition *pPanic, int iClass, int iFallback )
+{
+	if ( !pPanic || !pPanic->CanBeUsedByClass( iClass ) )
+		return iFallback;
+
+	const int iSlot = pPanic->GetLoadoutSlot( iClass );
+	if ( iSlot <= LOADOUT_POSITION_INVALID )
+		return iFallback;
+
+	return iSlot;
+}
+
+static void ShareFamilyBusinessWithPanicAttackClasses( CTFItemSchema *pSchema )
+{
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+
+	const CTFItemDefinition *pPanic = NULL;
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		const CTFItemDefinition *pTF = dynamic_cast<const CTFItemDefinition *>( mapItems[i] );
+		if ( !pTF )
+			continue;
+
+		const char *pszDef = pTF->GetDefinitionName();
+		if ( pszDef && !Q_stricmp( pszDef, "The Panic Attack" ) )
+		{
+			pPanic = pTF;
+			break;
+		}
+	}
+
+	if ( !pPanic )
+	{
+		FOR_EACH_MAP_FAST( mapItems, i )
+		{
+			const CTFItemDefinition *pTF = dynamic_cast<const CTFItemDefinition *>( mapItems[i] );
+			if ( pTF && Madcap_ItemNameIs( pTF, "The Panic Attack" ) && pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
+			{
+				pPanic = pTF;
+				break;
+			}
+		}
+	}
+
+	const int iSoldier = PanicAttackSlotOr( pPanic, TF_CLASS_SOLDIER, LOADOUT_POSITION_SECONDARY );
+	const int iPyro = PanicAttackSlotOr( pPanic, TF_CLASS_PYRO, LOADOUT_POSITION_SECONDARY );
+	const int iEngineer = PanicAttackSlotOr( pPanic, TF_CLASS_ENGINEER, LOADOUT_POSITION_PRIMARY );
+
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !pTF || !Madcap_ItemNameIs( pTF, "The Family Business" ) )
+			continue;
+		if ( !pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
+			continue;
+
+		const char *pszClass = pTF->GetItemClass();
+		if ( !pszClass )
+			continue;
+		if ( Q_stricmp( pszClass, "tf_weapon_shotgun_hwg" ) && Q_stricmp( pszClass, "tf_weapon_shotgun" ) )
+			continue;
+
+		if ( Q_stricmp( pszClass, "tf_weapon_shotgun" ) )
+			pTF->SetItemClass( "tf_weapon_shotgun" );
+
+		pTF->ShareWithClass( TF_CLASS_SOLDIER, iSoldier );
+		pTF->ShareWithClass( TF_CLASS_PYRO, iPyro );
+		pTF->ShareWithClass( TF_CLASS_ENGINEER, iEngineer );
+	}
+}
+
 void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
 {
 	// Boston Basher and every reskin that copies its two attributes.
@@ -2162,7 +2292,10 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 		InitializeStringTable( &g_szWeaponTypeSubstrings[0],		ARRAYSIZE(g_szWeaponTypeSubstrings),		&m_vecWeaponTypeSubstrings );
 		Assert( m_vecWeaponTypeSubstrings.Size() == TF_WPN_TYPE_COUNT );
 	}
-	
+
+	// Heavy can't throw lunchboxes. Inject the downside before attributes parse.
+	EnsureLunchboxNoThrowAttribute( pKVRawDefinition );
+
 	SCHEMA_INIT_SUBSTEP( CEconItemSchema::BInitSchema( pKVRawDefinition, pVecErrors ) );
 
 	// items_game.txt still ends the equippable range at Engineer. Classes added
@@ -2199,6 +2332,8 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	ConvertBuffBannersToMoneyBags( this );
 	ConvertBattalionsBackupsToProtection( this );
 	ConvertConcherorsToSpeakeasies( this );
+	ForbidHeavyLunchboxThrows( this );
+	ShareFamilyBusinessWithPanicAttackClasses( this );
 
 #ifdef GAME_DLL
 	IGameEvent * event = gameeventmanager->CreateEvent( "schema_updated" );
