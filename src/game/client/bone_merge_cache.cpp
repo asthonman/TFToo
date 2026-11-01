@@ -100,16 +100,6 @@ void CBoneMergeCache::UpdateCache()
 				}
 			}
 
-			// Demo shields are skinned to weapon_targe, which only the demoman
-			// skeleton has. Madcap wears the scout model. Force a full bone
-			// setup so the left forearm is available to hang the shield on.
-			if ( Studio_BoneIndexByName( m_pOwnerHdr, "weapon_targe" ) >= 0
-				&& Studio_BoneIndexByName( m_pFollowHdr, "weapon_targe" ) < 0
-				&& Studio_BoneIndexByName( m_pFollowHdr, "bip_lowerArm_L" ) >= 0 )
-			{
-				m_nFollowBoneSetupMask = BONE_USED_BY_ANYTHING;
-			}
-
 			// No merged bones found? Slam the mask to 0
 			if ( !m_MergedBones.Count() )
 			{
@@ -175,23 +165,6 @@ void CBoneMergeCache::MergeMatchingBones( int boneMask )
 				continue;
 
 			MatrixCopy( m_pFollow->GetBone( iParentBone ), m_pOwner->GetBoneForWrite( iOwnerBone ) );
-		}
-
-		// weapon_targe's $definebone is the left forearm with yaw 90. Without that
-		// bone the shield mesh stays in its bind pose, which on the scout is nowhere
-		// you can see. Mark it merged so BuildTransformations does not rebuild it.
-		int iTarge = Studio_BoneIndexByName( m_pOwnerHdr, "weapon_targe" );
-		if ( iTarge >= 0 && !IsBoneMerged( iTarge ) && ( m_pOwnerHdr->boneFlags( iTarge ) & boneMask ) )
-		{
-			int iArm = Studio_BoneIndexByName( m_pFollowHdr, "bip_lowerArm_L" );
-			if ( iArm >= 0 )
-			{
-				matrix3x4_t matLocal, matWorld;
-				AngleMatrix( QAngle( 0.f, 90.f, 0.f ), matLocal );
-				ConcatTransforms( m_pFollow->GetBone( iArm ), matLocal, matWorld );
-				m_pOwner->GetBoneForWrite( iTarge ) = matWorld;
-				m_BoneMergeBits[iTarge >> 3] |= ( 1 << ( iTarge & 7 ) );
-			}
 		}
 	}
 }
