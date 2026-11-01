@@ -10956,7 +10956,7 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		// health lost. Empty starts the quarter-second shrink.
 		if ( m_bBrickGrown && IsPlayerClass( TF_CLASS_BRICK ) )
 		{
-			const int iHealthLost = iOldHealth - Max( m_iHealth, 0 );
+			const int iHealthLost = iOldHealth - Max( (int)m_iHealth, 0 );
 			if ( iHealthLost > 0 )
 			{
 				m_flBrickGrowMeter -= iHealthLost;

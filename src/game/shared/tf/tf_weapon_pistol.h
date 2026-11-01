@@ -93,7 +93,7 @@ protected:
 	// 50 is the trace. 128 only drops people who are already too far for it.
 	virtual float	GetPushReach( void ) const { return 50.f; }
 	virtual float	GetPushSearchRange( void ) const { return 128.f; }
-	virtual void	GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
+	virtual void	GetPushHull( CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
 
 #ifdef CLIENT_DLL
 	virtual bool	ShouldPlayClientReloadSound() { return true; }
@@ -141,7 +141,7 @@ public:
 protected:
 	virtual float	GetPushReach( void ) const;
 	virtual float	GetPushSearchRange( void ) const;
-	virtual void	GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
+	virtual void	GetPushHull( CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
 };
 
 class CTFPistol_ScoutSecondary : public CTFPistol_Scout

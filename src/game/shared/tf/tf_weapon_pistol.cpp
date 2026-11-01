@@ -237,7 +237,7 @@ void CTFPistol_ScoutPrimary::Precache( void )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CTFPistol_ScoutPrimary::GetPushHull( const CTFPlayer * /*pOwner*/, Vector &mins, Vector &maxs ) const
+void CTFPistol_ScoutPrimary::GetPushHull( CTFPlayer * /*pOwner*/, Vector &mins, Vector &maxs ) const
 {
 	mins = Vector( -16.f, -16.f, -16.f );
 	maxs = Vector( 16.f, 16.f, 16.f );
@@ -421,7 +421,7 @@ float CTFBrickShove::GetPushSearchRange( void ) const
 	return 128.f * BrickShove_Scale( this );
 }
 
-void CTFBrickShove::GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const
+void CTFBrickShove::GetPushHull( CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const
 {
 	const float flScale = BrickShove_Scale( this );
 	float flExtraEye = 0.f;
