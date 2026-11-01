@@ -6018,7 +6018,10 @@ void CTFPlayerShared::OnRemoveCompetitiveLoser( void )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateChargeMeter( void )
 {
-	if ( !m_pOuter->IsPlayerClass( TF_CLASS_DEMOMAN ) )
+	const bool bDemo = m_pOuter->IsPlayerClass( TF_CLASS_DEMOMAN );
+	// Madcap only carries a meter while a shield is actually equipped.
+	const bool bMadcapShield = m_pOuter->IsPlayerClass( TF_CLASS_MADCAP ) && HasDemoShieldEquipped();
+	if ( !bDemo && !bMadcapShield )
 		return;
 
 	if ( InCond( TF_COND_SHIELD_CHARGE ) )
@@ -10970,7 +10973,8 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed *= Madcap_SpeedModFromHealth( GetHealth(), GetMaxHealth() );
 	}
 
-	if ( playerclass == TF_CLASS_DEMOMAN )
+	// Eyelander heads, and the shield charge speed. Madcap can equip both.
+	if ( playerclass == TF_CLASS_DEMOMAN || playerclass == TF_CLASS_MADCAP )
 	{
 		CTFSword *pSword = dynamic_cast<CTFSword*>(Weapon_OwnsThisID( TF_WEAPON_SWORD ));
 		if ( pSword )
@@ -12389,6 +12393,17 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 		}
 		bDoSkill = true;
 		break;
+	case TF_CLASS_MADCAP:
+		if ( !m_Shared.HasPasstimeBall() )
+		{
+			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
+			if ( pWearableShield )
+			{
+				pWearableShield->DoSpecialAction( this );
+				bDoSkill = true;
+			}
+		}
+		break;
 	case TF_CLASS_ENGINEER:
 		if ( !m_Shared.HasPasstimeBall() )
 		{
@@ -12423,6 +12438,15 @@ bool CTFPlayer::EndClassSpecialSkill( void )
 					pWearableShield->EndSpecialAction( this );
 					break;
 				}
+			}
+		}
+		break;
+	case TF_CLASS_MADCAP:
+		{
+			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
+			if ( pWearableShield )
+			{
+				pWearableShield->EndSpecialAction( this );
 			}
 		}
 		break;

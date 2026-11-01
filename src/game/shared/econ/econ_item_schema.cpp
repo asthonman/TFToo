@@ -2456,6 +2456,38 @@ void CEconItemDefinition::PresentAsWeapon( const char *pszItemClass, const char 
 	m_pKVItem->SetInt( "propername", 0 );
 }
 
+void CEconItemDefinition::UseWornIdentity( const char *pszItemName, const char *pszItemDesc, const char *pszPlayerModel, const char *pszInventoryImage, bool bProperName )
+{
+	if ( pszItemName && pszItemName[0] )
+		m_pszItemBaseName = pszItemName;
+	if ( pszItemDesc )
+		m_pszItemDesc = pszItemDesc;
+	if ( pszPlayerModel && pszPlayerModel[0] )
+	{
+		m_pszBaseDisplayModel = pszPlayerModel;
+		m_pszWorldDisplayModel = pszPlayerModel;
+	}
+	if ( pszInventoryImage )
+		m_pszInventoryImage = pszInventoryImage;
+	m_bProperName = bProperName;
+
+	if ( !m_pKVItem )
+		return;
+
+	if ( pszItemName && pszItemName[0] )
+		m_pKVItem->SetString( "item_name", pszItemName );
+	if ( pszItemDesc )
+		m_pKVItem->SetString( "item_description", pszItemDesc );
+	if ( pszPlayerModel && pszPlayerModel[0] )
+	{
+		m_pKVItem->SetString( "model_player", pszPlayerModel );
+		m_pKVItem->SetString( "model_world", pszPlayerModel );
+	}
+	if ( pszInventoryImage )
+		m_pKVItem->SetString( "image_inventory", pszInventoryImage );
+	m_pKVItem->SetInt( "propername", bProperName ? 1 : 0 );
+}
+
 void CEconItemDefinition::StripStaticAttributeClass( const char *pszAttributeClass )
 {
 	if ( !pszAttributeClass )

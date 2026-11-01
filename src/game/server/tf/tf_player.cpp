@@ -14626,7 +14626,8 @@ int CTFPlayer::GetMaxHealthForBuffing()
 	{
 		iMax += pWeapon->GetMaxHealthMod();
 	}
-	if ( const_cast<CTFPlayer*>(this)->GetPlayerClass()->GetClassIndex() == TF_CLASS_DEMOMAN )
+	if ( const_cast<CTFPlayer*>(this)->GetPlayerClass()->GetClassIndex() == TF_CLASS_DEMOMAN
+		|| const_cast<CTFPlayer*>(this)->GetPlayerClass()->GetClassIndex() == TF_CLASS_MADCAP )
 	{
 		CTFSword *pSword = dynamic_cast<CTFSword*>(const_cast<CTFPlayer*>(this)->Weapon_OwnsThisID( TF_WEAPON_SWORD ));
 		if ( pSword )

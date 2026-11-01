@@ -337,7 +337,9 @@ void CTFSword::OnDecapitation( CTFPlayer *pDeadPlayer )
 
 	// The pyro's scythe is actually a "sword" as far as the gameplay code is concerned,
 	// but we don't want the demo's head-collecting silliness to apply.
-	if ( pOwner->GetPlayerClass()->GetClassIndex() == TF_CLASS_DEMOMAN )
+	// Madcap can equip the Eyelander, so he collects heads too.
+	const int iClass = pOwner->GetPlayerClass()->GetClassIndex();
+	if ( iClass == TF_CLASS_DEMOMAN || iClass == TF_CLASS_MADCAP )
 	{
 		// We have chopped someone's bloody 'ead off!
 		int iDecap = pOwner->m_Shared.GetDecapitations();

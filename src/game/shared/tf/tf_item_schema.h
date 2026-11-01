@@ -265,6 +265,10 @@ public:
 
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
 	void		RetargetClass( int iFromClass, int iToClass );
+	// Add a class without taking the item off the classes that already have it.
+	void		ShareWithClass( int iClass, int iSlot );
+	void		SetClassLoadoutSlot( int iClass, int iSlot );
+	void		ForcePlayerModel( const char *pszModel );
 	void		ClearClassEquip( void );
 	void		UseMoneyBagVisuals( const char *pszModel );
 	bool		IsAWearable() const;

@@ -1329,6 +1329,69 @@ void CTFItemDefinition::RetargetClass( int iFromClass, int iToClass )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Let another class equip this item. The classes that already can
+// keep it. iSlot is the loadout slot for the new class only.
+//-----------------------------------------------------------------------------
+void CTFItemDefinition::ShareWithClass( int iClass, int iSlot )
+{
+	if ( iClass <= 0 || iClass >= LOADOUT_COUNT )
+		return;
+
+	if ( iSlot == LOADOUT_POSITION_INVALID )
+		iSlot = m_iDefaultLoadoutSlot;
+
+	m_vbClassUsability.Set( iClass );
+	m_iLoadoutSlots[iClass] = iSlot;
+
+	if ( !m_pszPlayerDisplayModel[iClass] )
+	{
+		const char *pszModel = m_pszPlayerDisplayModel[0];
+		if ( !pszModel || !pszModel[0] )
+		{
+			for ( int i = 1; i < LOADOUT_COUNT; ++i )
+			{
+				if ( m_pszPlayerDisplayModel[i] && m_pszPlayerDisplayModel[i][0] )
+				{
+					pszModel = m_pszPlayerDisplayModel[i];
+					break;
+				}
+			}
+		}
+		m_pszPlayerDisplayModel[iClass] = pszModel;
+	}
+
+	KeyValues *pKV = GetRawDefinition();
+	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes", true ) : NULL;
+	if ( !pClasses )
+		return;
+
+	const char *pszClass = GetItemSchema()->GetClassUsabilityStrings()[iClass];
+	if ( pszClass && pszClass[0] )
+	{
+		pClasses->SetString( pszClass, "1" );
+	}
+}
+
+void CTFItemDefinition::SetClassLoadoutSlot( int iClass, int iSlot )
+{
+	if ( iClass <= 0 || iClass >= LOADOUT_COUNT )
+		return;
+
+	m_iLoadoutSlots[iClass] = iSlot;
+}
+
+void CTFItemDefinition::ForcePlayerModel( const char *pszModel )
+{
+	if ( !pszModel || !pszModel[0] )
+		return;
+
+	for ( int i = 0; i < LOADOUT_COUNT; ++i )
+	{
+		m_pszPlayerDisplayModel[i] = pszModel;
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Take an item off every class. Used for the Equalizer and the
 // Escape Plan, which Madcap's passives replace.
 //-----------------------------------------------------------------------------
@@ -1943,6 +2006,97 @@ static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const cha
 	return false;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Demoman's boots become Madcap primaries. Ali Baba's Wee Booties
+// wears the Sole Saviors, and the Bootlegger wears the Teufort Tooth Kicker.
+// Shields move to his secondary. The listed weapons are shared: the original
+// class keeps them, and so does Madcap. Reskins follow their base item name.
+//-----------------------------------------------------------------------------
+struct MadcapShare_t
+{
+	const char *pszName;
+	int			iSlot;
+};
+
+static const MadcapShare_t s_MadcapSharedWeapons[] =
+{
+	{ "The Eyelander",			LOADOUT_POSITION_MELEE },
+	{ "The Tribalman's Shiv",	LOADOUT_POSITION_MELEE },
+	{ "The Half-Zatoichi",		LOADOUT_POSITION_MELEE },
+	{ "The Wrap Assassin",		LOADOUT_POSITION_MELEE },
+	{ "Warrior's Spirit",		LOADOUT_POSITION_MELEE },
+	{ "The Persian Persuader",	LOADOUT_POSITION_MELEE },
+	{ "The Flying Guillotine",	LOADOUT_POSITION_SECONDARY },
+	{ "Mad Milk",				LOADOUT_POSITION_SECONDARY },
+	{ "The Blutsauger",			LOADOUT_POSITION_PRIMARY },
+};
+
+static bool Madcap_ItemNameIs( const CTFItemDefinition *pTF, const char *pszName )
+{
+	if ( !pTF || !pszName )
+		return false;
+
+	const char *pszDef = pTF->GetDefinitionName();
+	if ( pszDef && !Q_stricmp( pszDef, pszName ) )
+		return true;
+
+	const char *pszBase = pTF->GetBaseFunctionalItemName();
+	return pszBase && pszBase[0] && !Q_stricmp( pszBase, pszName );
+}
+
+static void GiveMadcapTheBootAndShieldUnlocks( CTFItemSchema *pSchema )
+{
+	static const char *kSoleModel = "models/workshop/player/items/all_class/sbox2014_armor_shoes/sbox2014_armor_shoes_scout.mdl";
+	static const char *kSoleImage = "backpack/workshop/player/items/all_class/sbox2014_armor_shoes/sbox2014_armor_shoes";
+	static const char *kToothModel = "models/player/items/all_class/cowboyboots_scout.mdl";
+	static const char *kToothImage = "backpack/player/items/all_class/cowboyboots_soldier";
+
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
+	{
+		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
+		if ( !pTF )
+			continue;
+
+		const char *pszName = pTF->GetDefinitionName();
+		const char *pszClass = pTF->GetItemClass();
+
+		if ( pszName && !Q_stricmp( pszName, "Ali Baba's Wee Booties" ) )
+		{
+			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
+			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_PRIMARY );
+			pTF->UseWornIdentity( "#TF_sbox2014_armor_shoes", "#TF_sbox2014_armor_shoes_Desc", kSoleModel, kSoleImage, true );
+			pTF->ForcePlayerModel( kSoleModel );
+			continue;
+		}
+
+		if ( pszName && !Q_stricmp( pszName, "The Bootlegger" ) )
+		{
+			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
+			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_PRIMARY );
+			pTF->UseWornIdentity( "#TF_CowboyBoots", "#TF_CowboyBoots_Desc", kToothModel, kToothImage, true );
+			pTF->ForcePlayerModel( kToothModel );
+			continue;
+		}
+
+		if ( pszClass && !Q_stricmp( pszClass, "tf_wearable_demoshield" ) && pTF->CanBeUsedByClass( TF_CLASS_DEMOMAN ) )
+		{
+			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
+			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_SECONDARY );
+			continue;
+		}
+
+		for ( int n = 0; n < ARRAYSIZE( s_MadcapSharedWeapons ); ++n )
+		{
+			if ( !Madcap_ItemNameIs( pTF, s_MadcapSharedWeapons[n].pszName ) )
+				continue;
+
+			pTF->ShareWithClass( TF_CLASS_MADCAP, s_MadcapSharedWeapons[n].iSlot );
+			break;
+		}
+	}
+}
+
 void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
 {
 	// Madcap carries these passives. The weapons they came from are not equippable.
@@ -1979,6 +2133,10 @@ void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErro
 	// Nailgun (b1) and Brick (b2). Defined in newitemdefinitions.cpp.
 	// Those items are stock: the player always owns them.
 	RegisterNewItemDefinitions( this, pVecErrors );
+
+	// Boots, shields, and the shared unlocks. After the Basher move, so a
+	// bleed weapon that is still the Scout's is not taken off him here.
+	GiveMadcapTheBootAndShieldUnlocks( this );
 }
 
 //-----------------------------------------------------------------------------

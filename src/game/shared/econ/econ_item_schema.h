@@ -1447,6 +1447,9 @@ public:
 	// renamed copy of it) spawns as a different weapon. String pointers must
 	// outlive the schema. Static attributes are edited separately.
 	void PresentAsWeapon( const char *pszItemClass, const char *pszItemName, const char *pszLogName, const char *pszPlayerModel, const char *pszWorldModel, bool bAttachToHands, const char *pszItemTypeName = NULL );
+	// Keep the item class and attributes. Swap the name, description, model, and icon.
+	// String pointers must outlive the schema.
+	void UseWornIdentity( const char *pszItemName, const char *pszItemDesc, const char *pszPlayerModel, const char *pszInventoryImage, bool bProperName );
 	void StripStaticAttributeClass( const char *pszAttributeClass );
 	bool AddStaticAttribute( const char *pszName, const char *pszValue );
 
