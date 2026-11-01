@@ -103,10 +103,14 @@ bool CHudDemomanPipes::ShouldDraw( void )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 
-	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_DEMOMAN ) )
+	if ( !pPlayer || !pPlayer->IsAlive() )
 		return false;
 
-	if ( !pPlayer->IsAlive() )
+	// Madcap wears the same shields, but he has no stickybombs. The charge
+	// bar is the only part of this HUD he uses.
+	const bool bDemo = pPlayer->IsPlayerClass( TF_CLASS_DEMOMAN );
+	const bool bMadcapShield = pPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && pPlayer->m_Shared.IsShieldEquipped();
+	if ( !bDemo && !bMadcapShield )
 		return false;
 
 	if ( pPlayer->m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) )
@@ -135,7 +139,13 @@ void CHudDemomanPipes::OnTick( void )
 		return;
 
 	int iPipes = pPlayer->GetNumActivePipebombs();
-	if ( iPipes != m_iLastPipes )
+	const bool bShowPipes = pPlayer->IsPlayerClass( TF_CLASS_DEMOMAN );
+	if ( !bShowPipes )
+	{
+		m_pPipesPresent->SetVisible( false );
+		m_pNoPipesPresent->SetVisible( false );
+	}
+	else if ( iPipes != m_iLastPipes )
 	{
 		// SetDialogVariable is expensive as it does lots of localization work, so only call it if we need to
 		m_pPipesPresent->SetDialogVariable( "activepipes", iPipes );

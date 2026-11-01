@@ -11,6 +11,7 @@
 
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
+#include "econ_wearable.h"
 
 // for spy material proxy
 #include "tf_proxyentity.h"
@@ -276,7 +277,41 @@ int CTFViewModel::DrawModel( int flags )
 		pWeapon->ModifyViewModelBodygroups( this );
 	}
 
-	return BaseClass::DrawModel( flags );
+	int nDrawn = BaseClass::DrawModel( flags );
+
+	// The shield's first-person mesh is a viewmodel attachment. Only swords
+	// draw it themselves. Madcap's weapons are not swords, and c_scout_arms
+	// has no weapon_targe bone, so the shield never showed on his arms.
+	if ( ( flags & STUDIO_RENDER ) && ViewModelIndex() == 0 && pPlayer->m_Shared.IsShieldEquipped() )
+	{
+		CTFWeaponBase *pDrawnWeapon = ( CTFWeaponBase * )GetOwningWeapon();
+		if ( !pDrawnWeapon || pDrawnWeapon->GetWeaponID() != TF_WEAPON_SWORD )
+		{
+			for ( int i = 0; i < pPlayer->GetNumWearables(); ++i )
+			{
+				CEconWearable *pWearable = pPlayer->GetWearable( i );
+				if ( !pWearable )
+					continue;
+
+				CEconItemView *pItem = pWearable->GetAttributeContainer()->GetItem();
+				if ( !pItem || !pItem->IsValid() || !pItem->GetStaticData() )
+					continue;
+				if ( !pItem->GetStaticData()->ShouldAttachToHandsVMOnly() )
+					continue;
+
+				pWearable->UpdateAttachmentModels();
+				C_BaseAnimating *pAttach = pWearable->GetViewmodelAttachment();
+				if ( !pAttach )
+					continue;
+
+				pAttach->RemoveEffects( EF_NODRAW );
+				pAttach->DrawModel( flags );
+				pAttach->AddEffects( EF_NODRAW );
+			}
+		}
+	}
+
+	return nDrawn;
 }
 
 //-----------------------------------------------------------------------------

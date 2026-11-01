@@ -32,6 +32,27 @@ static const int THUMBNAIL_SAFE_ZONE_SIZE = 512;
 static const int THUMBNAIL_SAFE_ZONE_HEIGHT = 92;
 static const float THUMBNAIL_SAFE_ZONE_HEIGHT_SCALE = (float)THUMBNAIL_SAFE_ZONE_HEIGHT / THUMBNAIL_SAFE_ZONE_SIZE;
 
+static void FixMissingShieldTargeBone( const CStudioHdr *pMergeHdr, matrix3x4_t *pMergeBones, const CStudioHdr *pFollowHdr, const matrix3x4_t *pFollowBones )
+{
+	if ( !pMergeHdr || !pMergeBones || !pFollowHdr || !pFollowBones )
+		return;
+
+	int iTarge = Studio_BoneIndexByName( pMergeHdr, "weapon_targe" );
+	if ( iTarge < 0 )
+		return;
+	if ( Studio_BoneIndexByName( pFollowHdr, "weapon_targe" ) >= 0 )
+		return;
+
+	int iArm = Studio_BoneIndexByName( pFollowHdr, "bip_lowerArm_L" );
+	if ( iArm < 0 )
+		return;
+
+	// Same offset as demoman's weapon_targe $definebone.
+	matrix3x4_t matLocal;
+	AngleMatrix( QAngle( 0.f, 90.f, 0.f ), matLocal );
+	ConcatTransforms( pFollowBones[iArm], matLocal, pMergeBones[iTarge] );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Keeps a global clock to autoplay sequences to run from
 //			Also deals with speedScale changes
@@ -490,7 +511,8 @@ void CMDLPanel::OnPaint3D()
 		if ( pMergeHdr != NULL )
 		{
 			CStudioHdr &mergeHdr = *pMergeHdr;
-			m_aMergeMDLs[iMerge].m_MDL.SetupBonesWithBoneMerge( &mergeHdr, pMergeBoneToWorld, &studioHdr, pBoneToWorld, m_RootMDL.m_MDLToWorld );		
+			m_aMergeMDLs[iMerge].m_MDL.SetupBonesWithBoneMerge( &mergeHdr, pMergeBoneToWorld, &studioHdr, pBoneToWorld, m_RootMDL.m_MDLToWorld );
+			FixMissingShieldTargeBone( &mergeHdr, pMergeBoneToWorld, &studioHdr, pBoneToWorld );		
 
 			pOverrideMaterial = GetOverrideMaterial( m_aMergeMDLs[iMerge].m_MDL.GetMDL() );
 			if ( pOverrideMaterial != NULL ) 
