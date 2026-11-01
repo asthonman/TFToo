@@ -2010,7 +2010,8 @@ static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const cha
 // Purpose: Demoman's boots become Madcap primaries. Ali Baba's Wee Booties
 // wears the Sole Saviors, and the Bootlegger wears the Teufort Tooth Kicker.
 // Shields move to his secondary. The listed weapons are shared: the original
-// class keeps them, and so does Madcap. Reskins follow their base item name.
+// class keeps them, and so does Madcap. The Persian Persuader and the
+// Claidheamh Mòr leave Demoman entirely. Reskins follow their base item name.
 //-----------------------------------------------------------------------------
 struct MadcapShare_t
 {
@@ -2025,10 +2026,16 @@ static const MadcapShare_t s_MadcapSharedWeapons[] =
 	{ "The Half-Zatoichi",		LOADOUT_POSITION_MELEE },
 	{ "The Wrap Assassin",		LOADOUT_POSITION_MELEE },
 	{ "Warrior's Spirit",		LOADOUT_POSITION_MELEE },
-	{ "The Persian Persuader",	LOADOUT_POSITION_MELEE },
 	{ "The Flying Guillotine",	LOADOUT_POSITION_SECONDARY },
 	{ "Mad Milk",				LOADOUT_POSITION_SECONDARY },
 	{ "The Blutsauger",			LOADOUT_POSITION_PRIMARY },
+};
+
+// Schema definition names. The Claidheamh Mòr is stored without the accent.
+static const char *s_MadcapInsteadOfDemo[] =
+{
+	"The Persian Persuader",
+	"The Claidheamohmor",
 };
 
 static bool Madcap_ItemNameIs( const CTFItemDefinition *pTF, const char *pszName )
@@ -2085,6 +2092,24 @@ static void GiveMadcapTheBootAndShieldUnlocks( CTFItemSchema *pSchema )
 			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_SECONDARY );
 			continue;
 		}
+
+		bool bTakenFromDemo = false;
+		for ( int n = 0; n < ARRAYSIZE( s_MadcapInsteadOfDemo ); ++n )
+		{
+			if ( !Madcap_ItemNameIs( pTF, s_MadcapInsteadOfDemo[n] ) )
+				continue;
+
+			if ( pTF->CanBeUsedByClass( TF_CLASS_DEMOMAN ) )
+				pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
+			else if ( !pTF->CanBeUsedByClass( TF_CLASS_MADCAP ) )
+				pTF->ShareWithClass( TF_CLASS_MADCAP, LOADOUT_POSITION_MELEE );
+
+			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_MELEE );
+			bTakenFromDemo = true;
+			break;
+		}
+		if ( bTakenFromDemo )
+			continue;
 
 		for ( int n = 0; n < ARRAYSIZE( s_MadcapSharedWeapons ); ++n )
 		{
