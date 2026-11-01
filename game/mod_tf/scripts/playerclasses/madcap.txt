@@ -4,10 +4,12 @@
 // Boot unlocks are primaries (Sole Saviors, Teufort Tooth Kicker).
 // Shields are secondaries. Eyelander, Shiv, Zatoichi, Wrap Assassin,
 // and Warrior's Spirit are shared melees. Persian Persuader and
-// Claidheamh Mòr are Madcap melees only. Cleaver and
+// Claidheamh Mòr are Madcap melees only. Equalizer and Escape Plan
+// are shared melees with Soldier. Cleaver and
 // Mad Milk are shared secondaries. Blutsauger is a shared primary.
-// Passives: Escape Plan speed tiers from missing health (up to +60%).
-// Weapon damage ramps from 100% at full health to 300% at 0. Self-damage does not ramp.
+// The P-meter fills only while running forward. Full is +60% speed
+// and 300% damage. A turn past 45 degrees drains it and he skids.
+// Booties widen that angle. A shield charge fills the meter.
 // Class passives (unset here): "airdash" "1", "afterburn_immune" "1",
 // "knockback_scale" "0.5", "health_regen" "1".
 "PlayerClassData"

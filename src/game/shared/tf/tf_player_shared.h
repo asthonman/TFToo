@@ -1272,10 +1272,6 @@ public:
 	float m_flCYOAPDAAnimStateTime;
 	TFCYOAPDAAnimState_t m_iCYOAPDAAnimState;
 
-	// Local timer for Madcap's health-based speed refresh. Not networked;
-	// client and server each run ItemPostFrame.
-	float m_flNextMadcapSpeedRefresh;
-
 private:
 	CNetworkVar( bool, m_bHasPasstimeBall );
 	CNetworkVar( bool, m_bIsTargetedForPasstimePass );

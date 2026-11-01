@@ -1892,11 +1892,11 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 
 	float flDamage = info.GetDamage();
 
-	// Same health ramp as damage dealt to players. A building is never himself.
+	// Same P-meter ramp as damage dealt to players. A building is never himself.
 	CTFPlayer *pMadcapAttacker = ToTFPlayer( info.GetAttacker() );
 	if ( pMadcapAttacker && pMadcapAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
 	{
-		flDamage *= Madcap_DamageScaleFromHealth( pMadcapAttacker->GetHealth(), pMadcapAttacker->GetMaxHealth() );
+		flDamage *= Madcap_DamageScaleFromPMeter( pMadcapAttacker->GetPMeter() );
 	}
 
 	// Buildings are resistant to plasma damage.

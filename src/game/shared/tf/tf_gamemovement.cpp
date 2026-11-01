@@ -136,6 +136,7 @@ public:
 	virtual void PlayerRoughLandingEffects( float fvol );
 
 	virtual void HandleDuckingSpeedCrop( void );
+	void		UpdateMadcapPMeter( void );
 protected:
 
 	virtual void CheckWaterJump( void );
@@ -168,6 +169,8 @@ private:
 	bool		m_isPassingThroughEnemies;
 	// Airborne slam windup. Set in ProcessMovement, read while gravity is applied.
 	bool		m_bBrickSlamHang;
+	// Sharp turn. WalkMove lets him slide on the old velocity instead of snapping.
+	bool		m_bMadcapSkid;
 };
 
 
@@ -187,6 +190,7 @@ CTFGameMovement::CTFGameMovement()
 	m_pTFPlayer = NULL;
 	m_isPassingThroughEnemies = false;
 	m_bBrickSlamHang = false;
+	m_bMadcapSkid = false;
 
 }
 
@@ -353,6 +357,10 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 
 	// Handle grappling hook move
 	GrapplingHookMove();
+
+	// P-meter uses this command's wish against the velocity he already has.
+	// Speed for this tick includes the meter we just wrote.
+	UpdateMadcapPMeter();
 
 	// Handle scouts that can move really fast with buffs
 	HighMaxSpeedMove();
@@ -561,6 +569,96 @@ bool CTFGameMovement::ChargeMove()
 	}
 
 	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Madcap P-meter. Fills only while he is moving forward, near his current
+// top speed. A turn within the allowed angle (45 degrees, widened by
+// charge_turn_control from the booties) holds it. A sharper turn drains it.
+// A shield charge counts as a forward sprint and fills it faster.
+//-----------------------------------------------------------------------------
+static const float tf_madcap_pmeter_fill = 40.f;   // 2.5s from empty to full
+static const float tf_madcap_pmeter_drain = 80.f;  // 1.25s from full to empty
+static const float tf_madcap_pmeter_charge_fill = 1.5f;
+
+void CTFGameMovement::UpdateMadcapPMeter( void )
+{
+	m_bMadcapSkid = false;
+
+	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
+		return;
+
+	if ( !m_pTFPlayer->IsAlive() )
+	{
+		if ( m_pTFPlayer->GetPMeter() != 0.f )
+		{
+			m_pTFPlayer->SetPMeter( 0.f );
+			m_pTFPlayer->TeamFortress_SetSpeed();
+		}
+		return;
+	}
+
+	Vector vecForward, vecRight;
+	AngleVectors( mv->m_vecViewAngles, &vecForward, &vecRight, NULL );
+	vecForward.z = 0.f;
+	vecRight.z = 0.f;
+	VectorNormalize( vecForward );
+	VectorNormalize( vecRight );
+
+	const float flForwardMove = mv->m_flForwardMove;
+	const float flSideMove = mv->m_flSideMove;
+	Vector vecWish( ( vecForward.x * flForwardMove ) + ( vecRight.x * flSideMove ),
+		( vecForward.y * flForwardMove ) + ( vecRight.y * flSideMove ),
+		0.f );
+	const bool bHasWish = VectorNormalize( vecWish ) > 1.f;
+	// Mostly forward. An even W+A is a strafe and does not build the meter.
+	const bool bForward = ( flForwardMove > 0.f ) && ( fabsf( flSideMove ) <= fabsf( flForwardMove ) * 0.5f );
+
+	Vector vecVel = mv->m_vecVelocity;
+	vecVel.z = 0.f;
+	const float flSpeed = vecVel.Length();
+
+	float flDot = 1.f;
+	if ( bHasWish && flSpeed > 1.f )
+	{
+		flDot = DotProduct( vecVel / flSpeed, vecWish );
+	}
+
+	// Booties store a 3x multiplier on charge_turn_control. The Tide Turner adds.
+	float flAngle = 45.f;
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_pTFPlayer, flAngle, charge_turn_control );
+	flAngle = clamp( flAngle, 1.f, 180.f );
+	const float flKeepDot = cosf( DEG2RAD( flAngle ) );
+	const bool bAligned = ( flDot + 0.001f ) >= flKeepDot;
+	const bool bCharging = m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE );
+	const float flMaxSpeed = Max( m_pTFPlayer->MaxSpeed(), 1.f );
+	const bool bAtSpeed = flSpeed >= ( flMaxSpeed * 0.85f );
+
+	float flDelta = -tf_madcap_pmeter_drain;
+	if ( bCharging && ( bAligned || flSpeed < 120.f ) )
+	{
+		flDelta = tf_madcap_pmeter_fill * tf_madcap_pmeter_charge_fill;
+	}
+	else if ( !bCharging && bForward && bAligned && bAtSpeed )
+	{
+		flDelta = tf_madcap_pmeter_fill;
+	}
+	else if ( bAligned && bHasWish && flSpeed >= 80.f )
+	{
+		// Accelerating, strafing along the velocity he already has, or a
+		// sweep that has not changed that velocity much. Standing still drains.
+		flDelta = 0.f;
+	}
+
+	// Reversing or a hard cut. He keeps his old velocity and friction slows it.
+	m_bMadcapSkid = !bCharging && bHasWish && flSpeed > 120.f && !bAligned;
+
+	const float flBefore = m_pTFPlayer->GetPMeter();
+	m_pTFPlayer->SetPMeter( flBefore + ( flDelta * gpGlobals->frametime ) );
+	if ( m_pTFPlayer->GetPMeter() != flBefore )
+	{
+		m_pTFPlayer->TeamFortress_SetSpeed();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1803,6 +1901,13 @@ void CTFGameMovement::WalkMove( void )
 	float flWishSpeed = VectorNormalize( vecWishDirection );
 	flWishSpeed = clamp( flWishSpeed, 0.0f, mv->m_flMaxSpeed );
 
+	// A sharp turn slides along the velocity he already has. Friction, which
+	// already ran this tick, is what slows that slide down.
+	if ( m_bMadcapSkid && flWishSpeed > 0.f )
+	{
+		flWishSpeed = 0.f;
+	}
+
 	// Accelerate in the x,y plane.
 	mv->m_vecVelocity.z = 0;
 
@@ -1860,8 +1965,9 @@ void CTFGameMovement::WalkMove( void )
 	}
 
 	// Now reduce their backwards speed to some percent of max, if they are traveling backwards
-	// unless they are under some minimum, to not penalize deployed snipers or heavies
-	if ( tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
+	// unless they are under some minimum, to not penalize deployed snipers or heavies.
+	// A P-meter skid is supposed to keep that backwards speed until friction eats it.
+	if ( !m_bMadcapSkid && tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
 	{
 		float flDot = DotProduct( vecForward, mv->m_vecVelocity );
 

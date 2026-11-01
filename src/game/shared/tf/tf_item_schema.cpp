@@ -1392,34 +1392,6 @@ void CTFItemDefinition::ForcePlayerModel( const char *pszModel )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Take an item off every class. Used for the Equalizer and the
-// Escape Plan, which Madcap's passives replace.
-//-----------------------------------------------------------------------------
-void CTFItemDefinition::ClearClassEquip( void )
-{
-	m_vbClassUsability.ClearAll();
-	m_iDefaultLoadoutSlot = LOADOUT_POSITION_INVALID;
-	for ( int i = 0; i < LOADOUT_COUNT; i++ )
-	{
-		m_iLoadoutSlots[i] = LOADOUT_POSITION_INVALID;
-	}
-
-	KeyValues *pKV = GetRawDefinition();
-	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes" ) : NULL;
-	if ( !pClasses )
-		return;
-
-	KeyValues *pKVClass = pClasses->GetFirstSubKey();
-	while ( pKVClass )
-	{
-		KeyValues *pNext = pKVClass->GetNextKey();
-		pClasses->RemoveSubKey( pKVClass );
-		pKVClass->deleteThis();
-		pKVClass = pNext;
-	}
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: Hold the money bag like a jar, and do not keep the banner backpack.
 //-----------------------------------------------------------------------------
 void CTFItemDefinition::UseMoneyBagVisuals( const char *pszModel )
@@ -1969,23 +1941,6 @@ void CTFItemSchema::Reset()
 // Basher itself and its reskins, currently the Three-Rune Blade) moves to him.
 //-----------------------------------------------------------------------------
 static const int kBostonBasherDefIndex = 325;
-static const int kEqualizerDefIndex = 128;
-static const int kEscapePlanDefIndex = 775;
-
-static void UnequipNamedItem( CTFItemSchema *pSchema, const char *pszName, int iDefIndex )
-{
-	// By-name only. GetItemDefinition() returns the default item when the
-	// index is missing, and clearing that would unequip unrelated items.
-	CEconItemDefinition *pDef = pSchema->GetItemDefinitionByName( pszName );
-	if ( !pDef || pDef->GetDefinitionIndex() != iDefIndex )
-		return;
-
-	CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( pDef );
-	if ( pTF )
-	{
-		pTF->ClearClassEquip();
-	}
-}
 
 static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const char *pszClass )
 {
@@ -2026,6 +1981,8 @@ static const MadcapShare_t s_MadcapSharedWeapons[] =
 	{ "The Half-Zatoichi",		LOADOUT_POSITION_MELEE },
 	{ "The Wrap Assassin",		LOADOUT_POSITION_MELEE },
 	{ "Warrior's Spirit",		LOADOUT_POSITION_MELEE },
+	{ "The Equalizer",			LOADOUT_POSITION_MELEE },
+	{ "The Escape Plan",		LOADOUT_POSITION_MELEE },
 	{ "The Flying Guillotine",	LOADOUT_POSITION_SECONDARY },
 	{ "Mad Milk",				LOADOUT_POSITION_SECONDARY },
 	{ "The Blutsauger",			LOADOUT_POSITION_PRIMARY },
@@ -2124,11 +2081,6 @@ static void GiveMadcapTheBootAndShieldUnlocks( CTFItemSchema *pSchema )
 
 void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
 {
-	// Madcap carries these passives. The weapons they came from are not equippable.
-	// Festivized copies are the same definitions, so they go with them.
-	UnequipNamedItem( this, "The Equalizer", kEqualizerDefIndex );
-	UnequipNamedItem( this, "The Escape Plan", kEscapePlanDefIndex );
-
 	// Boston Basher and every reskin that copies its two attributes.
 	const ItemDefinitionMap_t &mapItems = GetItemDefinitionMap();
 	FOR_EACH_MAP_FAST( mapItems, i )

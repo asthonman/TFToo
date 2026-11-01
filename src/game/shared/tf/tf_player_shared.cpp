@@ -844,7 +844,6 @@ CTFPlayerShared::CTFPlayerShared()
 
 	m_iKillCountSinceLastDeploy = 0;
 	m_flFirstPrimaryAttack = 0.0f;
-	m_flNextMadcapSpeedRefresh = 0.0f;
 
 #ifdef GAME_DLL
 	m_flBestOverhealDecayMult = -1;
@@ -10883,8 +10882,8 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && !m_Shared.IsStealthed() )
 	{
 		// Spy is 320. Any slower disguise, including Engineer, Pyro, Sniper, and
-		// Resupply (all 300), caps him there. Madcap's speed is a health ramp,
-		// so that disguise does not copy the ramp and Spy stays at spy speed.
+		// Resupply (all 300), caps him there. Madcap's sprint is a P-meter,
+		// so that disguise does not copy the meter and Spy stays at spy speed.
 		if ( m_Shared.GetDisguiseClass() != TF_CLASS_MADCAP )
 		{
 			float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;
@@ -10967,10 +10966,10 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed *= pWeapon->GetSpeedMod();
 	}
 
-	// Escape Plan speed tiers, always. Not tied to the active weapon.
+	// P-meter sprint. Not tied to health, and not tied to the active weapon.
 	if ( playerclass == TF_CLASS_MADCAP )
 	{
-		maxfbspeed *= Madcap_SpeedModFromHealth( GetHealth(), GetMaxHealth() );
+		maxfbspeed *= Madcap_SpeedModFromPMeter( GetPMeter() );
 	}
 
 	// Eyelander heads, and the shield charge speed. Madcap can equip both.
@@ -11631,14 +11630,6 @@ int CTFPlayer::GetNumObjects( int iObjectType, int iObjectMode /*= 0*/ )
 //-----------------------------------------------------------------------------
 void CTFPlayer::ItemPostFrame()
 {
-	// Health-based move speed has to keep up with damage. Same cadence as the
-	// Escape Plan's shovel think.
-	if ( IsPlayerClass( TF_CLASS_MADCAP ) && IsAlive() && gpGlobals->curtime >= m_Shared.m_flNextMadcapSpeedRefresh )
-	{
-		m_Shared.m_flNextMadcapSpeedRefresh = gpGlobals->curtime + 0.25f;
-		TeamFortress_SetSpeed();
-	}
-
 	m_Shared.UpdateItemChargeMeters();
 
 	// cache buttons because some weapons' ItemPostFrame could change m_nButtons against other weapons

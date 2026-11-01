@@ -176,6 +176,34 @@ public:
 };
 
 //-----------------------------------------------------------------------------
+// Madcap's sprint. Fills while he runs forward, drains on a hard turn.
+//-----------------------------------------------------------------------------
+class CHudItemEffectMeter_Madcap : public CHudItemEffectMeter
+{
+public:
+	CHudItemEffectMeter_Madcap( const char *pszElementName, C_TFPlayer *pPlayer )
+		: CHudItemEffectMeter( pszElementName, pPlayer )
+	{
+	}
+
+	virtual bool IsEnabled( void ) OVERRIDE
+	{
+		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_MADCAP );
+	}
+
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_PMeter"; }
+	virtual bool ShouldBeep( void ) OVERRIDE { return false; }
+
+	virtual float GetProgress( void ) OVERRIDE
+	{
+		if ( !m_pPlayer )
+			return 0.f;
+
+		return m_pPlayer->GetPMeter() / TF_MADCAP_PMETER_MAX;
+	}
+};
+
+//-----------------------------------------------------------------------------
 // Two chunks with a gap, same idea as the Vaccinator's uber segments.
 // The left chunk filling is half a meter, which is one thrown pack.
 // This meter sits above the pulse meter so the two bars don't overlap.
@@ -550,6 +578,16 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 
 	case TF_CLASS_BRICK:
 		hNewMeter = new CHudItemEffectMeter_BrickGrow( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
+		break;
+
+	case TF_CLASS_MADCAP:
+		hNewMeter = new CHudItemEffectMeter_Madcap( pszElementName, pPlayer );
 		if ( hNewMeter )
 		{
 			gHUD.AddHudElement( hNewMeter );

@@ -269,7 +269,6 @@ public:
 	void		ShareWithClass( int iClass, int iSlot );
 	void		SetClassLoadoutSlot( int iClass, int iSlot );
 	void		ForcePlayerModel( const char *pszModel );
-	void		ClearClassEquip( void );
 	void		UseMoneyBagVisuals( const char *pszModel );
 	bool		IsAWearable() const;
 	bool		IsContentStreamable() const;

@@ -261,39 +261,28 @@ inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMA
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
 
 //-----------------------------------------------------------------------------
-// Madcap passives. Speed tiers match the Escape Plan. Outgoing damage is the
-// Equalizer's health ramp with the hidden full-health penalty removed: 100%
-// at full health, 300% at 0. Overheal stays at 100% damage and base speed.
+// Madcap's P-meter. 0 is walking, 100 is a full sprint: +60% move speed
+// (the old Escape Plan cap) and 300% damage. It is not based on health.
 //-----------------------------------------------------------------------------
-inline float Madcap_HealthRatio( int iHealth, int iMaxHealth )
+#define TF_MADCAP_PMETER_MAX 100.0f
+
+inline float Madcap_PMeterRatio( float flMeter )
 {
-	if ( iMaxHealth <= 0 )
+	if ( flMeter <= 0.f )
+		return 0.f;
+	if ( flMeter >= TF_MADCAP_PMETER_MAX )
 		return 1.f;
-	return (float)iHealth / (float)iMaxHealth;
+	return flMeter / TF_MADCAP_PMETER_MAX;
 }
 
-inline float Madcap_SpeedModFromHealth( int iHealth, int iMaxHealth )
+inline float Madcap_SpeedModFromPMeter( float flMeter )
 {
-	const float flHealthRatio = Madcap_HealthRatio( iHealth, iMaxHealth );
-	if ( flHealthRatio > 0.8f )
-		return 1.f;
-	else if ( flHealthRatio > 0.6f )
-		return 1.1f;
-	else if ( flHealthRatio > 0.4f )
-		return 1.2f;
-	else if ( flHealthRatio > 0.2f )
-		return 1.4f;
-	return 1.6f;
+	return 1.f + ( 0.6f * Madcap_PMeterRatio( flMeter ) );
 }
 
-inline float Madcap_DamageScaleFromHealth( int iHealth, int iMaxHealth )
+inline float Madcap_DamageScaleFromPMeter( float flMeter )
 {
-	float flHealthRatio = Madcap_HealthRatio( iHealth, iMaxHealth );
-	if ( flHealthRatio < 0.f )
-		flHealthRatio = 0.f;
-	else if ( flHealthRatio > 1.f )
-		flHealthRatio = 1.f;
-	return 3.f - ( 2.f * flHealthRatio );
+	return 1.f + ( 2.f * Madcap_PMeterRatio( flMeter ) );
 }
 
 #define FOR_EACH_NORMAL_PLAYER_CLASS( _i ) for ( int _i = TF_FIRST_NORMAL_CLASS; _i < TF_LAST_NORMAL_CLASS; _i++ )

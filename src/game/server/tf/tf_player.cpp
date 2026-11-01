@@ -850,6 +850,7 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropFloat( SENDINFO( m_flResupplyThrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropBool( SENDINFO( m_bBrickGrown ) ),
 	SendPropFloat( SENDINFO( m_flBrickGrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
+	SendPropFloat( SENDINFO( m_flPMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropString( SENDINFO( m_szTauntSequence ) ),
 	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),
@@ -1010,6 +1011,7 @@ CTFPlayer::CTFPlayer()
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	m_flPMeter = 0.f;
 	m_szTauntSequence.GetForModify()[0] = '\0';
 	m_nTauntSequenceParity = 0;
 
@@ -4000,6 +4002,7 @@ void CTFPlayer::Spawn()
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	m_flPMeter = 0.f;
 	m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 	m_Shared.SetScoutHypeMeter( 0.0f );
 	m_Shared.StopScoutHypeDrain();
@@ -4389,6 +4392,7 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 		m_bBrickGrown = false;
 		m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+		m_flPMeter = 0.f;
 		SetModelScale( 1.0f );
 		m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 		m_Shared.SetDemomanChargeMeter( 100.0f );

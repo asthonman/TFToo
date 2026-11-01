@@ -6970,12 +6970,12 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		}
 	}
 
-	// Madcap: every point of damage he deals scales from 100% at full health
-	// to 300% at 0. Damage he deals to himself does not, so a Boston Basher
-	// miss (and the bleed it causes) stays at its normal amount.
+	// Madcap: outgoing damage scales from 100% at an empty P-meter to 300%
+	// when it is full. Damage he deals to himself does not, so a Boston
+	// Basher miss (and the bleed it causes) stays at its normal amount.
 	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) && pAttacker != pVictimBaseEntity )
 	{
-		flDamage *= Madcap_DamageScaleFromHealth( pTFAttacker->GetHealth(), pTFAttacker->GetMaxHealth() );
+		flDamage *= Madcap_DamageScaleFromPMeter( pTFAttacker->GetPMeter() );
 	}
 
 	info.SetDamage( flDamage );

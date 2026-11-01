@@ -202,6 +202,8 @@ public:
 	float			GetResupplyThrowMeter( void ) const { return m_flResupplyThrowMeter; }
 	bool			IsBrickGrown( void ) const { return m_bBrickGrown; }
 	float			GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
+	float			GetPMeter( void ) const { return m_flPMeter; }
+	void			SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
 
 	virtual void	InitPhonemeMappings();
 
@@ -974,6 +976,7 @@ private:
 	CNetworkVar( float, m_flResupplyThrowMeter );
 	CNetworkVar( bool, m_bBrickGrown );
 	CNetworkVar( float, m_flBrickGrowMeter );
+	CNetworkVar( float, m_flPMeter );
 
 	bool m_bNotifiedWeaponInspectThisLife;
 

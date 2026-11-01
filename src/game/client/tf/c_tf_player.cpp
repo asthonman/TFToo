@@ -3838,6 +3838,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropFloat( RECVINFO( m_flResupplyThrowMeter ) ),
 	RecvPropBool( RECVINFO( m_bBrickGrown ) ),
 	RecvPropFloat( RECVINFO( m_flBrickGrowMeter ) ),
+	RecvPropFloat( RECVINFO( m_flPMeter ) ),
 	RecvPropString( RECVINFO( m_szTauntSequence ) ),
 	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
@@ -3861,6 +3862,7 @@ BEGIN_PREDICTION_DATA( C_TFPlayer )
 	DEFINE_PRED_FIELD( m_flVehicleReverseTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flInspectTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flHelpmeButtonPressTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD_TOL( m_flPMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE, 0.5f ),
 END_PREDICTION_DATA()
 
 // ------------------------------------------------------------------------------------------ //
@@ -3957,6 +3959,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	m_flPMeter = 0.f;
 
 	m_flWaterImpactTime = 0.0f;
 //	m_rtSpottedInPVSTime = 0;
