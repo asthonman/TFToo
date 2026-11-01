@@ -82,6 +82,7 @@ static const NewItemAttribute_t s_ResupplyMeleeAttrs[] =
 };
 
 // Madcap. b1 is the Nailgun (primary). b2 is the Mason's Missile (secondary).
+// Brick's stock secondary is Shove (b10). His Mason's Missile (b8) is an unlock.
 static const NewItemDefDesc_t s_NewItems[] =
 {
 	{
@@ -202,7 +203,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		1,
 		s_BrickAttrs,
 		ARRAYSIZE( s_BrickAttrs ),
-		1,
+		0,
 	},
 	{
 		"b9",
@@ -232,7 +233,7 @@ static const NewItemDefDesc_t s_NewItems[] =
 		1,
 		NULL,
 		0,
-		0,
+		1,
 	},
 };
 
@@ -450,6 +451,7 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		{
 			// Scout's c_scout_arms item1 set is the hold and the throw.
 			// brick_mann has no ITEM1 sequences; the body falls back to melee.
+			// Unlock. Shove (b10) is the stock secondary.
 			pKV->SetString( "anim_slot", "ITEM1" );
 		}
 		else if ( !Q_stricmp( desc.pszAltId, "b9" ) )
@@ -459,7 +461,7 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		}
 		else if ( !Q_stricmp( desc.pszAltId, "b10" ) )
 		{
-			// Not the stock secondary. b8 stays equipped until this is chosen.
+			// Stock secondary. The Mason's Missile (b8) is the unlock.
 			AddBrickShoveAnimReplacements( pKV );
 		}
 

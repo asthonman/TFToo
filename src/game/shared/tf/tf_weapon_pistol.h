@@ -90,6 +90,10 @@ protected:
 	// Shortstop shove is 1 damage. The Tommy Gun overrides both.
 	virtual float	GetPushDamage( void ) const { return 1.f; }
 	virtual int		GetPushDamageFlags( void ) const { return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB; }
+	// 50 is the trace. 128 only drops people who are already too far for it.
+	virtual float	GetPushReach( void ) const { return 50.f; }
+	virtual float	GetPushSearchRange( void ) const { return 128.f; }
+	virtual void	GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
 
 #ifdef CLIENT_DLL
 	virtual bool	ShouldPlayClientReloadSound() { return true; }
@@ -120,8 +124,8 @@ protected:
 	virtual int		GetPushDamageFlags( void ) const	{ return DMG_MELEE | DMG_NEVERGIB | DMG_CLUB | DMG_PREVENT_PHYSICS_FORCE; }
 };
 
-// Brick secondary unlock. Primary fire is the Shortstop shove.
-// Right click stays the class grow, so this has no secondary attack.
+// Brick's stock secondary. Primary fire is the Shortstop shove.
+// Reach grows with his model scale. Right click stays the class grow.
 class CTFBrickShove : public CTFPistol_ScoutPrimary
 {
 public:
@@ -133,6 +137,11 @@ public:
 	virtual void	PrimaryAttack( void );
 	virtual void	SecondaryAttack( void ) {}
 	virtual void	ItemPostFrame();
+
+protected:
+	virtual float	GetPushReach( void ) const;
+	virtual float	GetPushSearchRange( void ) const;
+	virtual void	GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const;
 };
 
 class CTFPistol_ScoutSecondary : public CTFPistol_Scout

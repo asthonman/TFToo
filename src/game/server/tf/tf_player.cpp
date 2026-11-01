@@ -1391,7 +1391,8 @@ void CTFPlayer::RegenResupplyThrowMeter( void )
 }
 
 //-----------------------------------------------------------------------------
-// Brick grow. Right click toggles it. The meter matches Spy's cloak.
+// Brick grow. Right click toggles it. The meter refills at the Spy cloak
+// rate, and at half that rate while the grow is on.
 //-----------------------------------------------------------------------------
 static bool BrickGrowHullFits( CTFPlayer *pPlayer )
 {
@@ -1425,13 +1426,15 @@ void CTFPlayer::ThinkBrickGrow( void )
 	{
 		extern ConVar tf_spy_cloak_regen_rate;
 
-		if ( m_bBrickGrown )
+		// Spy's cloak rate while the grow is off. Half of that while it is on.
+		// Damage still spends the meter.
+		if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
 		{
-			// Damage spends the meter. ThinkBrickGrow does not.
-		}
-		else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
-		{
-			m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
+			float flRate = tf_spy_cloak_regen_rate.GetFloat();
+			if ( m_bBrickGrown )
+				flRate *= 0.5f;
+
+			m_flBrickGrowMeter += gpGlobals->frametime * flRate;
 			if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
 				m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 		}

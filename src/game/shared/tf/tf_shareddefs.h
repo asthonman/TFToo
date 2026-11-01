@@ -245,15 +245,18 @@ enum ETFClass
 #define TF_RESUPPLY_THROW_SPEED		1000.0f
 
 // Brick's grow. 0-100, and he cannot start one below the Spy's cloak floor.
-// It does not drain over time. Damage while big spends it, 1 point per
-// damage. The size, the team-only cloak, and the knockback resist all
-// move together over TF_BRICK_GROW_TIME.
+// It refills at the Spy cloak rate while small, and at half that rate while
+// big. Damage while big spends it, 1 point per damage. The size, the
+// team-only cloak, the knockback resist, and the spun-up-Heavy slowdown
+// all move together over TF_BRICK_GROW_TIME.
 #define TF_BRICK_GROW_MAX			100.0f
 #define TF_BRICK_GROW_MIN_START		8.0f
 #define TF_BRICK_GROW_SCALE			2.0f
 #define TF_BRICK_GROW_TIME			0.25f
 // 75% cloaked. Enemies do not get this; they see him solid.
 #define TF_BRICK_GROW_INVIS			0.75f
+// Full size matches a spun-up Heavy. Partial size lerps from class speed.
+#define TF_BRICK_GROW_SPEED			110.0f
 // attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is
 // halfway. In the air the swing holds there. The hurtbox opens at that
 // same time: one tick on the ground, or until he lands if he is airborne.

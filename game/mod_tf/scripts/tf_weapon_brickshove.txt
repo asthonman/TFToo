@@ -1,5 +1,5 @@
-// Brick's secondary unlock. Primary fire is the Shortstop shove.
-// No ammo, so the weapon frame still calls the attack.
+// Brick's stock secondary. Primary fire is the Shortstop shove.
+// Reach scales with his model size. No ammo, so the weapon frame still calls the attack.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Shove"

@@ -144,7 +144,7 @@ void CTFPistol_ScoutPrimary::Push( void )
 		if ( TFGameRules() && TFGameRules()->IsTruceActive() && pOwner->IsTruceValidForEnt() )
 			continue;
 
-		if ( ( pOwner->GetAbsOrigin()- pVictim->GetAbsOrigin() ).LengthSqr() > ( 128.f * 128.f ) )
+		if ( ( pOwner->GetAbsOrigin()- pVictim->GetAbsOrigin() ).LengthSqr() > ( GetPushSearchRange() * GetPushSearchRange() ) )
 			continue;
 
 		if ( !pOwner->FVisible( pVictim, MASK_SOLID ) )
@@ -154,16 +154,17 @@ void CTFPistol_ScoutPrimary::Push( void )
 		Vector vecForward;
 		AngleVectors( pOwner->EyeAngles(), &vecForward );
 		CTraceFilterSimple traceFilter( this, COLLISION_GROUP_NONE );
-		const Vector vHull = Vector( 16.f, 16.f, 16.f );
+		Vector vHullMin, vHullMax;
+		GetPushHull( pOwner, vHullMin, vHullMax );
 		trace_t trace;
 
-		float flDist = 50.f;
-		UTIL_TraceHull( vecEyes, vecEyes + vecForward * flDist,  -vHull, vHull, MASK_SOLID, &traceFilter, &trace );
+		float flDist = GetPushReach();
+		UTIL_TraceHull( vecEyes, vecEyes + vecForward * flDist, vHullMin, vHullMax, MASK_SOLID, &traceFilter, &trace );
 		
 		bool bDebug = false;
 		if ( bDebug )
 		{
-			NDebugOverlay::SweptBox( vecEyes, vecEyes + vecForward * flDist, -vHull, vHull, pOwner->EyeAngles(), 255, 0, 0, 40, 5 );
+			NDebugOverlay::SweptBox( vecEyes, vecEyes + vecForward * flDist, vHullMin, vHullMax, pOwner->EyeAngles(), 255, 0, 0, 40, 5 );
 		}
 
 		if ( trace.m_pEnt && trace.m_pEnt == pVictim && trace.fraction < 1.f )
@@ -231,6 +232,15 @@ void CTFPistol_ScoutPrimary::Precache( void )
 	PrecacheScriptSound( "Weapon_Hands.PushImpact" );
 	
 	BaseClass::Precache();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFPistol_ScoutPrimary::GetPushHull( const CTFPlayer * /*pOwner*/, Vector &mins, Vector &maxs ) const
+{
+	mins = Vector( -16.f, -16.f, -16.f );
+	maxs = Vector( 16.f, 16.f, 16.f );
 }
 
 //============================
@@ -387,6 +397,44 @@ void CTFBrickShove::ItemPostFrame()
 		PrimaryAttack();
 	else if ( ( pOwner->m_nButtons & IN_ATTACK ) == 0 )
 		WeaponIdle();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Same shove as the Shortstop, stretched by his model scale.
+//-----------------------------------------------------------------------------
+static float BrickShove_Scale( const CTFBrickShove *pWeapon )
+{
+	const CTFPlayer *pOwner = pWeapon ? pWeapon->GetTFPlayerOwner() : NULL;
+	float flScale = pOwner ? pOwner->GetModelScale() : 1.f;
+	if ( flScale < 1.f )
+		flScale = 1.f;
+	return flScale;
+}
+
+float CTFBrickShove::GetPushReach( void ) const
+{
+	return 50.f * BrickShove_Scale( this );
+}
+
+float CTFBrickShove::GetPushSearchRange( void ) const
+{
+	return 128.f * BrickShove_Scale( this );
+}
+
+void CTFBrickShove::GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &maxs ) const
+{
+	const float flScale = BrickShove_Scale( this );
+	float flExtraEye = 0.f;
+	if ( pOwner && flScale > 1.f )
+	{
+		// Eyes rise with the model. Drop the box by that extra height so the
+		// longer reach still meets someone standing in front of him.
+		const float flEye = pOwner->EyePosition().z - pOwner->GetAbsOrigin().z;
+		flExtraEye = flEye * ( 1.f - 1.f / flScale );
+	}
+
+	mins = Vector( -16.f, -16.f, -16.f - flExtraEye );
+	maxs = Vector( 16.f, 16.f, 16.f );
 }
 
 //============================

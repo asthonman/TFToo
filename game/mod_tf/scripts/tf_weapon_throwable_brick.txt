@@ -1,4 +1,4 @@
-// The Mason's Missile. Madcap's stock secondary and the Brick class's stock secondary.
+// The Mason's Missile. Madcap's stock secondary. An unlock for the Brick class.
 // Charge time and recharge come from the item attributes.
 "WeaponData"
 {

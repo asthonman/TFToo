@@ -1,14 +1,17 @@
-// Brick. 550 health. Speed is Heavy's 230; it was not specified.
+// Brick. 550 health. Speed is Heavy's 230 while small. Full size is a
+// spun-up Heavy's 110, and the quarter-second scale eases the speed with it.
 // Melee is the slam (schema b9, tf_weapon_brickslam). Stock secondary is
-// The Mason's Missile (schema b8, shared with Madcap). Shove (schema b10)
-// is the secondary unlock. Class-script weapons stay empty so the schema
-// items fill the loadout. First person on the secondary is Scout's arms.
-// Right click grows him from 1x to 2x over 0.25s. The meter refills at the
-// Spy cloak rate while small and drains 1 point per health lost while big.
+// Shove (schema b10). The Mason's Missile (schema b8) is the secondary
+// unlock; Madcap still has that throw as his stock secondary. Class-script
+// weapons stay empty so the schema items fill the loadout. First person on
+// the secondary is Scout's arms. Right click grows him from 1x to 2x over
+// 0.25s. The meter refills at the Spy cloak rate while small, at half that
+// rate while big, and drains 1 point per health lost while big.
 // Passives: afterburn immune, 0.75 knockback while small (including sentry
 // bullets). Full size ignores knockback and airblast; the in-between size
 // scales that force down. Landing on an enemy deals Mantreads stomp damage.
-// Airblast attributes on the slam are the small-size 0.75.
+// The slam itself does not add fall damage. Airblast attributes on the slam
+// are the small-size 0.75. Shove's reach scales with his size.
 "PlayerClassData"
 {
 	"name"				"brick"

@@ -194,7 +194,6 @@ public:
 	// True once 1.033s have passed. That is smash_slow_start's end.
 	bool			HasSlamImpacted( void ) const;
 	int				SlamSequence( void ) const { return m_iSlamSequence; }
-	void			NoteFallSpeed( float flSpeed );
 
 #ifdef CLIENT_DLL
 	virtual bool	ShouldDraw( void ) { return false; }
@@ -208,7 +207,6 @@ private:
 #ifdef GAME_DLL
 	void			SlamDamage( void );
 	CUtlVector<EHANDLE> m_hSlamVictims;
-	float			m_flSlamFallSpeed;
 	// Ground swings get one damage tick, the way a kill taunt does.
 	bool			m_bSlamGroundSwingDone;
 	// Set if any frame of this swing was airborne, including the windup.

@@ -1651,7 +1651,6 @@ CTFBrickSlamWeapon::CTFBrickSlamWeapon()
 	m_iSlamSequence = -1;
 	m_flSlamStartTime = 0.f;
 #ifdef GAME_DLL
-	m_flSlamFallSpeed = 0.f;
 	m_bSlamGroundSwingDone = false;
 	m_bSlamAerial = false;
 #endif
@@ -1751,16 +1750,6 @@ bool CTFBrickSlamWeapon::IsSlamFrozen( void ) const
 	return true;
 }
 
-void CTFBrickSlamWeapon::NoteFallSpeed( float flSpeed )
-{
-#ifdef GAME_DLL
-	if ( flSpeed > m_flSlamFallSpeed )
-		m_flSlamFallSpeed = flSpeed;
-#else
-	(void)flSpeed;
-#endif
-}
-
 static int BrickSlam_FindSequence( CTFPlayer *pPlayer )
 {
 	// L only. Crouch if he is ducked. There is no attack_stand_melee sequence.
@@ -1821,7 +1810,6 @@ void CTFBrickSlamWeapon::StartSlam( void )
 	m_flNextPrimaryAttack = gpGlobals->curtime + 100.f;
 
 #ifdef GAME_DLL
-	m_flSlamFallSpeed = pPlayer->m_Local.m_flFallVelocity;
 	m_hSlamVictims.RemoveAll();
 	m_bSlamGroundSwingDone = false;
 	m_bSlamAerial = !( pPlayer->GetFlags() & FL_ONGROUND ) && pPlayer->GetWaterLevel() < WL_Waist;
@@ -1853,8 +1841,6 @@ void CTFBrickSlamWeapon::UpdateSlam( void )
 		if ( m_iSlamSequence < 0 )
 			m_iSlamSequence = BrickSlam_FindSequence( pPlayer );
 	}
-
-	NoteFallSpeed( pPlayer->m_Local.m_flFallVelocity );
 
 #ifdef GAME_DLL
 	if ( !( pPlayer->GetFlags() & FL_ONGROUND ) && pPlayer->GetWaterLevel() < WL_Waist )
@@ -1941,15 +1927,8 @@ void CTFBrickSlamWeapon::SlamDamage( void )
 	CBaseEntity *pList[32];
 	int nCount = UTIL_EntitiesInBox( pList, ARRAYSIZE( pList ), worldMins, worldMaxs, FL_CLIENT );
 
-	// Same fall-damage term as the Mantreads, without the random spread.
-	// 140 when he has not fallen past the safe speed.
-	float flFallDamage = 0.f;
-	if ( m_flSlamFallSpeed > 650.f )
-	{
-		flFallDamage = 5.f * ( m_flSlamFallSpeed / 300.f );
-		flFallDamage *= (float)pPlayer->GetMaxHealth() / 100.f;
-	}
-	const float flDamage = TF_BRICK_SLAM_DAMAGE + flFallDamage * 3.f;
+	// Fall damage belongs to the class stomp, not this swing.
+	const float flDamage = TF_BRICK_SLAM_DAMAGE;
 
 	for ( int i = 0; i < nCount; ++i )
 	{

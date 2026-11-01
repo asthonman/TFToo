@@ -342,8 +342,6 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 		// again in FullWalkMove, or this frame still drops him.
 		if ( m_bBrickSlamHang )
 			mv->m_vecVelocity[2] = 0.f;
-
-		pBrickSlam->NoteFallSpeed( m_pTFPlayer->m_Local.m_flFallVelocity );
 	}
 
 	// Handle charging demomens

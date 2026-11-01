@@ -10910,6 +10910,15 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		}
 	}
 
+	// Grown Brick moves like a spun-up Heavy. Model scale is already easing
+	// over a quarter-second, so this slowdown eases with the size.
+	if ( playerclass == TF_CLASS_BRICK )
+	{
+		const float flGrow = TFBrickGrowFraction( GetModelScale() );
+		if ( flGrow > 0.f )
+			maxfbspeed = Lerp( flGrow, maxfbspeed, TF_BRICK_GROW_SPEED );
+	}
+
 	if ( !TFGameRules()->IsMannVsMachineMode() || !IsMiniBoss() ) // No aiming slowdown penalties for MiniBoss players in MVM
 	{
 		// if they're a sniper, and they're aiming, their speed must be 80 or less
