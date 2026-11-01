@@ -5997,6 +5997,66 @@ void C_TFPlayer::PreThink( void )
 	BaseClass::PreThink();
 }
 
+extern ConVar hud_medicautocallers;
+extern ConVar hud_medicautocallersthreshold;
+
+//-----------------------------------------------------------------------------
+// Resupply has no medigun, so the gun's auto-caller scan never runs.
+// Same bubbles as the medic when hud_medicautocallers is on.
+//-----------------------------------------------------------------------------
+static CUtlVector<int> s_ResupplyAutoCallers;
+static float s_flNextResupplyAutoCallerCheck = 0.f;
+
+static void UpdateResupplyAutoCallers( C_TFPlayer *pLocalPlayer )
+{
+	if ( !hud_medicautocallers.GetBool() || !g_TF_PR || gpGlobals->curtime <= s_flNextResupplyAutoCallerCheck )
+		return;
+
+	s_flNextResupplyAutoCallerCheck = gpGlobals->curtime + 0.25f;
+
+	for ( int playerIndex = 1; playerIndex <= MAX_PLAYERS; playerIndex++ )
+	{
+		C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( playerIndex ) );
+		if ( !pPlayer || pPlayer == pLocalPlayer )
+			continue;
+
+		const bool bTeammate = pPlayer->GetTeamNumber() == GetLocalPlayerTeam();
+		const bool bDisguisedSpy = pPlayer->IsPlayerClass( TF_CLASS_SPY ) &&
+			pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) &&
+			pPlayer->m_Shared.GetDisguiseTeam() == GetLocalPlayerTeam();
+		if ( !bTeammate && !bDisguisedSpy )
+			continue;
+
+		if ( pLocalPlayer->MedicGetHealTarget() == pPlayer )
+			continue;
+
+		int iTracked = s_ResupplyAutoCallers.Find( playerIndex );
+		if ( !pPlayer->IsAlive() )
+		{
+			if ( iTracked != s_ResupplyAutoCallers.InvalidIndex() )
+				s_ResupplyAutoCallers.Remove( iTracked );
+			continue;
+		}
+
+		int iHealth = float( pPlayer->GetHealth() ) / float( pPlayer->GetMaxHealth() ) * 100;
+		if ( iHealth > hud_medicautocallersthreshold.GetInt() )
+		{
+			if ( iTracked != s_ResupplyAutoCallers.InvalidIndex() )
+				s_ResupplyAutoCallers.Remove( iTracked );
+			continue;
+		}
+
+		if ( iTracked != s_ResupplyAutoCallers.InvalidIndex() )
+			continue;
+
+		if ( pPlayer->GetAbsOrigin().DistToSqr( pLocalPlayer->GetAbsOrigin() ) >= 1000000 )
+			continue;
+
+		pPlayer->CreateSaveMeEffect( CALLER_TYPE_AUTO );
+		s_ResupplyAutoCallers.AddToTail( playerIndex );
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -6074,6 +6134,15 @@ void C_TFPlayer::ClientThink()
 	if ( IsLocalPlayer() )
 	{
 		g_ItemEffectMeterManager.Update( this );
+
+		if ( IsAlive() && IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		{
+			UpdateResupplyAutoCallers( this );
+		}
+		else if ( s_ResupplyAutoCallers.Count() )
+		{
+			s_ResupplyAutoCallers.RemoveAll();
+		}
 	}
 
 	if ( m_Shared.InCond( TF_COND_DEMO_BUFF ) )
@@ -8241,8 +8310,9 @@ void C_TFPlayer::CreateSaveMeEffect( MedicCallerType nType /*= CALLER_TYPE_NORMA
 		m_pSaveMeEffect->SetControlPoint( 1, vHealth );
 	}
 	
-	// If the local player is a medic, add this player to our list of medic callers
-	if ( pLocalPlayer && pLocalPlayer->IsPlayerClass( TF_CLASS_MEDIC ) && pLocalPlayer->IsAlive() == true )
+	// Medics and Resupply both answer a medic call. The call itself is not a weapon.
+	if ( pLocalPlayer && pLocalPlayer->IsAlive() &&
+		 ( pLocalPlayer->IsPlayerClass( TF_CLASS_MEDIC ) || pLocalPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) ) )
 	{
 		Vector vecPos;
 		if ( GetAttachmentLocal( LookupAttachment( "head" ), vecPos ) )

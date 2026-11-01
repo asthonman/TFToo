@@ -485,46 +485,9 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 
 	switch ( iClass )
 	{
-	case TF_CLASS_SCOUT:
-		DECLARE_ITEM_EFFECT_METER( CTFBat_Wood, TF_WEAPON_BAT_WOOD, true, NULL );
-		DECLARE_ITEM_EFFECT_METER( CTFBat_Giftwrap, TF_WEAPON_BAT_GIFTWRAP, true, NULL );
-		DECLARE_ITEM_EFFECT_METER( CTFLunchBox_Drink, TF_WEAPON_LUNCHBOX, true, "resource/UI/HudItemEffectMeter_Scout.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFJarMilk, TF_WEAPON_JAR_MILK, true, "resource/UI/HudItemEffectMeter_Scout.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFSodaPopper, TF_WEAPON_SODA_POPPER, true, "resource/UI/HudItemEffectMeter_SodaPopper.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFPEPBrawlerBlaster, TF_WEAPON_PEP_BRAWLER_BLASTER, true, "resource/UI/HudItemEffectMeter_SodaPopper.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFCleaver, TF_WEAPON_CLEAVER, true, "resource/UI/HudItemEffectMeter_Cleaver.res" );
-		break;
-
-	case TF_CLASS_HEAVYWEAPONS:
-	{
-		lambdaAddItemEffectMeter( "tf_weapon_lunchbox", true );
-		DECLARE_ITEM_EFFECT_METER( CTFMinigun, TF_WEAPON_MINIGUN, true, "resource/UI/HudItemEffectMeter_Heavy.res" );
-		break;
-	}
-
-	case TF_CLASS_SNIPER:
-	{
-		DECLARE_ITEM_EFFECT_METER( CTFJar, TF_WEAPON_JAR, true, NULL );
-		DECLARE_ITEM_EFFECT_METER( CTFSniperRifleDecap, TF_WEAPON_SNIPERRIFLE_DECAP, false, "resource/UI/HudItemEffectMeter_Sniper.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFSniperRifle, TF_WEAPON_SNIPERRIFLE, true, "resource/UI/HudItemEffectMeter_SniperFocus.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFChargedSMG, TF_WEAPON_CHARGED_SMG, false, NULL );
-		lambdaAddItemEffectMeter( "tf_wearable_razorback", true );
-		break;
-	}
-	case TF_CLASS_DEMOMAN:
-		DECLARE_ITEM_EFFECT_METER( CTFSword, TF_WEAPON_SWORD, false, "resource/UI/HudItemEffectMeter_Demoman.res" );
-		break;
-
-	case TF_CLASS_SOLDIER:
-		DECLARE_ITEM_EFFECT_METER( CTFBuffItem, TF_WEAPON_BUFF_ITEM, true, NULL );
-		DECLARE_ITEM_EFFECT_METER( CTFParticleCannon, TF_WEAPON_PARTICLE_CANNON, false, "resource/UI/HUDItemEffectMeter_ParticleCannon.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFRaygun, TF_WEAPON_RAYGUN, false, "resource/UI/HUDItemEffectMeter_Raygun.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFRocketLauncher_AirStrike, TF_WEAPON_ROCKETLAUNCHER, false, "resource/UI/HudItemEffectMeter_Demoman.res" );
-		break;
-
 	case TF_CLASS_SPY:
-		DECLARE_ITEM_EFFECT_METER( CTFKnife, TF_WEAPON_KNIFE, true, "resource/UI/HUDItemEffectMeter_SpyKnife.res" );
-
+		// Cloak is the watch, and the builder meter is the sapper PDA.
+		// Unlocks of those share the stock HUD, so both stay with the spy.
 		hNewMeter = new CHudItemEffectMeter( pszElementName, pPlayer );
 		if ( hNewMeter )
 		{
@@ -534,28 +497,11 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 		}
 
 		DECLARE_ITEM_EFFECT_METER( C_TFWeaponBuilder, TF_WEAPON_BUILDER, true, "resource/UI/HudItemEffectMeter_Sapper.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFRevolver, TF_WEAPON_REVOLVER, false, "resource/UI/HUDItemEffectMeter_Spy.res" );
-
 		break;
 
-	case TF_CLASS_ENGINEER:
-		DECLARE_ITEM_EFFECT_METER( CTFShotgun_Revenge, TF_WEAPON_SENTRY_REVENGE, false, "resource/UI/HUDItemEffectMeter_Engineer.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFDRGPomson, TF_WEAPON_DRG_POMSON, false, "resource/UI/HUDItemEffectMeter_Pomson.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFRevolver, TF_WEAPON_REVOLVER, false, "resource/UI/HUDItemEffectMeter_Spy.res" );
-		break;
-
-	case TF_CLASS_PYRO:
-	{
-		DECLARE_ITEM_EFFECT_METER( CTFFlameThrower, TF_WEAPON_FLAMETHROWER, true, "resource/UI/HudItemEffectMeter_Pyro.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFFlareGun_Revenge, TF_WEAPON_FLAREGUN_REVENGE, false, "resource/UI/HUDItemEffectMeter_Engineer.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFRocketPack, TF_WEAPON_ROCKETPACK, false, "resource/UI/HudRocketPack.res" );
-		lambdaAddItemEffectMeter( "tf_weapon_jar_gas", true );
-		lambdaAddItemEffectMeter( "tf_weapon_rocketlauncher_fireball", false );
-		break;
-	}
 	case TF_CLASS_MEDIC:
+		// Kritz, Quick-Fix, and Vaccinator share the stock medigun meters.
 		DECLARE_ITEM_EFFECT_METER( CWeaponMedigun, TF_WEAPON_MEDIGUN, true, "resource/UI/HudItemEffectMeter_Scout.res" );
-		DECLARE_ITEM_EFFECT_METER( CTFBonesaw, TF_WEAPON_BONESAW, false, "resource/UI/HUDItemEffectMeter_Organs.res" );
 		break;
 
 	case TF_CLASS_RESUPPLY:
@@ -596,6 +542,38 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 		}
 		break;
 	}
+
+	// Weapon meters. A class that can equip the weapon gets the meter,
+	// whether or not it is that weapon's original class.
+	DECLARE_ITEM_EFFECT_METER( CTFBat_Wood, TF_WEAPON_BAT_WOOD, true, NULL );
+	DECLARE_ITEM_EFFECT_METER( CTFBat_Giftwrap, TF_WEAPON_BAT_GIFTWRAP, true, NULL );
+	DECLARE_ITEM_EFFECT_METER( CTFLunchBox_Drink, TF_WEAPON_LUNCHBOX, true, "resource/UI/HudItemEffectMeter_Scout.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFJarMilk, TF_WEAPON_JAR_MILK, true, "resource/UI/HudItemEffectMeter_Scout.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFSodaPopper, TF_WEAPON_SODA_POPPER, true, "resource/UI/HudItemEffectMeter_SodaPopper.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFPEPBrawlerBlaster, TF_WEAPON_PEP_BRAWLER_BLASTER, true, "resource/UI/HudItemEffectMeter_SodaPopper.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFCleaver, TF_WEAPON_CLEAVER, true, "resource/UI/HudItemEffectMeter_Cleaver.res" );
+	lambdaAddItemEffectMeter( "tf_weapon_lunchbox", true );
+	DECLARE_ITEM_EFFECT_METER( CTFMinigun, TF_WEAPON_MINIGUN, true, "resource/UI/HudItemEffectMeter_Heavy.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFJar, TF_WEAPON_JAR, true, NULL );
+	DECLARE_ITEM_EFFECT_METER( CTFSniperRifleDecap, TF_WEAPON_SNIPERRIFLE_DECAP, false, "resource/UI/HudItemEffectMeter_Sniper.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFSniperRifle, TF_WEAPON_SNIPERRIFLE, true, "resource/UI/HudItemEffectMeter_SniperFocus.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFChargedSMG, TF_WEAPON_CHARGED_SMG, false, NULL );
+	lambdaAddItemEffectMeter( "tf_wearable_razorback", true );
+	DECLARE_ITEM_EFFECT_METER( CTFSword, TF_WEAPON_SWORD, false, "resource/UI/HudItemEffectMeter_Demoman.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFBuffItem, TF_WEAPON_BUFF_ITEM, true, NULL );
+	DECLARE_ITEM_EFFECT_METER( CTFParticleCannon, TF_WEAPON_PARTICLE_CANNON, false, "resource/UI/HUDItemEffectMeter_ParticleCannon.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFRaygun, TF_WEAPON_RAYGUN, false, "resource/UI/HUDItemEffectMeter_Raygun.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFRocketLauncher_AirStrike, TF_WEAPON_ROCKETLAUNCHER, false, "resource/UI/HudItemEffectMeter_Demoman.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFKnife, TF_WEAPON_KNIFE, true, "resource/UI/HUDItemEffectMeter_SpyKnife.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFRevolver, TF_WEAPON_REVOLVER, false, "resource/UI/HUDItemEffectMeter_Spy.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFShotgun_Revenge, TF_WEAPON_SENTRY_REVENGE, false, "resource/UI/HUDItemEffectMeter_Engineer.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFDRGPomson, TF_WEAPON_DRG_POMSON, false, "resource/UI/HUDItemEffectMeter_Pomson.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFFlameThrower, TF_WEAPON_FLAMETHROWER, true, "resource/UI/HudItemEffectMeter_Pyro.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFFlareGun_Revenge, TF_WEAPON_FLAREGUN_REVENGE, false, "resource/UI/HUDItemEffectMeter_Engineer.res" );
+	DECLARE_ITEM_EFFECT_METER( CTFRocketPack, TF_WEAPON_ROCKETPACK, false, "resource/UI/HudRocketPack.res" );
+	lambdaAddItemEffectMeter( "tf_weapon_jar_gas", true );
+	lambdaAddItemEffectMeter( "tf_weapon_rocketlauncher_fireball", false );
+	DECLARE_ITEM_EFFECT_METER( CTFBonesaw, TF_WEAPON_BONESAW, false, "resource/UI/HUDItemEffectMeter_Organs.res" );
 
 	// ALL CLASS
 	DECLARE_ITEM_EFFECT_METER( CTFThrowable, TF_WEAPON_THROWABLE, true, "resource/UI/HudItemEffectMeter_Scout.res" );

@@ -106,11 +106,11 @@ bool CHudDemomanPipes::ShouldDraw( void )
 	if ( !pPlayer || !pPlayer->IsAlive() )
 		return false;
 
-	// Madcap wears the same shields, but he has no stickybombs. The charge
-	// bar is the only part of this HUD he uses.
-	const bool bDemo = pPlayer->IsPlayerClass( TF_CLASS_DEMOMAN );
-	const bool bMadcapShield = pPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && pPlayer->m_Shared.IsShieldEquipped();
-	if ( !bDemo && !bMadcapShield )
+	// The pipe count belongs to the sticky launcher. The charge bar belongs
+	// to a shield. Either one can be on a class that did not start with it.
+	const bool bSticky = pPlayer->Weapon_OwnsThisID( TF_WEAPON_PIPEBOMBLAUNCHER ) != NULL;
+	const bool bShield = pPlayer->m_Shared.IsShieldEquipped();
+	if ( !bSticky && !bShield )
 		return false;
 
 	if ( pPlayer->m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) )
@@ -139,7 +139,7 @@ void CHudDemomanPipes::OnTick( void )
 		return;
 
 	int iPipes = pPlayer->GetNumActivePipebombs();
-	const bool bShowPipes = pPlayer->IsPlayerClass( TF_CLASS_DEMOMAN );
+	const bool bShowPipes = pPlayer->Weapon_OwnsThisID( TF_WEAPON_PIPEBOMBLAUNCHER ) != NULL;
 	if ( !bShowPipes )
 	{
 		m_pPipesPresent->SetVisible( false );

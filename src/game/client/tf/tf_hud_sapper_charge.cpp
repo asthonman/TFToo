@@ -78,7 +78,8 @@ bool CHudSapperChargeMeter::ShouldDraw( void )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 
-	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_SPY ) || !pPlayer->IsAlive() )
+	// Drawn for a builder that sets custom_charge_meter. Stock sappers do not.
+	if ( !pPlayer || !pPlayer->IsAlive() )
 		return false;
 
 	CTFWeaponBase *pWpn = pPlayer->GetActiveTFWeapon();
