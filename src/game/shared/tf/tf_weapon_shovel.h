@@ -77,11 +77,12 @@ public:
 
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
 	virtual void	Precache( void );
-	// v_leadpipe uses ACT_MELEE_VM_* and is not attached to the arms.
+	// Viewmodel activities are ACT_MELEE_VM_* on c_mobster_arms. The pipe mesh
+	// bonemerges on from v_leadpipe.
 	virtual bool	WantsViewmodelActivityTranslation( void ) const { return true; }
 
 #ifdef CLIENT_DLL
-	// v_leadpipe's bodygroup 0 has no mesh. The pipe is bodygroup 1.
+	// v_leadpipe bodygroup 0 has no mesh. Show the pipe on the attachment.
 	virtual void	ModifyViewModelBodygroups( CBaseAnimating *pVM ) OVERRIDE;
 #endif
 

@@ -1224,7 +1224,8 @@ static const char *kProtectionBugleModel = "models/workshop/weapons/c_models/c_b
 static const char *kProtectionFlagModel = "models/workshop/weapons/c_models/c_battalion_buffbanner/c_battalion_buffbanner.mdl";
 
 //-----------------------------------------------------------------------------
-// v_moneybag has draw, idle, throw, and the secondary alt1 inspect set.
+// v_moneybag has draw, idle, throw, and inspect. Inspect is item3 so it
+// does not share the typewriter's secondary alt1 activities on c_mobster_arms.
 // Throw is ACT_ITEM3_VM_THROW, which stock TF2 does not define. There is no
 // item2 sequence on this model or on the player.
 //-----------------------------------------------------------------------------
@@ -1240,11 +1241,11 @@ Activity CTFMoneyBag::TranslateViewmodelHandActivityInternal( Activity actBase )
 	case ACT_VM_SECONDARYATTACK:
 		return ACT_ITEM3_VM_THROW;
 	case ACT_SECONDARY_VM_INSPECT_START:
-		return ACT_SECONDARY_ALT1_VM_INSPECT_START;
+		return ACT_ITEM3_VM_INSPECT_START;
 	case ACT_SECONDARY_VM_INSPECT_IDLE:
-		return ACT_SECONDARY_ALT1_VM_INSPECT_IDLE;
+		return ACT_ITEM3_VM_INSPECT_IDLE;
 	case ACT_SECONDARY_VM_INSPECT_END:
-		return ACT_SECONDARY_ALT1_VM_INSPECT_END;
+		return ACT_ITEM3_VM_INSPECT_END;
 	default:
 		return BaseClass::TranslateViewmodelHandActivityInternal( actBase );
 	}
@@ -1257,15 +1258,19 @@ void CTFMoneyBag::ModifyViewModelBodygroups( CBaseAnimating *pVM )
 		return;
 
 	// Submodel 0 is the bag. Submodel 1 is empty. Hide it once the throw
-	// lets go, which is the event at cycle 0.588.
+	// lets go, which is the event at cycle 0.588. The sequence plays on the
+	// arms; the bodygroup lives on the bonemerged v_moneybag.
 	int iValue = 0;
 	const char *pszSeq = pVM->GetSequenceName( pVM->GetSequence() );
 	if ( pszSeq && !Q_stricmp( pszSeq, "bag_throw" ) && pVM->GetCycle() >= 0.55f )
 		iValue = 1;
 
-	const int iGroup = pVM->FindBodygroupByName( "Moneybag" );
+	CBaseAnimating *pTarget = GetViewmodelAttachment();
+	if ( !pTarget )
+		pTarget = pVM;
+	const int iGroup = pTarget->FindBodygroupByName( "Moneybag" );
 	if ( iGroup >= 0 )
-		pVM->SetBodygroup( iGroup, iValue );
+		pTarget->SetBodygroup( iGroup, iValue );
 }
 #endif
 
@@ -1276,6 +1281,7 @@ void CTFMoneyBag::Precache( void )
 	PrecacheModel( kMoneyBagOpenModel );
 	PrecacheModel( "models/weapons/v_moneybag.mdl" );
 	PrecacheModel( "models/weapons/c_mobster_arms.mdl" );
+	PrecacheModel( "models/vip_mobster/weapons/c_mobster_arms.mdl" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Deploy" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Hit" );
 	PrecacheScriptSound( "Mobster.MoneyBag.Resist" );

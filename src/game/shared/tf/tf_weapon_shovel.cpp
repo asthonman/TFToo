@@ -238,15 +238,22 @@ void CTFLeadPipe::Precache( void )
 	BaseClass::Precache();
 	PrecacheModel( "models/weapons/v_leadpipe.mdl" );
 	PrecacheModel( "models/weapons/c_mobster_arms.mdl" );
+	PrecacheModel( "models/vip_mobster/weapons/c_mobster_arms.mdl" );
 	PrecacheScriptSound( "Saxxy.HitWorld" );
 }
 
 #ifdef CLIENT_DLL
-void CTFLeadPipe::ModifyViewModelBodygroups( CBaseAnimating *pVM )
+void CTFLeadPipe::ModifyViewModelBodygroups( CBaseAnimating * )
 {
-	if ( pVM )
-	{
-		pVM->SetBodygroup( 0, 1 );
-	}
+	// v_leadpipe bodygroup 0 is empty. The pipe is submodel 1. That mesh is
+	// on the bonemerged weapon, not on c_mobster_arms.
+	CBaseAnimating *pAttach = GetViewmodelAttachment();
+	if ( !pAttach )
+		return;
+
+	int iGroup = pAttach->FindBodygroupByName( "leadpipe" );
+	if ( iGroup < 0 )
+		iGroup = 0;
+	pAttach->SetBodygroup( iGroup, 1 );
 }
 #endif

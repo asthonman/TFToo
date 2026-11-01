@@ -315,7 +315,9 @@ void CTFTypewriter::Precache( void )
 	PrecacheScriptSound( "Mobster.Typewriter.FireLowCrit" );
 	PrecacheScriptSound( "Mobster.Typewriter.Empty" );
 	PrecacheScriptSound( "Mobster.Typewriter.Reload" );
+	PrecacheModel( "models/weapons/v_typewriter.mdl" );
 	PrecacheModel( "models/weapons/c_mobster_arms.mdl" );
+	PrecacheModel( "models/vip_mobster/weapons/c_mobster_arms.mdl" );
 }
 
 void CTFTypewriter::PlayWeaponShootSound( void )

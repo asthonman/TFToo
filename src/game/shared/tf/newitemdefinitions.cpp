@@ -116,10 +116,10 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"primary",
 		LOADOUT_POSITION_PRIMARY,
 		TF_CLASS_MOBSTER,
-		"models/weapons/w_typewriter.mdl",
+		"models/weapons/v_typewriter.mdl",
 		"models/weapons/w_typewriter.mdl",
 		"typewriter",
-		0,
+		1,
 		s_TypewriterAttrs,
 		ARRAYSIZE( s_TypewriterAttrs ),
 	},
@@ -130,10 +130,10 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"secondary",
 		LOADOUT_POSITION_SECONDARY,
 		TF_CLASS_MOBSTER,
-		"models/weapons/w_moneybag_closed.mdl",
+		"models/weapons/v_moneybag.mdl",
 		"models/weapons/w_moneybag_closed.mdl",
 		"moneybag",
-		0,
+		1,
 		s_MoneyBagAttrs,
 		ARRAYSIZE( s_MoneyBagAttrs ),
 	},
@@ -144,10 +144,10 @@ static const NewItemDefDesc_t s_NewItems[] =
 		"melee",
 		LOADOUT_POSITION_MELEE,
 		TF_CLASS_MOBSTER,
-		"models/weapons/w_leadpipe.mdl",
+		"models/weapons/v_leadpipe.mdl",
 		"models/weapons/w_leadpipe.mdl",
 		"leadpipe",
-		0,
+		1,
 		NULL,
 		0,
 	},
@@ -404,14 +404,6 @@ void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> 
 		{
 			// b9 must not be FORCE_NOT_USED or the body never plays the slam.
 			pKV->SetString( "anim_slot", "MELEE" );
-		}
-
-		// c_mobster_arms has a reference pose and no sequences. The three
-		// v_ models own the arm bones, so the arms bonemerge onto the
-		// viewmodel. Every other class attaches the weapon to the arms.
-		if ( !Q_stricmp( desc.pszAltId, "b3" ) || !Q_stricmp( desc.pszAltId, "b4" ) || !Q_stricmp( desc.pszAltId, "b5" ) )
-		{
-			pKV->SetString( "extra_wearable_vm", "models/weapons/c_mobster_arms.mdl" );
 		}
 
 		if ( !pSchema->AddRuntimeItemDefinition( pKV, pVecErrors ) )

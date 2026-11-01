@@ -280,8 +280,8 @@ public:
 	virtual void		Precache( void );
 
 #ifdef CLIENT_DLL
-	// v_moneybag's throw hides the bag with a bodygroup event that was
-	// compiled as AE_EMPTY, so the viewmodel does it itself.
+	// The bag mesh is a bodygroup on the bonemerged v_moneybag. The throw
+	// sequence plays on the arms, so the hide is done from code.
 	virtual void		ModifyViewModelBodygroups( CBaseAnimating *pVM );
 #endif
 
