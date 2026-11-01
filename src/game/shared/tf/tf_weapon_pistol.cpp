@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright Valve Corporation, All rights reserved. ============
 //
 //
 //=============================================================================
@@ -429,7 +429,7 @@ void CTFBrickShove::GetPushHull( const CTFPlayer *pOwner, Vector &mins, Vector &
 	{
 		// Eyes rise with the model. Drop the box by that extra height so the
 		// longer reach still meets someone standing in front of him.
-		const float flEye = pOwner->EyePosition().z - pOwner->GetAbsOrigin().z;
+		const float flEye = const_cast<CTFPlayer*>(pOwner)->EyePosition().z - pOwner->GetAbsOrigin().z;
 		flExtraEye = flEye * ( 1.f - 1.f / flScale );
 	}
 
