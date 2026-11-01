@@ -19,6 +19,7 @@
 #include "tf_passtime_logic.h"
 #include "tf_powerup.h"
 #include "entity_healthkit.h"
+#include "entity_ammopack.h"
 // Client specific.
 #else
 #include "c_tf_gamestats.h"
@@ -1156,6 +1157,242 @@ char const *CTFWeaponBaseMelee::GetShootSound( int iIndex ) const
 }
 
 //=============================================================================
+// Resupply throws these. They are lunchboxes (the same kind of dropped
+// powerup as a sandvich), not health kits or ammo packs. The model is the
+// only thing borrowed from those items.
+//=============================================================================
+#ifndef CLIENT_DLL
+static const char *s_pszResupplyLunchboxHealth = "item_resupply_lunchbox";
+static const char *s_pszResupplyLunchboxAmmo = "item_resupply_lunchbox_ammo";
+
+class CResupplyThrownLunchbox : public CTFPowerup
+{
+public:
+	DECLARE_CLASS( CResupplyThrownLunchbox, CTFPowerup );
+
+	virtual bool	IsAmmoLunchbox( void ) const { return false; }
+	virtual void	Precache( void );
+	virtual void	Spawn( void );
+	virtual bool	MyTouch( CBasePlayer *pPlayer );
+	virtual const char *GetDefaultPowerupModel( void );
+	virtual powerupsize_t GetPowerupSize( void ) { return POWERUP_MEDIUM; }
+
+private:
+	bool	TouchAsHealth( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer );
+	bool	TouchAsAmmo( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer );
+	void	NotifyPickup( CBasePlayer *pPlayer, const char *pszIconClass, const char *pszItemName );
+};
+
+class CResupplyThrownLunchboxAmmo : public CResupplyThrownLunchbox
+{
+public:
+	DECLARE_CLASS( CResupplyThrownLunchboxAmmo, CResupplyThrownLunchbox );
+	virtual bool	IsAmmoLunchbox( void ) const { return true; }
+	virtual const char *GetDefaultPowerupModel( void );
+};
+
+LINK_ENTITY_TO_CLASS( item_resupply_lunchbox, CResupplyThrownLunchbox );
+LINK_ENTITY_TO_CLASS( item_resupply_lunchbox_ammo, CResupplyThrownLunchboxAmmo );
+
+void CResupplyThrownLunchbox::Precache( void )
+{
+	PrecacheScriptSound( "HealthKit.Touch" );
+	PrecacheScriptSound( "AmmoPack.Touch" );
+	PrecacheModel( "models/items/medkit_medium.mdl" );
+	PrecacheModel( TF_MEDKIT_MEDIUM_BDAY );
+	PrecacheModel( TF_MEDKIT_MEDIUM_HALLOWEEN );
+	PrecacheModel( "models/items/ammopack_medium.mdl" );
+	PrecacheModel( TF_AMMOPACK_MEDIUM_BDAY );
+	BaseClass::Precache();
+}
+
+const char *CResupplyThrownLunchbox::GetDefaultPowerupModel( void )
+{
+	if ( TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday ) )
+		return TF_MEDKIT_MEDIUM_BDAY;
+	return "models/items/medkit_medium.mdl";
+}
+
+const char *CResupplyThrownLunchboxAmmo::GetDefaultPowerupModel( void )
+{
+	if ( TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday ) )
+		return TF_AMMOPACK_MEDIUM_BDAY;
+	return "models/items/ammopack_medium.mdl";
+}
+
+void CResupplyThrownLunchbox::Spawn( void )
+{
+	BaseClass::Spawn();
+
+	if ( !modelinfo )
+		return;
+
+	const char *pszWorld = GetPowerupModel();
+	const char *pszPyro = IsAmmoLunchbox() ? TF_AMMOPACK_MEDIUM_BDAY : TF_MEDKIT_MEDIUM_BDAY;
+	const char *pszHalloween = IsAmmoLunchbox() ? pszWorld : TF_MEDKIT_MEDIUM_HALLOWEEN;
+	SetModelIndexOverride( VISION_MODE_NONE, modelinfo->GetModelIndex( pszWorld ) );
+	SetModelIndexOverride( VISION_MODE_PYRO, modelinfo->GetModelIndex( pszPyro ) );
+	SetModelIndexOverride( VISION_MODE_HALLOWEEN, modelinfo->GetModelIndex( pszHalloween ) );
+}
+
+void CResupplyThrownLunchbox::NotifyPickup( CBasePlayer *pPlayer, const char *pszIconClass, const char *pszItemName )
+{
+	CSingleUserRecipientFilter user( pPlayer );
+	user.MakeReliable();
+	UserMessageBegin( user, "ItemPickup" );
+	WRITE_STRING( pszIconClass );
+	MessageEnd();
+
+	IGameEvent *event = gameeventmanager->CreateEvent( "item_pickup" );
+	if ( event )
+	{
+		event->SetInt( "userid", pPlayer->GetUserID() );
+		event->SetString( "item", pszItemName );
+		gameeventmanager->FireEvent( event );
+	}
+}
+
+bool CResupplyThrownLunchbox::TouchAsHealth( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer )
+{
+	float flRuneHealthBonus = ( pTFPlayer->m_Shared.GetCarryingRuneType() != RUNE_KNOCKOUT ) ? pTFPlayer->GetRuneHealthBonus() : 0;
+	float flHealth = ceil( ( pPlayer->GetMaxHealth() - flRuneHealthBonus ) * PackRatios[GetPowerupSize()] );
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flHealth, mult_health_frompacks );
+
+	const int nHealthGiven = pPlayer->TakeHealth( flHealth, DMG_GENERIC );
+	if ( nHealthGiven > 0 )
+	{
+		IGameEvent *event = gameeventmanager->CreateEvent( "player_healed" );
+		if ( event )
+		{
+			CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+			event->SetInt( "priority", 1 );
+			event->SetInt( "patient", pPlayer->GetUserID() );
+			event->SetInt( "healer", pOwner ? pOwner->GetUserID() : 0 );
+			event->SetInt( "amount", nHealthGiven );
+			gameeventmanager->FireEvent( event );
+		}
+	}
+
+	bool bSuccess = false;
+	if ( pTFPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pTFPlayer->m_Shared.GetCarryingRuneType() != RUNE_PLAGUE )
+	{
+		float flDisguiseHealth = pTFPlayer->m_Shared.GetDisguiseHealth();
+		float flDisguiseMaxHealth = pTFPlayer->m_Shared.GetDisguiseMaxHealth();
+		float flHealthToAdd = ceil( flDisguiseMaxHealth * PackRatios[GetPowerupSize()] );
+		if ( flHealthToAdd > flDisguiseMaxHealth - flDisguiseHealth )
+			flHealthToAdd = flDisguiseMaxHealth - flDisguiseHealth;
+		pTFPlayer->m_Shared.SetDisguiseHealth( flDisguiseHealth + flHealthToAdd );
+		bSuccess = true;
+	}
+
+	if ( nHealthGiven <= 0 && !pTFPlayer->m_Shared.InCond( TF_COND_BLEEDING ) && !pTFPlayer->m_Shared.InCond( TF_COND_BURNING ) && !pTFPlayer->m_Shared.InCond( TF_COND_PLAGUE ) )
+		return bSuccess;
+
+	pPlayer->AdjustDrownDmg( -1.0 * flHealth );
+
+	CSingleUserRecipientFilter user( pPlayer );
+	EmitSound( user, entindex(), "HealthKit.Touch" );
+
+	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+	if ( pOwner && pOwner != pTFPlayer && pOwner->GetTeamNumber() == pTFPlayer->GetTeamNumber() )
+	{
+		if ( pTFPlayer->GetLastEntityDamaged() != pTFPlayer )
+		{
+			CTF_GameStats.Event_PlayerAwardBonusPoints( pOwner, pTFPlayer, 10 );
+			CTF_GameStats.Event_PlayerHealedOtherAssist( pOwner, nHealthGiven );
+		}
+	}
+
+	pTFPlayer->m_Shared.HealthKitPickupEffects( nHealthGiven );
+	CTF_GameStats.Event_PlayerHealthkitPickup( pTFPlayer );
+	NotifyPickup( pPlayer, "item_healthkit_medium", "medkit_medium" );
+	return true;
+}
+
+bool CResupplyThrownLunchbox::TouchAsAmmo( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer )
+{
+	bool bSuccess = false;
+	const float flPackRatio = PackRatios[GetPowerupSize()];
+
+	int iMaxPrimary = pTFPlayer->GetMaxAmmo( TF_AMMO_PRIMARY );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxPrimary * flPackRatio ), TF_AMMO_PRIMARY, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	int iMaxSecondary = pTFPlayer->GetMaxAmmo( TF_AMMO_SECONDARY );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxSecondary * flPackRatio ), TF_AMMO_SECONDARY, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	int iMaxMetal = pTFPlayer->GetMaxAmmo( TF_AMMO_METAL );
+	if ( pTFPlayer->GiveAmmo( ceil( iMaxMetal * flPackRatio ), TF_AMMO_METAL, true, kAmmoSource_Pickup ) )
+		bSuccess = true;
+
+	if ( pTFPlayer->m_Shared.AddToSpyCloakMeter( 100.0f * flPackRatio ) )
+		bSuccess = true;
+
+	if ( pTFPlayer->AddToSpyKnife( 100.0f * flPackRatio, false ) )
+		bSuccess = true;
+
+	int iAmmoIsCharge = 0;
+	CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFPlayer, iAmmoIsCharge, ammo_gives_charge );
+	if ( iAmmoIsCharge )
+	{
+		float flCurrentCharge = pTFPlayer->m_Shared.GetDemomanChargeMeter();
+		if ( flCurrentCharge < 100.0f )
+		{
+			float flChargeRatio = flPackRatio;
+			if ( TFGameRules() && TFGameRules()->IsPowerupMode() )
+				flChargeRatio *= 0.2f;
+			pTFPlayer->m_Shared.SetDemomanChargeMeter( flCurrentCharge + flChargeRatio * 100.0f );
+			bSuccess = true;
+		}
+	}
+
+	if ( pTFPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
+	{
+		int iMaxGrenades1 = pTFPlayer->GetMaxAmmo( TF_AMMO_GRENADES1 );
+		if ( pTFPlayer->GiveAmmo( ceil( iMaxGrenades1 * flPackRatio ), TF_AMMO_GRENADES1, true, kAmmoSource_Pickup ) )
+			bSuccess = true;
+	}
+
+	if ( !bSuccess )
+		return false;
+
+	CSingleUserRecipientFilter filter( pPlayer );
+	EmitSound( filter, entindex(), "AmmoPack.Touch" );
+	CTF_GameStats.Event_PlayerAmmokitPickup( pTFPlayer );
+	NotifyPickup( pPlayer, "item_ammopack_medium", "ammopack_medium" );
+	return true;
+}
+
+bool CResupplyThrownLunchbox::MyTouch( CBasePlayer *pPlayer )
+{
+	if ( !ValidTouch( pPlayer ) )
+		return false;
+
+	CTFPlayer *pTFPlayer = ToTFPlayer( pPlayer );
+	if ( !pTFPlayer )
+		return false;
+
+	// Her own lunchbox. The throw comes back, and a full meter leaves it
+	// on the ground so someone else can still take it.
+	if ( GetOwnerEntity() == pPlayer && pTFPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+	{
+		if ( !pTFPlayer->AddResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
+			return false;
+
+		CSingleUserRecipientFilter user( pPlayer );
+		EmitSound( user, entindex(), IsAmmoLunchbox() ? "AmmoPack.Touch" : "HealthKit.Touch" );
+		NotifyPickup( pPlayer, IsAmmoLunchbox() ? "item_ammopack_medium" : "item_healthkit_medium", IsAmmoLunchbox() ? "ammopack_medium" : "medkit_medium" );
+		return true;
+	}
+
+	if ( IsAmmoLunchbox() )
+		return TouchAsAmmo( pTFPlayer, pPlayer );
+	return TouchAsHealth( pTFPlayer, pPlayer );
+}
+#endif
+
+//=============================================================================
 // Resupply. A melee so the cabinette body resolves ACT_MP_ATTACK_STAND_MELEE.
 // There is no mesh on the item. The entity still needs a precached studio
 // model: CBaseCombatWeapon::Equip does SetModel(GetViewModel()), and an
@@ -1190,11 +1427,8 @@ void CTFResupplyWeapon::Precache( void )
 	PrecacheModel( s_pszResupplyHiddenModel );
 	PrecacheScriptSound( "Regenerate.Touch" );
 #ifndef CLIENT_DLL
-	UTIL_PrecacheOther( "item_healthkit_medium" );
-	// The ammo throw is that health kit wearing an ammo pack.
-	PrecacheModel( "models/items/ammopack_medium.mdl" );
-	PrecacheModel( "models/items/ammopack_medium_bday.mdl" );
-	PrecacheScriptSound( "AmmoPack.Touch" );
+	UTIL_PrecacheOther( s_pszResupplyLunchboxHealth );
+	UTIL_PrecacheOther( s_pszResupplyLunchboxAmmo );
 #endif
 }
 
@@ -1258,10 +1492,10 @@ void CTFResupplyWeapon::SecondaryAttack( void )
 }
 
 //-----------------------------------------------------------------------------
-// Sandvich throw: a medium health kit, eye height, and a slight upward bias.
-// Faster than the sandvich so the pack travels. She cannot pick it up for
-// 0.3s. Picking up her own pack later refunds this throw. Throwing the same
-// kind again removes the previous one. chSwing is L for ammo, R for health.
+// Same toss as a sandvich: eye height, a slight upward bias, and 0.3s before
+// she can pick it up. Faster, so it travels. Picking up her own lunchbox
+// refunds this throw. Throwing that kind again removes the previous one.
+// chSwing is L for the ammo model, R for the health model.
 //-----------------------------------------------------------------------------
 void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 {
@@ -1282,9 +1516,9 @@ void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 	Vector vecSrc = pPlayer->EyePosition() + Vector( 0, 0, -8 );
 	QAngle angForward = pPlayer->EyeAngles() + QAngle( -10, 0, 0 );
 
-	CBaseEntity *pCreated = CBaseEntity::Create( "item_healthkit_medium", vecSrc, angForward, pPlayer );
-	CHealthKit *pKit = dynamic_cast<CHealthKit *>( pCreated );
-	if ( !pKit )
+	CBaseEntity *pCreated = CBaseEntity::Create( bAmmo ? s_pszResupplyLunchboxAmmo : s_pszResupplyLunchboxHealth, vecSrc, angForward, pPlayer );
+	CResupplyThrownLunchbox *pLunch = dynamic_cast<CResupplyThrownLunchbox *>( pCreated );
+	if ( !pLunch )
 	{
 		if ( pCreated )
 			UTIL_Remove( pCreated );
@@ -1293,11 +1527,9 @@ void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 
 	if ( !pPlayer->SpendResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
 	{
-		UTIL_Remove( pKit );
+		UTIL_Remove( pLunch );
 		return;
 	}
-
-	pKit->ConfigureAsResupplyThrow( bAmmo );
 
 	EHANDLE *phPrevious = bAmmo ? &m_hThrownAmmo : &m_hThrownHealth;
 	if ( *phPrevious )
@@ -1306,8 +1538,9 @@ void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( angForward, &vecForward, &vecRight, &vecUp );
 	Vector vecVelocity = vecForward * TF_RESUPPLY_THROW_SPEED;
-	pKit->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
-	*phPrevious = pKit;
+	pLunch->SetAbsAngles( vec3_angle );
+	pLunch->DropSingleInstance( vecVelocity, pPlayer, 0.3f );
+	*phPrevious = pLunch;
 	PlaySwing( chSwing );
 #endif
 

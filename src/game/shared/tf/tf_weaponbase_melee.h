@@ -110,10 +110,11 @@ private:
 
 //=============================================================================
 // Resupply melee. Occupies the melee anim slot so a pulse can play
-// a named swing. +attack throws a medium ammo pack (swing L) and
-// +attack2 a medium health kit (swing R). The aura plays swing U.
-// Throws are sandviches: she gets the throw back by picking up her own pack.
-// All three play the resupply locker sound. Neither traces or deals damage.
+// a named swing. +attack throws a lunchbox in the medium ammo pack
+// model (swing L) and +attack2 a lunchbox in the medium health kit
+// model (swing R). The aura plays swing U. She gets a throw back by
+// picking up her own lunchbox. All three play the resupply locker
+// sound. Neither traces or deals damage.
 //=============================================================================
 class CTFResupplyWeapon : public CTFWeaponBaseMelee
 {

@@ -9725,6 +9725,15 @@ int	CTFPlayerShared::GetNumKillsInTime( float flTime )
 //-----------------------------------------------------------------------------
 bool CTFPlayerShared::AddToSpyCloakMeter( float val, bool bForce )
 {
+#ifdef GAME_DLL
+	// Ammo packs and dropped weapons call this once per pickup, with the
+	// pack ratio times 100. Resupply has no cloak, so that same call fills
+	// her throw meter and lets the pack count as taken. A dispenser tick is
+	// a fraction of a unit and still only affects cloak.
+	if ( !bForce && val >= 10.0f && m_pOuter->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		return m_pOuter->AddResupplyThrowMeter( val );
+#endif
+
 	CTFWeaponInvis *pWpn = (CTFWeaponInvis *) m_pOuter->Weapon_OwnsThisID( TF_WEAPON_INVIS );
 	if ( !pWpn )
 		return false;

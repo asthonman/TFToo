@@ -88,12 +88,6 @@ bool CAmmoPack::MyTouch( CBasePlayer *pPlayer )
 			bSuccess = true;
 		}
 
-		// Same fraction of her throw meter as the cloak this pack would give a Spy.
-		if ( pTFPlayer->AddResupplyThrowMeter( 100.0f * flPackRatio ) )
-		{
-			bSuccess = true;
-		}
-
 		if ( pTFPlayer->AddToSpyKnife( 100.0f * flPackRatio, false ) )
 		{
 			bSuccess = true;
