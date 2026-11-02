@@ -4325,6 +4325,10 @@ void C_TFPlayer::UpdateClientSideAnimation()
 		m_PlayerAnimState->Update( m_angEyeAngles[YAW], m_angEyeAngles[PITCH] );
 	}
 
+	// Aim was just written into the pose parameters. Drop a bone cache that
+	// was built earlier this frame from the previous (usually centered) pose.
+	InvalidateBoneCache();
+
 	// StatTrak Module Test
 	// Update ViewModels
 	// We only update the view model for the local player.
@@ -4338,6 +4342,21 @@ void C_TFPlayer::UpdateClientSideAnimation()
 	}
 
 	BaseClass::UpdateClientSideAnimation();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: SetupBones reads this copy, not the anim state's last write.
+// Interpolation runs before the anim update and can put body_pitch / body_yaw
+// back on the zero cell. Write them again from the current eyes and feet.
+//-----------------------------------------------------------------------------
+void C_TFPlayer::GetPoseParameters( CStudioHdr *pStudioHdr, float poseParameter[MAXSTUDIOPOSEPARAM] )
+{
+	BaseClass::GetPoseParameters( pStudioHdr, poseParameter );
+
+	// SetupBones blends from this array. Put the aim in it here so a zero
+	// sample latched before the anim update cannot skin the reference cell.
+	if ( m_PlayerAnimState )
+		m_PlayerAnimState->StampAimPoseParameters( pStudioHdr, poseParameter, MAXSTUDIOPOSEPARAM );
 }
 
 //-----------------------------------------------------------------------------

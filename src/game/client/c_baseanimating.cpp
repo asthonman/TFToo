@@ -887,7 +887,16 @@ void C_BaseAnimating::UpdateRelevantInterpolatedVars()
 void C_BaseAnimating::AddBaseAnimatingInterpolatedVars()
 {
 	AddVar( m_flEncodedController, &m_iv_flEncodedController, LATCH_ANIMATION_VAR, true );
-	AddVar( m_flPoseParameter, &m_iv_flPoseParameter, LATCH_ANIMATION_VAR, true );
+
+	// Client-side animation owns these. TF players do not network them
+	// (SendPropExclude). Leaving them on the auto-interpolator writes the
+	// last networked sample — usually the zero pose — back over body_pitch
+	// and body_yaw just before the bones are built, so aim matrices stay
+	// on the reference cell.
+	int nPoseFlags = LATCH_ANIMATION_VAR;
+	if ( m_bClientSideAnimation )
+		nPoseFlags |= EXCLUDE_AUTO_INTERPOLATE;
+	AddVar( m_flPoseParameter, &m_iv_flPoseParameter, nPoseFlags, true );
 	
 	int flags = LATCH_ANIMATION_VAR;
 	if ( m_bClientSideAnimation )

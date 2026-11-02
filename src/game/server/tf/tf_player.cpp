@@ -1393,21 +1393,95 @@ void CTFPlayer::RegenResupplyThrowMeter( void )
 //-----------------------------------------------------------------------------
 // Brick grow. Right click toggles it. The meter refills at the Spy cloak
 // rate, and at half that rate while the grow is on.
+// He starts growing even when the full 2x hull does not fit. Each tick, if
+// the hull he wants is stuck, push him off that surface. Only if the push
+// cannot free him does the scale freeze where it is.
 //-----------------------------------------------------------------------------
-static bool BrickGrowHullFits( CTFPlayer *pPlayer )
+static void BrickHullAtScale( bool bDucking, float flScale, Vector &mins, Vector &maxs )
+{
+	const Vector &hullMin = bDucking ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN;
+	const Vector &hullMax = bDucking ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX;
+	mins = hullMin * flScale;
+	maxs = hullMax * flScale;
+}
+
+static bool BrickHullFitsAt( CTFPlayer *pPlayer, const Vector &origin, float flScale )
 {
 	if ( !pPlayer )
 		return false;
 
 	const bool bDucking = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
-	const Vector &hullMin = bDucking ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN;
-	const Vector &hullMax = bDucking ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX;
-	const Vector mins = hullMin * TF_BRICK_GROW_SCALE;
-	const Vector maxs = hullMax * TF_BRICK_GROW_SCALE;
+	Vector mins, maxs;
+	BrickHullAtScale( bDucking, flScale, mins, maxs );
 
 	trace_t tr;
-	UTIL_TraceHull( pPlayer->GetAbsOrigin(), pPlayer->GetAbsOrigin(), mins, maxs, MASK_PLAYERSOLID, pPlayer, COLLISION_GROUP_PLAYER_MOVEMENT, &tr );
-	return !tr.startsolid && tr.fraction >= 1.f;
+	UTIL_TraceHull( origin, origin, mins, maxs, MASK_PLAYERSOLID, pPlayer, COLLISION_GROUP_PLAYER_MOVEMENT, &tr );
+	return !tr.startsolid && !tr.allsolid;
+}
+
+// Closest surface to the (known free) 1x hull center. The normal points out
+// of the wall, so stepping along it moves him into the open.
+static Vector BrickNearestPushNormal( CTFPlayer *pPlayer )
+{
+	const bool bDucking = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
+	const Vector &hullMin = bDucking ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN;
+	const Vector &hullMax = bDucking ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX;
+	const Vector center = pPlayer->GetAbsOrigin() + ( hullMin + hullMax ) * 0.5f;
+
+	static const Vector s_dirs[] =
+	{
+		Vector( 1, 0, 0 ), Vector( -1, 0, 0 ), Vector( 0, 1, 0 ), Vector( 0, -1, 0 ),
+		Vector( 0.707f, 0.707f, 0 ), Vector( 0.707f, -0.707f, 0 ),
+		Vector( -0.707f, 0.707f, 0 ), Vector( -0.707f, -0.707f, 0 ),
+		Vector( 0, 0, 1 ), Vector( 0, 0, -1 )
+	};
+
+	float flBest = 1e9f;
+	Vector normal = vec3_origin;
+	for ( int i = 0; i < ARRAYSIZE( s_dirs ); ++i )
+	{
+		trace_t tr;
+		UTIL_TraceLine( center, center + s_dirs[i] * 64.f, MASK_PLAYERSOLID, pPlayer, COLLISION_GROUP_PLAYER_MOVEMENT, &tr );
+		if ( !tr.DidHit() || tr.fraction >= 1.f )
+			continue;
+
+		const float flDist = tr.fraction * 64.f;
+		if ( flDist < flBest && tr.plane.normal.LengthSqr() > 0.25f )
+		{
+			flBest = flDist;
+			normal = tr.plane.normal;
+		}
+	}
+
+	return normal;
+}
+
+// True if flScale fits, at the current origin or within 64 units along the
+// blocking surface. outOrigin is where he has to stand.
+static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, Vector &outOrigin )
+{
+	const Vector origin = pPlayer->GetAbsOrigin();
+	if ( BrickHullFitsAt( pPlayer, origin, flScale ) )
+	{
+		outOrigin = origin;
+		return true;
+	}
+
+	const Vector normal = BrickNearestPushNormal( pPlayer );
+	if ( normal == vec3_origin )
+		return false;
+
+	for ( float step = 4.f; step <= 64.f; step += 4.f )
+	{
+		const Vector test = origin + normal * step;
+		if ( BrickHullFitsAt( pPlayer, test, flScale ) )
+		{
+			outOrigin = test;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void CTFPlayer::ThinkBrickGrow( void )
@@ -1443,6 +1517,80 @@ void CTFPlayer::ThinkBrickGrow( void )
 	{
 		m_bBrickGrown = false;
 		SetModelScale( 1.0f );
+	}
+
+	// Scale-up is ours. The generic think would keep easing toward 2x and
+	// overwrite a freeze later in the same frame. Shrink stays on that think.
+	if ( IsAlive() )
+	{
+		ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
+		if ( mvs && mvs->m_flModelScaleGoal > mvs->m_flModelScaleStart + 0.01f )
+		{
+			SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+
+			const float dt = mvs->m_flModelScaleFinishTime - mvs->m_flModelScaleStartTime;
+			float frac = 1.f;
+			if ( dt > 0.f )
+				frac = clamp( ( gpGlobals->curtime - mvs->m_flModelScaleStartTime ) / dt, 0.f, 1.f );
+
+			const float flWant = Lerp( frac, mvs->m_flModelScaleStart, mvs->m_flModelScaleGoal );
+			Vector vecFit = GetAbsOrigin();
+			if ( BrickGrowPushToFit( this, flWant, vecFit ) )
+			{
+				if ( vecFit != GetAbsOrigin() )
+					SetAbsOrigin( vecFit );
+
+				if ( frac >= 1.f )
+				{
+					m_flModelScale = mvs->m_flModelScaleGoal;
+					DestroyDataObject( MODELSCALE );
+				}
+				else
+				{
+					m_flModelScale = flWant;
+				}
+				RefreshCollisionBounds();
+			}
+			else
+			{
+				// Push didn't free the size he wants. Keep the largest scale
+				// that does, with the same push. Don't start growing again.
+				float flLo = MIN( mvs->m_flModelScaleStart, 1.f );
+				float flHi = flWant;
+				float flBest = flLo;
+				Vector vecBest = GetAbsOrigin();
+				for ( int i = 0; i < 8; ++i )
+				{
+					const float mid = ( flLo + flHi ) * 0.5f;
+					Vector vecTry;
+					if ( BrickGrowPushToFit( this, mid, vecTry ) )
+					{
+						flLo = mid;
+						flBest = mid;
+						vecBest = vecTry;
+					}
+					else
+					{
+						flHi = mid;
+					}
+				}
+
+				if ( vecBest != GetAbsOrigin() )
+					SetAbsOrigin( vecBest );
+
+				if ( flBest <= 1.01f )
+				{
+					m_bBrickGrown = false;
+					SetModelScale( 1.0f );
+				}
+				else
+				{
+					SetModelScale( flBest );
+				}
+			}
+
+			TeamFortress_SetSpeed();
+		}
 	}
 
 	// Third person while big, while the size is still changing, and during a slam.
@@ -1487,11 +1635,20 @@ void CTFPlayer::HandleBrickGrowInput( void )
 	if ( m_flBrickGrowMeter <= TF_BRICK_GROW_MIN_START )
 		return;
 
-	if ( !BrickGrowHullFits( this ) )
-		return;
-
 	m_bBrickGrown = true;
-	SetModelScale( TF_BRICK_GROW_SCALE, TF_BRICK_GROW_TIME );
+
+	// Don't hand this to UpdateModelScaleThink. That think eases straight to
+	// 2x and would overwrite a fitted scale later in the same frame. Shrink
+	// still uses it.
+	SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+	if ( HasDataObjectType( MODELSCALE ) )
+		DestroyDataObject( MODELSCALE );
+
+	ModelScale *mvs = (ModelScale *)CreateDataObject( MODELSCALE );
+	mvs->m_flModelScaleStart = m_flModelScale;
+	mvs->m_flModelScaleGoal = TF_BRICK_GROW_SCALE;
+	mvs->m_flModelScaleStartTime = gpGlobals->curtime;
+	mvs->m_flModelScaleFinishTime = gpGlobals->curtime + TF_BRICK_GROW_TIME;
 }
 
 //-----------------------------------------------------------------------------

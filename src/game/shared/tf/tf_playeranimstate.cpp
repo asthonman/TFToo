@@ -681,6 +681,11 @@ void CTFPlayerAnimState::Update( float eyeYaw, float eyePitch )
 
 			// Pose parameter - Torso aiming (rotation).
 			ComputePoseParam_AimYaw( pStudioHdr );
+
+			// Item-test bots write their own scan. Everyone else gets a
+			// name-checked write so a stale index can't pin the spine.
+			if ( !IsItemTestingBot() )
+				ApplyAimPoseParameters( pStudioHdr );
 		}
 	}
 
@@ -698,6 +703,82 @@ void CTFPlayerAnimState::Update( float eyeYaw, float eyePitch )
 #endif
 
 	HoldBrickSlam();
+}
+
+//-----------------------------------------------------------------------------
+// The aim matrix reads body_pitch / body_yaw. SetupPoseParameters caches
+// those indices once, and the server LookupPoseParameter returns 0 (not -1)
+// when the studiohdr isn't ready yet, so both writes can land on pose 0.
+// Walking still looks fine because that 0 slot is often move_y or body_yaw
+// and the run cycle itself is moving. The spine stays on the zero cell.
+//-----------------------------------------------------------------------------
+static int AimPoseIndex( CBasePlayer *pPlayer, CStudioHdr *pStudioHdr, const char *pszName )
+{
+	if ( !pPlayer || !pStudioHdr || !pStudioHdr->SequencesAvailable() )
+		return -1;
+
+	const int iPose = pPlayer->LookupPoseParameter( pStudioHdr, pszName );
+	if ( iPose < 0 || iPose >= pStudioHdr->GetNumPoseParameters() )
+		return -1;
+
+	const char *pszFound = pStudioHdr->pPoseParameter( iPose ).pszName();
+	if ( !pszFound || V_stricmp( pszFound, pszName ) != 0 )
+		return -1;
+
+	return iPose;
+}
+
+void CTFPlayerAnimState::ApplyAimPoseParameters( CStudioHdr *pStudioHdr )
+{
+	CBasePlayer *pPlayer = GetBasePlayer();
+	const int iPitch = AimPoseIndex( pPlayer, pStudioHdr, "body_pitch" );
+	const int iYaw = AimPoseIndex( pPlayer, pStudioHdr, "body_yaw" );
+
+	// Don't keep a poisoned cache. Next update looks the names up again.
+	if ( iPitch < 0 || iYaw < 0 )
+		m_bPoseParameterInit = false;
+
+	if ( iPitch >= 0 )
+		m_PoseParameterData.m_iAimPitch = iPitch;
+	if ( iYaw >= 0 )
+		m_PoseParameterData.m_iAimYaw = iYaw;
+
+	// Pitch is the negated eye pitch, same as the stock aim path.
+	// Yaw is how far the eyes lead the feet. Writing the raw eye yaw
+	// clamps the spine at ±45 while the whole model also turns.
+	if ( iPitch >= 0 )
+		pPlayer->SetPoseParameter( pStudioHdr, iPitch, -m_flEyePitch );
+	if ( iYaw >= 0 )
+	{
+		const float flAimYaw = AngleNormalize( m_flEyeYaw - m_flCurrentFeetYaw );
+		pPlayer->SetPoseParameter( pStudioHdr, iYaw, -flAimYaw );
+	}
+}
+
+void CTFPlayerAnimState::StampAimPoseParameters( CStudioHdr *pStudioHdr, float *pPoseParameters, int nPoseParameters )
+{
+	if ( !pStudioHdr || !pPoseParameters || nPoseParameters <= 0 )
+		return;
+
+	const int iPitch = AimPoseIndex( GetBasePlayer(), pStudioHdr, "body_pitch" );
+	const int iYaw = AimPoseIndex( GetBasePlayer(), pStudioHdr, "body_yaw" );
+
+	if ( iPitch >= 0 && iPitch < nPoseParameters )
+	{
+		const mstudioposeparamdesc_t &pose = pStudioHdr->pPoseParameter( iPitch );
+		const float flSpan = pose.end - pose.start;
+		float flEncoded = ( flSpan != 0.f ) ? ( ( -m_flEyePitch - pose.start ) / flSpan ) : 0.f;
+		pPoseParameters[iPitch] = clamp( flEncoded, 0.f, 1.f );
+	}
+
+	if ( iYaw >= 0 && iYaw < nPoseParameters )
+	{
+		const float flAimYaw = AngleNormalize( m_flEyeYaw - m_flCurrentFeetYaw );
+		const mstudioposeparamdesc_t &pose = pStudioHdr->pPoseParameter( iYaw );
+		const float flSpan = pose.end - pose.start;
+		float flEncoded = ( flSpan != 0.f ) ? ( ( -flAimYaw - pose.start ) / flSpan ) : 0.f;
+		pPoseParameters[iYaw] = clamp( flEncoded, 0.f, 1.f );
+	}
 }
 
 //-----------------------------------------------------------------------------

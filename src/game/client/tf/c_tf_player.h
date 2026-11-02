@@ -91,6 +91,9 @@ public:
 
 	virtual const QAngle& GetRenderAngles();
 	virtual void UpdateClientSideAnimation();
+	// Bone setup copies pose parameters here. Stamp aim first so a latched
+	// zero pose cannot leave the torso on the reference cell.
+	virtual void GetPoseParameters( CStudioHdr *pStudioHdr, float poseParameter[MAXSTUDIOPOSEPARAM] );
 	virtual void SetDormant( bool bDormant );
 	virtual void OnPreDataChanged( DataUpdateType_t updateType );
 	virtual void OnDataChanged( DataUpdateType_t updateType );

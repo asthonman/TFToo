@@ -10910,13 +10910,15 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		}
 	}
 
-	// Grown Brick moves like a spun-up Heavy. Model scale is already easing
-	// over a quarter-second, so this slowdown eases with the size.
+	// Small Brick is a normal Heavy (230). Full size is a spun-up Heavy (110).
+	// The quarter-second scale eases between those. If the class script didn't
+	// load, don't lerp up from a speed below the spun-up cap.
 	if ( playerclass == TF_CLASS_BRICK )
 	{
-		const float flGrow = TFBrickGrowFraction( GetModelScale() );
-		if ( flGrow > 0.f )
-			maxfbspeed = Lerp( flGrow, maxfbspeed, TF_BRICK_GROW_SPEED );
+		float flSmall = default_speed;
+		if ( flSmall < TF_BRICK_GROW_SPEED )
+			flSmall = 230.f;
+		maxfbspeed = Lerp( TFBrickGrowFraction( GetModelScale() ), flSmall, TF_BRICK_GROW_SPEED );
 	}
 
 	if ( !TFGameRules()->IsMannVsMachineMode() || !IsMiniBoss() ) // No aiming slowdown penalties for MiniBoss players in MVM

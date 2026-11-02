@@ -68,6 +68,13 @@ public:
 	void	SetRenderangles( const QAngle& angles ) { m_angRender = angles; }
 
 	void	Vehicle_LeanAccel( float flInAccel );
+	// Cached body_pitch / body_yaw indices are latched once. If that lookup
+	// ran before the studiohdr was ready, the server stores 0 and the torso
+	// never leaves the reference pose. Re-resolve by name after the feet yaw.
+	void	ApplyAimPoseParameters( CStudioHdr *pStudioHdr );
+	// Bone setup uses its own copy of the pose array. Fill that copy too,
+	// so a latched zero pose cannot win over the eyes.
+	void	StampAimPoseParameters( CStudioHdr *pStudioHdr, float *pPoseParameters, int nPoseParameters );
 private:
 	void Taunt_ComputePoseParam_MoveX( CStudioHdr *pStudioHdr );
 	void Taunt_ComputePoseParam_MoveY( CStudioHdr *pStudioHdr );

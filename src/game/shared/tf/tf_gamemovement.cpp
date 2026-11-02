@@ -360,6 +360,15 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// Speed for this tick includes the meter we just wrote.
 	UpdateMadcapPMeter();
 
+	// Brick's cap has to follow the grow scale on this command. SetSpeed is
+	// not called from the scale think, and m_flClientMaxSpeed was copied
+	// from the previous cap before ProcessMovement.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_BRICK ) )
+	{
+		m_pTFPlayer->TeamFortress_SetSpeed();
+		mv->m_flClientMaxSpeed = m_pTFPlayer->MaxSpeed();
+	}
+
 	// Handle scouts that can move really fast with buffs
 	HighMaxSpeedMove();
 
