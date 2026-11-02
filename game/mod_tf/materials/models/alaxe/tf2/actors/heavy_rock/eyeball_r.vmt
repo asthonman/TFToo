@@ -29,15 +29,12 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	// Spy disguise uses this pass. brick_invis is only the grow fade,
-	// and on EyeRefract that is $cloakfactor while he actually is Brick.
+	// Spy disguise uses this pass. EyeRefract ignores $alpha, so the grow
+	// fade does not run on the live eyes.
 	"$cloakPassEnabled" "1"
 	"Proxies"
 	{
 		"spy_invis"
-		{
-		}
-		"brick_invis"
 		{
 		}
 	}

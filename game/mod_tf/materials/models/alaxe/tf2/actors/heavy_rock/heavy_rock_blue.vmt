@@ -30,9 +30,10 @@
 	"$one" "1"
 
 	"$translucent" "1"
-	"$alpha" "1"
+	// Stay under 1 so the first snapshot is an alpha blend. brick_invis
+	// writes this from his size and does not touch $cloakfactor.
+	"$alpha" "0.999"
 	// spy_invis stays. A Spy disguised as him cloaks through this pass.
-	// brick_invis only fades $alpha, so it does not stomp that cloak.
 	"$cloakPassEnabled" "1"
 	"Proxies"
 	{

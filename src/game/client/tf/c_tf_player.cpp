@@ -1765,10 +1765,11 @@ void CSpyInvisProxy::OnBindNotEntity( void *pRenderable )
 EXPOSE_INTERFACE( CSpyInvisProxy, IMaterialProxy, "spy_invis" IMATERIAL_PROXY_INTERFACE_VERSION );
 
 //-----------------------------------------------------------------------------
-// Purpose: Brick's grow. Sits next to spy_invis. Spy's proxy still owns
-//			$cloakfactor, so a Spy disguised as him can cloak. This one only
-//			fades $alpha from his size. Eyes have no $alpha (EyeRefract), so
-//			those materials get $cloakfactor, and only when he really is Brick.
+// Purpose: Brick's grow. Sits next to spy_invis and only writes $alpha, the
+//			same knob SFM's proxy material drives. Spy's proxy still owns
+//			$cloakfactor, so a Spy disguised as him can cloak. $alpha stays
+//			under 1 so the material is born as an alpha blend. Writing exactly
+//			1 takes an opaque snapshot, and later writes never show up.
 //-----------------------------------------------------------------------------
 class CBrickInvisProxy : public CEntityMaterialProxy
 {
@@ -1776,36 +1777,56 @@ public:
 	CBrickInvisProxy( void );
 	virtual bool		Init( IMaterial *pMaterial, KeyValues *pKeyValues ) OVERRIDE;
 	virtual void		OnBind( C_BaseEntity *pBaseEntity ) OVERRIDE;
+	virtual void		OnBindNotEntity( void *pRenderable ) OVERRIDE;
 	virtual void		Release( void ) OVERRIDE { delete this; }
 	virtual IMaterial	*GetMaterial( void ) OVERRIDE;
 
 private:
+	void				SetAlpha( float flAlpha );
+
 	IMaterialVar		*m_pAlpha;
-	IMaterialVar		*m_pCloakFactor;
 };
 
 CBrickInvisProxy::CBrickInvisProxy( void )
 {
 	m_pAlpha = NULL;
-	m_pCloakFactor = NULL;
 }
 
 bool CBrickInvisProxy::Init( IMaterial *pMaterial, KeyValues *pKeyValues )
 {
 	bool bAlpha = false;
-	bool bCloak = false;
 	m_pAlpha = pMaterial->FindVar( "$alpha", &bAlpha );
-	m_pCloakFactor = pMaterial->FindVar( "$cloakfactor", &bCloak );
 	if ( !bAlpha )
 		m_pAlpha = NULL;
-	if ( !bCloak )
-		m_pCloakFactor = NULL;
-	return ( m_pAlpha != NULL || m_pCloakFactor != NULL );
+	return m_pAlpha != NULL;
+}
+
+void CBrickInvisProxy::SetAlpha( float flAlpha )
+{
+	if ( !m_pAlpha )
+		return;
+
+	// Exactly 1 drops the alpha-modulation flag and the snapshot goes opaque.
+	// A later write then only changes a constant the opaque pass ignores.
+	// SFM's alpha channel has the same shape: one float on $alpha, never a cloak.
+	if ( flAlpha >= 1.0f )
+		flAlpha = 0.999f;
+	if ( flAlpha < 0.0f )
+		flAlpha = 0.0f;
+
+	if ( m_pAlpha->GetFloatValue() == flAlpha )
+		return;
+
+	m_pAlpha->SetFloatValue( flAlpha );
+
+	IMaterial *pMat = m_pAlpha->GetOwningMaterial();
+	if ( pMat )
+		pMat->AlphaModulate( flAlpha );
 }
 
 void CBrickInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
 {
-	float flClear = 0.0f;
+	float flAlpha = 0.999f;
 
 	C_TFPlayer *pPlayer = ToTFPlayer( pBaseEntity );
 	if ( !pPlayer && pBaseEntity )
@@ -1813,38 +1834,23 @@ void CBrickInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
 		pPlayer = ToTFPlayer( pBaseEntity->GetOwnerEntity() );
 	}
 
-	const bool bBrick = pPlayer && pPlayer->IsPlayerClass( TF_CLASS_BRICK );
-	if ( bBrick )
+	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_BRICK ) )
 	{
-		flClear = TFBrickGrowSeeThrough( pPlayer->GetModelScale() );
+		flAlpha = 1.0f - TFBrickGrowSeeThrough( pPlayer->GetModelScale() );
 	}
 
-	// Body materials fade the rock itself. 50% grown leaves 25% of it.
-	// $cloakfactor is spy_invis's. Overwriting it is what stops a disguised Spy
-	// from cloaking. EyeRefract ignores $alpha, so only those, and only while
-	// this player really is Brick, get a cloak factor from the grow.
-	if ( m_pAlpha )
-	{
-		m_pAlpha->SetFloatValue( 1.0f - flClear );
-	}
+	SetAlpha( flAlpha );
+}
 
-	if ( bBrick && m_pCloakFactor )
-	{
-		IMaterial *pMat = GetMaterial();
-		const char *pszShader = pMat ? pMat->GetShaderName() : NULL;
-		if ( pszShader && V_stricmp( pszShader, "EyeRefract" ) == 0 )
-		{
-			m_pCloakFactor->SetFloatValue( flClear );
-		}
-	}
+void CBrickInvisProxy::OnBindNotEntity( void *pRenderable )
+{
+	SetAlpha( 0.999f );
 }
 
 IMaterial *CBrickInvisProxy::GetMaterial( void )
 {
 	if ( m_pAlpha )
 		return m_pAlpha->GetOwningMaterial();
-	if ( m_pCloakFactor )
-		return m_pCloakFactor->GetOwningMaterial();
 	return NULL;
 }
 
