@@ -166,8 +166,8 @@ bool CTFLunchBox::DropAllowed( void )
 			return false;
 	}
 
-	// Heavy's lunchboxes carry this. Resupply's packs are not lunchboxes,
-	// so she can still throw them.
+	// weapon_lunchbox in items_game.txt carries lunchbox_no_throw.
+	// Resupply's packs are not that prefab, so she can still throw them.
 	int iNoThrow = 0;
 	CALL_ATTRIB_HOOK_INT( iNoThrow, lunchbox_no_throw );
 	if ( iNoThrow )

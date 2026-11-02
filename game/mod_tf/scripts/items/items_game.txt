@@ -20439,6 +20439,15 @@
 			"max_ilevel"	"1"
 			"attach_to_hands"	"1"
 
+			"attributes"
+			{
+				"cannot throw lunchbox"
+				{
+					"attribute_class"	"lunchbox_no_throw"
+					"value"	"1"
+				}
+			}
+
 			"visuals"
 			{
 				"animation_replacement"
@@ -23564,14 +23573,6 @@
 			"name"	"The Sandvich"
 			"first_sale_date"	"2010/09/29"
 			"prefab"	"valve weapon_sandvich"
-		
-			"attributes"
-			{
-				"cannot throw lunchbox"
-				{
-					"value"	"1"
-				}
-			}
 		}
 		"43"
 		{
@@ -27255,11 +27256,6 @@
 				"allowed in medieval mode"
 				{
 					"attribute_class"	"allowed_in_medieval_mode"
-					"value"	"1"
-				}
-			
-				"cannot throw lunchbox"
-				{
 					"value"	"1"
 				}
 			}
@@ -33506,11 +33502,6 @@
 					"attribute_class"	"energy_buff_dmg_taken_multiplier"
 					"value"	"1.2"
 				}
-			
-				"cannot throw lunchbox"
-				{
-					"value"	"1"
-				}
 			}
 		}
 		"312"
@@ -38132,11 +38123,6 @@
 				"allowed in medieval mode"
 				{
 					"attribute_class"	"allowed_in_medieval_mode"
-					"value"	"1"
-				}
-			
-				"cannot throw lunchbox"
-				{
 					"value"	"1"
 				}
 			}
@@ -51940,11 +51926,6 @@
 					"attribute_class"	"allowed_in_medieval_mode"
 					"value"	"1"
 				}
-			
-				"cannot throw lunchbox"
-				{
-					"value"	"1"
-				}
 			}
 			"mouse_pressed_sound"	"ui/item_metal_weapon_pickup.wav"
 			"drop_sound"		"ui/item_metal_weapon_drop.wav"
@@ -56670,11 +56651,6 @@
 				{
 					"attribute_class"	"set_weapon_mode"
 					"value"	"4"
-				}
-			
-				"cannot throw lunchbox"
-				{
-					"value"	"1"
 				}
 			}
 			"static_attrs"
@@ -63862,11 +63838,6 @@
 				{
 					"attribute_class"	"charge_recharge_rate"
 					"value"	"1.5"
-				}
-			
-				"cannot throw lunchbox"
-				{
-					"value"	"1"
 				}
 			}
 		}

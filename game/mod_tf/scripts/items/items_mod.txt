@@ -1,13 +1,13 @@
 // Mod items. Same schema items_game.txt uses. Definition ids are "b1", "b2", ...
 // so they do not collide with vanilla numeric ids. A "bN" id is stored as
 // 0xB000+N. baseitem 1 is the stock weapon for that class and slot.
-// The "cannot throw lunchbox" attribute is defined here and applied to
-// Heavy's lunchboxes from items_game.txt.
+// Attributes invented for this mod use the same "bN" ids. Heavy's lunchboxes
+// get "cannot throw lunchbox" from the weapon_lunchbox prefab in items_game.txt.
 "items_game"
 {
 	"attributes"
 	{
-		"4000"
+		"b1"
 		{
 			"name"					"cannot throw lunchbox"
 			"attribute_class"		"lunchbox_no_throw"

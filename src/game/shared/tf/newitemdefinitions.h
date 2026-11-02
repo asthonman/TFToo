@@ -39,6 +39,8 @@ inline bool ItemDefIndexIsNewSchema( const char *pszIndex )
 
 // "bN" is stored in the networked uint16 def index as 0xB000+N.
 // 0xB000 is the letter. The id you write in this schema is still "bN".
+// Attribute ids invented for the mod use the same keys. Items and
+// attributes are separate maps, so "b1" can be both.
 static const item_definition_index_t kNewItemDefBase = 0xB000;
 
 inline item_definition_index_t ItemDefIndexFromAltId( const char *pszAltId )

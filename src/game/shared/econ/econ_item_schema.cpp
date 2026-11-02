@@ -2176,7 +2176,10 @@ CEconItemAttributeDefinition::~CEconItemAttributeDefinition( void )
 bool CEconItemAttributeDefinition::BInitFromKV( KeyValues *pKVAttribute, CUtlVector<CUtlString> *pVecErrors /* = NULL */ )
 {
 	m_pKVAttribute = pKVAttribute->MakeCopy();
-	m_nDefIndex = Q_atoi( m_pKVAttribute->GetName() );
+	// "bN" is a mod attribute. Q_atoi("b1") is 0, which would collide.
+	m_nDefIndex = ItemDefIndexIsNewSchema( m_pKVAttribute->GetName() )
+		? (attrib_definition_index_t)ItemDefIndexFromAltId( m_pKVAttribute->GetName() )
+		: (attrib_definition_index_t)Q_atoi( m_pKVAttribute->GetName() );
 	
 	m_pszDefinitionName = m_pKVAttribute->GetString("name", "(unnamed)");
 	m_bHidden = m_pKVAttribute->GetInt( "hidden", 0 ) != 0;
@@ -5225,8 +5228,16 @@ bool CEconItemSchema::BInitAttributes( KeyValues *pKVAttributes, CUtlVector<CUtl
 	// Initialize the attribute definitions
 	FOR_EACH_TRUE_SUBKEY( pKVAttributes, pKVAttribute )
 	{
-		int nAttrIndex = Q_atoi( pKVAttribute->GetName() );
+		const char *pszIndex = pKVAttribute->GetName();
+		const bool bNewSchema = ItemDefIndexIsNewSchema( pszIndex );
+		int nAttrIndex = bNewSchema
+			? (int)ItemDefIndexFromAltId( pszIndex )
+			: Q_atoi( pszIndex );
 		int nMapIndex = m_mapAttributes.Find( nAttrIndex );
+
+		SCHEMA_INIT_CHECK(
+			!bNewSchema || IsNewItemDefinitionIndex( (item_definition_index_t)nAttrIndex ),
+			"Attribute definition index \"%s\" is not a valid b-id", pszIndex );
 
 		// Make sure the index is positive
 		SCHEMA_INIT_CHECK( 
