@@ -31,8 +31,17 @@
 
 	"$translucent" "1"
 	"$alpha" "1"
+	// spy_invis stays. A Spy disguised as him cloaks through this pass.
+	// brick_invis only fades $alpha, so it does not stomp that cloak.
+	"$cloakPassEnabled" "1"
 	"Proxies"
 	{
+		"spy_invis"
+		{
+		}
+		"invis"
+		{
+		}
 		"brick_invis"
 		{
 		}

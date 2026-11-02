@@ -1765,11 +1765,10 @@ void CSpyInvisProxy::OnBindNotEntity( void *pRenderable )
 EXPOSE_INTERFACE( CSpyInvisProxy, IMaterialProxy, "spy_invis" IMATERIAL_PROXY_INTERFACE_VERSION );
 
 //-----------------------------------------------------------------------------
-// Purpose: Brick's grow. Same bind path as spy_invis / invis, but the value
-//			is his size, not Spy's cloak. Half grown is 0.75 clear. Spy's
-//			cloak at 50% is still a solid refractive silhouette.
-//			Body materials use $alpha (real transparency). EyeRefract ignores
-//			$alpha, so the eyes get $cloakfactor with $refractamount 0.
+// Purpose: Brick's grow. Sits next to spy_invis. Spy's proxy still owns
+//			$cloakfactor, so a Spy disguised as him can cloak. This one only
+//			fades $alpha from his size. Eyes have no $alpha (EyeRefract), so
+//			those materials get $cloakfactor, and only when he really is Brick.
 //-----------------------------------------------------------------------------
 class CBrickInvisProxy : public CEntityMaterialProxy
 {
@@ -1797,7 +1796,11 @@ bool CBrickInvisProxy::Init( IMaterial *pMaterial, KeyValues *pKeyValues )
 	bool bCloak = false;
 	m_pAlpha = pMaterial->FindVar( "$alpha", &bAlpha );
 	m_pCloakFactor = pMaterial->FindVar( "$cloakfactor", &bCloak );
-	return ( bAlpha || bCloak );
+	if ( !bAlpha )
+		m_pAlpha = NULL;
+	if ( !bCloak )
+		m_pCloakFactor = NULL;
+	return ( m_pAlpha != NULL || m_pCloakFactor != NULL );
 }
 
 void CBrickInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
@@ -1810,23 +1813,29 @@ void CBrickInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
 		pPlayer = ToTFPlayer( pBaseEntity->GetOwnerEntity() );
 	}
 
-	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_BRICK ) )
+	const bool bBrick = pPlayer && pPlayer->IsPlayerClass( TF_CLASS_BRICK );
+	if ( bBrick )
 	{
 		flClear = TFBrickGrowSeeThrough( pPlayer->GetModelScale() );
 	}
 
 	// Body materials fade the rock itself. 50% grown leaves 25% of it.
+	// $cloakfactor is spy_invis's. Overwriting it is what stops a disguised Spy
+	// from cloaking. EyeRefract ignores $alpha, so only those, and only while
+	// this player really is Brick, get a cloak factor from the grow.
 	if ( m_pAlpha )
 	{
 		m_pAlpha->SetFloatValue( 1.0f - flClear );
 	}
 
-	// Eyes still go through the cloak pass. The factor is the clear amount,
-	// which is already past Spy's solid range at half size, and the VMT
-	// sets $refractamount to 0 so the pass is the background, not a lens.
-	if ( m_pCloakFactor )
+	if ( bBrick && m_pCloakFactor )
 	{
-		m_pCloakFactor->SetFloatValue( flClear );
+		IMaterial *pMat = GetMaterial();
+		const char *pszShader = pMat ? pMat->GetShaderName() : NULL;
+		if ( pszShader && V_stricmp( pszShader, "EyeRefract" ) == 0 )
+		{
+			m_pCloakFactor->SetFloatValue( flClear );
+		}
 	}
 }
 

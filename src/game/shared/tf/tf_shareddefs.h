@@ -245,15 +245,19 @@ enum ETFClass
 #define TF_RESUPPLY_THROW_SPEED		1000.0f
 
 // Brick's grow. 0-100, and he cannot start one below the Spy's cloak floor.
-// It refills at the Spy cloak rate while small, and at half that rate while
-// big. Damage while big spends it, 1 point per damage. The size, the
-// see-through (brick_invis on his materials), the knockback resist, and the
-// spun-up-Heavy slowdown all move together over TF_BRICK_GROW_TIME.
+// It refills at the Spy cloak rate while small. While big it drains like the
+// invis watch, at half of tf_spy_cloak_consume_rate (20s from a full meter).
+// Shrinking spends whatever is left. The size, the see-through (brick_invis
+// on his materials, on top of spy_invis so a disguise can still cloak), the
+// knockback resist, and the spun-up-Heavy slowdown all move together over
+// TF_BRICK_GROW_TIME.
 // A ceiling pauses that scale instead of cancelling it. He crouches first.
 #define TF_BRICK_GROW_MAX			100.0f
 #define TF_BRICK_GROW_MIN_START		8.0f
 #define TF_BRICK_GROW_SCALE			2.0f
 #define TF_BRICK_GROW_TIME			0.25f
+// Half of the Spy watch. 10/s is 10 seconds; this is 5/s, 20 seconds.
+#define TF_BRICK_GROW_DRAIN_FRACTION	0.5f
 // Full size matches a spun-up Heavy. Partial size lerps from class speed.
 #define TF_BRICK_GROW_SPEED			110.0f
 // attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is

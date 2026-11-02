@@ -5,6 +5,7 @@
 	"$model"		1
 	"$translucent" "1"
 	"$alpha" "1"
+	// UnlitGeneric has no cloak pass. Grow still fades $alpha.
 	"Proxies"
 	{
 		"brick_invis"

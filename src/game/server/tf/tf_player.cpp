@@ -1502,16 +1502,26 @@ void CTFPlayer::ThinkBrickGrow( void )
 	if ( IsAlive() )
 	{
 		extern ConVar tf_spy_cloak_regen_rate;
+		extern ConVar tf_spy_cloak_consume_rate;
 
-		// Spy's cloak rate while the grow is off. Half of that while it is on.
-		// Damage still spends the meter.
-		if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
+		if ( m_bBrickGrown )
 		{
-			float flRate = tf_spy_cloak_regen_rate.GetFloat();
-			if ( m_bBrickGrown )
-				flRate *= 0.5f;
-
-			m_flBrickGrowMeter += gpGlobals->frametime * flRate;
+			// Invis watch, but slower. Empty starts the shrink, same as
+			// the watch running out. A manual shrink also empties it.
+			m_flBrickGrowMeter -= gpGlobals->frametime * tf_spy_cloak_consume_rate.GetFloat() * TF_BRICK_GROW_DRAIN_FRACTION;
+			if ( m_flBrickGrowMeter <= 0.f )
+			{
+				m_flBrickGrowMeter = 0.f;
+				m_bBrickGrown = false;
+				SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+				if ( HasDataObjectType( MODELSCALE ) )
+					DestroyDataObject( MODELSCALE );
+				SetModelScale( 1.0f, TF_BRICK_GROW_TIME );
+			}
+		}
+		else if ( m_flBrickGrowMeter < TF_BRICK_GROW_MAX )
+		{
+			m_flBrickGrowMeter += gpGlobals->frametime * tf_spy_cloak_regen_rate.GetFloat();
 			if ( m_flBrickGrowMeter > TF_BRICK_GROW_MAX )
 				m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 		}
@@ -1649,6 +1659,10 @@ void CTFPlayer::HandleBrickGrowInput( void )
 	if ( m_bBrickGrown )
 	{
 		m_bBrickGrown = false;
+		m_flBrickGrowMeter = 0.f;
+		SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+		if ( HasDataObjectType( MODELSCALE ) )
+			DestroyDataObject( MODELSCALE );
 		SetModelScale( 1.0f, TF_BRICK_GROW_TIME );
 		return;
 	}
@@ -11131,23 +11145,6 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		// Take damage - round to the nearest integer.
 		int iOldHealth = m_iHealth;
 		m_iHealth -= ( realDamage + 0.5f );
-
-		// Grown Brick's meter is spent by damage, not by time. 1 point per
-		// health lost. Empty starts the quarter-second shrink.
-		if ( m_bBrickGrown && IsPlayerClass( TF_CLASS_BRICK ) )
-		{
-			const int iHealthLost = iOldHealth - Max( (int)m_iHealth, 0 );
-			if ( iHealthLost > 0 )
-			{
-				m_flBrickGrowMeter -= iHealthLost;
-				if ( m_flBrickGrowMeter <= 0.f )
-				{
-					m_flBrickGrowMeter = 0.f;
-					m_bBrickGrown = false;
-					SetModelScale( 1.0f, TF_BRICK_GROW_TIME );
-				}
-			}
-		}
 
 		if ( IsHeadshot( info.GetDamageCustom() ) && (m_iHealth <= 0) && (iOldHealth != 1) )
 		{

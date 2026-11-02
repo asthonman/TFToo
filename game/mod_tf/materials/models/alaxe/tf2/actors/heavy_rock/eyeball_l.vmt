@@ -29,12 +29,14 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	// See-through. brick_invis, not spy_invis. No refraction, so half
-	// grown is the background instead of a solid cloak silhouette.
+	// Spy disguise uses this pass. brick_invis is only the grow fade,
+	// and on EyeRefract that is $cloakfactor while he actually is Brick.
 	"$cloakPassEnabled" "1"
-	"$refractamount" "0"
 	"Proxies"
 	{
+		"spy_invis"
+		{
+		}
 		"brick_invis"
 		{
 		}
