@@ -507,3 +507,6 @@ FodyWeavers.xsd
 game/mod_tf/GameState.txt
 game/mod_tf/media/viewed.res
 *.tga
+game/mod_tf/GameState.txt
+game/mod_tf/media/viewed.res
+game/mod_tf/tf2_playerstats.dmx
