@@ -580,9 +580,10 @@ bool CTFGameMovement::ChargeMove()
 
 //-----------------------------------------------------------------------------
 // Madcap P-meter. Fills only while he is moving forward, near his current
-// top speed. A turn within the allowed angle (45 degrees, widened by
-// charge_turn_control from the booties) holds it. A sharper turn drains it.
-// A shield charge counts as a forward sprint and fills it faster.
+// top speed. The turn test is his absolute direction of travel, not where
+// he is looking: the course locks while the meter is up, and a velocity
+// heading more than the allowed angle off that course drains it. 45 degrees,
+// widened by charge_turn_control from the booties. A shield charge fills faster.
 //-----------------------------------------------------------------------------
 static const float tf_madcap_pmeter_fill = 40.f;   // 2.5s from empty to full
 static const float tf_madcap_pmeter_drain = 80.f;  // 1.25s from full to empty
@@ -602,6 +603,7 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 			m_pTFPlayer->SetPMeter( 0.f );
 			m_pTFPlayer->TeamFortress_SetSpeed();
 		}
+		m_pTFPlayer->ClearMadcapCourse();
 		return;
 	}
 
@@ -624,12 +626,32 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 	Vector vecVel = mv->m_vecVelocity;
 	vecVel.z = 0.f;
 	const float flSpeed = vecVel.Length();
+	Vector vecVelDir = vec3_origin;
+	if ( flSpeed > 1.f )
+		vecVelDir = vecVel / flSpeed;
+
+	// A shield charge is steered. Follow that heading, or the steer
+	// would count as a turn and drain the meter the charge is filling.
+	const bool bCharging = m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE );
+
+	// Empty meter tracks wherever he is actually going. Once it is up, that
+	// absolute heading stays put, so a turn accumulates instead of being
+	// hidden by the eyes moving with him.
+	if ( flSpeed <= 1.f || m_pTFPlayer->GetPMeter() <= 0.f )
+	{
+		if ( flSpeed > 1.f )
+			m_pTFPlayer->SetMadcapCourse( vecVelDir );
+		else
+			m_pTFPlayer->ClearMadcapCourse();
+	}
+	else if ( ( bCharging || !m_pTFPlayer->HasMadcapCourse() ) && flSpeed > 1.f )
+	{
+		m_pTFPlayer->SetMadcapCourse( vecVelDir );
+	}
 
 	float flDot = 1.f;
-	if ( bHasWish && flSpeed > 1.f )
-	{
-		flDot = DotProduct( vecVel / flSpeed, vecWish );
-	}
+	if ( m_pTFPlayer->HasMadcapCourse() && flSpeed > 1.f )
+		flDot = DotProduct( vecVelDir, m_pTFPlayer->GetMadcapCourse() );
 
 	// Booties store a 3x multiplier on charge_turn_control. The Tide Turner adds.
 	float flAngle = 45.f;
@@ -637,7 +659,6 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 	flAngle = clamp( flAngle, 1.f, 180.f );
 	const float flKeepDot = cosf( DEG2RAD( flAngle ) );
 	const bool bAligned = ( flDot + 0.001f ) >= flKeepDot;
-	const bool bCharging = m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE );
 	const float flMaxSpeed = Max( m_pTFPlayer->MaxSpeed(), 1.f );
 	const bool bAtSpeed = flSpeed >= ( flMaxSpeed * 0.85f );
 

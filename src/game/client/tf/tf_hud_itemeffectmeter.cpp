@@ -177,6 +177,7 @@ public:
 
 //-----------------------------------------------------------------------------
 // Madcap's sprint. Fills while he runs forward, drains on a hard turn.
+// The shield charge bar uses the same slot, so this meter steps above it.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_Madcap : public CHudItemEffectMeter
 {
@@ -184,6 +185,8 @@ public:
 	CHudItemEffectMeter_Madcap( const char *pszElementName, C_TFPlayer *pPlayer )
 		: CHudItemEffectMeter( pszElementName, pPlayer )
 	{
+		m_bRestPosSaved = false;
+		m_iRestY = 0;
 	}
 
 	virtual bool IsEnabled( void ) OVERRIDE
@@ -193,6 +196,9 @@ public:
 
 	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_PMeter"; }
 	virtual bool ShouldBeep( void ) OVERRIDE { return false; }
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
+	virtual void PerformLayout() OVERRIDE;
+	virtual void Update( C_TFPlayer *pPlayer ) OVERRIDE;
 
 	virtual float GetProgress( void ) OVERRIDE
 	{
@@ -201,6 +207,12 @@ public:
 
 		return m_pPlayer->GetPMeter() / TF_MADCAP_PMETER_MAX;
 	}
+
+private:
+	void PlaceClearOfCharge( void );
+
+	bool m_bRestPosSaved;
+	int m_iRestY;
 };
 
 //-----------------------------------------------------------------------------
@@ -288,6 +300,72 @@ void CHudItemEffectMeter_ResupplyThrow::Update( C_TFPlayer *pPlayer )
 		else
 			pBars[i]->SetFgColor( Color( 190, 190, 190, 255 ) );
 	}
+}
+
+//-----------------------------------------------------------------------------
+// The shield charge lives on HudDemomanPipes, which stock layout puts in the
+// same rectangle as this meter. Sit just above that panel while it is up.
+// Y is always measured from the scheme position so the nudge cannot stack.
+//-----------------------------------------------------------------------------
+void CHudItemEffectMeter_Madcap::ApplySchemeSettings( vgui::IScheme *pScheme )
+{
+	CHudItemEffectMeter::ApplySchemeSettings( pScheme );
+
+	m_iRestY = GetYPos();
+	m_bRestPosSaved = true;
+}
+
+void CHudItemEffectMeter_Madcap::PerformLayout()
+{
+	if ( !m_bRestPosSaved )
+	{
+		m_iRestY = GetYPos();
+		m_bRestPosSaved = true;
+	}
+
+	CHudItemEffectMeter::PerformLayout();
+	PlaceClearOfCharge();
+}
+
+void CHudItemEffectMeter_Madcap::Update( C_TFPlayer *pPlayer )
+{
+	CHudItemEffectMeter::Update( pPlayer );
+	PlaceClearOfCharge();
+}
+
+void CHudItemEffectMeter_Madcap::PlaceClearOfCharge( void )
+{
+	if ( !m_bRestPosSaved )
+		return;
+
+	int x, y;
+	GetPos( x, y );
+	int iY = m_iRestY;
+
+	vgui::Panel *pViewport = g_pClientMode ? g_pClientMode->GetViewport() : NULL;
+	vgui::Panel *pCharge = pViewport ? pViewport->FindChildByName( "HudDemomanPipes", true ) : NULL;
+	if ( pCharge && pCharge->IsVisible() )
+	{
+		int cx, cy, cw, ch;
+		pCharge->GetBounds( cx, cy, cw, ch );
+
+		int w, h;
+		GetSize( w, h );
+
+		const bool bOverlapX = ( x < cx + cw ) && ( x + w > cx );
+		const bool bOverlapY = ( iY < cy + ch ) && ( iY + h > cy );
+		if ( bOverlapX && bOverlapY && ch > 0 && h > 0 )
+		{
+			int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 2 );
+			if ( iGap < 2 )
+				iGap = 2;
+
+			iY = cy - h - iGap;
+		}
+	}
+
+	if ( y != iY )
+		SetPos( x, iY );
 }
 
 IMPLEMENT_AUTO_LIST( IHudItemEffectMeterAutoList );

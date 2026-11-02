@@ -526,6 +526,11 @@ public:
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float					GetPMeter( void ) const { return m_flPMeter; }
 	void					SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
+	// Absolute horizontal direction the P-meter is measured against.
+	bool					HasMadcapCourse( void ) const { return m_bMadcapCourse; }
+	const Vector			&GetMadcapCourse( void ) const { return m_vecMadcapCourse; }
+	void					SetMadcapCourse( const Vector &vecCourse ) { m_vecMadcapCourse = vecCourse; m_bMadcapCourse = true; }
+	void					ClearMadcapCourse( void ) { m_bMadcapCourse = false; }
 
 	virtual bool CanSpeakVoiceCommand( void );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );
@@ -1214,6 +1219,9 @@ private:
 	CNetworkVar( bool, m_bBrickGrowDuck );
 	// Madcap sprint. 0-100. Filled by running forward, not by missing health.
 	CNetworkVar( float, m_flPMeter );
+	// Not networked. Predicted on the client. Locked while the meter is up.
+	Vector					m_vecMadcapCourse;
+	bool					m_bMadcapCourse;
 	// Named sequence taunts for classes that have no response-rule scene.
 	// Parity bumps even when the sequence name repeats, so the client restarts it.
 	CNetworkString( m_szTauntSequence, 64 );
