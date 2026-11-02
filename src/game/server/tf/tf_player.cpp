@@ -850,6 +850,7 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropFloat( SENDINFO( m_flResupplyThrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropBool( SENDINFO( m_bBrickGrown ) ),
 	SendPropFloat( SENDINFO( m_flBrickGrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
+	SendPropBool( SENDINFO( m_bBrickGrowDuck ) ),
 	SendPropFloat( SENDINFO( m_flPMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropString( SENDINFO( m_szTauntSequence ) ),
 	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
@@ -1011,6 +1012,7 @@ CTFPlayer::CTFPlayer()
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
 	m_szTauntSequence.GetForModify()[0] = '\0';
 	m_nTauntSequenceParity = 0;
@@ -1405,12 +1407,11 @@ static void BrickHullAtScale( bool bDucking, float flScale, Vector &mins, Vector
 	maxs = hullMax * flScale;
 }
 
-static bool BrickHullFitsAt( CTFPlayer *pPlayer, const Vector &origin, float flScale )
+static bool BrickHullFitsAt( CTFPlayer *pPlayer, const Vector &origin, float flScale, bool bDucking )
 {
 	if ( !pPlayer )
 		return false;
 
-	const bool bDucking = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
 	Vector mins, maxs;
 	BrickHullAtScale( bDucking, flScale, mins, maxs );
 
@@ -1457,11 +1458,12 @@ static Vector BrickNearestPushNormal( CTFPlayer *pPlayer )
 }
 
 // True if flScale fits, at the current origin or within 64 units along the
-// blocking surface. outOrigin is where he has to stand.
-static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, Vector &outOrigin )
+// blocking surface. bDucking tests the crouched hull, which is what a
+// ceiling needs. outOrigin is where he has to stand.
+static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, bool bDucking, Vector &outOrigin )
 {
 	const Vector origin = pPlayer->GetAbsOrigin();
-	if ( BrickHullFitsAt( pPlayer, origin, flScale ) )
+	if ( BrickHullFitsAt( pPlayer, origin, flScale, bDucking ) )
 	{
 		outOrigin = origin;
 		return true;
@@ -1474,7 +1476,7 @@ static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, Vector &outOr
 	for ( float step = 4.f; step <= 64.f; step += 4.f )
 	{
 		const Vector test = origin + normal * step;
-		if ( BrickHullFitsAt( pPlayer, test, flScale ) )
+		if ( BrickHullFitsAt( pPlayer, test, flScale, bDucking ) )
 		{
 			outOrigin = test;
 			return true;
@@ -1493,6 +1495,7 @@ void CTFPlayer::ThinkBrickGrow( void )
 			m_bBrickGrown = false;
 			SetModelScale( 1.0f );
 		}
+		m_bBrickGrowDuck = false;
 		return;
 	}
 
@@ -1516,11 +1519,15 @@ void CTFPlayer::ThinkBrickGrow( void )
 	else if ( m_bBrickGrown || GetModelScale() != 1.0f )
 	{
 		m_bBrickGrown = false;
+		m_bBrickGrowDuck = false;
 		SetModelScale( 1.0f );
 	}
 
 	// Scale-up is ours. The generic think would keep easing toward 2x and
-	// overwrite a freeze later in the same frame. Shrink stays on that think.
+	// overwrite a pause later in the same frame. Shrink stays on that think.
+	// A ceiling crouches him first. If the ducked hull still does not fit,
+	// the clock pauses. Speed and knockback follow the scale, so they pause
+	// too. The see-through is brick_invis, which reads this same scale.
 	if ( IsAlive() )
 	{
 		ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
@@ -1534,62 +1541,77 @@ void CTFPlayer::ThinkBrickGrow( void )
 				frac = clamp( ( gpGlobals->curtime - mvs->m_flModelScaleStartTime ) / dt, 0.f, 1.f );
 
 			const float flWant = Lerp( frac, mvs->m_flModelScaleStart, mvs->m_flModelScaleGoal );
+			const float flNow = m_flModelScale;
 			Vector vecFit = GetAbsOrigin();
-			if ( BrickGrowPushToFit( this, flWant, vecFit ) )
-			{
-				if ( vecFit != GetAbsOrigin() )
-					SetAbsOrigin( vecFit );
+			float flBest = flWant;
+			bool bDucking = false;
+			bool bFullFit = BrickGrowPushToFit( this, flWant, false, vecFit );
 
-				if ( frac >= 1.f )
+			if ( !bFullFit )
+			{
+				// Standing hull is in the ceiling. Crouch, then try again.
+				bDucking = true;
+				bFullFit = BrickGrowPushToFit( this, flWant, true, vecFit );
+			}
+
+			if ( !bFullFit )
+			{
+				// Grow as far as the ducked hull allows, and hold the rest.
+				bDucking = true;
+				float flLo = flNow;
+				float flHi = flWant;
+				flBest = flNow;
+				vecFit = GetAbsOrigin();
+				Vector vecTry;
+				if ( BrickGrowPushToFit( this, flNow, true, vecTry ) )
 				{
-					m_flModelScale = mvs->m_flModelScaleGoal;
-					DestroyDataObject( MODELSCALE );
+					vecFit = vecTry;
+					for ( int i = 0; i < 8; ++i )
+					{
+						const float mid = ( flLo + flHi ) * 0.5f;
+						if ( BrickGrowPushToFit( this, mid, true, vecTry ) )
+						{
+							flLo = mid;
+							flBest = mid;
+							vecFit = vecTry;
+						}
+						else
+						{
+							flHi = mid;
+						}
+					}
 				}
-				else
-				{
-					m_flModelScale = flWant;
-				}
-				RefreshCollisionBounds();
+			}
+
+			m_bBrickGrowDuck = bDucking;
+
+			if ( vecFit != GetAbsOrigin() )
+				SetAbsOrigin( vecFit );
+
+			if ( bFullFit && frac >= 1.f )
+			{
+				m_flModelScale = mvs->m_flModelScaleGoal;
+				DestroyDataObject( MODELSCALE );
 			}
 			else
 			{
-				// Push didn't free the size he wants. Keep the largest scale
-				// that does, with the same push. Don't start growing again.
-				float flLo = MIN( mvs->m_flModelScaleStart, 1.f );
-				float flHi = flWant;
-				float flBest = flLo;
-				Vector vecBest = GetAbsOrigin();
-				for ( int i = 0; i < 8; ++i )
+				m_flModelScale = bFullFit ? flWant : flBest;
+				// Not at the size the clock asked for. Freeze the clock so
+				// he finishes once he walks into a taller space.
+				if ( !bFullFit )
 				{
-					const float mid = ( flLo + flHi ) * 0.5f;
-					Vector vecTry;
-					if ( BrickGrowPushToFit( this, mid, vecTry ) )
-					{
-						flLo = mid;
-						flBest = mid;
-						vecBest = vecTry;
-					}
-					else
-					{
-						flHi = mid;
-					}
-				}
-
-				if ( vecBest != GetAbsOrigin() )
-					SetAbsOrigin( vecBest );
-
-				if ( flBest <= 1.01f )
-				{
-					m_bBrickGrown = false;
-					SetModelScale( 1.0f );
-				}
-				else
-				{
-					SetModelScale( flBest );
+					const float flFrame = gpGlobals->frametime;
+					mvs->m_flModelScaleStartTime += flFrame;
+					mvs->m_flModelScaleFinishTime += flFrame;
 				}
 			}
+			RefreshCollisionBounds();
 
 			TeamFortress_SetSpeed();
+		}
+		else if ( GetModelScale() <= 1.01f || BrickHullFitsAt( this, GetAbsOrigin(), GetModelScale(), false ) )
+		{
+			m_bBrickGrowDuck = false;
 		}
 	}
 
@@ -4027,6 +4049,7 @@ void CTFPlayer::Spawn()
 
 	SetModelScale( 1.0f );
 	m_bBrickGrown = false;
+	m_bBrickGrowDuck = false;
 	UpdateModel();
 
 	SetMoveType( MOVETYPE_WALK );

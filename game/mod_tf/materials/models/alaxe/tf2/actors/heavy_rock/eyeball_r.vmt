@@ -29,11 +29,13 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	// Cloaking
+	// See-through. brick_invis, not spy_invis. No refraction, so half
+	// grown is the background instead of a solid cloak silhouette.
 	"$cloakPassEnabled" "1"
+	"$refractamount" "0"
 	"Proxies"
 	{
-		"spy_invis"
+		"brick_invis"
 		{
 		}
 	}

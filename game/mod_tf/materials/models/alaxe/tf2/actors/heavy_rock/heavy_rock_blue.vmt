@@ -29,13 +29,11 @@
 	"$yellow" "0"
 	"$one" "1"
 
-	"$cloakPassEnabled" "1"
+	"$translucent" "1"
+	"$alpha" "1"
 	"Proxies"
 	{
-		"spy_invis" //wmodel and team color cloak support
-		{
-		}
-		"invis" //vmodel cloak support
+		"brick_invis"
 		{
 		}
 		"AnimatedTexture"

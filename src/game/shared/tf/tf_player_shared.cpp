@@ -8045,17 +8045,6 @@ void CTFPlayerShared::InvisibilityThink( void )
 	flTargetInvis *= flTargetInvisScale;
 	m_flPrevInvisibility = m_flInvisibility;
 	m_flInvisibility = clamp( flTargetInvis, 0.0f, 1.0f );
-
-	// Grown Brick is partly invisible to himself and his team. The amount
-	// follows the size, so the quarter-second scale fades the cloak too.
-	// Enemies ignore this on the client. Not TF_COND_STEALTHED: that path
-	// forces non-spies back to fully visible.
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) )
-	{
-		const float flGrow = TFBrickGrowFraction( m_pOuter->GetModelScale() );
-		if ( flGrow > 0.f )
-			m_flInvisibility = TF_BRICK_GROW_INVIS * flGrow;
-	}
 }
 
 

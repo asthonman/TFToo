@@ -247,14 +247,13 @@ enum ETFClass
 // Brick's grow. 0-100, and he cannot start one below the Spy's cloak floor.
 // It refills at the Spy cloak rate while small, and at half that rate while
 // big. Damage while big spends it, 1 point per damage. The size, the
-// team-only cloak, the knockback resist, and the spun-up-Heavy slowdown
-// all move together over TF_BRICK_GROW_TIME.
+// see-through (brick_invis on his materials), the knockback resist, and the
+// spun-up-Heavy slowdown all move together over TF_BRICK_GROW_TIME.
+// A ceiling pauses that scale instead of cancelling it. He crouches first.
 #define TF_BRICK_GROW_MAX			100.0f
 #define TF_BRICK_GROW_MIN_START		8.0f
 #define TF_BRICK_GROW_SCALE			2.0f
 #define TF_BRICK_GROW_TIME			0.25f
-// 75% cloaked. Enemies do not get this; they see him solid.
-#define TF_BRICK_GROW_INVIS			0.75f
 // Full size matches a spun-up Heavy. Partial size lerps from class speed.
 #define TF_BRICK_GROW_SPEED			110.0f
 // attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is
@@ -275,6 +274,19 @@ inline float TFBrickGrowFraction( float flModelScale )
 	if ( flModelScale >= TF_BRICK_GROW_SCALE )
 		return 1.0f;
 	return ( flModelScale - 1.0f ) / ( TF_BRICK_GROW_SCALE - 1.0f );
+}
+
+// 0 is solid, 1 is clear. Half grown is 0.75 clear. Spy's cloak at that
+// same 50% is still a solid silhouette, which is why Brick does not use it.
+inline float TFBrickGrowSeeThrough( float flModelScale )
+{
+	const float flGrow = TFBrickGrowFraction( flModelScale );
+	float flClear = flGrow * ( 2.0f - flGrow );
+	if ( flClear > 0.9f )
+		flClear = 0.9f;
+	if ( flClear < 0.0f )
+		flClear = 0.0f;
+	return flClear;
 }
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }

@@ -1765,6 +1765,83 @@ void CSpyInvisProxy::OnBindNotEntity( void *pRenderable )
 EXPOSE_INTERFACE( CSpyInvisProxy, IMaterialProxy, "spy_invis" IMATERIAL_PROXY_INTERFACE_VERSION );
 
 //-----------------------------------------------------------------------------
+// Purpose: Brick's grow. Same bind path as spy_invis / invis, but the value
+//			is his size, not Spy's cloak. Half grown is 0.75 clear. Spy's
+//			cloak at 50% is still a solid refractive silhouette.
+//			Body materials use $alpha (real transparency). EyeRefract ignores
+//			$alpha, so the eyes get $cloakfactor with $refractamount 0.
+//-----------------------------------------------------------------------------
+class CBrickInvisProxy : public CEntityMaterialProxy
+{
+public:
+	CBrickInvisProxy( void );
+	virtual bool		Init( IMaterial *pMaterial, KeyValues *pKeyValues ) OVERRIDE;
+	virtual void		OnBind( C_BaseEntity *pBaseEntity ) OVERRIDE;
+	virtual void		Release( void ) OVERRIDE { delete this; }
+	virtual IMaterial	*GetMaterial( void ) OVERRIDE;
+
+private:
+	IMaterialVar		*m_pAlpha;
+	IMaterialVar		*m_pCloakFactor;
+};
+
+CBrickInvisProxy::CBrickInvisProxy( void )
+{
+	m_pAlpha = NULL;
+	m_pCloakFactor = NULL;
+}
+
+bool CBrickInvisProxy::Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+{
+	bool bAlpha = false;
+	bool bCloak = false;
+	m_pAlpha = pMaterial->FindVar( "$alpha", &bAlpha );
+	m_pCloakFactor = pMaterial->FindVar( "$cloakfactor", &bCloak );
+	return ( bAlpha || bCloak );
+}
+
+void CBrickInvisProxy::OnBind( C_BaseEntity *pBaseEntity )
+{
+	float flClear = 0.0f;
+
+	C_TFPlayer *pPlayer = ToTFPlayer( pBaseEntity );
+	if ( !pPlayer && pBaseEntity )
+	{
+		pPlayer = ToTFPlayer( pBaseEntity->GetOwnerEntity() );
+	}
+
+	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_BRICK ) )
+	{
+		flClear = TFBrickGrowSeeThrough( pPlayer->GetModelScale() );
+	}
+
+	// Body materials fade the rock itself. 50% grown leaves 25% of it.
+	if ( m_pAlpha )
+	{
+		m_pAlpha->SetFloatValue( 1.0f - flClear );
+	}
+
+	// Eyes still go through the cloak pass. The factor is the clear amount,
+	// which is already past Spy's solid range at half size, and the VMT
+	// sets $refractamount to 0 so the pass is the background, not a lens.
+	if ( m_pCloakFactor )
+	{
+		m_pCloakFactor->SetFloatValue( flClear );
+	}
+}
+
+IMaterial *CBrickInvisProxy::GetMaterial( void )
+{
+	if ( m_pAlpha )
+		return m_pAlpha->GetOwningMaterial();
+	if ( m_pCloakFactor )
+		return m_pCloakFactor->GetOwningMaterial();
+	return NULL;
+}
+
+EXPOSE_INTERFACE( CBrickInvisProxy, IMaterialProxy, "brick_invis" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
 // Purpose: Used for invulnerability material
 //			Returns 1 if the player is invulnerable, and 0 if the player is losing / doesn't have invuln.
 //-----------------------------------------------------------------------------
@@ -3838,6 +3915,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropFloat( RECVINFO( m_flResupplyThrowMeter ) ),
 	RecvPropBool( RECVINFO( m_bBrickGrown ) ),
 	RecvPropFloat( RECVINFO( m_flBrickGrowMeter ) ),
+	RecvPropBool( RECVINFO( m_bBrickGrowDuck ) ),
 	RecvPropFloat( RECVINFO( m_flPMeter ) ),
 	RecvPropString( RECVINFO( m_szTauntSequence ) ),
 	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
@@ -3959,6 +4037,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
+	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
 
 	m_flWaterImpactTime = 0.0f;
@@ -7002,10 +7081,6 @@ Vector C_TFPlayer::GetObserverCamOrigin( void )
 float C_TFPlayer::GetEffectiveInvisibilityLevel( void )
 {
 	float flPercentInvisible = GetPercentInvisible();
-
-	// Brick's grow cloak is for him and his team. Enemies see him solid.
-	if ( IsPlayerClass( TF_CLASS_BRICK ) && IsEnemyPlayer() )
-		flPercentInvisible = 0.f;
 
 	// Crude way to limit Halloween spell
 	bool bHalloweenSpellStealth = TFGameRules()->IsHalloweenScenario( CTFGameRules::HALLOWEEN_SCENARIO_HIGHTOWER ) && m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF );

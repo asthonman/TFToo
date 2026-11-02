@@ -23,11 +23,11 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	// Cloaking
-	"$cloakPassEnabled" "1"
+	"$translucent" "1"
+	"$alpha" "1"
 	"Proxies"
 	{
-		"spy_invis"
+		"brick_invis"
 		{
 		}
 	}

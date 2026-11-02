@@ -3541,6 +3541,11 @@ void CTFGameMovement::Duck( void )
 	// Check duck overrides.
 	DuckOverrides();
 
+	// Ceiling during a grow. ThinkBrickGrow sets this; hold it through the
+	// air-duck clamp so the shorter hull is actually in use before he grows.
+	if ( m_pTFPlayer->IsBrickGrowDucking() )
+		mv->m_nButtons |= IN_DUCK;
+
 	// Calculate the button state.
 	int buttonsChanged	= ( mv->m_nOldButtons ^ mv->m_nButtons );	// These buttons have changed this frame
 	int buttonsPressed	=  buttonsChanged & mv->m_nButtons;			// The changed ones still down are "pressed"

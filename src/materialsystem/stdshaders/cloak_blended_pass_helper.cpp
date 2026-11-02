@@ -323,8 +323,18 @@ void DrawCloakBlendedPass( CBaseVSShader *pShader, IMaterialVar** params, IShade
 		pShaderAPI->SetPixelShaderConstant( 5, vEyePos, 1 );
 
 		float vPackedConst1[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		vPackedConst1[0] = IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor;
-		vPackedConst1[1] = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+		float flCloak = IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor;
+		float flRefract = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+		// $refractamount 0 is Brick. Spy's curve is still a solid silhouette
+		// at 50% cloak. Push the factor so half clear is already the
+		// unwarped background, and keep it under 1 so this pass still draws.
+		if ( flRefract <= 0.0f && flCloak > 0.0f )
+		{
+			flCloak = clamp( flCloak * 1.6f, 0.0f, 0.99f );
+			flRefract = 0.0f;
+		}
+		vPackedConst1[0] = flCloak;
+		vPackedConst1[1] = flRefract;
 		pShaderAPI->SetPixelShaderConstant( 6, vPackedConst1, 1 );
 
 		// Refract color tint
@@ -344,7 +354,12 @@ void DrawCloakBlendedPass( CBaseVSShader *pShader, IMaterialVar** params, IShade
 bool CloakBlendedPassIsFullyOpaque ( IMaterialVar** params, CloakBlendedPassVars_t &info )
 {
 	float flCloakFactor = IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor;
-	//float flRefractAmount = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+	float flRefractAmount = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+
+	// Brick ($refractamount 0). Drop the solid pass as soon as he is
+	// partway clear. Spy's fresnel test below stays solid well past that.
+	if ( flRefractAmount <= 0.0f )
+		return flCloakFactor >= 0.4f;
 
 	// NOTE: If this math changes, you need to update the pixel shader code!
 	float flFresnel = 1.0f - ( 0.0f ); // Assume V.N = 0.0f;

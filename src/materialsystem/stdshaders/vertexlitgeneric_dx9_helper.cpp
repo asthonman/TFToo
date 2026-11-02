@@ -26,6 +26,7 @@
 
 #include "commandbuilder.h"
 #include "convar.h"
+#include <string.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -446,6 +447,11 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 	{
 		nBlendType = pShader->EvaluateBlendRequirements( info.m_nEnvmapMask, false );
 	}
+	// $translucent must blend even when $alpha is still 1 at snapshot time and the
+	// texture has no alpha. Brick's see-through proxy writes $alpha afterwards.
+	// Without this the snapshot stays opaque and the proxy does nothing.
+	if ( IS_FLAG_SET( MATERIAL_VAR_TRANSLUCENT ) && nBlendType == BT_NONE )
+		nBlendType = BT_BLEND;
 	bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested && (!bHasFlashlight || IsX360() ); //dest alpha is free for special use
 
 	bool bHasEnvmap = (!bHasFlashlight || IsX360() ) && info.m_nEnvmap != -1 && params[info.m_nEnvmap]->IsTexture();
@@ -551,6 +557,15 @@ static void DrawVertexLitGeneric_DX9_Internal( CBaseVSShader *pShader, IMaterial
 			else
 			{
 				pShader->SetBlendingShadowState( nBlendType );
+				// Brick stays depth-tested while $alpha fades him, so the rock
+				// still occludes itself. Other translucent materials are unchanged.
+				if ( nBlendType == BT_BLEND && info.m_nBaseTexture != -1 )
+				{
+					IMaterial *pMat = params[info.m_nBaseTexture]->GetOwningMaterial();
+					const char *pszName = pMat ? pMat->GetName() : NULL;
+					if ( pszName && strstr( pszName, "/heavy_rock/" ) )
+						pShaderShadow->EnableDepthWrites( true );
+				}
 			}
 		
 			unsigned int flags = VERTEX_POSITION;

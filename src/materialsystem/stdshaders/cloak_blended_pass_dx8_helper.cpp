@@ -199,12 +199,17 @@ void DrawCloakBlendedPass( CBaseVSShader *pShader, IMaterialVar** params, IShade
 
 		// Set Vertex Shader Constants 
 		float vVsConst3[4] = { 1.35f, 0.0f, 0.4f, ( 1.0f / ( 0.425f - 0.4f ) ) };
-		vVsConst3[1] = clamp( IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor, 0.0f, 1.0f );
+		float flCloak = clamp( IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor, 0.0f, 1.0f );
+		float flRefract = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+		// $refractamount 0 is Brick. Same boost as the dx9 cloak pass.
+		if ( flRefract <= 0.0f && flCloak > 0.0f )
+			flCloak = clamp( flCloak * 1.6f, 0.0f, 0.99f );
+		vVsConst3[1] = flCloak;
 
 		pShaderAPI->SetVertexShaderConstant( VERTEX_SHADER_SHADER_SPECIFIC_CONST_3, vVsConst3 );
 
 		float vVsConst4[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		vVsConst4[0] = params[info.m_nRefractAmount]->GetFloatValue() * ( 1.0f - clamp( params[info.m_nCloakFactor]->GetFloatValue(), 0.0f, 1.0f ) );
+		vVsConst4[0] = flRefract * ( 1.0f - flCloak );
 		pShaderAPI->SetVertexShaderConstant( VERTEX_SHADER_SHADER_SPECIFIC_CONST_4, vVsConst4 );
 
 		float vVsConst5[4] = { 1.0f, 1.0f, 0.0f, 0.0f };
@@ -238,7 +243,10 @@ void DrawCloakBlendedPass( CBaseVSShader *pShader, IMaterialVar** params, IShade
 bool CloakBlendedPassIsFullyOpaque ( IMaterialVar** params, CloakBlendedPassVars_t &info )
 {
 	float flCloakFactor = IS_PARAM_DEFINED( info.m_nCloakFactor ) ? params[info.m_nCloakFactor]->GetFloatValue() : kDefaultCloakFactor;
-	//float flRefractAmount = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+	float flRefractAmount = IS_PARAM_DEFINED( info.m_nRefractAmount ) ? params[info.m_nRefractAmount]->GetFloatValue() : kDefaultRefractAmount;
+
+	if ( flRefractAmount <= 0.0f )
+		return flCloakFactor >= 0.4f;
 
 	// NOTE: If this math changes, you need to update the pixel shader code!
 	float flFresnel = 1.0f - ( 0.0f ); // Assume V.N = 0.0f;

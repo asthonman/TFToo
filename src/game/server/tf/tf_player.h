@@ -522,6 +522,7 @@ public:
 	void					ThinkBrickGrow( void );
 	void					HandleBrickGrowInput( void );
 	bool					IsBrickGrown( void ) const { return m_bBrickGrown; }
+	bool					IsBrickGrowDucking( void ) const { return m_bBrickGrowDuck; }
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float					GetPMeter( void ) const { return m_flPMeter; }
 	void					SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
@@ -1209,6 +1210,8 @@ private:
 	// Brick grow. Same 0-100 meter and the same rates as Spy's cloak.
 	CNetworkVar( bool, m_bBrickGrown );
 	CNetworkVar( float, m_flBrickGrowMeter );
+	// Ceiling blocked the standing hull. Held until standing fits again.
+	CNetworkVar( bool, m_bBrickGrowDuck );
 	// Madcap sprint. 0-100. Filled by running forward, not by missing health.
 	CNetworkVar( float, m_flPMeter );
 	// Named sequence taunts for classes that have no response-rule scene.
