@@ -1,0 +1,429 @@
+// Mod items. Same schema items_game.txt uses. Definition ids are "b1", "b2", ...
+// so they do not collide with vanilla numeric ids. A "bN" id is stored as
+// 0xB000+N. baseitem 1 is the stock weapon for that class and slot.
+// The "cannot throw lunchbox" attribute is defined here and applied to
+// Heavy's lunchboxes from items_game.txt.
+"items_game"
+{
+	"attributes"
+	{
+		"4000"
+		{
+			"name"					"cannot throw lunchbox"
+			"attribute_class"		"lunchbox_no_throw"
+			"description_string"	"#Attrib_LunchboxNoThrow"
+			"description_format"	"value_is_or"
+			"effect_type"			"negative"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+	}
+	"items"
+	{
+		// Madcap stock primary. First person is Scout's arms, secondary slot.
+		"b1"
+		{
+			"name"				"b1"
+			"item_class"		"tf_weapon_nailgun"
+			"item_name"			"#TF_Weapon_Nailgun"
+			"item_type_name"	"#TF_Weapon_Nailgun"
+			"item_logname"		"nailgun"
+			"item_iconname"	"nailgun"
+			"item_slot"			"primary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/w_models/w_nailgun.mdl"
+			"model_world"		"models/weapons/w_models/w_nailgun.mdl"
+			"used_by_classes"
+			{
+				"madcap"		"1"
+			}
+		}
+		// Madcap stock secondary. Same arms as Mad Milk. Scout's item1 set is the hold and the throw.
+		"b2"
+		{
+			"name"				"b2"
+			"item_class"		"tf_weapon_throwable_brick"
+			"item_name"			"#TF_Weapon_Brick"
+			"item_type_name"	"#TF_Weapon_Brick"
+			"item_logname"		"brick"
+			"item_iconname"	"brick"
+			"item_slot"			"secondary"
+			"anim_slot"			"ITEM1"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/w_models/w_brick_scout.mdl"
+			"model_world"		"models/weapons/w_models/w_brick_scout.mdl"
+			"used_by_classes"
+			{
+				"madcap"		"1"
+			}
+			"attributes"
+			{
+				"projectile entity name"
+				{
+					"value"		"tf_projectile_throwable_brick"
+				}
+				"is throwable chargeable"
+				{
+					"value"		"1"
+				}
+				"throwable detonation time"
+				{
+					"value"		"1.5"
+				}
+				"throwable recharge time"
+				{
+					"value"		"6"
+				}
+			}
+		}
+		// Mobster stock primary.
+		"b3"
+		{
+			"name"				"b3"
+			"item_class"		"tf_weapon_typewriter"
+			"item_name"			"#TF_Weapon_TommyGun"
+			"item_type_name"	"#TF_Weapon_TommyGun"
+			"item_logname"		"typewriter"
+			"item_iconname"	"typewriter"
+			"item_slot"			"primary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/v_typewriter.mdl"
+			"model_world"		"models/weapons/w_typewriter.mdl"
+			"used_by_classes"
+			{
+				"mobster"		"1"
+			}
+			"visuals"
+			{
+				"animation_replacement"
+				{
+					"ACT_MP_WALK_SECONDARY"				"ACT_MP_RUN_SECONDARY"
+					"ACT_MP_JUMP_SECONDARY"				"ACT_MP_JUMP_FLOAT_SECONDARY"
+					"ACT_MP_ATTACK_AIRWALK_SECONDARY"	"ACT_MP_ATTACK_STAND_SECONDARY"
+					"ACT_MP_ATTACK_STAND_SECONDARYFIRE"	"ACT_MP_PUSH_STAND_SECONDARY"
+					"ACT_MP_ATTACK_CROUCH_SECONDARYFIRE"	"ACT_MP_PUSH_CROUCH_SECONDARY"
+					"ACT_MP_ATTACK_SWIM_SECONDARYFIRE"	"ACT_MP_PUSH_SWIM_SECONDARY"
+				}
+			}
+			"attributes"
+			{
+				"bullets per shot bonus"
+				{
+					"value"		"0.75"
+				}
+				"fire rate bonus"
+				{
+					"value"		"0.34"
+				}
+				"damage bonus HIDDEN"
+				{
+					"value"		"0.5"
+				}
+				"Reload time increased"
+				{
+					"value"		"1.8"
+				}
+				"dmg bonus vs buildings"
+				{
+					"value"		"1.15"
+				}
+				"spread penalty"
+				{
+					"value"		"1.3"
+				}
+			}
+		}
+		// Mobster stock secondary. b4 stays the stock bag; the Buff Banner is the same weapon.
+		"b4"
+		{
+			"name"				"b4"
+			"item_class"		"tf_weapon_moneybag"
+			"item_name"			"#TF_Weapon_MoneyBag"
+			"item_type_name"	"#TF_Weapon_MoneyBag"
+			"item_logname"		"moneybag"
+			"item_iconname"	"moneybag"
+			"item_slot"			"secondary"
+			"anim_slot"			"ITEM1"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/v_moneybag.mdl"
+			"model_world"		"models/weapons/w_moneybag_closed.mdl"
+			"used_by_classes"
+			{
+				"mobster"		"1"
+			}
+			"visuals"
+			{
+				"animation_replacement"
+				{
+					"ACT_MP_WALK_ITEM1"				"ACT_MP_RUN_ITEM1"
+					"ACT_MP_JUMP_ITEM1"				"ACT_MP_JUMP_FLOAT_ITEM1"
+					"ACT_MP_ATTACK_AIRWALK_ITEM1"	"ACT_MP_ATTACK_STAND_ITEM1"
+				}
+			}
+			"attributes"
+			{
+				"effect bar recharge rate increased"
+				{
+					"value"		"6"
+				}
+			}
+		}
+		// Mobster stock melee.
+		"b5"
+		{
+			"name"				"b5"
+			"item_class"		"tf_weapon_leadpipe"
+			"item_name"			"#TF_Weapon_LeadPipe"
+			"item_type_name"	"#TF_Weapon_LeadPipe"
+			"item_logname"		"leadpipe"
+			"item_iconname"	"leadpipe"
+			"item_slot"			"melee"
+			"anim_slot"			"MELEE"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/v_leadpipe.mdl"
+			"model_world"		"models/weapons/w_leadpipe.mdl"
+			"used_by_classes"
+			{
+				"mobster"		"1"
+			}
+			"visuals"
+			{
+				"animation_replacement"
+				{
+					"ACT_MP_WALK_MELEE"				"ACT_MP_RUN_MELEE"
+					"ACT_MP_JUMP_MELEE"				"ACT_MP_JUMP_FLOAT_MELEE"
+					"ACT_MP_ATTACK_AIRWALK_MELEE"	"ACT_MP_ATTACK_STAND_MELEE"
+				}
+			}
+		}
+		// Hatless hat. No mesh. Bodygroup 1 on Hat is the empty submodel,
+		// the same trick as Baseball Bill's Sports Shine. baseitem stays 0
+		// and it is not a weapon, so the loadout list does not offer it.
+		"b6"
+		{
+			"name"				"b6"
+			"item_class"		"tf_wearable"
+			"item_name"			"#TF_Hat_NurseNellsDomeShine"
+			"item_type_name"	"#TF_Wearable_Hat"
+			"item_logname"		"nursenell"
+			"item_iconname"	"nursenell"
+			"item_slot"			"head"
+			"item_quality"		"normal"
+			"baseitem"			"0"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"0"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"resupply"		"1"
+			}
+			"visuals"
+			{
+				"player_bodygroups"
+				{
+					"hat"		"1"
+				}
+			}
+		}
+		// Resupply stock melee. FORCE_NOT_USED so the class-select panel
+		// skips this item and selectionMenu_StartPose / Anim01 still play.
+		"b7"
+		{
+			"name"				"b7"
+			"item_class"		"tf_weapon_resupply"
+			"item_name"			"#TF_Weapon_Resupply"
+			"item_type_name"	"#TF_Weapon_Resupply"
+			"item_logname"		"resupply"
+			"item_iconname"	"resupply"
+			"item_slot"			"melee"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"resupply"		"1"
+			}
+			"attributes"
+			{
+				"no_attack"
+				{
+					"value"		"1"
+				}
+			}
+		}
+		// Brick's Mason's Missile. Unlock. Shove (b10) is the stock secondary.
+		// brick_mann has no ITEM1 sequences; the body falls back to melee.
+		"b8"
+		{
+			"name"				"b8"
+			"item_class"		"tf_weapon_throwable_brick"
+			"item_name"			"#TF_Weapon_Brick"
+			"item_type_name"	"#TF_Weapon_Brick"
+			"item_logname"		"brick"
+			"item_iconname"	"brick"
+			"item_slot"			"secondary"
+			"anim_slot"			"ITEM1"
+			"item_quality"		"normal"
+			"baseitem"			"0"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/w_models/w_brick_scout.mdl"
+			"model_world"		"models/weapons/w_models/w_brick_scout.mdl"
+			"used_by_classes"
+			{
+				"brick"			"1"
+			}
+			"attributes"
+			{
+				"projectile entity name"
+				{
+					"value"		"tf_projectile_throwable_brick"
+				}
+				"is throwable chargeable"
+				{
+					"value"		"1"
+				}
+				"throwable detonation time"
+				{
+					"value"		"1.5"
+				}
+				"throwable recharge time"
+				{
+					"value"		"6"
+				}
+			}
+		}
+		// Brick stock melee. Must not be FORCE_NOT_USED or the body never plays the slam.
+		"b9"
+		{
+			"name"				"b9"
+			"item_class"		"tf_weapon_brickslam"
+			"item_name"			"#TF_Weapon_BrickSlam"
+			"item_type_name"	"#TF_Weapon_BrickSlam"
+			"item_logname"		"brickslam"
+			"item_iconname"	"brickslam"
+			"item_slot"			"melee"
+			"anim_slot"			"MELEE"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"brick"			"1"
+			}
+			"attributes"
+			{
+				"airblast vulnerability multiplier"
+				{
+					"value"		"0.75"
+				}
+				"airblast vertical vulnerability multiplier"
+				{
+					"value"		"0.75"
+				}
+			}
+		}
+		// Brick stock secondary. The body uses the melee swing. First person
+		// is still the Shortstop alt-fire on Scout's arms.
+		"b10"
+		{
+			"name"				"b10"
+			"item_class"		"tf_weapon_brickshove"
+			"item_name"			"#TF_Weapon_Shove"
+			"item_type_name"	"#TF_Weapon_Shove"
+			"item_logname"		"shove"
+			"item_iconname"	"shove"
+			"item_slot"			"secondary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_shortstop/c_shortstop.mdl"
+			"model_world"		"models/weapons/c_models/c_shortstop/c_shortstop.mdl"
+			"used_by_classes"
+			{
+				"brick"			"1"
+			}
+			"visuals"
+			{
+				"animation_replacement"
+				{
+					"ACT_MP_ATTACK_STAND_SECONDARYFIRE"		"ACT_MP_ATTACK_STAND_MELEE"
+					"ACT_MP_ATTACK_CROUCH_SECONDARYFIRE"	"ACT_MP_ATTACK_CROUCH_MELEE"
+					"ACT_MP_ATTACK_SWIM_SECONDARYFIRE"		"ACT_MP_ATTACK_SWIM_MELEE"
+					"ACT_MP_ATTACK_AIRWALK_SECONDARYFIRE"	"ACT_MP_ATTACK_STAND_MELEE"
+				}
+			}
+		}
+	}
+}

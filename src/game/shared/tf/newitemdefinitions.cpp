@@ -1,13 +1,9 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
-// New item schema. Not vanilla TF2.
-//
-// There is no itemdefinitions.cpp in this repo. Vanilla definitions live in
-// items_game.txt and are looked up by a pure number. Everything in this file
-// is an item that file does not have. Every definition id starts with 'b'
-// ("b1", "b2", ...). A lookup that sees that leading letter comes here.
-// Nothing in this file checks the backpack. These are stock items, so the
-// player is treated as owning all of them.
+// Items that are not in vanilla TF2 live in scripts/items/items_mod.txt.
+// Definition ids are "b1", "b2", ... and the schema stores them as 0xB000+N.
+// This file does not describe those items. It only makes the local inventory
+// treat them as owned, because there is no backpack item for them.
 //
 // Compiled by #include from tf_item_schema.cpp. Do not also add this file to
 // the Visual Studio project or the symbols will be defined twice.
@@ -18,464 +14,23 @@
 #include "newitemdefinitions.h"
 #include "tf_item_schema.h"
 #include "econ_item_view.h"
-#include "tf_shareddefs.h"
 
-struct NewItemAttribute_t
+static CTFItemDefinition *NewItem_Definition( item_definition_index_t iIndex )
 {
-	const char *pszName;
-	const char *pszValue;
-};
+	if ( !IsNewItemDefinitionIndex( iIndex ) )
+		return NULL;
 
-struct NewItemDefDesc_t
-{
-	const char *pszAltId;
-	const char *pszItemClass;
-	const char *pszItemName;
-	const char *pszSlot;
-	int			iSlot;
-	int			iClass;
-	const char *pszPlayerModel;
-	const char *pszWorldModel;
-	const char *pszLogName;
-	int			iAttachToHands;
-	const NewItemAttribute_t *pAttrs;
-	int			nAttrs;
-	// 1 is the stock weapon for the slot. 0 is an unlock the player still owns.
-	int			iBaseItem;
-};
+	CEconItemDefinition *pDef = GetItemSchema()->GetItemDefinition( iIndex );
+	if ( !pDef || pDef->GetDefinitionIndex() != iIndex )
+		return NULL;
 
-static const NewItemAttribute_t s_BrickAttrs[] =
-{
-	{ "projectile entity name", "tf_projectile_throwable_brick" },
-	{ "is throwable chargeable", "1" },
-	{ "throwable detonation time", "1.5" },
-	{ "throwable recharge time", "6" },
-};
-
-// Always equipped, so the player hook sees it with either weapon out.
-// Baseline while he is small, same names as the Mantreads. Full size
-// ignores the push in code, and a size in between scales that force down.
-static const NewItemAttribute_t s_BrickSlamAttrs[] =
-{
-	{ "airblast vulnerability multiplier", "0.75" },
-	{ "airblast vertical vulnerability multiplier", "0.75" },
-};
-
-static const NewItemAttribute_t s_TypewriterAttrs[] =
-{
-	{ "bullets per shot bonus", "0.75" },
-	{ "fire rate bonus", "0.34" },
-	{ "damage bonus HIDDEN", "0.5" },
-	{ "Reload time increased", "1.8" },
-	{ "dmg bonus vs buildings", "1.15" },
-	{ "spread penalty", "1.3" },
-};
-
-static const NewItemAttribute_t s_MoneyBagAttrs[] =
-{
-	{ "effect bar recharge rate increased", "6" },
-};
-
-static const NewItemAttribute_t s_ResupplyMeleeAttrs[] =
-{
-	{ "no_attack", "1" },
-};
-
-// Madcap. b1 is the Nailgun (primary). b2 is the Mason's Missile (secondary).
-// Brick's stock secondary is Shove (b10). His Mason's Missile (b8) is an unlock.
-static const NewItemDefDesc_t s_NewItems[] =
-{
-	{
-		"b1",
-		"tf_weapon_nailgun",
-		"#TF_Weapon_Nailgun",
-		"primary",
-		LOADOUT_POSITION_PRIMARY,
-		TF_CLASS_MADCAP,
-		"models/weapons/w_models/w_nailgun.mdl",
-		"models/weapons/w_models/w_nailgun.mdl",
-		"nailgun",
-		1,
-		NULL,
-		0,
-		1,
-	},
-	{
-		"b2",
-		"tf_weapon_throwable_brick",
-		"#TF_Weapon_Brick",
-		"secondary",
-		LOADOUT_POSITION_SECONDARY,
-		TF_CLASS_MADCAP,
-		"models/weapons/w_models/w_brick_scout.mdl",
-		"models/weapons/w_models/w_brick_scout.mdl",
-		"brick",
-		1,
-		s_BrickAttrs,
-		ARRAYSIZE( s_BrickAttrs ),
-		1,
-	},
-	{
-		"b3",
-		"tf_weapon_typewriter",
-		"#TF_Weapon_TommyGun",
-		"primary",
-		LOADOUT_POSITION_PRIMARY,
-		TF_CLASS_MOBSTER,
-		"models/weapons/v_typewriter.mdl",
-		"models/weapons/w_typewriter.mdl",
-		"typewriter",
-		1,
-		s_TypewriterAttrs,
-		ARRAYSIZE( s_TypewriterAttrs ),
-		1,
-	},
-	{
-		"b4",
-		"tf_weapon_moneybag",
-		"#TF_Weapon_MoneyBag",
-		"secondary",
-		LOADOUT_POSITION_SECONDARY,
-		TF_CLASS_MOBSTER,
-		"models/weapons/v_moneybag.mdl",
-		"models/weapons/w_moneybag_closed.mdl",
-		"moneybag",
-		1,
-		s_MoneyBagAttrs,
-		ARRAYSIZE( s_MoneyBagAttrs ),
-		1,
-	},
-	{
-		"b5",
-		"tf_weapon_leadpipe",
-		"#TF_Weapon_LeadPipe",
-		"melee",
-		LOADOUT_POSITION_MELEE,
-		TF_CLASS_MOBSTER,
-		"models/weapons/v_leadpipe.mdl",
-		"models/weapons/w_leadpipe.mdl",
-		"leadpipe",
-		1,
-		NULL,
-		0,
-		1,
-	},
-	{
-		"b6",
-		"tf_wearable",
-		"#TF_Hat_NurseNellsDomeShine",
-		"head",
-		LOADOUT_POSITION_HEAD,
-		TF_CLASS_RESUPPLY,
-		"",
-		"",
-		"nursenell",
-		0,
-		NULL,
-		0,
-		1,
-	},
-	{
-		"b7",
-		"tf_weapon_resupply",
-		"#TF_Weapon_Resupply",
-		"melee",
-		LOADOUT_POSITION_MELEE,
-		TF_CLASS_RESUPPLY,
-		"",
-		"",
-		"resupply",
-		0,
-		s_ResupplyMeleeAttrs,
-		ARRAYSIZE( s_ResupplyMeleeAttrs ),
-		1,
-	},
-	{
-		"b8",
-		"tf_weapon_throwable_brick",
-		"#TF_Weapon_Brick",
-		"secondary",
-		LOADOUT_POSITION_SECONDARY,
-		TF_CLASS_BRICK,
-		"models/weapons/w_models/w_brick_scout.mdl",
-		"models/weapons/w_models/w_brick_scout.mdl",
-		"brick",
-		1,
-		s_BrickAttrs,
-		ARRAYSIZE( s_BrickAttrs ),
-		0,
-	},
-	{
-		"b9",
-		"tf_weapon_brickslam",
-		"#TF_Weapon_BrickSlam",
-		"melee",
-		LOADOUT_POSITION_MELEE,
-		TF_CLASS_BRICK,
-		"",
-		"",
-		"brickslam",
-		0,
-		s_BrickSlamAttrs,
-		ARRAYSIZE( s_BrickSlamAttrs ),
-		1,
-	},
-	{
-		"b10",
-		"tf_weapon_brickshove",
-		"#TF_Weapon_Shove",
-		"secondary",
-		LOADOUT_POSITION_SECONDARY,
-		TF_CLASS_BRICK,
-		"models/weapons/c_models/c_shortstop/c_shortstop.mdl",
-		"models/weapons/c_models/c_shortstop/c_shortstop.mdl",
-		"shove",
-		1,
-		NULL,
-		0,
-		1,
-	},
-};
-
-static const NewItemDefDesc_t *NewItem_FindDesc( item_definition_index_t iIndex )
-{
-	for ( int i = 0; i < ARRAYSIZE( s_NewItems ); ++i )
-	{
-		if ( ItemDefIndexFromAltId( s_NewItems[i].pszAltId ) == iIndex )
-			return &s_NewItems[i];
-	}
-	return NULL;
-}
-
-static bool NewItem_AddAttributeIfPresent( CTFItemSchema *pSchema, KeyValues *pAttrs, const char *pszName, const char *pszValue )
-{
-	if ( !pSchema->GetAttributeDefinitionByName( pszName ) )
-	{
-		Warning( "New item schema: attribute \"%s\" is not in the vanilla schema. Skipping it.\n", pszName );
-		return false;
-	}
-
-	KeyValues *pAttr = new KeyValues( pszName );
-	pAttr->SetString( "value", pszValue );
-	pAttrs->AddSubKey( pAttr );
-	return true;
-}
-
-static void AddTypewriterAnimReplacements( KeyValues *pKV )
-{
-	// Body poses that the secondary table asks for, but this model did not compile.
-	// Shove is the Shortstop push, not a normal secondary attack.
-	static const char *s_pszRepl[][2] =
-	{
-		{ "ACT_MP_WALK_SECONDARY", "ACT_MP_RUN_SECONDARY" },
-		{ "ACT_MP_JUMP_SECONDARY", "ACT_MP_JUMP_FLOAT_SECONDARY" },
-		{ "ACT_MP_ATTACK_AIRWALK_SECONDARY", "ACT_MP_ATTACK_STAND_SECONDARY" },
-		{ "ACT_MP_ATTACK_STAND_SECONDARYFIRE", "ACT_MP_PUSH_STAND_SECONDARY" },
-		{ "ACT_MP_ATTACK_CROUCH_SECONDARYFIRE", "ACT_MP_PUSH_CROUCH_SECONDARY" },
-		{ "ACT_MP_ATTACK_SWIM_SECONDARYFIRE", "ACT_MP_PUSH_SWIM_SECONDARY" },
-	};
-
-	KeyValues *pVisuals = new KeyValues( "visuals" );
-	KeyValues *pRepl = new KeyValues( "animation_replacement" );
-	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
-	{
-		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
-	}
-	pVisuals->AddSubKey( pRepl );
-	pKV->AddSubKey( pVisuals );
-	pKV->SetString( "anim_slot", "SECONDARY" );
-}
-
-static void AddMoneyBagAnimReplacements( KeyValues *pKV )
-{
-	// Body poses the item1 table asks for that this model did not compile.
-	// No item2 sequences exist. Walk, the bare jump, and an air throw fall back.
-	static const char *s_pszRepl[][2] =
-	{
-		{ "ACT_MP_WALK_ITEM1", "ACT_MP_RUN_ITEM1" },
-		{ "ACT_MP_JUMP_ITEM1", "ACT_MP_JUMP_FLOAT_ITEM1" },
-		{ "ACT_MP_ATTACK_AIRWALK_ITEM1", "ACT_MP_ATTACK_STAND_ITEM1" },
-	};
-
-	KeyValues *pVisuals = new KeyValues( "visuals" );
-	KeyValues *pRepl = new KeyValues( "animation_replacement" );
-	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
-	{
-		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
-	}
-	pVisuals->AddSubKey( pRepl );
-	pKV->AddSubKey( pVisuals );
-	pKV->SetString( "anim_slot", "ITEM1" );
-}
-
-static void AddLeadPipeAnimReplacements( KeyValues *pKV )
-{
-	// Body poses the melee table asks for that this model did not compile.
-	static const char *s_pszRepl[][2] =
-	{
-		{ "ACT_MP_WALK_MELEE", "ACT_MP_RUN_MELEE" },
-		{ "ACT_MP_JUMP_MELEE", "ACT_MP_JUMP_FLOAT_MELEE" },
-		{ "ACT_MP_ATTACK_AIRWALK_MELEE", "ACT_MP_ATTACK_STAND_MELEE" },
-	};
-
-	KeyValues *pVisuals = new KeyValues( "visuals" );
-	KeyValues *pRepl = new KeyValues( "animation_replacement" );
-	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
-	{
-		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
-	}
-	pVisuals->AddSubKey( pRepl );
-	pKV->AddSubKey( pVisuals );
-	pKV->SetString( "anim_slot", "MELEE" );
-}
-
-static void AddBrickShoveAnimReplacements( KeyValues *pKV )
-{
-	// brick_mann has no secondary-fire set, and no Shortstop push pose.
-	// The body uses the melee swing it does have. First person is still
-	// the Shortstop alt-fire on Scout's arms.
-	static const char *s_pszRepl[][2] =
-	{
-		{ "ACT_MP_ATTACK_STAND_SECONDARYFIRE", "ACT_MP_ATTACK_STAND_MELEE" },
-		{ "ACT_MP_ATTACK_CROUCH_SECONDARYFIRE", "ACT_MP_ATTACK_CROUCH_MELEE" },
-		{ "ACT_MP_ATTACK_SWIM_SECONDARYFIRE", "ACT_MP_ATTACK_SWIM_MELEE" },
-		{ "ACT_MP_ATTACK_AIRWALK_SECONDARYFIRE", "ACT_MP_ATTACK_STAND_MELEE" },
-	};
-
-	KeyValues *pVisuals = new KeyValues( "visuals" );
-	KeyValues *pRepl = new KeyValues( "animation_replacement" );
-	for ( int i = 0; i < ARRAYSIZE( s_pszRepl ); ++i )
-	{
-		pRepl->SetString( s_pszRepl[i][0], s_pszRepl[i][1] );
-	}
-	pVisuals->AddSubKey( pRepl );
-	pKV->AddSubKey( pVisuals );
-	pKV->SetString( "anim_slot", "SECONDARY" );
-}
-
-void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> *pVecErrors )
-{
-	if ( !pSchema )
-		return;
-
-	for ( int i = 0; i < ARRAYSIZE( s_NewItems ); ++i )
-	{
-		const NewItemDefDesc_t &desc = s_NewItems[i];
-		if ( pSchema->GetItemDefinitionByName( desc.pszAltId ) )
-			continue;
-
-		// The key is the alt id ("b1"), not a vanilla number. BInitFromKV turns
-		// that into the 0xB000+N index the rest of the engine can carry.
-		KeyValues *pKV = new KeyValues( desc.pszAltId );
-		pKV->SetString( "name", desc.pszAltId );
-		pKV->SetString( "item_class", desc.pszItemClass );
-		pKV->SetString( "item_name", desc.pszItemName );
-		pKV->SetString( "item_type_name", desc.pszItemName );
-		pKV->SetString( "item_logname", desc.pszLogName );
-		pKV->SetString( "item_iconname", desc.pszLogName );
-		pKV->SetString( "item_slot", desc.pszSlot );
-		pKV->SetString( "item_quality", "normal" );
-		pKV->SetInt( "baseitem", desc.iBaseItem );
-		pKV->SetInt( "enabled", 1 );
-		pKV->SetInt( "hidden", 0 );
-		pKV->SetInt( "propername", 0 );
-		pKV->SetInt( "min_ilevel", 1 );
-		pKV->SetInt( "max_ilevel", 1 );
-		pKV->SetInt( "act_as_weapon", 1 );
-		pKV->SetInt( "attach_to_hands", desc.iAttachToHands );
-		if ( desc.pszPlayerModel && desc.pszPlayerModel[0] )
-			pKV->SetString( "model_player", desc.pszPlayerModel );
-		if ( desc.pszWorldModel && desc.pszWorldModel[0] )
-			pKV->SetString( "model_world", desc.pszWorldModel );
-
-		KeyValues *pClasses = new KeyValues( "used_by_classes" );
-		const CUtlVector<const char *> &classes = pSchema->GetClassUsabilityStrings();
-		const char *pszClass = ( desc.iClass >= 0 && desc.iClass < classes.Count() ) ? classes[ desc.iClass ] : "Madcap";
-		pClasses->SetString( pszClass ? pszClass : "Madcap", "1" );
-		pKV->AddSubKey( pClasses );
-
-		if ( desc.nAttrs > 0 )
-		{
-			KeyValues *pAttrs = new KeyValues( "attributes" );
-			for ( int a = 0; a < desc.nAttrs; ++a )
-			{
-				NewItem_AddAttributeIfPresent( pSchema, pAttrs, desc.pAttrs[a].pszName, desc.pAttrs[a].pszValue );
-			}
-			pKV->AddSubKey( pAttrs );
-		}
-
-		if ( !Q_stricmp( desc.pszAltId, "b1" ) )
-		{
-			// World model only. First person is Scout's arms, secondary slot.
-			pKV->SetString( "anim_slot", "SECONDARY" );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b2" ) )
-		{
-			// Same arms as Mad Milk. Scout's item1 set is the hold and the throw.
-			pKV->SetString( "anim_slot", "ITEM1" );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b3" ) )
-		{
-			AddTypewriterAnimReplacements( pKV );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b4" ) )
-		{
-			AddMoneyBagAnimReplacements( pKV );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b5" ) )
-		{
-			AddLeadPipeAnimReplacements( pKV );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b6" ) )
-		{
-			// Hatless hat. No mesh. Bodygroup 1 on Hat is the empty submodel,
-			// which is the same trick as Baseball Bill's Sports Shine.
-			// iBaseItem stays 1 so the loadout list does not offer it.
-			pKV->SetInt( "act_as_weapon", 0 );
-			pKV->SetInt( "baseitem", 0 );
-			pKV->SetString( "item_type_name", "#TF_Wearable_Hat" );
-			KeyValues *pVisuals = new KeyValues( "visuals" );
-			KeyValues *pBodygroups = new KeyValues( "player_bodygroups" );
-			pBodygroups->SetInt( "hat", 1 );
-			pVisuals->AddSubKey( pBodygroups );
-			pKV->AddSubKey( pVisuals );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b7" ) )
-		{
-			// Melee activity set comes from the weapon script (WeaponType melee).
-			// FORCE_NOT_USED (-2) makes the class-select panel skip this item,
-			// so selectionMenu_StartPose / Anim01 still play.
-			pKV->SetString( "anim_slot", "FORCE_NOT_USED" );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b8" ) )
-		{
-			// Scout's c_scout_arms item1 set is the hold and the throw.
-			// brick_mann has no ITEM1 sequences; the body falls back to melee.
-			// Unlock. Shove (b10) is the stock secondary.
-			pKV->SetString( "anim_slot", "ITEM1" );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b9" ) )
-		{
-			// b9 must not be FORCE_NOT_USED or the body never plays the slam.
-			pKV->SetString( "anim_slot", "MELEE" );
-		}
-		else if ( !Q_stricmp( desc.pszAltId, "b10" ) )
-		{
-			// Stock secondary. The Mason's Missile (b8) is the unlock.
-			AddBrickShoveAnimReplacements( pKV );
-		}
-
-		if ( !pSchema->AddRuntimeItemDefinition( pKV, pVecErrors ) )
-		{
-			Warning( "New item schema: \"%s\" (%s) was not added.\n", desc.pszAltId, desc.pszItemClass );
-		}
-		pKV->deleteThis();
-	}
+	return static_cast<CTFItemDefinition *>( pDef );
 }
 
 CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex )
 {
-	if ( !NewItem_FindDesc( iIndex ) )
+	CTFItemDefinition *pDef = NewItem_Definition( iIndex );
+	if ( !pDef )
 		return NULL;
 
 	static CUtlVector<CEconItemView *> s_Views;
@@ -494,7 +49,8 @@ CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex )
 	}
 	// Stock weapons keep INVALID_ITEM_ID so choosing them clears the slot.
 	// An unlock needs an id the local loadout can store. It is not a Steam item.
-	if ( NewItem_FindDesc( iIndex )->iBaseItem == 0 )
+	// Wearables that are not base items (the empty Resupply hat) are not unlocks.
+	if ( !pDef->IsBaseItem() && pDef->IsActingAsAWeapon() )
 		pView->SetItemID( NewItem_FakeItemID( iIndex ) );
 	s_Views.AddToTail( pView );
 	return pView;
@@ -513,18 +69,21 @@ void NewItem_AddStockItemsForSlot( int iClass, int iSlot, CUtlVector<CEconItemVi
 	if ( !pList )
 		return;
 
-	for ( int i = 0; i < ARRAYSIZE( s_NewItems ); ++i )
+	const CEconItemSchema::ItemDefinitionMap_t &mapItems = GetItemSchema()->GetItemDefinitionMap();
+	FOR_EACH_MAP_FAST( mapItems, i )
 	{
-		const NewItemDefDesc_t &desc = s_NewItems[i];
-		if ( desc.iClass != iClass || desc.iSlot != iSlot )
+		CTFItemDefinition *pDef = static_cast<CTFItemDefinition *>( mapItems[i] );
+		if ( !pDef || !IsNewItemDefinitionIndex( pDef->GetDefinitionIndex() ) )
 			continue;
 
 		// The selection panel already appends the base item. Listing it here
-		// would show the stock weapon twice.
-		if ( desc.iBaseItem != 0 )
+		// would show the stock weapon twice. Non-weapons (the empty hat) stay off the list.
+		if ( pDef->IsBaseItem() || !pDef->IsActingAsAWeapon() )
+			continue;
+		if ( !pDef->CanBeUsedByClass( iClass ) || pDef->GetLoadoutSlot( iClass ) != iSlot )
 			continue;
 
-		const item_definition_index_t iIndex = ItemDefIndexFromAltId( desc.pszAltId );
+		const item_definition_index_t iIndex = pDef->GetDefinitionIndex();
 		bool bAlready = false;
 		FOR_EACH_VEC( *pList, n )
 		{

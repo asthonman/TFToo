@@ -1283,299 +1283,6 @@ int CTFItemDefinition::GetLoadoutSlot( int iLoadoutClass ) const
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Move an item from one class to another. Used so the Boston Basher
-// belongs to Madcap instead of the Scout.
-//-----------------------------------------------------------------------------
-void CTFItemDefinition::RetargetClass( int iFromClass, int iToClass )
-{
-	if ( iFromClass <= 0 || iToClass <= 0 || iFromClass >= LOADOUT_COUNT || iToClass >= LOADOUT_COUNT )
-		return;
-	if ( !m_vbClassUsability.IsBitSet( iFromClass ) )
-		return;
-
-	const int iSlot = m_iLoadoutSlots[iFromClass];
-	m_vbClassUsability.Clear( iFromClass );
-	m_iLoadoutSlots[iFromClass] = LOADOUT_POSITION_INVALID;
-	m_vbClassUsability.Set( iToClass );
-	m_iLoadoutSlots[iToClass] = ( iSlot != LOADOUT_POSITION_INVALID ) ? iSlot : m_iDefaultLoadoutSlot;
-
-	if ( !m_pszPlayerDisplayModel[iToClass] )
-	{
-		m_pszPlayerDisplayModel[iToClass] = m_pszPlayerDisplayModel[iFromClass];
-	}
-	if ( !m_pszPlayerDisplayModelAlt[iToClass] )
-	{
-		m_pszPlayerDisplayModelAlt[iToClass] = m_pszPlayerDisplayModelAlt[iFromClass];
-	}
-
-	KeyValues *pKV = GetRawDefinition();
-	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes" ) : NULL;
-	if ( !pClasses )
-		return;
-
-	for ( KeyValues *pKVClass = pClasses->GetFirstSubKey(); pKVClass; pKVClass = pKVClass->GetNextKey() )
-	{
-		const int iClass = StringFieldToInt( pKVClass->GetName(), GetItemSchema()->GetClassUsabilityStrings(), true );
-		if ( iClass != iFromClass )
-			continue;
-
-		const char *pszTo = GetItemSchema()->GetClassUsabilityStrings()[iToClass];
-		if ( pszTo && pszTo[0] )
-		{
-			pKVClass->SetName( pszTo );
-		}
-		break;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Let another class equip this item. The classes that already can
-// keep it. iSlot is the loadout slot for the new class only.
-//-----------------------------------------------------------------------------
-void CTFItemDefinition::ShareWithClass( int iClass, int iSlot )
-{
-	if ( iClass <= 0 || iClass >= LOADOUT_COUNT )
-		return;
-
-	if ( iSlot == LOADOUT_POSITION_INVALID )
-		iSlot = m_iDefaultLoadoutSlot;
-
-	m_vbClassUsability.Set( iClass );
-	m_iLoadoutSlots[iClass] = iSlot;
-
-	if ( !m_pszPlayerDisplayModel[iClass] )
-	{
-		const char *pszModel = m_pszPlayerDisplayModel[0];
-		if ( !pszModel || !pszModel[0] )
-		{
-			for ( int i = 1; i < LOADOUT_COUNT; ++i )
-			{
-				if ( m_pszPlayerDisplayModel[i] && m_pszPlayerDisplayModel[i][0] )
-				{
-					pszModel = m_pszPlayerDisplayModel[i];
-					break;
-				}
-			}
-		}
-		m_pszPlayerDisplayModel[iClass] = pszModel;
-	}
-
-	KeyValues *pKV = GetRawDefinition();
-	KeyValues *pClasses = pKV ? pKV->FindKey( "used_by_classes", true ) : NULL;
-	if ( !pClasses )
-		return;
-
-	const char *pszClass = GetItemSchema()->GetClassUsabilityStrings()[iClass];
-	if ( pszClass && pszClass[0] )
-	{
-		pClasses->SetString( pszClass, "1" );
-	}
-}
-
-void CTFItemDefinition::SetClassLoadoutSlot( int iClass, int iSlot )
-{
-	if ( iClass <= 0 || iClass >= LOADOUT_COUNT )
-		return;
-
-	m_iLoadoutSlots[iClass] = iSlot;
-}
-
-void CTFItemDefinition::ForcePlayerModel( const char *pszModel )
-{
-	if ( !pszModel || !pszModel[0] )
-		return;
-
-	for ( int i = 0; i < LOADOUT_COUNT; ++i )
-	{
-		m_pszPlayerDisplayModel[i] = pszModel;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Hold the money bag like a jar, and do not keep the banner backpack.
-//-----------------------------------------------------------------------------
-void CTFItemDefinition::UseMoneyBagVisuals( const char *pszModel )
-{
-	m_iAnimationSlot = TF_WPN_TYPE_ITEM1;
-	for ( int i = 0; i < LOADOUT_COUNT; ++i )
-	{
-		m_pszPlayerDisplayModel[i] = pszModel;
-	}
-
-	for ( int t = 0; t < TEAM_VISUAL_SECTIONS; ++t )
-	{
-		perteamvisuals_t *pVis = GetPerTeamVisual( t );
-		if ( !pVis )
-			continue;
-		pVis->m_AttachedModels.Purge();
-		pVis->m_AttachedModelsFestive.Purge();
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: The Buff Banner (and its strange, renamed, and festive copies) is
-// the Money Bag. Soldier can no longer equip it. b4 stays the stock bag.
-//-----------------------------------------------------------------------------
-static bool ItemIsBuffBanner( const CTFItemDefinition *pTF )
-{
-	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
-		return false;
-
-	const char *pszClass = pTF->GetItemClass();
-	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
-		return false;
-
-	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
-	FOR_EACH_VEC( attrs, i )
-	{
-		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
-		if ( !pAttr || !pAttr->GetAttributeClass() )
-			continue;
-		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
-			continue;
-		if ( fabsf( attrs[i].m_value.asFloat - 1.f ) < 0.01f )
-			return true;
-	}
-
-	const char *pszName = pTF->GetDefinitionName();
-	return pszName && V_stristr( pszName, "Buff Banner" ) != NULL;
-}
-
-static void ConvertBuffBannersToMoneyBags( CTFItemSchema *pSchema )
-{
-	static const char *kMoneyBagModel = "models/weapons/w_moneybag_closed.mdl";
-
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !ItemIsBuffBanner( pTF ) )
-			continue;
-
-		pTF->PresentAsWeapon( "tf_weapon_moneybag", "#TF_Weapon_MoneyBag", "moneybag", kMoneyBagModel, kMoneyBagModel, true );
-		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
-		pTF->UseMoneyBagVisuals( kMoneyBagModel );
-		pTF->StripStaticAttributeClass( "set_buff_type" );
-		pTF->StripStaticAttributeClass( "provide_on_active" );
-		pTF->AddStaticAttribute( "effect bar recharge rate increased", "6" );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: The Battalion's Backup (and its strange, renamed, and festive copies)
-// is Protection Insurance. Soldier can no longer equip it.
-//
-// The Backup matches the Buff Banner: 600 damage to fill, 450 unit range, 10
-// second uptime. The Money Bag turns the banner's 600 damage into a 30.6s
-// recharge (cleaver 5.1s times 6). The same ratio leaves this recharge, the
-// 375 unit line of sight, and the 5 second uptime unchanged. The +20 max health
-// stays. The buff itself is the Backup's damage resistance.
-//-----------------------------------------------------------------------------
-static bool ItemIsBattalionsBackup( const CTFItemDefinition *pTF )
-{
-	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
-		return false;
-
-	const char *pszClass = pTF->GetItemClass();
-	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
-		return false;
-
-	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
-	FOR_EACH_VEC( attrs, i )
-	{
-		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
-		if ( !pAttr || !pAttr->GetAttributeClass() )
-			continue;
-		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
-			continue;
-		if ( fabsf( attrs[i].m_value.asFloat - 2.f ) < 0.01f )
-			return true;
-	}
-
-	const char *pszName = pTF->GetDefinitionName();
-	return pszName && V_stristr( pszName, "Battalion" ) != NULL;
-}
-
-static void ConvertBattalionsBackupsToProtection( CTFItemSchema *pSchema )
-{
-	static const char *kBugleModel = "models/workshop/weapons/c_models/c_battalion_bugle/c_battalion_bugle.mdl";
-
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !ItemIsBattalionsBackup( pTF ) )
-			continue;
-
-		pTF->PresentAsWeapon( "tf_weapon_protectionbag", "#TF_Weapon_ProtectionInsurance", "protection_insurance", kBugleModel, kBugleModel, true );
-		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
-		pTF->UseMoneyBagVisuals( kBugleModel );
-		pTF->StripStaticAttributeClass( "set_buff_type" );
-		pTF->StripStaticAttributeClass( "provide_on_active" );
-		// add_maxhealth (+20) is left in place.
-		// 6 * (600 battalion damage / 600 banner damage) == 6, same recharge as the Money Bag.
-		pTF->AddStaticAttribute( "effect bar recharge rate increased", "6" );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: The Concheror (and its strange and renamed copies) is the Speakeasy.
-// Soldier can no longer equip it.
-//
-// Rage scale 1.25 fills the meter on 480 damage, against the Buff Banner's 600.
-// 6 * (480 / 600) = 4.8, so the recharge is 5.1s * 4.8 = 24.48s.
-// Range matches the banner, so the aura is still 375 units of line of sight.
-// Unlike the other bags, each teammate is buffed once. The crate lasts 5
-// seconds. The buff is 6 seconds at deploy and 1 second as the crate ends.
-// The +4 health regen stays. The buff itself is the Concheror's speed and healing.
-//-----------------------------------------------------------------------------
-static bool ItemIsConcheror( const CTFItemDefinition *pTF )
-{
-	if ( !pTF || !pTF->CanBeUsedByClass( TF_CLASS_SOLDIER ) )
-		return false;
-
-	const char *pszClass = pTF->GetItemClass();
-	if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_buff_item" ) )
-		return false;
-
-	const CUtlVector<static_attrib_t> &attrs = pTF->GetStaticAttributes();
-	FOR_EACH_VEC( attrs, i )
-	{
-		const CEconItemAttributeDefinition *pAttr = attrs[i].GetAttributeDefinition();
-		if ( !pAttr || !pAttr->GetAttributeClass() )
-			continue;
-		if ( Q_stricmp( pAttr->GetAttributeClass(), "set_buff_type" ) )
-			continue;
-		if ( fabsf( attrs[i].m_value.asFloat - 3.f ) < 0.01f )
-			return true;
-	}
-
-	const char *pszName = pTF->GetDefinitionName();
-	return pszName && V_stristr( pszName, "Concheror" ) != NULL;
-}
-
-static void ConvertConcherorsToSpeakeasies( CTFItemSchema *pSchema )
-{
-	static const char *kBottleModel = "models/workshop/weapons/c_models/c_scotland_shard/c_scotland_shard.mdl";
-
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !ItemIsConcheror( pTF ) )
-			continue;
-
-		pTF->PresentAsWeapon( "tf_weapon_speakeasy", "#TF_Weapon_Speakeasy", "speakeasy", kBottleModel, kBottleModel, true, "#TF_ItemType_Moonshine" );
-		pTF->RetargetClass( TF_CLASS_SOLDIER, TF_CLASS_MOBSTER );
-		pTF->UseMoneyBagVisuals( kBottleModel );
-		pTF->StripStaticAttributeClass( "set_buff_type" );
-		pTF->StripStaticAttributeClass( "provide_on_active" );
-		// add_health_regen (+4) is left in place.
-		pTF->AddStaticAttribute( "effect bar recharge rate increased", "4.8" );
-	}
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: Returns true if this item is in a wearable slot, or is acting as a wearable
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::IsAWearable() const
@@ -1934,319 +1641,6 @@ void CTFItemSchema::Reset()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Madcap's stock primary is a schema clone of the Syringe Gun, drawn
-// with the Nailgun world model that still ships in the game. His stock
-// secondary is the abandoned throwable brick. His stock melee is the Boston
-// Basher. Every Scout weapon with the Basher's bleed-and-self-hit pair (the
-// Basher itself and its reskins, currently the Three-Rune Blade) moves to him.
-//-----------------------------------------------------------------------------
-static const int kBostonBasherDefIndex = 325;
-
-static bool Madcap_HasAttributeClass( const CEconItemDefinition *pDef, const char *pszClass )
-{
-	if ( !pDef || !pszClass )
-		return false;
-
-	const CUtlVector<static_attrib_t> &attrs = pDef->GetStaticAttributes();
-	FOR_EACH_VEC( attrs, i )
-	{
-		const CEconItemAttributeDefinition *pAttrDef = attrs[i].GetAttributeDefinition();
-		if ( !pAttrDef || !pAttrDef->GetAttributeClass() )
-			continue;
-
-		if ( !Q_stricmp( pAttrDef->GetAttributeClass(), pszClass ) )
-			return true;
-	}
-
-	return false;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Demoman's boots become Madcap primaries. Ali Baba's Wee Booties
-// wears the Sole Saviors, and the Bootlegger wears the Teufort Tooth Kicker.
-// Shields move to his secondary. The listed weapons are shared: the original
-// class keeps them, and so does Madcap. The Persian Persuader and the
-// Claidheamh Mòr leave Demoman entirely. Reskins follow their base item name.
-//-----------------------------------------------------------------------------
-struct MadcapShare_t
-{
-	const char *pszName;
-	int			iSlot;
-};
-
-static const MadcapShare_t s_MadcapSharedWeapons[] =
-{
-	{ "The Eyelander",			LOADOUT_POSITION_MELEE },
-	{ "The Tribalman's Shiv",	LOADOUT_POSITION_MELEE },
-	{ "The Half-Zatoichi",		LOADOUT_POSITION_MELEE },
-	{ "The Wrap Assassin",		LOADOUT_POSITION_MELEE },
-	{ "Warrior's Spirit",		LOADOUT_POSITION_MELEE },
-	{ "The Equalizer",			LOADOUT_POSITION_MELEE },
-	{ "The Escape Plan",		LOADOUT_POSITION_MELEE },
-	{ "The Flying Guillotine",	LOADOUT_POSITION_SECONDARY },
-	{ "Mad Milk",				LOADOUT_POSITION_SECONDARY },
-	{ "The Blutsauger",			LOADOUT_POSITION_PRIMARY },
-};
-
-// Schema definition names. The Claidheamh Mòr is stored without the accent.
-static const char *s_MadcapInsteadOfDemo[] =
-{
-	"The Persian Persuader",
-	"The Claidheamohmor",
-};
-
-static bool Madcap_ItemNameIs( const CTFItemDefinition *pTF, const char *pszName )
-{
-	if ( !pTF || !pszName )
-		return false;
-
-	const char *pszDef = pTF->GetDefinitionName();
-	if ( pszDef && !Q_stricmp( pszDef, pszName ) )
-		return true;
-
-	const char *pszBase = pTF->GetBaseFunctionalItemName();
-	return pszBase && pszBase[0] && !Q_stricmp( pszBase, pszName );
-}
-
-static void GiveMadcapTheBootAndShieldUnlocks( CTFItemSchema *pSchema )
-{
-	static const char *kSoleModel = "models/workshop/player/items/all_class/sbox2014_armor_shoes/sbox2014_armor_shoes_scout.mdl";
-	static const char *kSoleImage = "backpack/workshop/player/items/all_class/sbox2014_armor_shoes/sbox2014_armor_shoes";
-	static const char *kToothModel = "models/player/items/all_class/cowboyboots_scout.mdl";
-	static const char *kToothImage = "backpack/player/items/all_class/cowboyboots_soldier";
-
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !pTF )
-			continue;
-
-		const char *pszName = pTF->GetDefinitionName();
-		const char *pszClass = pTF->GetItemClass();
-
-		if ( pszName && !Q_stricmp( pszName, "Ali Baba's Wee Booties" ) )
-		{
-			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
-			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_PRIMARY );
-			pTF->UseWornIdentity( "#TF_sbox2014_armor_shoes", "#TF_sbox2014_armor_shoes_Desc", kSoleModel, kSoleImage, true );
-			pTF->ForcePlayerModel( kSoleModel );
-			continue;
-		}
-
-		if ( pszName && !Q_stricmp( pszName, "The Bootlegger" ) )
-		{
-			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
-			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_PRIMARY );
-			pTF->UseWornIdentity( "#TF_CowboyBoots", "#TF_CowboyBoots_Desc", kToothModel, kToothImage, true );
-			pTF->ForcePlayerModel( kToothModel );
-			continue;
-		}
-
-		if ( pszClass && !Q_stricmp( pszClass, "tf_wearable_demoshield" ) && pTF->CanBeUsedByClass( TF_CLASS_DEMOMAN ) )
-		{
-			pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
-			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_SECONDARY );
-			continue;
-		}
-
-		bool bTakenFromDemo = false;
-		for ( int n = 0; n < ARRAYSIZE( s_MadcapInsteadOfDemo ); ++n )
-		{
-			if ( !Madcap_ItemNameIs( pTF, s_MadcapInsteadOfDemo[n] ) )
-				continue;
-
-			if ( pTF->CanBeUsedByClass( TF_CLASS_DEMOMAN ) )
-				pTF->RetargetClass( TF_CLASS_DEMOMAN, TF_CLASS_MADCAP );
-			else if ( !pTF->CanBeUsedByClass( TF_CLASS_MADCAP ) )
-				pTF->ShareWithClass( TF_CLASS_MADCAP, LOADOUT_POSITION_MELEE );
-
-			pTF->SetClassLoadoutSlot( TF_CLASS_MADCAP, LOADOUT_POSITION_MELEE );
-			bTakenFromDemo = true;
-			break;
-		}
-		if ( bTakenFromDemo )
-			continue;
-
-		for ( int n = 0; n < ARRAYSIZE( s_MadcapSharedWeapons ); ++n )
-		{
-			if ( !Madcap_ItemNameIs( pTF, s_MadcapSharedWeapons[n].pszName ) )
-				continue;
-
-			pTF->ShareWithClass( TF_CLASS_MADCAP, s_MadcapSharedWeapons[n].iSlot );
-			break;
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: "Cannot share your food in this game" on every Heavy lunchbox.
-// The attribute has to exist before items are parsed. Drinks are a different
-// item class, and Resupply's packs are not lunchboxes, so neither is blocked.
-//-----------------------------------------------------------------------------
-static void EnsureLunchboxNoThrowAttribute( KeyValues *pKVRawDefinition )
-{
-	KeyValues *pKVAttributes = pKVRawDefinition ? pKVRawDefinition->FindKey( "attributes" ) : NULL;
-	if ( !pKVAttributes )
-		return;
-
-	int iMax = 0;
-	for ( KeyValues *pKV = pKVAttributes->GetFirstTrueSubKey(); pKV; pKV = pKV->GetNextTrueSubKey() )
-	{
-		const int iIndex = Q_atoi( pKV->GetName() );
-		if ( iIndex > iMax )
-			iMax = iIndex;
-		if ( !Q_stricmp( pKV->GetString( "name" ), "cannot throw lunchbox" ) )
-			return;
-	}
-
-	char szIndex[16];
-	Q_snprintf( szIndex, sizeof( szIndex ), "%d", iMax + 1 );
-
-	KeyValues *pNew = new KeyValues( szIndex );
-	pNew->SetString( "name", "cannot throw lunchbox" );
-	pNew->SetString( "attribute_class", "lunchbox_no_throw" );
-	pNew->SetString( "description_string", "#Attrib_LunchboxNoThrow" );
-	pNew->SetString( "description_format", "value_is_or" );
-	pNew->SetString( "effect_type", "negative" );
-	pNew->SetInt( "hidden", 0 );
-	pNew->SetInt( "stored_as_integer", 0 );
-	pKVAttributes->AddSubKey( pNew );
-}
-
-static void ForbidHeavyLunchboxThrows( CTFItemSchema *pSchema )
-{
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !pTF )
-			continue;
-
-		const char *pszClass = pTF->GetItemClass();
-		if ( !pszClass || Q_stricmp( pszClass, "tf_weapon_lunchbox" ) )
-			continue;
-		if ( !pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
-			continue;
-
-		pTF->AddStaticAttribute( "cannot throw lunchbox", "1" );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Family Business equips like the Panic Attack: Soldier and Pyro
-// secondary, Engineer primary, Heavy keeps it. tf_weapon_shotgun is what
-// the Panic Attack uses, so each class spawns its own shotgun entity.
-//-----------------------------------------------------------------------------
-static int PanicAttackSlotOr( const CTFItemDefinition *pPanic, int iClass, int iFallback )
-{
-	if ( !pPanic || !pPanic->CanBeUsedByClass( iClass ) )
-		return iFallback;
-
-	const int iSlot = pPanic->GetLoadoutSlot( iClass );
-	if ( iSlot <= LOADOUT_POSITION_INVALID )
-		return iFallback;
-
-	return iSlot;
-}
-
-static void ShareFamilyBusinessWithPanicAttackClasses( CTFItemSchema *pSchema )
-{
-	const CEconItemSchema::ItemDefinitionMap_t &mapItems = pSchema->GetItemDefinitionMap();
-
-	const CTFItemDefinition *pPanic = NULL;
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		const CTFItemDefinition *pTF = dynamic_cast<const CTFItemDefinition *>( mapItems[i] );
-		if ( !pTF )
-			continue;
-
-		const char *pszDef = pTF->GetDefinitionName();
-		if ( pszDef && !Q_stricmp( pszDef, "The Panic Attack" ) )
-		{
-			pPanic = pTF;
-			break;
-		}
-	}
-
-	if ( !pPanic )
-	{
-		FOR_EACH_MAP_FAST( mapItems, i )
-		{
-			const CTFItemDefinition *pTF = dynamic_cast<const CTFItemDefinition *>( mapItems[i] );
-			if ( pTF && Madcap_ItemNameIs( pTF, "The Panic Attack" ) && pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
-			{
-				pPanic = pTF;
-				break;
-			}
-		}
-	}
-
-	const int iSoldier = PanicAttackSlotOr( pPanic, TF_CLASS_SOLDIER, LOADOUT_POSITION_SECONDARY );
-	const int iPyro = PanicAttackSlotOr( pPanic, TF_CLASS_PYRO, LOADOUT_POSITION_SECONDARY );
-	const int iEngineer = PanicAttackSlotOr( pPanic, TF_CLASS_ENGINEER, LOADOUT_POSITION_PRIMARY );
-
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !pTF || !Madcap_ItemNameIs( pTF, "The Family Business" ) )
-			continue;
-		if ( !pTF->CanBeUsedByClass( TF_CLASS_HEAVYWEAPONS ) )
-			continue;
-
-		const char *pszClass = pTF->GetItemClass();
-		if ( !pszClass )
-			continue;
-		if ( Q_stricmp( pszClass, "tf_weapon_shotgun_hwg" ) && Q_stricmp( pszClass, "tf_weapon_shotgun" ) )
-			continue;
-
-		if ( Q_stricmp( pszClass, "tf_weapon_shotgun" ) )
-			pTF->SetItemClass( "tf_weapon_shotgun" );
-
-		pTF->ShareWithClass( TF_CLASS_SOLDIER, iSoldier );
-		pTF->ShareWithClass( TF_CLASS_PYRO, iPyro );
-		pTF->ShareWithClass( TF_CLASS_ENGINEER, iEngineer );
-	}
-}
-
-void CTFItemSchema::ApplyMadcapItemDefinitions( CUtlVector<CUtlString> *pVecErrors )
-{
-	// Boston Basher and every reskin that copies its two attributes.
-	const ItemDefinitionMap_t &mapItems = GetItemDefinitionMap();
-	FOR_EACH_MAP_FAST( mapItems, i )
-	{
-		CTFItemDefinition *pTF = dynamic_cast<CTFItemDefinition *>( const_cast<CEconItemDefinition *>( mapItems[i] ) );
-		if ( !pTF )
-			continue;
-		if ( !pTF->CanBeUsedByClass( TF_CLASS_SCOUT ) )
-			continue;
-		if ( !Madcap_HasAttributeClass( pTF, "bleeding_duration" ) )
-			continue;
-		if ( !Madcap_HasAttributeClass( pTF, "hit_self_on_miss" ) )
-			continue;
-
-		pTF->RetargetClass( TF_CLASS_SCOUT, TF_CLASS_MADCAP );
-
-		// Only the Basher itself is the stock melee. Reskins stay unlocks.
-		const char *pszName = pTF->GetDefinitionName();
-		const bool bStockBasher = ( pTF->GetDefinitionIndex() == kBostonBasherDefIndex )
-			|| ( pszName && !Q_stricmp( pszName, "The Boston Basher" ) );
-		if ( bStockBasher )
-		{
-			NoteRuntimeBaseItem( pTF );
-		}
-	}
-
-	// Nailgun (b1) and Brick (b2). Defined in newitemdefinitions.cpp.
-	// Those items are stock: the player always owns them.
-	RegisterNewItemDefinitions( this, pVecErrors );
-
-	// Boots, shields, and the shared unlocks. After the Basher move, so a
-	// bleed weapon that is still the Scout's is not taken off him here.
-	GiveMadcapTheBootAndShieldUnlocks( this );
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFItemSchema::InitializeStringTable( const char **ppStringTable, unsigned int unStringCount, CUtlVector<const char *> *out_pvecStringTable )
@@ -2260,6 +1654,51 @@ void CTFItemSchema::InitializeStringTable( const char **ppStringTable, unsigned 
 		Assert( ppStringTable[i] != NULL );
 		out_pvecStringTable->AddToTail( ppStringTable[i] );
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Fold scripts/items/items_mod.txt into the schema KeyValues.
+// Items there are the mod's own. They use the same fields as items_game.txt.
+//-----------------------------------------------------------------------------
+static void MergeItemsModFile( KeyValues *pKVRawDefinition )
+{
+	if ( !pKVRawDefinition )
+		return;
+
+	KeyValues *pMod = new KeyValues( "items_game" );
+	if ( !pMod->LoadFromFile( g_pFullFileSystem, "scripts/items/items_mod.txt", "GAME" ) )
+	{
+		pMod->deleteThis();
+		return;
+	}
+
+	KeyValues *pSrcAttrs = pMod->FindKey( "attributes" );
+	if ( pSrcAttrs )
+	{
+		KeyValues *pDstAttrs = pKVRawDefinition->FindKey( "attributes", true );
+		FOR_EACH_TRUE_SUBKEY( pSrcAttrs, pAttr )
+		{
+			if ( !pDstAttrs->FindKey( pAttr->GetName() ) )
+			{
+				pDstAttrs->AddSubKey( pAttr->MakeCopy() );
+			}
+		}
+	}
+
+	KeyValues *pSrcItems = pMod->FindKey( "items" );
+	if ( pSrcItems )
+	{
+		KeyValues *pDstItems = pKVRawDefinition->FindKey( "items", true );
+		FOR_EACH_TRUE_SUBKEY( pSrcItems, pItem )
+		{
+			if ( !pDstItems->FindKey( pItem->GetName() ) )
+			{
+				pDstItems->AddSubKey( pItem->MakeCopy() );
+			}
+		}
+	}
+
+	pMod->deleteThis();
 }
 
 //-----------------------------------------------------------------------------
@@ -2293,14 +1732,14 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 		Assert( m_vecWeaponTypeSubstrings.Size() == TF_WPN_TYPE_COUNT );
 	}
 
-	// Heavy can't throw lunchboxes. Inject the downside before attributes parse.
-	EnsureLunchboxNoThrowAttribute( pKVRawDefinition );
+	// scripts/items/items_mod.txt is the mod schema: new attributes and the
+	// b-prefixed items. Merged before init so they parse with everything else.
+	MergeItemsModFile( pKVRawDefinition );
 
 	SCHEMA_INIT_SUBSTEP( CEconItemSchema::BInitSchema( pKVRawDefinition, pVecErrors ) );
 
-	// items_game.txt still ends the equippable range at Engineer. Classes added
-	// after that use the same loadout slots, so Equip() has to accept them.
-	// Leave the file alone; the schema CRC was already computed from it.
+	// Shipped items_game.txt sets last_valid_class to Brick. This still
+	// covers a vanilla file, whose range ends at Engineer. Account stays above it.
 	ExtendLastValidClass( TF_CLASS_BRICK );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
@@ -2325,15 +1764,6 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 
 	KeyValues* pKVWarDefs = pKVRawDefinition->FindKey( "war_definitions" );
 	SCHEMA_INIT_SUBSTEP( BInitWarDefs( pKVWarDefs, pVecErrors ) );
-
-	// Madcap's weapons are not in items_game.txt. Nailgun (b1) and Brick (b2)
-	// come from newitemdefinitions.cpp, which is compiled into this file.
-	ApplyMadcapItemDefinitions( pVecErrors );
-	ConvertBuffBannersToMoneyBags( this );
-	ConvertBattalionsBackupsToProtection( this );
-	ConvertConcherorsToSpeakeasies( this );
-	ForbidHeavyLunchboxThrows( this );
-	ShareFamilyBusinessWithPanicAttackClasses( this );
 
 #ifdef GAME_DLL
 	IGameEvent * event = gameeventmanager->CreateEvent( "schema_updated" );
@@ -3365,8 +2795,8 @@ void CEconItemSchema::NoteRuntimeBaseItem( CEconItemDefinition *pItemDef )
 	}
 }
 
-// New-schema item bodies. Included here, not listed in the vpc, so an
-// existing Visual Studio project picks them up without a project regen.
+// Local ownership for items_mod.txt. Included here, not listed in the vpc,
+// so an existing Visual Studio project picks it up without a project regen.
 // Do not also add newitemdefinitions.cpp to the project.
 #include "newitemdefinitions.cpp"
 

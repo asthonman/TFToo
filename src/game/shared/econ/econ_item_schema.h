@@ -1443,18 +1443,6 @@ public:
 
 	const CUtlVector<CLootlistJob*>& GetLootlistJobs() const { return m_jobs; }
 
-	// Rewrite a vanilla weapon so an existing definition (and every strange or
-	// renamed copy of it) spawns as a different weapon. String pointers must
-	// outlive the schema. Static attributes are edited separately.
-	void PresentAsWeapon( const char *pszItemClass, const char *pszItemName, const char *pszLogName, const char *pszPlayerModel, const char *pszWorldModel, bool bAttachToHands, const char *pszItemTypeName = NULL );
-	// Keep the item class and attributes. Swap the name, description, model, and icon.
-	// String pointers must outlive the schema.
-	void UseWornIdentity( const char *pszItemName, const char *pszItemDesc, const char *pszPlayerModel, const char *pszInventoryImage, bool bProperName );
-	void StripStaticAttributeClass( const char *pszAttributeClass );
-	bool AddStaticAttribute( const char *pszName, const char *pszValue );
-	// String pointer must outlive the schema.
-	void SetItemClass( const char *pszItemClass );
-
 
 #if defined(CLIENT_DLL) || defined(GAME_DLL)
 	int						GetStyleSkin( style_index_t unStyle, int iTeam, bool bViewmodel ) const;
@@ -2819,15 +2807,14 @@ public:
 
 	bool BInsertLootlist( const char *pListName, KeyValues *pKVLootList, CUtlVector<CUtlString> *pVecErrors );
 
-	// Items created in code, rather than items_game.txt. The b-schema in
-	// newitemdefinitions.cpp uses this. The Boston Basher is added to the
-	// stock-item list with NoteRuntimeBaseItem.
+	// Items created in code, rather than items_game.txt. The Boston Basher is
+	// a stock weapon because items_game.txt sets baseitem on it.
 	bool AddRuntimeItemDefinition( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors );
 	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
 
 protected:
-	// items_game.txt still stops last_valid_class at Engineer. Raising it here
-	// does not touch the schema CRC. Account index must stay above the new end.
+	// items_game.txt sets last_valid_class through Brick. Raising it here
+	// covers a vanilla file that still ends at Engineer, without a second CRC.
 	void ExtendLastValidClass( equipped_class_t unClass )
 	{
 		// The account slot is its own equip type, not the last playable

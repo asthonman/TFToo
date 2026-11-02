@@ -2,7 +2,8 @@
 //
 // Items that are not in vanilla TF2. Definition ids are alphanumeric and
 // start with 'b' ("b1", "b2", ...) so a lookup can tell them apart from the
-// numeric ids in items_game.txt.
+// numeric ids in items_game.txt. The definitions themselves are
+// scripts/items/items_mod.txt.
 //
 //=============================================================================//
 
@@ -18,7 +19,6 @@
 #include "tier1/utlstring.h"
 
 class CEconItemView;
-class CTFItemSchema;
 
 // True when this is a new-schema id: a leading 'b' and then digits.
 // Vanilla names also contain letters, so a letter anywhere is not the flag.
@@ -75,9 +75,7 @@ inline bool IsNewItemDefinitionIndex( item_definition_index_t iIndex )
 	return iIndex > kNewItemDefBase && iIndex < (item_definition_index_t)( kNewItemDefBase + 0x1000 );
 }
 
-void RegisterNewItemDefinitions( CTFItemSchema *pSchema, CUtlVector<CUtlString> *pVecErrors );
-
-// New-schema items are stock. The player always owns them.
+// New-schema items are not backpack items. The player always owns them.
 CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex );
 CEconItemView *NewItem_ViewForFakeItemID( itemid_t id );
 void NewItem_AddStockItemsForSlot( int iClass, int iSlot, CUtlVector<CEconItemView *> *pList );

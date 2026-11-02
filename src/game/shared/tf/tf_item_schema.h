@@ -264,12 +264,6 @@ public:
 	virtual const char	*GetPlayerDisplayModelAlt( int iClass = 0 ) const	{ Assert( iClass >= 0 && iClass < LOADOUT_COUNT ); return m_pszPlayerDisplayModelAlt[iClass]; }
 
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
-	void		RetargetClass( int iFromClass, int iToClass );
-	// Add a class without taking the item off the classes that already have it.
-	void		ShareWithClass( int iClass, int iSlot );
-	void		SetClassLoadoutSlot( int iClass, int iSlot );
-	void		ForcePlayerModel( const char *pszModel );
-	void		UseMoneyBagVisuals( const char *pszModel );
 	bool		IsAWearable() const;
 	bool		IsContentStreamable() const;
 	const char* GetAdTextToken() const { return m_pszAdText; }
