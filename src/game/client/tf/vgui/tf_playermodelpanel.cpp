@@ -2107,25 +2107,16 @@ void CTFPlayerModelPanel::StartEvent( float currenttime, CChoreoScene *scene, CC
 			if ( m_bDisableSpeakEvent )
 				return;
 
-			// The preview borrows another class's scene. Don't play that class's
-			// voice. Mobster only has lines for the laugh and the RPS intro.
+			// The preview borrows another class's scene (Pyro first). Conga and
+			// Flippin' Awesome are not named "*taunt*", so match on the class
+			// instead of the filename. Unmapped speaks stay silent.
 			const char *pszSound = event->GetParameters();
-			if ( m_iCurrentClassIndex == TF_CLASS_MOBSTER && scene )
+			if ( m_iCurrentClassIndex == TF_CLASS_MOBSTER )
 			{
-				const char *pszSceneFile = scene->GetFilename();
-				if ( pszSceneFile && V_stristr( pszSceneFile, "taunt" ) )
-				{
-					if ( V_stristr( pszSceneFile, "taunt_laugh" ) )
-						pszSound = "Mobster.Laugh";
-					else if ( V_stristr( pszSceneFile, "taunt_rps_start" ) )
-						pszSound = "Mobster.RPSStart";
-					else if ( V_stristr( pszSceneFile, "taunt01_vocal01" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal01" ) )
-						pszSound = "Mobster.Cheers";
-					else if ( V_stristr( pszSceneFile, "taunt01_vocal" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal" ) )
-						pszSound = "Mobster.Positive";
-					else
-						return;
-				}
+				const char *pszSceneFile = scene ? scene->GetFilename() : NULL;
+				pszSound = RemapMobsterSceneSpeak( pszSceneFile, pszSound );
+				if ( !pszSound )
+					return;
 			}
 
 			// FIXME: dB hack.  soundlevel needs to be moved into inside of wav?

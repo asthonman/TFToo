@@ -348,6 +348,10 @@ const char *ClassMenuPortraitShortName( int iClass );
 const char *ClassMenuHudIconName( int iClass );
 int GetDisguiseVisualClass( int iClass );
 
+// Mobster taunts play another class's VCD. Returns a Mobster sound to use,
+// pszSound to leave the event alone, or NULL to drop the donor voice.
+const char *RemapMobsterSceneSpeak( const char *pszSceneFile, const char *pszSound );
+
 // 221-239 are the original one-digit classes. 203-220 are classes 10-18.
 int EncodeDisguiseImpulse( int iTeam, int iClass );
 bool DecodeDisguiseImpulse( int iImpulse, int &iTeam, int &iClass );

@@ -46,27 +46,18 @@
 // Mobster taunt scenes are borrowed from another class, so the speak event is
 // that class's voice. Swap in his lines at the speak time. Scenes with no
 // mobster line are silenced instead of playing the donor.
-// NULL means suppress. The original pointer means leave the sound alone.
+// NULL means suppress. The original sound pointer means leave it alone.
 //-----------------------------------------------------------------------------
-static const char *RemapMobsterTauntSound( CBaseFlex *pActor, const char *pszScene )
+static const char *RemapMobsterTauntSound( CBaseFlex *pActor, const char *pszScene, const char *pszSound )
 {
-	if ( !pActor || !pActor->IsPlayer() || !pszScene || !V_stristr( pszScene, "taunt" ) )
-		return pszScene;
+	if ( !pActor || !pActor->IsPlayer() )
+		return pszSound;
 
 	CTFPlayer *pPlayer = ToTFPlayer( pActor );
 	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_MOBSTER ) )
-		return pszScene;
+		return pszSound;
 
-	if ( V_stristr( pszScene, "taunt_laugh" ) )
-		return "Mobster.Laugh";
-	if ( V_stristr( pszScene, "taunt_rps_start" ) )
-		return "Mobster.RPSStart";
-	if ( V_stristr( pszScene, "taunt01_vocal01" ) || V_stristr( pszScene, "taunt01_alt_vocal01" ) )
-		return "Mobster.Cheers";
-	if ( V_stristr( pszScene, "taunt01_vocal" ) || V_stristr( pszScene, "taunt01_alt_vocal" ) )
-		return "Mobster.Positive";
-
-	return NULL;
+	return RemapMobsterSceneSpeak( pszScene, pszSound );
 }
 #endif
 
@@ -1831,10 +1822,10 @@ void CSceneEntity::DispatchStartSpeak( CChoreoScene *scene, CBaseFlex *actor, CC
 #ifdef TF_DLL
 			{
 				const char *pszSceneFile = scene ? scene->GetFilename() : NULL;
-				const char *pszMapped = RemapMobsterTauntSound( actor, pszSceneFile );
+				const char *pszMapped = RemapMobsterTauntSound( actor, pszSceneFile, soundname );
 				if ( !pszMapped )
 					continue;
-				if ( pszMapped != pszSceneFile )
+				if ( pszMapped != soundname )
 					Q_strncpy( soundname, pszMapped, sizeof( soundname ) );
 			}
 #endif

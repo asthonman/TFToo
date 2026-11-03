@@ -230,6 +230,38 @@ const char *ClassMenuHudIconName( int iClass )
 	return ClassMenuPortraitShortName( iClass );
 }
 
+//-----------------------------------------------------------------------------
+// Mobster has no taunt scenes of his own, so the preview and the server both
+// borrow another class (Pyro first). Only a few of those speaks have a line
+// in his bank. The rest stay silent. Several borrowed scenes do not contain
+// the word "taunt" (conga.vcd, flip_start.vcd), so the filename check cannot
+// require it.
+//-----------------------------------------------------------------------------
+const char *RemapMobsterSceneSpeak( const char *pszSceneFile, const char *pszSound )
+{
+	if ( pszSceneFile && pszSceneFile[0] )
+	{
+		if ( V_stristr( pszSceneFile, "taunt_laugh" ) )
+			return "Mobster.Laugh";
+		// The RPS win/lose scenes share the "taunt_rps_" prefix and have no line.
+		if ( V_stristr( pszSceneFile, "taunt_rps_start" ) )
+			return "Mobster.RPSStart";
+		if ( V_stristr( pszSceneFile, "taunt01_vocal01" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal01" ) )
+			return "Mobster.Cheers";
+		if ( V_stristr( pszSceneFile, "taunt01_vocal" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal" ) )
+			return "Mobster.Positive";
+
+		// A scene that is actually his keeps whatever it already says.
+		if ( V_stristr( pszSceneFile, "/mobster/" ) || V_stristr( pszSceneFile, "\\mobster\\" ) )
+			return pszSound;
+	}
+
+	if ( pszSound && V_stristr( pszSound, "Mobster." ) == pszSound )
+		return pszSound;
+
+	return NULL;
+}
+
 int GetDisguiseVisualClass( int iClass )
 {
 	if ( iClass >= TF_CLASS_SCOUT && iClass <= TF_CLASS_ENGINEER )
