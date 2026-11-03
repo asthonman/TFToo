@@ -38,6 +38,42 @@ DECLARE_BUILD_FACTORY( CTFPlayerModelPanel );
 
 char g_szSceneTmpName[256];
 
+//-----------------------------------------------------------------------------
+// Custom classes are not in the per-class taunt scene lists. The loadout
+// preview was indexing that empty list (a null vector) and crashing.
+// Borrow the same donor order the server uses to play the taunt.
+//-----------------------------------------------------------------------------
+static int TauntSceneClass( const CTFTauntInfo *pTauntData, int iClass )
+{
+	if ( !pTauntData )
+		return iClass;
+
+	if ( iClass >= 0 && iClass < LOADOUT_COUNT && pTauntData->GetIntroSceneCount( iClass ) > 0 )
+		return iClass;
+
+	static const int s_nDonors[] =
+	{
+		TF_CLASS_PYRO,
+		TF_CLASS_SCOUT,
+		TF_CLASS_HEAVYWEAPONS,
+		TF_CLASS_SOLDIER,
+		TF_CLASS_DEMOMAN,
+		TF_CLASS_ENGINEER,
+		TF_CLASS_MEDIC,
+		TF_CLASS_SNIPER,
+		TF_CLASS_SPY,
+	};
+
+	for ( int i = 0; i < ARRAYSIZE( s_nDonors ); ++i )
+	{
+		const int iDonor = s_nDonors[i];
+		if ( iDonor >= 0 && iDonor < LOADOUT_COUNT && pTauntData->GetIntroSceneCount( iDonor ) > 0 )
+			return iDonor;
+	}
+
+	return iClass;
+}
+
 static bool IsTauntItem( GameItemDefinition_t *pItemDef, const int iTeam, const int iClass, const char **ppSequence = NULL, const char **ppRequiredItem = NULL, const char **ppScene = NULL )
 {
 	if ( !IsTauntSlot( pItemDef->GetLoadoutSlot( iClass ) ) )
@@ -48,22 +84,24 @@ static bool IsTauntItem( GameItemDefinition_t *pItemDef, const int iTeam, const 
 	CTFTauntInfo *pTauntData = pItemDef->GetTauntData();
 	if ( pTauntData )
 	{
+		const int iSceneClass = TauntSceneClass( pTauntData, iClass );
+
 		if ( ppScene )
 		{
 			if ( pItemDef->GetDefinitionIndex() == 1183 )
 			{
 				*ppScene = "scenes/player/items/taunts/yeti_taunt.vcd";
 			}
-			else
+			else if ( pTauntData->GetIntroSceneCount( iSceneClass ) > 0 )
 			{
-				int iTauntIndex = RandomInt( 0, pTauntData->GetIntroSceneCount( iClass ) - 1 );
-				*ppScene = pTauntData->GetIntroScene( iClass, iTauntIndex );
+				int iTauntIndex = RandomInt( 0, pTauntData->GetIntroSceneCount( iSceneClass ) - 1 );
+				*ppScene = pTauntData->GetIntroScene( iSceneClass, iTauntIndex );
 			}
 		}
 
 		if ( ppRequiredItem )
 		{
-			*ppRequiredItem = pTauntData->GetProp( iClass );
+			*ppRequiredItem = pTauntData->GetProp( iSceneClass );
 		}
 
 		return true;
@@ -805,8 +843,10 @@ void CTFPlayerModelPanel::SwitchHeldItemTo( CEconItemView *pItem, bool bPreserve
 		{
 			m_pScene = LoadSceneForModel( pScene, this, &m_flSceneEndTime );
 			
-			// load custom prop for taunt
-			const char *pszProp = pItem->GetStaticData()->GetTauntData()->GetProp( m_iCurrentClassIndex );
+			// load custom prop for taunt. Mobster has no per-class prop entry,
+			// so use the same donor class the scene came from.
+			const CTFTauntInfo *pTauntData = pItem->GetStaticData()->GetTauntData();
+			const char *pszProp = pTauntData ? pTauntData->GetProp( TauntSceneClass( pTauntData, m_iCurrentClassIndex ) ) : NULL;
 			if ( pszProp )
 			{
 				LoadAndAttachAdditionalModel( pszProp, pItem );
