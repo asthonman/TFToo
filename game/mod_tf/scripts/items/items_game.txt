@@ -20391,6 +20391,7 @@
 				"pyro"	"1"
 			
 				"engineer"	"primary"
+				"mobster"	"primary"
 			}
 			"static_attrs"
 			{
@@ -21565,6 +21566,7 @@
 				"pyro" "secondary"
 				"soldier" "secondary"
 				"heavy" "secondary"
+				"mobster"	"primary"
 			}
 			"static_attrs"
 			{
@@ -25804,9 +25806,9 @@
 		
 			"item_name"	"#TF_Weapon_MoneyBag"
 		
-			"item_type_name"	"#TF_Weapon_MoneyBag"
+			"item_type_name"	"#TF_ItemType_IllGottenGains"
 		
-			"item_description"	""
+			"item_description"	"#TF_Weapon_MoneyBag_Desc"
 		
 			"item_logname"	"moneybag"
 		
@@ -27029,6 +27031,7 @@
 			{
 				"demoman"	"1"
 				"soldier"	"1"
+				"mobster"	"1"
 			}
 			"static_attrs"
 			{
@@ -27616,6 +27619,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -29917,9 +29921,9 @@
 				"can_apply_soldier_buff"	"1"
 			}
 			"show_in_armory"	"1"
-			"item_type_name"	"#TF_Weapon_ProtectionInsurance"
+			"item_type_name"	"#TF_ItemType_Blackmail"
 			"item_name"	"#TF_Weapon_ProtectionInsurance"
-			"item_description"	""
+			"item_description"	"#TF_Weapon_ProtectionInsurance_Desc"
 			"item_slot"	"secondary"
 			"equip_region"	"back"
 			"anim_slot"	"ITEM1"
@@ -35072,7 +35076,7 @@
 			"show_in_armory"	"1"
 			"item_type_name"	"#TF_ItemType_Moonshine"
 			"item_name"	"#TF_Weapon_Speakeasy"
-			"item_description"	""
+			"item_description"	"#TF_Weapon_Speakeasy_Desc"
 			"item_slot"	"secondary"
 			"equip_region"	"back"
 			"anim_slot"	"ITEM1"
@@ -37897,6 +37901,7 @@
 			"used_by_classes"
 			{
 				"heavy"	"1"
+				"mobster"	"1"
 			}
 			"static_attrs"
 			{
@@ -39501,6 +39506,7 @@
 				"spy" 		"1"
 				"engineer" 	"1"
 				"pyro" 		"1"
+				"mobster"	"1"
 			}
 			"taunt"
 			{
@@ -49516,6 +49522,10 @@
 			"image_inventory"	"backpack/workshop/weapons/c_models/c_pep_scattergun/c_pep_scattergun"
 			"model_player"	"models/workshop/weapons/c_models/c_pep_scattergun/c_pep_scattergun.mdl"
 			"attach_to_hands" "1"
+			"used_by_classes"
+			{
+				"mobster"	"primary"
+			}
 			"static_attrs"
 			{
 				"min_viewmodel_offset"					"10 0 -12"
@@ -59974,6 +59984,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -60095,6 +60106,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -60313,6 +60325,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -60822,6 +60835,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -61814,6 +61828,7 @@
 				"spy" "1"
 				"engineer" "1"
 				"pyro" "1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -61983,6 +61998,7 @@
 				"spy" 		"1"
 				"engineer" 	"1"
 				"pyro" 		"1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -62692,6 +62708,7 @@
 				"spy" 		"1"
 				"engineer" 	"1"
 				"pyro" 		"1"
+				"mobster"	"1"
 			}
 			"attributes"
 			{
@@ -63372,6 +63389,7 @@
 				"spy" 		"1"
 				"engineer" 	"1"
 				"pyro" 		"1"
+				"mobster"	"1"
 			}
 			"taunt"
 			{
@@ -63439,6 +63457,7 @@
 				"pyro"			"1"
 				"spy"			"1"
 				"engineer"		"1"
+				"mobster"	"1"
 			}
 			"taunt"
 			{

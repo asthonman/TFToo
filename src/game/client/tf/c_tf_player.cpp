@@ -5536,6 +5536,10 @@ CStudioHdr *C_TFPlayer::OnNewModel( void )
 	if ( hdr )
 	{
 		InitPhonemeMappings();
+		// Voice is mp3, so there is no sentence for the phoneme extractor.
+		// The envelope is what the jaw fallback reads while a voice channel is up.
+		if ( V_stristr( hdr->pszName(), "mobster" ) )
+			MouthInfo().ActivateEnvelope();
 	}
 
 	if ( IsPlayerClass( TF_CLASS_SPY ) )

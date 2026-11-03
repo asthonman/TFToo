@@ -18069,14 +18069,30 @@ bool CTFPlayer::PlayClassSequenceTaunt( void )
 
 		CTFWeaponBase *pWeapon = GetActiveTFWeapon();
 		const int iSlot = pWeapon ? pWeapon->GetSlot() : 0;
+		bool bPlayed = false;
+		const char *pszVoice = NULL;
 		if ( iSlot == 1 )
-			return PlayNamedTauntSequence( "taunt02" );
-		if ( iSlot == 2 )
-			return PlayNamedTauntSequence( "taunt05" );
+		{
+			// Secondary vocal scenes have no mobster lines.
+			bPlayed = PlayNamedTauntSequence( "taunt02" );
+		}
+		else if ( iSlot == 2 )
+		{
+			bPlayed = PlayNamedTauntSequence( "taunt05" );
+		}
+		else
+		{
+			// Scout primary vocals are one Cheers scene and two PositiveVocalization scenes.
+			if ( RandomInt( 0, 1 ) == 0 )
+				bPlayed = PlayNamedTauntSequence( "taunt01" );
+			if ( !bPlayed )
+				bPlayed = PlayNamedTauntSequence( "taunt01_alt" );
+			pszVoice = ( RandomInt( 0, 2 ) == 0 ) ? "Mobster.Cheers" : "Mobster.Positive";
+		}
 
-		if ( RandomInt( 0, 1 ) == 0 && PlayNamedTauntSequence( "taunt01" ) )
-			return true;
-		return PlayNamedTauntSequence( "taunt01_alt" );
+		if ( bPlayed && pszVoice )
+			EmitSound( pszVoice );
+		return bPlayed;
 	}
 
 	if ( IsPlayerClass( TF_CLASS_RESUPPLY ) )
@@ -18568,10 +18584,13 @@ void CTFPlayer::Taunt( taunts_t iTauntIndex, int iTauntConcept )
 	// Mobster and Resupply have no taunt scene for the weapon concept. Their
 	// response (if any) is a one-shot voice line, so running it through
 	// OnTauntSucceeded ends the taunt on the next tick. The model sequence is
-	// already playing. Speak the same concept so Mobster.MeleeDare still
-	// plays, without sizing the taunt to that line.
+	// already playing. Mobster's primary line is chosen with the sequence.
+	// TLK_PLAYER_TAUNT is MeleeDare, which is not a weapon-taunt line.
 	if ( iTauntIndex == TAUNT_BASE_WEAPON && PlayClassSequenceTaunt() )
 	{
+		if ( IsPlayerClass( TF_CLASS_MOBSTER ) )
+			return;
+
 		CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
 		if ( pExpresser )
 			pExpresser->AllowMultipleScenes();
@@ -22548,6 +22567,13 @@ void CTFPlayer::AcceptTauntWithPartner( CTFPlayer *initiator )
 	// note who our partner is so we can lock our facing toward them on the client
 	m_hHighFivePartner = initiator;
 	initiator->m_hHighFivePartner = this;
+
+	// Square Dance is sped up so the solo sequence lasts the scene. A partner
+	// uses the scene timing, so drop that speed on whoever is the Mobster.
+	if ( IsPlayerClass( TF_CLASS_MOBSTER ) && m_iTauntItemDefIndex == 1106 )
+		RemoveCustomAttribute( "gesture speed increase" );
+	if ( initiator->IsPlayerClass( TF_CLASS_MOBSTER ) && initiator->m_iTauntItemDefIndex == 1106 )
+		initiator->RemoveCustomAttribute( "gesture speed increase" );
 
 	if ( initiator->m_hTauntScene.Get() )
 	{

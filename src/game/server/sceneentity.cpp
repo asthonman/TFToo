@@ -39,6 +39,37 @@
 #include "npc_alyx_episodic.h"
 #endif // HL2_EPISODIC
 
+#ifdef TF_DLL
+#include "tf_player.h"
+
+//-----------------------------------------------------------------------------
+// Mobster taunt scenes are borrowed from another class, so the speak event is
+// that class's voice. Swap in his lines at the speak time. Scenes with no
+// mobster line are silenced instead of playing the donor.
+// NULL means suppress. The original pointer means leave the sound alone.
+//-----------------------------------------------------------------------------
+static const char *RemapMobsterTauntSound( CBaseFlex *pActor, const char *pszScene )
+{
+	if ( !pActor || !pActor->IsPlayer() || !pszScene || !V_stristr( pszScene, "taunt" ) )
+		return pszScene;
+
+	CTFPlayer *pPlayer = ToTFPlayer( pActor );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_MOBSTER ) )
+		return pszScene;
+
+	if ( V_stristr( pszScene, "taunt_laugh" ) )
+		return "Mobster.Laugh";
+	if ( V_stristr( pszScene, "taunt_rps_start" ) )
+		return "Mobster.RPSStart";
+	if ( V_stristr( pszScene, "taunt01_vocal01" ) || V_stristr( pszScene, "taunt01_alt_vocal01" ) )
+		return "Mobster.Cheers";
+	if ( V_stristr( pszScene, "taunt01_vocal" ) || V_stristr( pszScene, "taunt01_alt_vocal" ) )
+		return "Mobster.Positive";
+
+	return NULL;
+}
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -1796,6 +1827,17 @@ void CSceneEntity::DispatchStartSpeak( CChoreoScene *scene, CBaseFlex *actor, CC
 			{
 				continue;
 			}
+
+#ifdef TF_DLL
+			{
+				const char *pszSceneFile = scene ? scene->GetFilename() : NULL;
+				const char *pszMapped = RemapMobsterTauntSound( actor, pszSceneFile );
+				if ( !pszMapped )
+					continue;
+				if ( pszMapped != pszSceneFile )
+					Q_strncpy( soundname, pszMapped, sizeof( soundname ) );
+			}
+#endif
 
 			es.m_pSoundName = soundname;
 

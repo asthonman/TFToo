@@ -1866,7 +1866,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_SPY,
 			"tf_weapon_shotgun_primary",// TF_CLASS_ENGINEER,		
 			"",							// TF_CLASS_MADCAP,
-			"",							// TF_CLASS_MOBSTER,
+			"tf_weapon_shotgun_primary",// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
 			"",							// TF_CLASS_BRICK,
 		}
@@ -1906,7 +1906,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"",							// TF_CLASS_SPY,
 			"",							// TF_CLASS_ENGINEER,		
 			"",							// TF_CLASS_MADCAP,
-			"",							// TF_CLASS_MOBSTER,
+			"tf_weapon_shovel",			// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
 			"",							// TF_CLASS_BRICK,
 		}

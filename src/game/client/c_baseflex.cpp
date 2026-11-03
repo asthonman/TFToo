@@ -916,6 +916,69 @@ void C_BaseFlex::AddVisemesForSentence( Emphasized_Phoneme *classes, float empha
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: mp3 voice has no sentence, so phoneme lookup never runs. Drive the
+// viseme flexes (AH, OH, MB, ...) off the mouth envelope, or a chatter if the
+// decoder never filled one. Models without those flexes are left alone.
+//-----------------------------------------------------------------------------
+void C_BaseFlex::ApplySentenceLessVisemes( float flElapsed )
+{
+	CStudioHdr *hdr = GetModelPtr();
+	if ( !hdr || hdr->numflexcontrollers() <= 0 )
+		return;
+
+	float flOpen = MouthInfo().mouthopen / 255.0f;
+	if ( flOpen < 0.05f )
+		flOpen = MouthInfo().mouthopen / 64.0f;
+	if ( flOpen < 0.04f )
+	{
+		const float flTalk = sinf( flElapsed * 14.0f ) * 0.5f + 0.5f;
+		const float flGate = 0.45f + 0.55f * ( sinf( flElapsed * 5.5f ) * 0.5f + 0.5f );
+		flOpen = clamp( flTalk * flGate, 0.0f, 1.0f );
+	}
+	else
+	{
+		flOpen = clamp( flOpen, 0.0f, 1.0f );
+	}
+
+	const char *pszA = "AH";
+	const char *pszB = "EEE";
+	float flA = flOpen;
+	float flB = flOpen * 0.25f;
+	const float flPhase = fmodf( flElapsed * 8.0f, 3.0f );
+	if ( flPhase >= 2.0f )
+	{
+		pszA = "MB";
+		pszB = "P";
+		flA = flOpen * 0.75f;
+		flB = flOpen * 0.35f;
+	}
+	else if ( flPhase >= 1.0f )
+	{
+		pszA = "OH";
+		pszB = "AH";
+		flA = flOpen * 0.9f;
+		flB = flOpen * 0.3f;
+	}
+
+	for ( LocalFlexController_t i = LocalFlexController_t( 0 ); i < hdr->numflexcontrollers(); i++ )
+	{
+		mstudioflexcontroller_t *pflex = hdr->pFlexcontroller( i );
+		if ( !pflex || pflex->localToGlobal < 0 )
+			continue;
+
+		float flAdd = 0.f;
+		if ( !Q_stricmp( pflex->pszName(), pszA ) )
+			flAdd = flA;
+		else if ( !Q_stricmp( pflex->pszName(), pszB ) )
+			flAdd = flB;
+		if ( flAdd <= 0.f )
+			continue;
+
+		g_flexweight[ pflex->localToGlobal ] += flAdd;
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : *classes - 
 //-----------------------------------------------------------------------------
@@ -924,6 +987,10 @@ void C_BaseFlex::ProcessVisemes( Emphasized_Phoneme *classes )
 	// Any sounds being played?
 	if ( !MouthInfo().IsActive() )
 		return;
+
+	bool bHadSentence = false;
+	bool bNeedFallback = false;
+	float flElapsed = 0.f;
 
 	// Multiple phoneme tracks can overlap, look across all such tracks.
 	for ( int source = 0 ; source < MouthInfo().GetNumVoiceSources(); source++ )
@@ -934,7 +1001,13 @@ void C_BaseFlex::ProcessVisemes( Emphasized_Phoneme *classes )
 
 		CSentence *sentence = engine->GetSentence( vd->GetSource() );
 		if ( !sentence )
+		{
+			bNeedFallback = true;
+			flElapsed = MAX( flElapsed, vd->GetElapsedTime() );
 			continue;
+		}
+
+		bHadSentence = true;
 
 		float	sentence_length = engine->GetSentenceLength( vd->GetSource() );
 		float	timesincestart = vd->GetElapsedTime();
@@ -970,6 +1043,9 @@ void C_BaseFlex::ProcessVisemes( Emphasized_Phoneme *classes )
 		// Blend and add visemes together
 		AddVisemesForSentence( classes, emphasis_intensity, sentence, t, dt, juststarted );
 	}
+
+	if ( !bHadSentence && bNeedFallback )
+		ApplySentenceLessVisemes( flElapsed );
 }
 
 //-----------------------------------------------------------------------------

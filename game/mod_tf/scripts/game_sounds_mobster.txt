@@ -589,6 +589,26 @@
 	"wave"			"mvm/mobster_indev1/mobster_laugh01.mp3"
 }
 
+"Mobster.RPSStart"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"		"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"	"mvm/mobster_indev1/mobster_rps_init01.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init02.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init03.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init04.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init05.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init06.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init07.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init08.mp3"
+		"wave"	"mvm/mobster_indev1/mobster_rps_init09.mp3"
+	}
+}
+
 "Mobster.LeaveSpawn"
 {
 	"channel"		"CHAN_VOICE"
