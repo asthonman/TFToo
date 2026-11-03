@@ -2107,6 +2107,27 @@ void CTFPlayerModelPanel::StartEvent( float currenttime, CChoreoScene *scene, CC
 			if ( m_bDisableSpeakEvent )
 				return;
 
+			// The preview borrows another class's scene. Don't play that class's
+			// voice. Mobster only has lines for the laugh and the RPS intro.
+			const char *pszSound = event->GetParameters();
+			if ( m_iCurrentClassIndex == TF_CLASS_MOBSTER && scene )
+			{
+				const char *pszSceneFile = scene->GetFilename();
+				if ( pszSceneFile && V_stristr( pszSceneFile, "taunt" ) )
+				{
+					if ( V_stristr( pszSceneFile, "taunt_laugh" ) )
+						pszSound = "Mobster.Laugh";
+					else if ( V_stristr( pszSceneFile, "taunt_rps_start" ) )
+						pszSound = "Mobster.RPSStart";
+					else if ( V_stristr( pszSceneFile, "taunt01_vocal01" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal01" ) )
+						pszSound = "Mobster.Cheers";
+					else if ( V_stristr( pszSceneFile, "taunt01_vocal" ) || V_stristr( pszSceneFile, "taunt01_alt_vocal" ) )
+						pszSound = "Mobster.Positive";
+					else
+						return;
+				}
+			}
+
 			// FIXME: dB hack.  soundlevel needs to be moved into inside of wav?
 			soundlevel_t iSoundlevel = SNDLVL_TALKING;
 			if ( event->GetParameters2() )
@@ -2127,7 +2148,7 @@ void CTFPlayerModelPanel::StartEvent( float currenttime, CChoreoScene *scene, CC
 			es.m_SoundLevel = iSoundlevel;
 			es.m_flSoundTime = soundtime;
 			es.m_bEmitCloseCaption = false;
-			es.m_pSoundName = event->GetParameters();
+			es.m_pSoundName = pszSound;
 
 			C_RecipientFilter filter;
 			C_BaseEntity::EmitSound( filter, SOUND_FROM_UI_PANEL, es );
