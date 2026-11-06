@@ -46,6 +46,9 @@ public:
 	virtual bool		ClientCommand( const CCommand &args );
 
 	virtual bool		CanSpeakVoiceCommand( void ) { return true; }
+	// A class with no talker line for this concept can still use the voice menu.
+	virtual bool		VoiceCommandCountsWithoutResponse( int iConcept ) { return false; }
+	virtual void		OnVoiceCommandWithoutResponse( int iConcept ) {}
 	virtual bool		ShouldShowVoiceSubtitleToEnemy( void );
 	virtual void		NoteSpokeVoiceCommand( const char *pszScenePlayed ) {}
 

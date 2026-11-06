@@ -537,6 +537,8 @@ public:
 	void					ClearMadcapCourse( void ) { m_bMadcapCourse = false; }
 
 	virtual bool CanSpeakVoiceCommand( void );
+	virtual bool VoiceCommandCountsWithoutResponse( int iConcept );
+	virtual void OnVoiceCommandWithoutResponse( int iConcept );
 	virtual bool ShouldShowVoiceSubtitleToEnemy( void );
 	virtual void NoteSpokeVoiceCommand( const char *pszScenePlayed );
 	void	SpeakWeaponFire( int iCustomConcept = MP_CONCEPT_NONE );

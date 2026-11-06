@@ -1726,6 +1726,7 @@ ConVarRef suitcharger( "sk_suitcharger" );
 		Assert( pItem );
 
 		char szResponse[AI_Response::MAX_RESPONSE_NAME];
+		szResponse[0] = '\0';
 
 		if ( pPlayer->CanSpeakVoiceCommand() )
 		{
@@ -1733,7 +1734,16 @@ ConVarRef suitcharger( "sk_suitcharger" );
 			Assert( pExpresser );
 			pExpresser->AllowMultipleScenes();
 
-			if ( pPlayer->SpeakConceptIfAllowed( pItem->m_iConcept, NULL, szResponse, AI_Response::MAX_RESPONSE_NAME ) )
+			const bool bSpoke = pPlayer->SpeakConceptIfAllowed( pItem->m_iConcept, NULL, szResponse, AI_Response::MAX_RESPONSE_NAME );
+			// No talker line (the new classes) used to drop the whole command, so
+			// the team-chat subtitle never went out and a medic bot never saw the call.
+			const bool bCount = bSpoke || pPlayer->VoiceCommandCountsWithoutResponse( pItem->m_iConcept );
+			if ( !bSpoke && bCount )
+			{
+				pPlayer->OnVoiceCommandWithoutResponse( pItem->m_iConcept );
+			}
+
+			if ( bCount )
 			{
 				// show a subtitle if we need to
 				if ( pItem->m_bShowSubtitle )

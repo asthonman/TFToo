@@ -37,6 +37,7 @@
 #include "team_control_point_master.h"
 #include "tf_weapon_pda.h"
 #include "sceneentity.h"
+#include "AI_ResponseSystem.h"
 #include "fmtstr.h"
 #include "tf_weapon_sniperrifle.h"
 #include "tf_weapon_minigun.h"
@@ -20912,6 +20913,44 @@ bool CTFPlayer::CanSpeakVoiceCommand( void )
 	}
 
 	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Voice menu still counts when this class has no talker line for it.
+//-----------------------------------------------------------------------------
+bool CTFPlayer::VoiceCommandCountsWithoutResponse( int iConcept )
+{
+	if ( !IsAlive() || IsSpeaking() )
+		return false;
+
+	if ( iConcept < 0 || iConcept >= MP_TF_CONCEPT_COUNT )
+		return false;
+
+	const int iSavedConcept = m_iCurrentConcept;
+	m_iCurrentConcept = iConcept;
+	IResponseSystem *pSystem = GetResponseSystem();
+	m_iCurrentConcept = iSavedConcept;
+
+	if ( !pSystem )
+		return false;
+
+	CUtlVector< AI_Response * > responses;
+	pSystem->GetAllResponses( &responses );
+	const bool bHasLine = responses.Count() > 0;
+	responses.PurgeAndDeleteElements();
+	return !bHasLine;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Medic call with no spoken line still marks the player for medics.
+//-----------------------------------------------------------------------------
+void CTFPlayer::OnVoiceCommandWithoutResponse( int iConcept )
+{
+	if ( iConcept != MP_CONCEPT_PLAYER_MEDIC )
+		return;
+
+	NoteMedicCall();
+	SaveMe();
 }
 
 //-----------------------------------------------------------------------------
