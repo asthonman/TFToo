@@ -264,6 +264,10 @@ void CTFWeaponPDA_Spy::ItemPreFrame( void )
 {
 	BaseClass::ItemPreFrame();
 
+	CTFPlayer *pOwner = ToTFPlayer( GetOwner() );
+	if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_WITCH ) )
+		return;
+
 	ProcessDisguiseImpulse();
 	CheckDisguiseTimer();
 }

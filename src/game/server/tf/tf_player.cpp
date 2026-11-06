@@ -1014,6 +1014,7 @@ CTFPlayer::CTFPlayer()
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
+	m_hWitchSpellbook = NULL;
 	m_vecMadcapCourse.Init();
 	m_bMadcapCourse = false;
 	m_szTauntSequence.GetForModify()[0] = '\0';
@@ -1487,6 +1488,67 @@ static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, bool bDucking
 
 	return false;
 }
+
+//-----------------------------------------------------------------------------
+// Hidden spellbook. Secondary fire spends mana and this fires the spell.
+//-----------------------------------------------------------------------------
+bool CTFPlayer::CastWitchSpell( int iSlot )
+{
+	const int iIndex = GetWitchSpellGameIndex( iSlot );
+	if ( iIndex < 0 )
+		return false;
+
+	CTFSpellBook *pBook = dynamic_cast<CTFSpellBook *>( m_hWitchSpellbook.Get() );
+	if ( !pBook )
+	{
+		pBook = static_cast<CTFSpellBook *>( CreateEntityByName( "tf_weapon_spellbook" ) );
+		if ( !pBook )
+			return false;
+
+		pBook->SetOwner( this );
+		DispatchSpawn( pBook );
+		pBook->AddEffects( EF_NODRAW );
+		pBook->SetSolid( SOLID_NONE );
+		pBook->AddSolidFlags( FSOLID_NOT_SOLID );
+		pBook->SetMoveType( MOVETYPE_NONE );
+		pBook->SetBlocksLOS( false );
+		pBook->SetTouch( NULL );
+		pBook->SetThink( NULL );
+		pBook->SetParent( this );
+		pBook->SetOwner( this );
+		if ( pBook->VPhysicsGetObject() )
+		{
+			pBook->VPhysicsDestroyObject();
+		}
+		m_hWitchSpellbook = pBook;
+	}
+
+	if ( pBook->GetTeamNumber() != GetTeamNumber() )
+	{
+		pBook->ChangeTeam( GetTeamNumber() );
+	}
+
+	return pBook->CastSpellIndex( iIndex );
+}
+
+#ifndef CLIENT_DLL
+static void CC_WitchSpell( const CCommand &args )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return;
+
+	if ( args.ArgC() < 2 )
+		return;
+
+	const int iSlot = atoi( args.Arg( 1 ) ) - 1;
+	if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
+		return;
+
+	pPlayer->m_Shared.SetWitchSpell( iSlot );
+}
+static ConCommand witch_spell( "witch_spell", CC_WitchSpell, "Select the Witch's spell, 1 through 9.", 0 );
+#endif
 
 void CTFPlayer::ThinkBrickGrow( void )
 {

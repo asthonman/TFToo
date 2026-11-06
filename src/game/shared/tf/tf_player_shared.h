@@ -496,6 +496,8 @@ public:
 	void	UpdateCloakMeter( void );
 	float	GetSpyCloakMeter() const		{ return m_flCloakMeter; }
 	void	SetSpyCloakMeter( float val ) { m_flCloakMeter = val; }
+	int		GetWitchSpell( void ) const		{ return m_nWitchSpell; }
+	void	SetWitchSpell( int iSpell )	{ m_nWitchSpell = iSpell; }
 
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
@@ -1091,6 +1093,8 @@ private:
 	float m_flNextBurningSound;
 
 	CNetworkVar( float, m_flCloakMeter );	// [0,100]
+	// Witch spell menu slot, 0-8. Mana is m_flCloakMeter.
+	CNetworkVar( int, m_nWitchSpell );
 
 	CNetworkVar( bool, m_bInUpgradeZone );
 

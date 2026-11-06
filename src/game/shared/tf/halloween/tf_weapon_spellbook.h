@@ -118,6 +118,13 @@ private:
 void RemoveAll2013HalloweenTeleportSpellsInMidFlight( void );
 #endif
 
+// Witch spellbook. Slot order is the disguise-menu keys, not the Halloween list.
+int GetWitchSpellCount( void );
+int GetWitchSpellGameIndex( int iSlot );
+int GetWitchSpellManaCost( int iSlot );
+const char *GetWitchSpellUiName( int iSlot );
+const char *GetWitchSpellIcon( int iSlot );
+
 //=============================================================================
 //
 // CTFSpellBook class.
@@ -180,6 +187,8 @@ public:
 	// Spells
 	void			CastKartSpell();
 	bool			CastSpell( CTFPlayer *pPlayer, int iSpellIndex );
+	// Mana cast. Skips the Halloween charge check and fires immediately.
+	bool			CastSpellIndex( int iSpellIndex );
 
 	CHandle<CBaseCombatWeapon> m_pStoredLastWpn;
 

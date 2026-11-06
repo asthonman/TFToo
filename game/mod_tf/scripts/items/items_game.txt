@@ -16303,6 +16303,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -20283,6 +20284,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -22855,6 +22857,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"mouse_pressed_sound"	"ui/item_light_gun_pickup.wav"
 			"drop_sound"		"ui/item_light_gun_drop.wav"
@@ -27343,6 +27346,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -29830,6 +29834,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -39341,6 +39346,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -41325,6 +41331,7 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
+				"witch"	"1"
 			}
 			"static_attrs"
 			{

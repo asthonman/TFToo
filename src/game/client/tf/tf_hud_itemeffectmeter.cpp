@@ -577,6 +577,17 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 		DECLARE_ITEM_EFFECT_METER( C_TFWeaponBuilder, TF_WEAPON_BUILDER, true, "resource/UI/HudItemEffectMeter_Sapper.res" );
 		break;
 
+	case TF_CLASS_WITCH:
+		// Mana is the Spy cloak meter. The label is the only difference.
+		hNewMeter = new CHudItemEffectMeter( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
+		break;
+
 	case TF_CLASS_MEDIC:
 		// Kritz, Quick-Fix, and Vaccinator share the stock medigun meters.
 		DECLARE_ITEM_EFFECT_METER( CWeaponMedigun, TF_WEAPON_MEDIGUN, true, "resource/UI/HudItemEffectMeter_Scout.res" );
@@ -880,6 +891,9 @@ void CHudItemEffectMeter::Update( C_TFPlayer* pPlayer )
 //-----------------------------------------------------------------------------
 const char*	CHudItemEffectMeter::GetLabelText( void )
 {
+	if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return "#TF_Mana";
+
 	if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_SPY ) )
 	{
 		CTFWeaponInvis *pWpn = (CTFWeaponInvis *)m_pPlayer->Weapon_OwnsThisID( TF_WEAPON_INVIS );

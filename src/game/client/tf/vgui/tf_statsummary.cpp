@@ -54,6 +54,8 @@ const char *g_pszTipsClassImages[] =
 	"class_portraits/pyro",		// TF_CLASS_MOBSTER,
 	"class_portraits/sniper",	// TF_CLASS_RESUPPLY,
 	"class_portraits/brick",	// TF_CLASS_BRICK,
+	"class_portraits/witch",	// TF_CLASS_WITCH,
+	"",							// TF_CLASS_CIVILIAN,
 };
 
 ClassDetails_t g_PerClassStatDetails[15] =

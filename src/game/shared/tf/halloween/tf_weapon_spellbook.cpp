@@ -253,6 +253,62 @@ const spell_data_t* GetSpellData( int iSpellIndex )
 	return NULL;
 }
 
+//-----------------------------------------------------------------------------
+// Witch. Same spells as Halloween, in menu order. Cost is 100 / charges.
+//-----------------------------------------------------------------------------
+static const int s_nWitchSpellIndex[] =
+{
+	3,										// Pumpkin MIRV
+	5,										// Stealth
+	1,										// Bat swarm
+	0,										// Fireball
+	4,										// Blast jump
+	ARRAYSIZE( g_NormalSpellList ) + 0,		// Ball o' Lightning
+	ARRAYSIZE( g_NormalSpellList ) + 1,		// Minify (Athletic)
+	ARRAYSIZE( g_NormalSpellList ) + 2,		// Meteor swarm
+	2,										// Overheal
+};
+
+int GetWitchSpellCount( void )
+{
+	return ARRAYSIZE( s_nWitchSpellIndex );
+}
+
+int GetWitchSpellGameIndex( int iSlot )
+{
+	if ( iSlot < 0 || iSlot >= ARRAYSIZE( s_nWitchSpellIndex ) )
+		return -1;
+
+	return s_nWitchSpellIndex[ iSlot ];
+}
+
+int GetWitchSpellManaCost( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell || pSpell->m_iSpellCharges <= 0 )
+		return 100;
+
+	return 100 / pSpell->m_iSpellCharges;
+}
+
+const char *GetWitchSpellUiName( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell || !pSpell->m_pSpellUiName )
+		return "";
+
+	return pSpell->m_pSpellUiName;
+}
+
+const char *GetWitchSpellIcon( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell || !pSpell->m_pIconName )
+		return "";
+
+	return pSpell->m_pIconName;
+}
+
 int GetSpellIndexFromContext( int iContext )
 {
 	const int nNormalSpellCount = ARRAYSIZE( g_NormalSpellList );
@@ -1268,6 +1324,24 @@ bool CTFSpellBook::CastSpell( CTFPlayer *pPlayer, int iSpellIndex )
 		return true;
 	}
 	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Witch. The book is hidden and has no charges. Fire the chosen spell now.
+//-----------------------------------------------------------------------------
+bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
+{
+	if ( !GetSpellData( iSpellIndex ) )
+		return false;
+
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( !pPlayer )
+		return false;
+
+	m_iSelectedSpellIndex = iSpellIndex;
+	m_iPreviouslyCastSpell = iSpellIndex;
+	TossJarThink();
+	return true;
 }
 
 #endif

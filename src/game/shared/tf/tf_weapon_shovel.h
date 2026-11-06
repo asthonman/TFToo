@@ -15,6 +15,7 @@
 #ifdef CLIENT_DLL
 #define CTFShovel C_TFShovel
 #define CTFLeadPipe C_TFLeadPipe
+#define CTFBroomstick C_TFBroomstick
 #endif
 
 enum shovel_weapontypes_t
@@ -88,6 +89,22 @@ public:
 
 private:
 	CTFLeadPipe( const CTFLeadPipe & ) {}
+};
+
+// Witch broom. Placeholder shovel mesh until the model exists.
+class CTFBroomstick : public CTFShovel
+{
+public:
+	DECLARE_CLASS( CTFBroomstick, CTFShovel );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFBroomstick() {}
+
+	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
+
+private:
+	CTFBroomstick( const CTFBroomstick & ) {}
 };
 
 #endif // TF_WEAPON_SHOVEL_H

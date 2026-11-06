@@ -425,5 +425,61 @@
 				}
 			}
 		}
+		// Witch stock melee. Shovel mesh until the broom model exists.
+		"b11"
+		{
+			"name"				"b11"
+			"item_class"		"tf_weapon_broom"
+			"item_name"			"#TF_Weapon_Broom"
+			"item_type_name"	"#TF_Weapon_Broom"
+			"item_logname"		"broom"
+			"item_iconname"	"broom"
+			"item_slot"			"melee"
+			"anim_slot"			"MELEE"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_shovel/c_shovel.mdl"
+			"model_world"		"models/weapons/c_models/c_shovel/c_shovel.mdl"
+			"used_by_classes"
+			{
+				"witch"			"1"
+			}
+		}
+		// Witch spellbook. Disguise-kit model and PDA, witch only, so the Spy kit name stays.
+		"b12"
+		{
+			"name"				"b12"
+			"item_class"		"tf_weapon_pda_spy"
+			"item_name"			"#TF_Weapon_WitchSpellbook"
+			"item_type_name"	"#TF_Weapon_WitchSpellbook"
+			"item_logname"		"spellbook"
+			"item_iconname"	"spellbook"
+			"item_slot"			"pda"
+			"anim_slot"			"PDA"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/w_models/w_cigarette_case.mdl"
+			"image_inventory"	"backpack/weapons/w_models/w_cigarette_case"
+			"image_inventory_size_w"	"128"
+			"image_inventory_size_h"	"82"
+			"used_by_classes"
+			{
+				"witch"			"1"
+			}
+		}
 	}
 }

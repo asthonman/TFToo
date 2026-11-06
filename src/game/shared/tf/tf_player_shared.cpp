@@ -16,6 +16,7 @@
 #include "tf_weapon_invis.h"
 #include "tf_weapon_sniperrifle.h"
 #include "tf_weapon_shovel.h"
+#include "halloween/tf_weapon_spellbook.h"
 #include "tf_weapon_sword.h"
 #include "tf_weapon_shotgun.h"
 #include "in_buttons.h"
@@ -407,6 +408,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropEHandle( RECVINFO( m_hDisguiseWeapon ) ),
 	RecvPropInt( RECVINFO( m_nTeamTeleporterUsed ) ),
 	RecvPropFloat( RECVINFO( m_flCloakMeter ) ),
+	RecvPropInt( RECVINFO( m_nWitchSpell ) ),
 	RecvPropFloat( RECVINFO( m_flSpyTranqBuffDuration ) ),
 
 	// Local Data.
@@ -445,6 +447,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_nPlayerState, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nPlayerCond, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flCloakMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nWitchSpell, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRageMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bRageDraining, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNextRageEarnTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -584,6 +587,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropEHandle( SENDINFO( m_hDisguiseWeapon ) ),
 	SendPropInt( SENDINFO( m_nTeamTeleporterUsed ), 3, SPROP_UNSIGNED ),
 	SendPropFloat( SENDINFO( m_flCloakMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
+	SendPropInt( SENDINFO( m_nWitchSpell ), 4, SPROP_UNSIGNED ),
 	SendPropFloat( SENDINFO( m_flSpyTranqBuffDuration ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	
 	// Local Data.
@@ -824,6 +828,7 @@ CTFPlayerShared::CTFPlayerShared()
 	m_bLoadoutUnavailable = false;
 
 	m_nMaskClass = 0;
+	m_nWitchSpell = 0;
 
 	m_iItemFindBonus = 0;
 
@@ -12420,6 +12425,35 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			bDoSkill = TryToPickupBuilding();
 		}
 		break;
+	case TF_CLASS_WITCH:
+		{
+			if ( m_Shared.m_flStealthNextChangeTime > gpGlobals->curtime )
+				return true;
+
+			int iSpell = m_Shared.GetWitchSpell();
+			if ( iSpell < 0 || iSpell >= GetWitchSpellCount() )
+				iSpell = 0;
+
+			const float flCost = (float)GetWitchSpellManaCost( iSpell );
+			if ( m_Shared.GetSpyCloakMeter() < flCost )
+			{
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
+				return false;
+			}
+
+			m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() - flCost );
+			m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+#ifdef GAME_DLL
+			if ( !CastWitchSpell( iSpell ) )
+			{
+				m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() + flCost );
+			}
+#endif
+			bDoSkill = true;
+		}
+		break;
 	default:
 		break;
 	}
@@ -14198,6 +14232,21 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateCloakMeter( void )
 {
+	// Witch mana refills like the Spy cloak and never drains for stealth.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		m_flCloakMeter += gpGlobals->frametime * m_fCloakRegenRate;
+		if ( m_flCloakMeter >= 100.0f )
+		{
+			m_flCloakMeter = 100.0f;
+		}
+		else if ( m_flCloakMeter < 0.0f )
+		{
+			m_flCloakMeter = 0.0f;
+		}
+		return;
+	}
+
 	if ( !m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
 		return;
 

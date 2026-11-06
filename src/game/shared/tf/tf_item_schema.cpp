@@ -1471,6 +1471,7 @@ static PlayerClassInfo_t gs_PlayerClassData[] =
 	{ "Mobster",	"#TF_Class_Name_Mobster" },
 	{ "Resupply",	"#TF_Class_Name_Resupply" },
 	{ "Brick",		"#TF_Class_Name_Brick" },
+	{ "Witch",		"#TF_Class_Name_Witch" },
 	{ "Invalid",	"" }						// lots of code loops over these classes based on LOADOUT_COUNT, which is wrong, but this allows them to do it safely
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( gs_PlayerClassData ) == LOADOUT_COUNT );
@@ -1740,7 +1741,7 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 
 	// Shipped items_game.txt sets last_valid_class to Brick. This still
 	// covers a vanilla file, whose range ends at Engineer. Account stays above it.
-	ExtendLastValidClass( TF_CLASS_BRICK );
+	ExtendLastValidClass( TF_CLASS_WITCH );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );

@@ -465,6 +465,10 @@ public:
 
 	bool DoClassSpecialSkill( void );
 	bool EndClassSpecialSkill( void );
+#ifdef GAME_DLL
+	bool CastWitchSpell( int iSlot );
+	EHANDLE m_hWitchSpellbook;
+#endif
 
 	bool	CanPickupBuilding( CBaseObject *pPickupObject );
 	bool TryToPickupBuilding( void );
