@@ -44,7 +44,7 @@
 #include "tf_hud_menu_engy_build.h"
 #include "tf_hud_menu_engy_destroy.h"
 #include "tf_hud_menu_spy_disguise.h"
-#include "tf_weapon_spellbook_pda.h"
+#include "tf_weapon_pda.h"
 #include "tf_statsummary.h"
 #include "tf_hud_freezepanel.h"
 #include "item_quickswitch.h"

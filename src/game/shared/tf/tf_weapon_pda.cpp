@@ -27,6 +27,14 @@
 	#include "tf_hud_menu_engy_destroy.h"
 	#include "tf_hud_menu_spy_disguise.h"
 	#include "prediction.h"
+	#include "iclientmode.h"
+	#include "ienginevgui.h"
+	#include <vgui/ILocalize.h>
+	#include "inputsystem/iinputsystem.h"
+	#include "halloween/tf_weapon_spellbook.h"
+	#ifdef SIXENSE
+		#include "sixense/in_sixense.h"
+	#endif
 #endif
 
 //=============================================================================
@@ -477,3 +485,575 @@ bool	CTFWeaponPDA_Engineer_Destroy::VisibleInWeaponSelection( void )
 
 
 
+
+//==============================
+// Witch spellbook PDA
+//==============================
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponPDA_Spellbook, DT_TFWeaponPDA_Spellbook )
+
+BEGIN_NETWORK_TABLE( CTFWeaponPDA_Spellbook, DT_TFWeaponPDA_Spellbook )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFWeaponPDA_Spellbook )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_pda_spellbook, CTFWeaponPDA_Spellbook );
+PRECACHE_WEAPON_REGISTER( tf_weapon_pda_spellbook );
+
+#ifdef CLIENT_DLL
+
+CHudBaseBuildMenu *CTFWeaponPDA_Spellbook::GetBuildMenu() const
+{
+	return GET_HUDELEMENT( CHudMenuSpellbook );
+}
+
+bool CTFWeaponPDA_Spellbook::Deploy( void )
+{
+	bool bDeploy = BaseClass::Deploy();
+
+	if ( bDeploy && prediction->IsFirstTimePredicted() )
+	{
+		IGameEvent *event = gameeventmanager->CreateEvent( "spellbook_pda_reset" );
+		if ( event )
+		{
+			gameeventmanager->FireEventClientSide( event );
+		}
+	}
+
+	return bDeploy;
+}
+
+extern ConVar tf_simple_disguise_menu;
+extern ConVar tf_disguise_menu_controller_mode;
+
+DECLARE_HUDELEMENT( CHudMenuSpellbook );
+
+CHudMenuSpellbook::CHudMenuSpellbook( const char *pElementName )
+	: CHudBaseBuildMenu( pElementName, "HudMenuSpellbook" )
+{
+	Panel *pParent = g_pClientMode->GetViewport();
+	SetParent( pParent );
+
+	SetHiddenBits( HIDEHUD_MISCSTATUS );
+
+	for ( int i = 0; i < 9; ++i )
+	{
+		char buf[32];
+		Q_snprintf( buf, sizeof( buf ), "class_item_red_%d", i + 1 );
+		m_pClassItems_Red[i] = new EditablePanel( this, buf );
+
+		m_pKeyIcons_Red[i] = new CIconPanel( m_pClassItems_Red[i], "NumberBg" );
+		m_pKeyLabels_Red[i] = new CExLabel( m_pClassItems_Red[i], "NumberLabel", "" );
+		m_pKeyLabelsNew_Red[i] = new CExLabel( m_pClassItems_Red[i], "NewNumberLabel", "" );
+		m_pSpellIcons_Red[i] = new ImagePanel( m_pClassItems_Red[i], "SpellIcon" );
+		m_pSpellIcons_Red[i]->SetShouldScaleImage( true );
+		m_pSpellIcons_Red[i]->SetVisible( false );
+
+		Q_snprintf( buf, sizeof( buf ), "class_item_blue_%d", i + 1 );
+		m_pClassItems_Blue[i] = new EditablePanel( this, buf );
+
+		m_pKeyIcons_Blue[i] = new CIconPanel( m_pClassItems_Blue[i], "NumberBg" );
+		m_pKeyLabels_Blue[i] = new CExLabel( m_pClassItems_Blue[i], "NumberLabel", "" );
+		m_pKeyLabelsNew_Blue[i] = new CExLabel( m_pClassItems_Blue[i], "NewNumberLabel", "" );
+		m_pSpellIcons_Blue[i] = new ImagePanel( m_pClassItems_Blue[i], "SpellIcon" );
+		m_pSpellIcons_Blue[i]->SetShouldScaleImage( true );
+		m_pSpellIcons_Blue[i]->SetVisible( false );
+	}
+
+	m_pKeyIcons_Category[0] = new CIconPanel( this, "NumberBg1" );
+	m_pKeyIcons_Category[1] = new CIconPanel( this, "NumberBg2" );
+	m_pKeyIcons_Category[2] = new CIconPanel( this, "NumberBg3" );
+	m_pKeyLabels_Category[0] = new CExLabel( this, "NumberLabel1", "" );
+	m_pKeyLabels_Category[1] = new CExLabel( this, "NumberLabel2", "" );
+	m_pKeyLabels_Category[2] = new CExLabel( this, "NumberLabel3", "" );
+
+	m_iShowingTeam = TF_TEAM_RED;
+
+	ListenForGameEvent( "spellbook_pda_reset" );
+	ListenForGameEvent( "gameui_hidden" );
+
+	m_iSelectedItem = -1;
+	m_iGroupSelection = -1;
+	m_pActiveSelection = NULL;
+
+	InvalidateLayout( false, true );
+
+	m_bInConsoleMode = false;
+
+	RegisterForRenderGroup( "mid" );
+}
+
+void CHudMenuSpellbook::ApplySchemeSettings( IScheme *pScheme )
+{
+	bool bSteamController = ::input->IsSteamControllerActive();
+	bool b360Style = ( bSteamController || IsConsole() || tf_disguise_menu_controller_mode.GetBool() );
+
+	if ( b360Style )
+	{
+		auto res_dir = bSteamController ? "resource/UI/disguise_menu_sc" : "resource/UI/disguise_menu_360";
+		LoadControlSettings( VarArgs( "%s/HudMenuSpyDisguise.res", res_dir ) );
+
+		m_pClassItems_Red[0]->LoadControlSettings( VarArgs( "%s/scout_red.res", res_dir ) );
+		m_pClassItems_Red[1]->LoadControlSettings( VarArgs( "%s/soldier_red.res", res_dir ) );
+		m_pClassItems_Red[2]->LoadControlSettings( VarArgs( "%s/pyro_red.res", res_dir ) );
+		m_pClassItems_Red[3]->LoadControlSettings( VarArgs( "%s/demoman_red.res", res_dir ) );
+		m_pClassItems_Red[4]->LoadControlSettings( VarArgs( "%s/heavy_red.res", res_dir ) );
+		m_pClassItems_Red[5]->LoadControlSettings( VarArgs( "%s/engineer_red.res", res_dir ) );
+		m_pClassItems_Red[6]->LoadControlSettings( VarArgs( "%s/medic_red.res", res_dir ) );
+		m_pClassItems_Red[7]->LoadControlSettings( VarArgs( "%s/sniper_red.res", res_dir ) );
+		m_pClassItems_Red[8]->LoadControlSettings( VarArgs( "%s/spy_red.res", res_dir ) );
+
+		m_pClassItems_Blue[0]->LoadControlSettings( VarArgs( "%s/scout_blue.res", res_dir ) );
+		m_pClassItems_Blue[1]->LoadControlSettings( VarArgs( "%s/soldier_blue.res", res_dir ) );
+		m_pClassItems_Blue[2]->LoadControlSettings( VarArgs( "%s/pyro_blue.res", res_dir ) );
+		m_pClassItems_Blue[3]->LoadControlSettings( VarArgs( "%s/demoman_blue.res", res_dir ) );
+		m_pClassItems_Blue[4]->LoadControlSettings( VarArgs( "%s/heavy_blue.res", res_dir ) );
+		m_pClassItems_Blue[5]->LoadControlSettings( VarArgs( "%s/engineer_blue.res", res_dir ) );
+		m_pClassItems_Blue[6]->LoadControlSettings( VarArgs( "%s/medic_blue.res", res_dir ) );
+		m_pClassItems_Blue[7]->LoadControlSettings( VarArgs( "%s/sniper_blue.res", res_dir ) );
+		m_pClassItems_Blue[8]->LoadControlSettings( VarArgs( "%s/spy_blue.res", res_dir ) );
+
+		m_pActiveSelection = dynamic_cast< EditablePanel * >( FindChildByName( "active_selection_bg" ) );
+
+		m_iSelectedItem = -1;
+		SetSelectedItem( 1 );
+	}
+	else
+	{
+		LoadControlSettings( "resource/UI/disguise_menu/HudMenuSpyDisguise.res" );
+
+		m_pClassItems_Red[0]->LoadControlSettings( "resource/UI/disguise_menu/scout_red.res" );
+		m_pClassItems_Red[1]->LoadControlSettings( "resource/UI/disguise_menu/soldier_red.res" );
+		m_pClassItems_Red[2]->LoadControlSettings( "resource/UI/disguise_menu/pyro_red.res" );
+		m_pClassItems_Red[3]->LoadControlSettings( "resource/UI/disguise_menu/demoman_red.res" );
+		m_pClassItems_Red[4]->LoadControlSettings( "resource/UI/disguise_menu/heavy_red.res" );
+		m_pClassItems_Red[5]->LoadControlSettings( "resource/UI/disguise_menu/engineer_red.res" );
+		m_pClassItems_Red[6]->LoadControlSettings( "resource/UI/disguise_menu/medic_red.res" );
+		m_pClassItems_Red[7]->LoadControlSettings( "resource/UI/disguise_menu/sniper_red.res" );
+		m_pClassItems_Red[8]->LoadControlSettings( "resource/UI/disguise_menu/spy_red.res" );
+
+		m_pClassItems_Blue[0]->LoadControlSettings( "resource/UI/disguise_menu/scout_blue.res" );
+		m_pClassItems_Blue[1]->LoadControlSettings( "resource/UI/disguise_menu/soldier_blue.res" );
+		m_pClassItems_Blue[2]->LoadControlSettings( "resource/UI/disguise_menu/pyro_blue.res" );
+		m_pClassItems_Blue[3]->LoadControlSettings( "resource/UI/disguise_menu/demoman_blue.res" );
+		m_pClassItems_Blue[4]->LoadControlSettings( "resource/UI/disguise_menu/heavy_blue.res" );
+		m_pClassItems_Blue[5]->LoadControlSettings( "resource/UI/disguise_menu/engineer_blue.res" );
+		m_pClassItems_Blue[6]->LoadControlSettings( "resource/UI/disguise_menu/medic_blue.res" );
+		m_pClassItems_Blue[7]->LoadControlSettings( "resource/UI/disguise_menu/sniper_blue.res" );
+		m_pClassItems_Blue[8]->LoadControlSettings( "resource/UI/disguise_menu/spy_blue.res" );
+
+		m_pActiveSelection = NULL;
+	}
+
+	m_iGroupSelection = -1;
+	ToggleSelectionIcons( false );
+
+	BaseClass::ApplySchemeSettings( pScheme );
+
+	UpdateSpellItems();
+}
+
+bool CHudMenuSpellbook::ShouldDraw( void )
+{
+	CTFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer )
+		return false;
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_TAUNTING ) )
+		return false;
+
+	return CHudBaseBuildMenu::ShouldDraw();
+}
+
+int CHudMenuSpellbook::HudElementKeyInput( int down, ButtonCode_t keynum, const char *pszCurrentBinding )
+{
+	if ( !ShouldDraw() )
+		return 1;
+
+	if ( !down )
+		return 1;
+
+	bool bController = ( IsConsole() || ( keynum >= JOYSTICK_FIRST ) );
+
+	if ( bController )
+	{
+		int iNewSelection = m_iSelectedItem;
+
+		switch ( keynum )
+		{
+		case KEY_XBUTTON_UP:
+		case STEAMCONTROLLER_DPAD_UP:
+			iNewSelection = 9;
+			break;
+
+		case KEY_XBUTTON_DOWN:
+		case STEAMCONTROLLER_DPAD_DOWN:
+			iNewSelection = 1;
+			break;
+
+		case KEY_XBUTTON_RIGHT:
+		case STEAMCONTROLLER_DPAD_RIGHT:
+			iNewSelection++;
+			if ( iNewSelection > 9 )
+				iNewSelection = 1;
+			break;
+
+		case KEY_XBUTTON_LEFT:
+		case STEAMCONTROLLER_DPAD_LEFT:
+			iNewSelection--;
+			if ( iNewSelection < 1 )
+				iNewSelection = 9;
+			break;
+
+		case KEY_XBUTTON_RTRIGGER:
+		case KEY_XBUTTON_A:
+		case STEAMCONTROLLER_A:
+			ChooseSlot( m_iSelectedItem - 1 );
+			return 0;
+
+		case KEY_XBUTTON_B:
+		case STEAMCONTROLLER_B:
+			engine->ExecuteClientCmd( "lastinv" );
+			return 0;
+
+		default:
+			return 1;
+		}
+
+		SetSelectedItem( iNewSelection );
+		return 0;
+	}
+
+	int iSlot = -1;
+
+#ifdef SIXENSE
+	if ( !tf_simple_disguise_menu.GetBool() && !g_pSixenseInput->IsEnabled() )
+#else
+	if ( !tf_simple_disguise_menu.GetBool() )
+#endif
+	{
+		if ( pszCurrentBinding && !Q_strncmp( pszCurrentBinding, "slot", 4 ) && Q_strlen( pszCurrentBinding ) > 4 )
+		{
+			const char *pszNum = pszCurrentBinding + 4;
+			iSlot = atoi( pszNum );
+
+			if ( iSlot == 10 )
+			{
+				engine->ExecuteClientCmd( "lastinv" );
+				return 0;
+			}
+
+			iSlot -= 1;
+
+			if ( iSlot < 0 || iSlot > 8 )
+				return 1;
+		}
+	}
+
+	if ( iSlot == -1 )
+	{
+		if ( m_iGroupSelection > -1 )
+		{
+			switch ( keynum )
+			{
+			case KEY_1:
+			case KEY_2:
+			case KEY_3:
+				iSlot = m_iGroupSelection * 3 + keynum - KEY_1;
+				break;
+			case KEY_4:
+			case KEY_5:
+			case KEY_6:
+			case KEY_7:
+			case KEY_8:
+			case KEY_9:
+#ifdef SIXENSE
+				if ( !tf_simple_disguise_menu.GetBool() && !g_pSixenseInput->IsEnabled() )
+#else
+				if ( !tf_simple_disguise_menu.GetBool() )
+#endif
+				{
+					iSlot = keynum - KEY_1;
+				}
+				break;
+
+			case KEY_0:
+				engine->ExecuteClientCmd( "lastinv" );
+				return 0;
+			}
+		}
+		else
+		{
+#ifdef SIXENSE
+			if ( !tf_simple_disguise_menu.GetBool() && !g_pSixenseInput->IsEnabled() )
+#else
+			if ( !tf_simple_disguise_menu.GetBool() )
+#endif
+			{
+				switch ( keynum )
+				{
+				case KEY_1:
+				case KEY_2:
+				case KEY_3:
+				case KEY_4:
+				case KEY_5:
+				case KEY_6:
+				case KEY_7:
+				case KEY_8:
+				case KEY_9:
+					iSlot = keynum - KEY_1;
+					break;
+
+				case KEY_0:
+					engine->ExecuteClientCmd( "lastinv" );
+					return 0;
+
+				default:
+					return 1;
+				}
+			}
+			else
+			{
+				switch ( keynum )
+				{
+				case KEY_1:
+				case KEY_2:
+				case KEY_3:
+					m_iGroupSelection = keynum - KEY_1;
+					ToggleSelectionIcons( true );
+					return 0;
+				}
+			}
+		}
+	}
+
+	if ( iSlot >= 0 )
+	{
+		ChooseSlot( iSlot );
+
+		m_iGroupSelection = -1;
+		ToggleSelectionIcons( false );
+		return 0;
+	}
+
+	return 1;
+}
+
+void CHudMenuSpellbook::FindToggleBinding( void )
+{
+	const char *key = engine->Key_LookupBinding( "lastinv" );
+	if ( !key )
+	{
+		key = "< not bound >";
+	}
+	SetDialogVariable( "lastinv", key );
+	SetDialogVariable( "disguiseteam", "" );
+	SetDialogVariable( "reload", "" );
+
+	vgui::Label *pToggle = dynamic_cast< vgui::Label * >( FindChildByName( "ToggleLabel" ) );
+	if ( pToggle )
+	{
+		pToggle->SetVisible( false );
+	}
+}
+
+void CHudMenuSpellbook::ToggleSelectionIcons( bool bGroup )
+{
+	if ( tf_disguise_menu_controller_mode.GetBool() || ::input->IsSteamControllerActive() )
+	{
+		for ( int i = 0; i < 9; ++i )
+		{
+			m_pKeyIcons_Red[i]->SetVisible( false );
+			m_pKeyLabels_Red[i]->SetVisible( false );
+			m_pKeyLabelsNew_Red[i]->SetVisible( false );
+			m_pKeyIcons_Blue[i]->SetVisible( false );
+			m_pKeyLabels_Blue[i]->SetVisible( false );
+			m_pKeyLabelsNew_Blue[i]->SetVisible( false );
+		}
+	}
+	else
+#ifdef SIXENSE
+	if ( tf_simple_disguise_menu.GetBool() || g_pSixenseInput->IsEnabled() )
+#else
+	if ( tf_simple_disguise_menu.GetBool() )
+#endif
+	{
+		for ( int i = 0; i < 3; ++i )
+		{
+			m_pKeyIcons_Category[i]->SetVisible( !bGroup );
+			m_pKeyLabels_Category[i]->SetVisible( !bGroup );
+		}
+		for ( int i = 0; i < 9; ++i )
+		{
+			int index = i - ( m_iGroupSelection * 3 );
+			bool bVisible = bGroup && ( ( m_iGroupSelection == -1 ) || ( ( index <= 2 ) && ( index >= 0 ) ) );
+			m_pKeyIcons_Red[i]->SetVisible( bVisible );
+			m_pKeyLabels_Red[i]->SetVisible( false );
+			m_pKeyLabelsNew_Red[i]->SetVisible( bVisible );
+			m_pKeyIcons_Blue[i]->SetVisible( bVisible );
+			m_pKeyLabels_Blue[i]->SetVisible( false );
+			m_pKeyLabelsNew_Blue[i]->SetVisible( bVisible );
+		}
+	}
+	else
+	{
+		for ( int i = 0; i < 3; ++i )
+		{
+			m_pKeyIcons_Category[i]->SetVisible( false );
+			m_pKeyLabels_Category[i]->SetVisible( false );
+		}
+		for ( int i = 0; i < 9; ++i )
+		{
+			m_pKeyIcons_Red[i]->SetVisible( true );
+			m_pKeyLabels_Red[i]->SetVisible( true );
+			m_pKeyLabelsNew_Red[i]->SetVisible( false );
+			m_pKeyIcons_Blue[i]->SetVisible( true );
+			m_pKeyLabels_Blue[i]->SetVisible( true );
+			m_pKeyLabelsNew_Blue[i]->SetVisible( false );
+		}
+	}
+}
+
+void CHudMenuSpellbook::ChooseSlot( int iSlot )
+{
+	if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
+		return;
+
+	char szCmd[32];
+	Q_snprintf( szCmd, sizeof( szCmd ), "witch_spell %d", iSlot + 1 );
+	engine->ClientCmd( szCmd );
+	engine->ExecuteClientCmd( "lastinv" );
+}
+
+void CHudMenuSpellbook::UpdateSpellItems( void )
+{
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	m_iShowingTeam = ( pLocal && pLocal->GetTeamNumber() == TF_TEAM_BLUE ) ? TF_TEAM_BLUE : TF_TEAM_RED;
+	const bool bShowBlue = ( m_iShowingTeam == TF_TEAM_BLUE );
+
+	vgui::Label *pTitle = dynamic_cast< vgui::Label * >( FindChildByName( "TitleLabel" ) );
+	if ( pTitle )
+	{
+		pTitle->SetText( "#TF_Weapon_WitchSpellbook" );
+	}
+
+	const int nSpells = GetWitchSpellCount();
+	for ( int i = 0; i < 9; ++i )
+	{
+		const bool bHasSpell = ( i < nSpells );
+		m_pClassItems_Red[i]->SetVisible( bHasSpell && !bShowBlue );
+		m_pClassItems_Blue[i]->SetVisible( bHasSpell && bShowBlue );
+
+		if ( !bHasSpell )
+			continue;
+
+		const char *pszIcon = GetWitchSpellIcon( i );
+		const char *pszName = GetWitchSpellUiName( i );
+
+		EditablePanel *pPanels[2] = { m_pClassItems_Red[i], m_pClassItems_Blue[i] };
+		ImagePanel *pSpellIcons[2] = { m_pSpellIcons_Red[i], m_pSpellIcons_Blue[i] };
+		for ( int nSide = 0; nSide < 2; ++nSide )
+		{
+			CIconPanel *pIcon = dynamic_cast< CIconPanel * >( pPanels[nSide]->FindChildByName( "ClassIcon" ) );
+			if ( pIcon )
+			{
+				int x, y, w, h;
+				pIcon->GetBounds( x, y, w, h );
+				pSpellIcons[nSide]->SetBounds( x, y, w > 0 ? w : 32, h > 0 ? h : 32 );
+				pIcon->SetVisible( false );
+			}
+
+			pSpellIcons[nSide]->SetVisible( true );
+			pSpellIcons[nSide]->SetImage( pszIcon ? pszIcon : "" );
+			pSpellIcons[nSide]->MoveToFront();
+
+			if ( nSide == 0 )
+			{
+				m_pKeyIcons_Red[i]->MoveToFront();
+				m_pKeyLabels_Red[i]->MoveToFront();
+				m_pKeyLabelsNew_Red[i]->MoveToFront();
+			}
+			else
+			{
+				m_pKeyIcons_Blue[i]->MoveToFront();
+				m_pKeyLabels_Blue[i]->MoveToFront();
+				m_pKeyLabelsNew_Blue[i]->MoveToFront();
+			}
+
+			vgui::Label *pName = dynamic_cast< vgui::Label * >( pPanels[nSide]->FindChildByName( "ItemNameLabel" ) );
+			if ( !pName )
+				pName = dynamic_cast< vgui::Label * >( pPanels[nSide]->FindChildByName( "ItemName" ) );
+			if ( pName && pszName && pszName[0] )
+			{
+				pName->SetText( pszName );
+			}
+		}
+	}
+}
+
+void CHudMenuSpellbook::SetSelectedItem( int iSlot )
+{
+	if ( m_iSelectedItem != iSlot )
+	{
+		m_iSelectedItem = iSlot;
+
+		if ( m_pActiveSelection && m_iSelectedItem >= 1 && m_iSelectedItem <= 9 )
+		{
+			int x, y;
+			m_pClassItems_Blue[m_iSelectedItem - 1]->GetPos( x, y );
+			m_pActiveSelection->SetPos( x, y );
+		}
+	}
+}
+
+void CHudMenuSpellbook::FireGameEvent( IGameEvent *event )
+{
+	const char *type = event->GetName();
+
+	if ( Q_strcmp( type, "spellbook_pda_reset" ) == 0 )
+	{
+		m_iGroupSelection = -1;
+		UpdateSpellItems();
+		ToggleSelectionIcons( false );
+	}
+	else if ( Q_strcmp( type, "gameui_hidden" ) == 0 )
+	{
+		FindToggleBinding();
+	}
+	else
+	{
+		CHudElement::FireGameEvent( event );
+	}
+}
+
+void CHudMenuSpellbook::SetVisible( bool state )
+{
+	if ( state == true )
+	{
+		engine->ClientCmd( "cancelselect" );
+
+		bool bConsoleMode = ( IsConsole() || tf_disguise_menu_controller_mode.GetBool() || ::input->IsSteamControllerActive() );
+
+		if ( bConsoleMode != m_bInConsoleMode )
+		{
+			InvalidateLayout( true, true );
+			m_bInConsoleMode = bConsoleMode;
+		}
+
+		FindToggleBinding();
+
+		HideLowerPriorityHudElementsInGroup( "mid" );
+
+		m_iGroupSelection = -1;
+		ToggleSelectionIcons( false );
+	}
+	else
+	{
+		UnhideLowerPriorityHudElementsInGroup( "mid" );
+	}
+
+	BaseClass::SetVisible( state );
+}
+
+#endif // CLIENT_DLL
