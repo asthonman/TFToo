@@ -273,15 +273,15 @@ static const int s_nWitchSpellIndex[] =
 
 static const int s_nWitchSpellManaCost[] =
 {
-	100,	// Pumpkin MIRV, 1 charge
-	100,	// Stealth, 1
-	50,		// Bat swarm, 2
-	50,		// Fireball, 2
-	50,		// Blast jump, 2
-	100,	// Ball o' Lightning, 1
-	100,	// Minify, 1
-	100,	// Meteor swarm, 1
-	100,	// Overheal, 1
+	75,		// Pumpkin MIRV
+	50,		// Stealth
+	50,		// Bat swarm
+	50,		// Fireball
+	25,		// Blast jump
+	75,		// Ball o' Lightning
+	75,		// Minify
+	100,	// Meteor swarm
+	100,	// Overheal
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( s_nWitchSpellIndex ) == ARRAYSIZE( s_nWitchSpellManaCost ) );
 
@@ -610,10 +610,14 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 			if ( pLocalPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 			{
 				m_pKeyBinding->SetVisible( false );
-				SetDialogVariable( "counttext", "" );
+				const int iCost = GetWitchSpellManaCost( pLocalPlayer->m_Shared.GetWitchSpell() );
+				int nCasts = 0;
+				if ( iCost > 0 )
+					nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
+				SetDialogVariable( "counttext", nCasts );
 				vgui::Panel *pCount = FindChildByName( "CountText", true );
 				if ( pCount )
-					pCount->SetVisible( false );
+					pCount->SetVisible( true );
 			}
 			else
 			{

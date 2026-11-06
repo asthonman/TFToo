@@ -63,6 +63,22 @@ public:
 	virtual void OnTick( void ) OVERRIDE;
 
 	void UpdateSpellText( int iSpellIndex, int iCharges );
+	// Pixel size of the equipped-spell icon, so the spell menu can match its aspect.
+	void GetSpellIconSize( int &iWide, int &iTall ) const
+	{
+		iWide = 26;
+		iTall = 26;
+		if ( !m_pSpellIcon )
+			return;
+
+		int x, y, w, h;
+		m_pSpellIcon->GetBounds( x, y, w, h );
+		if ( w > 0 && h > 0 )
+		{
+			iWide = w;
+			iTall = h;
+		}
+	}
 
 private:
 	void PlaceBesideManaMeter( void );

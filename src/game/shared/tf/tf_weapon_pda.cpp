@@ -998,6 +998,16 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 	}
 
 	const int nSpells = GetWitchSpellCount();
+	int iHudW = 26;
+	int iHudH = 26;
+	CHudSpellMenu *pSpellHud = GET_HUDELEMENT( CHudSpellMenu );
+	if ( pSpellHud )
+		pSpellHud->GetSpellIconSize( iHudW, iHudH );
+	if ( iHudW <= 0 )
+		iHudW = 26;
+	if ( iHudH <= 0 )
+		iHudH = 26;
+
 	for ( int i = 0; i < 9; ++i )
 	{
 		const bool bHasSpell = ( i < nSpells );
@@ -1020,7 +1030,26 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 			{
 				int x, y, w, h;
 				pIcon->GetBounds( x, y, w, h );
-				pSpellIcons[nSide]->SetBounds( x, y, w > 0 ? w : 32, h > 0 ? h : 32 );
+				if ( w <= 0 )
+					w = 32;
+				if ( h <= 0 )
+					h = w;
+
+				// Class portraits are tall. Keep the HUD icon's height/width.
+				int iDrawW = w;
+				int iDrawH = ( iDrawW * iHudH + iHudW / 2 ) / iHudW;
+				if ( iDrawH < 1 )
+					iDrawH = 1;
+				if ( iDrawH > h )
+				{
+					iDrawH = h;
+					iDrawW = ( iDrawH * iHudW + iHudH / 2 ) / iHudH;
+					if ( iDrawW < 1 )
+						iDrawW = 1;
+					if ( iDrawW > w )
+						iDrawW = w;
+				}
+				pSpellIcons[nSide]->SetBounds( x + ( w - iDrawW ) / 2, y + ( h - iDrawH ) / 2, iDrawW, iDrawH );
 				pIcon->SetVisible( false );
 			}
 

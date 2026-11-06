@@ -4,7 +4,7 @@
 // broom (schema b11). PDA is the spellbook (schema b12), the disguise-kit
 // model with a spell menu. Class-script weapons stay empty so the schema
 // items fill the loadout. Secondary fire spends mana, which is the Spy
-// cloak meter. A spell costs 100 divided by that Halloween spell's charges.
+// cloak meter. The revolver uses TF_AMMO_SECONDARY, same 24 reserve as Spy.
 "PlayerClassData"
 {
 	"name"				"witch"
@@ -26,7 +26,7 @@
 	"AmmoMax"
 	{
 		"TF_AMMO_PRIMARY"		"24"
-		"TF_AMMO_SECONDARY"		"0"
+		"TF_AMMO_SECONDARY"		"24"
 		"TF_AMMO_METAL"			"0"
 	}
 }
