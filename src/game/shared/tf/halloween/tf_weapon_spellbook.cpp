@@ -258,30 +258,31 @@ const spell_data_t* GetSpellData( int iSpellIndex )
 // Mana costs started as 100 / that spell's Halloween charges. They are
 // constants so they can be tuned without the charge count changing them.
 //-----------------------------------------------------------------------------
+// Menu order is the disguise-menu keys, left to right, top to bottom.
 static const int s_nWitchSpellIndex[] =
 {
-	3,										// Pumpkin MIRV
 	5,										// Stealth
-	1,										// Bat swarm
-	0,										// Fireball
 	4,										// Blast jump
+	ARRAYSIZE( g_NormalSpellList ) + 1,		// Athletic
+	3,										// Pumpkin MIRV
+	0,										// Fireball
+	1,										// Bat swarm
 	ARRAYSIZE( g_NormalSpellList ) + 0,		// Ball o' Lightning
-	ARRAYSIZE( g_NormalSpellList ) + 1,		// Minify (Athletic)
-	ARRAYSIZE( g_NormalSpellList ) + 2,		// Meteor swarm
 	2,										// Overheal
+	ARRAYSIZE( g_NormalSpellList ) + 2,		// Meteor swarm
 };
 
 static const int s_nWitchSpellManaCost[] =
 {
-	75,		// Pumpkin MIRV
 	50,		// Stealth (unused lump; this one drains like the Spy watch)
-	50,		// Bat swarm
-	50,		// Fireball
 	25,		// Blast jump
+	75,		// Athletic
+	75,		// Pumpkin MIRV
+	50,		// Fireball
+	50,		// Bat swarm
 	75,		// Ball o' Lightning
-	75,		// Minify
-	100,	// Meteor swarm
 	100,	// Overheal
+	100,	// Meteor swarm
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( s_nWitchSpellIndex ) == ARRAYSIZE( s_nWitchSpellManaCost ) );
 
