@@ -32,6 +32,7 @@
 	#include <vgui/ILocalize.h>
 	#include "inputsystem/iinputsystem.h"
 	#include "halloween/tf_weapon_spellbook.h"
+	#include "vgui/IScheme.h"
 	#ifdef SIXENSE
 		#include "sixense/in_sixense.h"
 	#endif
@@ -549,6 +550,9 @@ CHudMenuSpellbook::CHudMenuSpellbook( const char *pElementName )
 		m_pSpellIcons_Red[i] = new ImagePanel( m_pClassItems_Red[i], "SpellIcon" );
 		m_pSpellIcons_Red[i]->SetShouldScaleImage( true );
 		m_pSpellIcons_Red[i]->SetVisible( false );
+		m_pCostLabels_Red[i] = new CExLabel( m_pClassItems_Red[i], "CostLabel", "" );
+		m_pCostLabels_Red[i]->SetContentAlignment( vgui::Label::a_center );
+		m_pCostLabels_Red[i]->SetVisible( false );
 
 		Q_snprintf( buf, sizeof( buf ), "class_item_blue_%d", i + 1 );
 		m_pClassItems_Blue[i] = new EditablePanel( this, buf );
@@ -559,6 +563,9 @@ CHudMenuSpellbook::CHudMenuSpellbook( const char *pElementName )
 		m_pSpellIcons_Blue[i] = new ImagePanel( m_pClassItems_Blue[i], "SpellIcon" );
 		m_pSpellIcons_Blue[i]->SetShouldScaleImage( true );
 		m_pSpellIcons_Blue[i]->SetVisible( false );
+		m_pCostLabels_Blue[i] = new CExLabel( m_pClassItems_Blue[i], "CostLabel", "" );
+		m_pCostLabels_Blue[i]->SetContentAlignment( vgui::Label::a_center );
+		m_pCostLabels_Blue[i]->SetVisible( false );
 	}
 
 	m_pKeyIcons_Category[0] = new CIconPanel( this, "NumberBg1" );
@@ -651,19 +658,59 @@ void CHudMenuSpellbook::ApplySchemeSettings( IScheme *pScheme )
 
 	BaseClass::ApplySchemeSettings( pScheme );
 
+	vgui::IScheme *pFonts = vgui::scheme()->GetIScheme( GetScheme() );
+	if ( pFonts )
+	{
+		vgui::HFont hCostFont = pFonts->GetFont( "HudFontSmallestBold", true );
+		if ( hCostFont == vgui::INVALID_FONT )
+			hCostFont = pFonts->GetFont( "DefaultSmall", true );
+		for ( int i = 0; i < 9; ++i )
+		{
+			if ( hCostFont != vgui::INVALID_FONT )
+			{
+				m_pCostLabels_Red[i]->SetFont( hCostFont );
+				m_pCostLabels_Blue[i]->SetFont( hCostFont );
+			}
+			m_pCostLabels_Red[i]->SetFgColor( Color( 235, 226, 202, 255 ) );
+			m_pCostLabels_Blue[i]->SetFgColor( Color( 235, 226, 202, 255 ) );
+		}
+	}
+
+	PlaceOnScreen();
 	UpdateSpellItems();
+}
+
+//-----------------------------------------------------------------------------
+// HudLayout positions HudMenuSpyDisguise. This panel has its own name, so size it the same way.
+//-----------------------------------------------------------------------------
+void CHudMenuSpellbook::PlaceOnScreen( void )
+{
+	vgui::Panel *pParent = GetParent();
+	if ( !pParent )
+		return;
+
+	const int iWide = scheme()->GetProportionalScaledValueEx( GetScheme(), 470 );
+	const int iTall = scheme()->GetProportionalScaledValueEx( GetScheme(), 200 );
+	const int x = pParent->GetWide() / 2 - scheme()->GetProportionalScaledValueEx( GetScheme(), 235 );
+	const int y = pParent->GetTall() / 2 - scheme()->GetProportionalScaledValueEx( GetScheme(), 52 );
+	SetBounds( x, y, iWide, iTall );
+	SetZPos( 20 );
 }
 
 bool CHudMenuSpellbook::ShouldDraw( void )
 {
-	CTFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( !pPlayer )
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer || !pPlayer->IsAlive() )
 		return false;
 
 	if ( pPlayer->m_Shared.InCond( TF_COND_TAUNTING ) )
 		return false;
 
-	return CHudBaseBuildMenu::ShouldDraw();
+	CTFWeaponBase *pWpn = pPlayer->GetActiveTFWeapon();
+	if ( !pWpn || pPlayer != pWpn->GetOwner() || pWpn->GetWeaponID() != TF_WEAPON_PDA_SPELLBOOK )
+		return false;
+
+	return CHudElement::ShouldDraw();
 }
 
 int CHudMenuSpellbook::HudElementKeyInput( int down, ButtonCode_t keynum, const char *pszCurrentBinding )
@@ -935,7 +982,19 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 	vgui::Label *pTitle = dynamic_cast< vgui::Label * >( FindChildByName( "TitleLabel" ) );
 	if ( pTitle )
 	{
-		pTitle->SetText( "#TF_Weapon_WitchSpellbook" );
+		pTitle->SetText( "Spells" );
+		pTitle->SetVisible( true );
+	}
+	vgui::Label *pTitleShadow = dynamic_cast< vgui::Label * >( FindChildByName( "TitleLabelDropshadow" ) );
+	if ( pTitleShadow )
+	{
+		pTitleShadow->SetText( "Spells" );
+		pTitleShadow->SetVisible( true );
+	}
+	vgui::Label *pDisguiseTitle = dynamic_cast< vgui::Label * >( FindChildByName( "DisguiseTitle" ) );
+	if ( pDisguiseTitle )
+	{
+		pDisguiseTitle->SetText( "Spells" );
 	}
 
 	const int nSpells = GetWitchSpellCount();
@@ -953,6 +1012,7 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 
 		EditablePanel *pPanels[2] = { m_pClassItems_Red[i], m_pClassItems_Blue[i] };
 		ImagePanel *pSpellIcons[2] = { m_pSpellIcons_Red[i], m_pSpellIcons_Blue[i] };
+		CExLabel *pCosts[2] = { m_pCostLabels_Red[i], m_pCostLabels_Blue[i] };
 		for ( int nSide = 0; nSide < 2; ++nSide )
 		{
 			CIconPanel *pIcon = dynamic_cast< CIconPanel * >( pPanels[nSide]->FindChildByName( "ClassIcon" ) );
@@ -987,6 +1047,25 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 			if ( pName && pszName && pszName[0] )
 			{
 				pName->SetText( pszName );
+			}
+
+			if ( pCosts[nSide] )
+			{
+				int sw, sh;
+				pPanels[nSide]->GetSize( sw, sh );
+				const int iCostH = scheme()->GetProportionalScaledValueEx( GetScheme(), 16 );
+				if ( sw <= 0 )
+					sw = scheme()->GetProportionalScaledValueEx( GetScheme(), 45 );
+				if ( sh <= 0 )
+					sh = scheme()->GetProportionalScaledValueEx( GetScheme(), 120 );
+				pCosts[nSide]->SetBounds( 0, sh - iCostH, sw, iCostH );
+				pCosts[nSide]->SetContentAlignment( vgui::Label::a_center );
+				char szCost[16];
+				Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCost( i ) );
+				pCosts[nSide]->SetText( szCost );
+				pCosts[nSide]->SetVisible( true );
+				pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
+				pCosts[nSide]->MoveToFront();
 			}
 		}
 	}
@@ -1031,6 +1110,7 @@ void CHudMenuSpellbook::SetVisible( bool state )
 {
 	if ( state == true )
 	{
+		PlaceOnScreen();
 		engine->ClientCmd( "cancelselect" );
 
 		bool bConsoleMode = ( IsConsole() || tf_disguise_menu_controller_mode.GetBool() || ::input->IsSteamControllerActive() );

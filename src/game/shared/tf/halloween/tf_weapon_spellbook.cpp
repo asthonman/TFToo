@@ -610,9 +610,17 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 			if ( pLocalPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 			{
 				m_pKeyBinding->SetVisible( false );
+				SetDialogVariable( "counttext", "" );
+				vgui::Panel *pCount = FindChildByName( "CountText", true );
+				if ( pCount )
+					pCount->SetVisible( false );
 			}
 			else
 			{
+				vgui::Panel *pCount = FindChildByName( "CountText", true );
+				if ( pCount )
+					pCount->SetVisible( true );
+
 				m_pKeyBinding->SetVisible( !cl_hud_minmode.GetBool() );
 
 				// Action Key Text

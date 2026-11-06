@@ -193,18 +193,21 @@ private:
 	void ToggleSelectionIcons( bool bGroup );
 	void FindToggleBinding( void );
 	void ChooseSlot( int iSlot );
+	void PlaceOnScreen( void );
 
 	EditablePanel *m_pClassItems_Red[9];
 	CIconPanel *m_pKeyIcons_Red[9];
 	CExLabel *m_pKeyLabels_Red[9];
 	CExLabel *m_pKeyLabelsNew_Red[9];
 	ImagePanel *m_pSpellIcons_Red[9];
+	CExLabel *m_pCostLabels_Red[9];
 
 	EditablePanel *m_pClassItems_Blue[9];
 	CIconPanel *m_pKeyIcons_Blue[9];
 	CExLabel *m_pKeyLabels_Blue[9];
 	CExLabel *m_pKeyLabelsNew_Blue[9];
 	ImagePanel *m_pSpellIcons_Blue[9];
+	CExLabel *m_pCostLabels_Blue[9];
 
 	CIconPanel *m_pKeyIcons_Category[3];
 	CExLabel *m_pKeyLabels_Category[3];
