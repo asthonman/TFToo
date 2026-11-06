@@ -12429,6 +12429,16 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 		break;
 	case TF_CLASS_WITCH:
 		{
+			// A second press, or any press while the cloak or the old stealth
+			// buff is up, drops it. The cast cooldown must not eat that press.
+			// Melee never reaches here while cloaked; ItemPostFrame does.
+			if ( m_Shared.InCond( TF_COND_STEALTHED ) || m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
+			{
+				m_Shared.FadeInvis( 1.0f );
+				m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
+				return true;
+			}
+
 			if ( m_Shared.m_flStealthNextChangeTime > gpGlobals->curtime )
 				return true;
 
@@ -12436,23 +12446,17 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			if ( iSpell < 0 || iSpell >= GetWitchSpellCount() )
 				iSpell = 0;
 
-			// Stealth is the Spy watch: secondary toggles it, and it drains
-			// the meter. While it is up, another secondary drops it instead
-			// of casting. Attacks stay blocked until the decloak lockout ends.
-			if ( m_Shared.InCond( TF_COND_STEALTHED ) )
-			{
-				m_Shared.FadeInvis( 1.0f );
-				m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
-				return true;
-			}
-
 			if ( IsWitchSpellStealth( iSpell ) )
 			{
 				// Same floor as the invis watch. Under that, the watch won't start.
+				// Drain is the Witch meter only. This does not touch the Spy watch.
 				if ( CanGoInvisible() && m_Shared.GetSpyCloakMeter() > 8.0f )
 				{
 					m_Shared.AddCond( TF_COND_STEALTHED, -1.f, this );
 					m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+#ifdef GAME_DLL
+					CTFSpellBook::PlayWitchCastEffects( this, "Halloween.spell_stealth" );
+#endif
 				}
 				else
 				{
@@ -14270,9 +14274,31 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateCloakMeter( void )
 {
-	// Witch mana is the Spy meter. Stealth drains it the same way the watch does.
-	const bool bWitch = m_pOuter->IsPlayerClass( TF_CLASS_WITCH );
-	if ( !bWitch && !m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
+	// Witch mana. Her stealth drains it. Spy debuffs, motion cloak, and the
+	// watch itself are not part of this.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		if ( InCond( TF_COND_STEALTHED ) )
+		{
+			m_flCloakMeter -= gpGlobals->frametime * m_fCloakConsumeRate;
+			if ( m_flCloakMeter <= 0.0f )
+			{
+				m_flCloakMeter = 0.0f;
+				FadeInvis( 1.0f );
+			}
+		}
+		else
+		{
+			m_flCloakMeter += gpGlobals->frametime * m_fCloakRegenRate;
+			if ( m_flCloakMeter > 100.0f )
+				m_flCloakMeter = 100.0f;
+			else if ( m_flCloakMeter < 0.0f )
+				m_flCloakMeter = 0.0f;
+		}
+		return;
+	}
+
+	if ( !m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
 		return;
 
 	if ( InCond( TF_COND_STEALTHED ) )

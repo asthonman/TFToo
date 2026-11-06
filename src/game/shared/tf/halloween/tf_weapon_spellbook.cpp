@@ -1480,6 +1480,29 @@ bool CTFSpellBook::CastSpell( CTFPlayer *pPlayer, int iSpellIndex )
 //-----------------------------------------------------------------------------
 // Witch. The book is hidden and has no charges. Fire the chosen spell now.
 //-----------------------------------------------------------------------------
+void CTFSpellBook::PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCastSound )
+{
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return;
+
+	if ( pszCastSound && pszCastSound[0] )
+		pPlayer->EmitSound( pszCastSound );
+
+	// Same circle the Halloween book draws around the caster. Stealth used to skip it.
+	Vector origin = pPlayer->GetAbsOrigin();
+	CPVSFilter filter( origin );
+	const char *pszEffect = ( pPlayer->GetTeamNumber() == TF_TEAM_RED ) ? "spell_cast_wheel_red" : "spell_cast_wheel_blue";
+	TE_TFParticleEffect( filter, 0.0, pszEffect, origin + Vector( 0, 0, 100 ), vec3_angle, pPlayer, PATTACH_ABSORIGIN_FOLLOW );
+
+	if ( pPlayer->LookupAttachment( "bip_hand_R" ) > 0 )
+		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "bip_hand_R" );
+	else if ( pPlayer->LookupAttachment( "weapon_bone" ) > 0 )
+		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "weapon_bone" );
+
+	// The spellbook's attack is remapped to this throw. Play it on her, not on the gun.
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_THROW );
+}
+
 bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
 {
 	if ( !GetSpellData( iSpellIndex ) )
@@ -1491,6 +1514,7 @@ bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
 
 	m_iSelectedSpellIndex = iSpellIndex;
 	m_iPreviouslyCastSpell = iSpellIndex;
+	PlayWitchCastEffects( pPlayer, NULL );
 	TossJarThink();
 	return true;
 }

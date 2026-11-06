@@ -2448,6 +2448,18 @@ void CTFWeaponBase::ItemPostFrame( void )
 		return;
 	}
 
+	// Cloak blocks CanAttack, so the broom's secondary never runs and she
+	// cannot drop it. Catch the press here. Spy weapons are unchanged.
+	if ( ( pOwner->m_nButtons & IN_ATTACK2 ) && !m_bInAttack2
+		&& pOwner->IsPlayerClass( TF_CLASS_WITCH )
+		&& ( pOwner->m_Shared.InCond( TF_COND_STEALTHED ) || pOwner->m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) ) )
+	{
+		pOwner->DoClassSpecialSkill();
+		m_bInAttack2 = true;
+		m_flNextSecondaryAttack = gpGlobals->curtime + 0.1f;
+		return;
+	}
+
 	bool bNeedsReload = NeedsReloadForAmmo1( GetMaxClip1() ) || ( IsEnergyWeapon() && !Energy_FullyCharged() );
 
 	// If we're not shooting, and we want to autoreload, press our reload key

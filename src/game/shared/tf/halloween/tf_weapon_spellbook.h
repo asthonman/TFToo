@@ -213,6 +213,8 @@ public:
 	bool			CastSpell( CTFPlayer *pPlayer, int iSpellIndex );
 	// Mana cast. Skips the Halloween charge check and fires immediately.
 	bool			CastSpellIndex( int iSpellIndex );
+	// Magic circle and the spellbook's throw. Witch only; Halloween casts do their own.
+	static void		PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCastSound );
 
 	CHandle<CBaseCombatWeapon> m_pStoredLastWpn;
 

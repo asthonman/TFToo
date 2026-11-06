@@ -62,7 +62,10 @@ bool CTFRevolver::DefaultReload( int iClipSize1, int iClipSize2, int iActivity )
 	if ( !pPlayer )
 		return false;
 
-	if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED ) )
+	// Spy already could not reload while cloaked. The Witch's stealth uses the
+	// same condition, and nobody else should pick up that restriction.
+	if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED )
+		&& ( pPlayer->IsPlayerClass( TF_CLASS_SPY ) || pPlayer->IsPlayerClass( TF_CLASS_WITCH ) ) )
 	{
 		return false;
 	}
