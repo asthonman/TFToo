@@ -1002,11 +1002,7 @@ void CTFGCClientSystem::ConnectToServer( const char *connect )
 {
 	NoteUnused( connect );
 }
-	else
-	{
-		Warning( "Failed to reconnect to game server as engine wasn't ready\n" );
-	}
-}
+
 void CTFGCClientSystem::SetWorldStatus( CMsgTFWorldStatus &status )
 {
 	if ( !BMessagesAreEqual( &m_WorldStatus, &status ) )
