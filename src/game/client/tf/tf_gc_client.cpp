@@ -132,12 +132,6 @@ bool CTFGCClientSystem::Init()
 	ListenForGameEvent( "client_beginconnect" );
 	ListenForGameEvent( "server_spawn" );
 
-	// Let SDR know that we will likely want access to the relay network, so we're more
-	// likely to have initial ping data to the clusters ready by the time we ask for it
-	if ( SteamNetworkingUtils() )
-		{ SteamNetworkingUtils()->InitRelayNetworkAccess(); }
-
-
 	return true;
 }
 
@@ -153,11 +147,6 @@ void CTFGCClientSystem::PreInitGC()
 	if ( !m_bRegisteredSharedObjects )
 	{
 //		REG_SHARED_OBJECT_SUBCLASS( CTFGameAccountClient );
-		REG_SHARED_OBJECT_SUBCLASS( CTFParty );
-		REG_SHARED_OBJECT_SUBCLASS( CTFGSLobby );
-//		REG_SHARED_OBJECT_SUBCLASS( CTFBetaParticipation );
-		REG_SHARED_OBJECT_SUBCLASS( CTFPartyInvite );
-		REG_SHARED_OBJECT_SUBCLASS( CTFLobbyInvite );
 		REG_SHARED_OBJECT_SUBCLASS( CQuestMapNode );
 		REG_SHARED_OBJECT_SUBCLASS( CTFRatingData );
 		REG_SHARED_OBJECT_SUBCLASS( CQuestMapRewardPurchase );
@@ -916,25 +905,12 @@ void CTFGCClientSystem::SODestroyed( const CSteamID & steamIDOwner, const GCSDK:
 
 void CTFGCClientSystem::SOChanged( const GCSDK::CSharedObject *pObject, SOChangeType_t changeType, GCSDK::ESOCacheEvent eEvent )
 {
-	// (CTFParty objects are handled by CTFPartyClient)
-	if ( pObject->GetTypeID() == CTFGSLobby::k_nTypeID )
-	{
-		#if GCMATCHMAKING_DEBUG_LEVEL > 0
-			switch ( changeType )
-			{
-				case SOChanged_Create: GCMatchmakingDebugSpew( 1, "Lobby created\n"); break;
-				case SOChanged_Update: GCMatchmakingDebugSpew( 2, "Lobby updated\n"); break;
-				case SOChanged_Destroy: GCMatchmakingDebugSpew( 1, "Lobby destroyed\n"); break;
-				default: AssertMsg1( false, "Bogus change type %d", changeType );
-			}
-		#endif
+	// Matchmaking parties, lobbies, and invites are not used.
+	if ( pObject->GetTypeID() == CTFGSLobby::k_nTypeID || pObject->GetTypeID() == CTFLobbyInvite::k_nTypeID )
+		return;
 
-		UpdateAssignedLobby();
-		// Fire this regardless of if our assigned lobby changed, since other SO fields did change.
-		FireGameEventLobbyUpdated();
-	}
 	// Notifications. Sync/add/delete with what's in our notification drawer
-	else if ( pObject->GetTypeID() == CTFNotification::k_nTypeID )
+	if ( pObject->GetTypeID() == CTFNotification::k_nTypeID )
 	{
 		const CTFNotification* pSONotification = ( const CTFNotification* )( pObject );
 		Msg( "Notification %llu %s: \"%s\"\n",
@@ -974,11 +950,6 @@ void CTFGCClientSystem::SOChanged( const GCSDK::CSharedObject *pObject, SOChange
 			NotificationQueue_Add( pClientNotification );
 		}
 	}
-	else if ( pObject->GetTypeID() == CTFLobbyInvite::k_nTypeID )
-	{
-		OnMatchInvitesUpdated();
-	}
-
 }
 
 bool CTFGCClientSystem::UpdateAssignedLobby()
@@ -1029,24 +1000,8 @@ bool ForceCompetitiveConvars()
 
 void CTFGCClientSystem::ConnectToServer( const char *connect )
 {
-
-	Msg("Connecting to %s\n", connect );
-	CUtlString connectCmd;
-	connectCmd.Format( "connect %s matchmaking", connect );
-	if ( engine )
-	{
-		const bool k_bUseCompetitiveConvars = false;
-
-		bool bAllowed = !k_bUseCompetitiveConvars || ForceCompetitiveConvars();
-		if ( !bAllowed )
-		{
-			// ForceCompetitiveConvars() shouldn't fail
-			Assert( 0 );
-		}
-
-		engine->ClientCmd_Unrestricted( connectCmd.String() );
-		//vgui::surface()->PlaySound( "ui/ui_findmatch_join_01.wav" );
-	}
+	NoteUnused( connect );
+}
 	else
 	{
 		Warning( "Failed to reconnect to game server as engine wasn't ready\n" );
@@ -1230,14 +1185,6 @@ bool CTFGCClientSystem::BGetLocalPlayerBadgeInfoForTour( int iTourIndex, uint32 
 
 void CTFGCClientSystem::AbandonCurrentMatch()
 {
-	Msg( "Sending request to abandon current match\n" );
-
-	if ( BConnectedToMatchServer( true ) )
-	{
-		// If we were connected to said match, then disconnect
-		Msg( "Disconnecting from abandoned match server\n" );
-		engine->ClientCmd_Unrestricted( "disconnect" );
-	}
 }
 
 bool CTFGCClientSystem::IsConnectStateDisconnected()
@@ -1446,20 +1393,8 @@ void CTFGCClientSystem::JoinMMMatch()
 //-----------------------------------------------------------------------------
 CTFGCClientSystem::MatchInvite_t CTFGCClientSystem::GetMatchInvite( int idx ) const
 {
-	auto *pTypeCache = m_pSOCache ? m_pSOCache->FindBaseTypeCache( CTFLobbyInvite::k_nTypeID ) : nullptr;
-	int nInvites = pTypeCache ? pTypeCache->GetCount() : 0;
-
-	if ( idx < 0 || idx >= nInvites )
-	{
-		AssertMsg( false, "Invalid index passed to GetMatchInvite" );
-		return MatchInvite_t{ 0u, k_eTFMatchGroup_Invalid, false };
-	}
-
-	CTFLobbyInvite *pInvite = static_cast< CTFLobbyInvite * >( pTypeCache->GetObject( idx ) );
-	PlayerGroupID_t nLobbyID = pInvite->GetGroupID();
-	ETFMatchGroup eMatchGroup = pInvite->GetMatchGroup();
-	bool bAcceptingThisMsg = ( m_nAcceptingMatchLobbyID == nLobbyID );
-	return MatchInvite_t{ nLobbyID, eMatchGroup, bAcceptingThisMsg };
+	NoteUnused( idx );
+	return MatchInvite_t{ 0u, k_eTFMatchGroup_Invalid, false };
 }
 
 //-----------------------------------------------------------------------------
@@ -1479,11 +1414,7 @@ int CTFGCClientSystem::GetMatchInviteIdxByLobbyID( PlayerGroupID_t nLobbyID ) co
 //-----------------------------------------------------------------------------
 int CTFGCClientSystem::GetNumMatchInvites() const
 {
-	if ( !m_pSOCache )
-		{ return 0; }
-
-	CSharedObjectTypeCache *pTypeCache = m_pSOCache->FindBaseTypeCache( CTFLobbyInvite::k_nTypeID );
-	return pTypeCache ? pTypeCache->GetCount() : 0;
+	return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -1531,8 +1462,7 @@ void CTFGCClientSystem::OnMatchInvitesUpdated()
 
 void CTFGCClientSystem::LeaveGameAndPrepareToJoinParty( GCSDK::PlayerGroupID_t nPartyID )
 {
-	// Leave current server
-	engine->ClientCmd_Unrestricted( "disconnect" );
+	NoteUnused( nPartyID );
 }
 
 bool CTFGCClientSystem::BIsPhoneVerified( void )

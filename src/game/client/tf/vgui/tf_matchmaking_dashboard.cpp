@@ -369,8 +369,7 @@ void CTFMatchmakingDashboard::OnCommand( const char *command )
 	}
 	else if ( FStrEq( command, "toggle_chat" ) )
 	{
-		auto pChat = GetDashboardPanel().GetTypedPanel< CExpandablePanel >( k_eChat );
-		pChat->ToggleCollapse();
+		return;
 	}
 	else if (FStrEq("create_server", command))
 	{
@@ -403,106 +402,10 @@ void CTFMatchmakingDashboard::OnCommand( const char *command )
 		ClearAllStacks();
 		UpdateDimmer();
 	}
-	else if ( FStrEq( command, "leave_queue" ) ) 
-	{
-		if ( GTFPartyClient()->BControllingPartyActions() && GTFPartyClient()->GetNumQueuedMatchGroups() == 1 )
-		{
-			ETFMatchGroup eQueuedMatchGroup = GTFPartyClient()->GetQueuedMatchGroupByIdx( 0 );
-			GTFPartyClient()->CancelMatchQueueRequest( eQueuedMatchGroup );
-		}
-		else if ( GTFPartyClient()->BInStandbyQueue() )
-		{
-			GTFPartyClient()->CancelStandbyQueueRequest();
-		}
-	}
-	else if ( FStrEq( command, "toggle_party_settings" ) ) 
-	{
-		OpenPartyOptionsMenu();
-	}
 	else if ( FStrEq( command, "resume_game" ) )
 	{
 		// The main menu knows what to do
 		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand(  "ResumeGame" );
-	}
-	else if ( FStrEq( command, "join_party_match" ) )
-	{
-		GTFPartyClient()->RequestQueueForStandby();
-	}
-	else if ( FStrEq( command, "queue_logo_clicked" ) )
-	{
-		// Change from Red <-> Blue
-		tf_queue_spinner_color.SetValue( tf_queue_spinner_color.GetInt() == 0 ? 1 : 0 );
-		UpdateQueuePanel();
-
-		Panel* pSpinner = m_pQueuePanel->FindChildByName( "CTFLogoPanel" );
-		if ( pSpinner )
-		{
-			// Do a radius pop
-			g_pClientMode->GetViewportAnimationController()->RunAnimationCommand( pSpinner, "radius", 15.f , 0.0f, 0.02f, vgui::AnimationController::INTERPOLATOR_LINEAR, 0.8f, true, false );
-			g_pClientMode->GetViewportAnimationController()->RunAnimationCommand( pSpinner, "radius", 10.f, 0.02f, 0.1f, vgui::AnimationController::INTERPOLATOR_DEACCEL, 0.8f, false, false );
-
-			// Speed up, then decay back
-			KeyValuesAD pkvInfo( "velocity" );
-			pSpinner->RequestInfo( pkvInfo );
-			float flVel = pkvInfo->GetFloat( "velocity" ) + 100.f;
-			g_pClientMode->GetViewportAnimationController()->RunAnimationCommand( pSpinner, "velocity", flVel, 0.0f, 0.02f, vgui::AnimationController::INTERPOLATOR_LINEAR, 0.8f, true, false );
-			float flDecayTime = logf( 1.f + ( flVel / 50.f ) );
-			g_pClientMode->GetViewportAnimationController()->RunAnimationCommand( pSpinner, "velocity", 100.f, 0.05f, flDecayTime, vgui::AnimationController::INTERPOLATOR_DEACCEL, 0.8f, false, false );
-		}
-	}
-	else if ( FStrEq( command, "manage_queues" ) )
-	{
-		m_pContextMenu = ClearAndGetDashboardContextMenu();
-		MenuBuilder contextMenuBuilder( m_pContextMenu, this );
-
-		// Add context menus for each match group we're queued in
-		for( int i = ETFMatchGroup_MIN; i < ETFMatchGroup_ARRAYSIZE; ++i )
-		{
-			if ( !ETFMatchGroup_IsValid( i ) )
-				continue;
-
-			ETFMatchGroup eMatchGroup = (ETFMatchGroup)i;
-			auto pMatchGroup = GetMatchGroupDescription( eMatchGroup );
-
-			if ( !pMatchGroup )
-				continue;
-
-			if ( GTFPartyClient()->BInQueueForMatchGroup( eMatchGroup ) )
-			{
-				wchar_t wszBuff[ 512 ];
-				g_pVGuiLocalize->ConstructString_safe( wszBuff, g_pVGuiLocalize->Find( "#TF_MM_QueueState_LeaveQueue" ), 1, g_pVGuiLocalize->Find( pMatchGroup->GetNameLocToken() ) );
-				contextMenuBuilder.AddMenuItem( wszBuff, new KeyValues( "Command", "command", CFmtStr( "leavematchgroup%d", i ) ), "leave" );
-			}
-		}
-
-		Panel* pOptionsButton = m_pQueuePanel->FindChildByName( "MultiQueuesManageButton", true );
-		// Position the menu onto the gear button
-		int nX, nY;
-		g_pVGuiInput->GetCursorPosition( nX, nY );
-		m_pContextMenu->SetPos( nX - 1, nY - 1 );
-
-		if ( pOptionsButton )
-		{
-			nX = pOptionsButton->GetWide() * 0.5;
-			nY = pOptionsButton->GetTall() * 0.5;
-			pOptionsButton->LocalToScreen( nX, nY );
-
-			m_pContextMenu->SetPos( nX, nY );	
-		}
-
-		m_pContextMenu->SetVisible(true);
-		m_pContextMenu->AddActionSignalTarget(this);
-		m_pContextMenu->MoveToFront();
-	}
-	else if ( Q_strnicmp( "leavematchgroup", command, sizeof( "leavematchgroup" ) ) )
-	{
-		// Leave a specific match group
-		int nMatchgroup = atoi( command + sizeof( "leavematchgroup" ) - 1 );
-		if ( !ETFMatchGroup_IsValid( nMatchgroup ) )
-			return;
-
-		ETFMatchGroup eMatchGroup = (ETFMatchGroup)nMatchgroup;
-		GTFPartyClient()->CancelMatchQueueRequest( eMatchGroup );
 	}
 }
 
@@ -540,12 +443,10 @@ void CTFMatchmakingDashboard::OpenPartyOptionsMenu()
 
 void CTFMatchmakingDashboard::OnLeaveParty()
 {
-	GTFPartyClient()->LeaveActiveParty();
 }
 
 void CTFMatchmakingDashboard::OnOpenSettings()
 {
-	PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eMMSettings ) );
 }
 
 //-----------------------------------------------------------------------------
@@ -567,21 +468,6 @@ void CTFMatchmakingDashboard::OnTick()
 
 	// THIS IS A HACK and works wonderfully
 	GetMMDashboardParentManager()->UpdateParenting();
-
-	// Update the Y-Pos of all the "children" of the dashboard
-	{
-		// These are the panels that dangle off the topbar
-		EMMDashboadSidePanel arPanelsDanglingOffTopBar[] =	{ k_eChat
-															, k_eNextMapWinnerPopup
-															, k_eNextMapVotePopup };
-
-		int nNewYPos = Max( GetYPos() + GetTall() - YRES(10), YRES(-5) );
-		for( int i=0; i < ARRAYSIZE( arPanelsDanglingOffTopBar ); ++i )
-		{
-			auto* pDangler = GetDashboardPanel().GetPanel( arPanelsDanglingOffTopBar[ i ] );
-			pDangler->SetPos( pDangler->GetXPos(), nNewYPos );
-		}
-	}
 
 	bool bShouldBeVisible = false;
 
@@ -610,14 +496,6 @@ void CTFMatchmakingDashboard::OnTick()
 	{
 		SetCollapsed( false );
 		UpdateDisconnectAndResume();
-		auto pChat = GetDashboardPanel().GetTypedPanel< CExpandablePanel >( k_eChat );
-		if ( pChat->BIsExpanded() )
-		{
-			// Immediately be collapsed
-			pChat->SetCollapsed( true, true );
-			// Casually expand like it's no thing
-			pChat->SetCollapsed( false );
-		}
 	}
 
 	SetKeyBoardInputEnabled( false );
@@ -675,216 +553,27 @@ void CTFMatchmakingDashboard::FireGameEvent( IGameEvent *event )
 	}
 }
 
-void SpewInvitePanelThing( bool bCreated, const CInviteNotification* pInvite )
-{
-#if defined (STAGING_ONLY) || defined (DEBUG)
-	auto key = pInvite->GetKey();
-	CFmtStr str( "%s %s %s invite for %s", 
-				 bCreated ? "Created" : "Deleted",
-				 std::get<2>( key ) ? "INCOMING" : "OUTGOING",
-				 std::get<1>( key ) == CTFParty::EPendingType::ePending_Invite ? "INVITE" : "JOIN_REQUEST",
-				 SteamFriends()->GetFriendPersonaName( std::get<0>( key ) ) );
-	ConColorMsg( bCreated ? Color( 100, 255, 190, 255 ) : Color( 255, 100, 190, 255 ), "%s\n", str.Get() );
-#endif // defined (STAGING_ONLY) || defined (DEBUG)
-}
-
 void CTFMatchmakingDashboard::UpdatePartyInvites()
 {
-	auto lambdaHasNotification = [ & ]( const InviteKey_t& key )
-	{
-		FOR_EACH_VEC( m_vecInviteHandles, i )
-		{
-			if ( m_vecInviteHandles[ i ] && m_vecInviteHandles[ i ]->GetKey() == key )
-				return true;
-		}
-
-		return false;
-	};
-
-	CSteamID steamIDLocal = SteamUser()->GetSteamID();
-
-	// Loop through panels and ensure there's an invite for each panel, removing if needed
-	FOR_EACH_VEC_BACK( m_vecInviteHandles, i )
-	{
-		bool bFound = false;
-
-		if ( m_vecInviteHandles[ i ].Get() != NULL && GTFPartyClient()->BControllingPartyActions() )
-		{
-			//
-			// Try to find the matching invite
-			//
-			auto key = m_vecInviteHandles[ i ]->GetKey();
-
-			// Incoming invite
-			for( int j=0; j < GTFPartyClient()->GetNumIncomingInvites(); ++j )
-			{
-				auto pInvite = GTFPartyClient()->GetIncomingInvite( j );
-				if ( key == InviteKey_t( pInvite->GetInviter(), pInvite->GetType(), true ) )
-				{
-					bFound = true;
-					break;
-				}
-			}
-
-			// Outgoing invite
-			for( int j=0; !bFound && j < GTFPartyClient()->GetNumOutgoingInvites(); ++j )
-			{
-				CSteamID invitee = GTFPartyClient()->GetOutgoingInvite( j );
-				if ( key == InviteKey_t( invitee, IPlayerGroup::ePending_Invite, false ) )
-				{
-					bFound = true;
-					break;
-				}
-			}
-
-			// Outgoing Join
-			for( int j=0; !bFound && j < GTFPartyClient()->GetNumOutgoingJoinRequests(); ++j )
-			{
-				auto pInvite = GTFPartyClient()->GetOutgoingJoinRequest( j );
-				if ( key == InviteKey_t( pInvite->GetInviter(), pInvite->GetType(), false ) )
-				{
-					bFound = true;
-					break;
-				}
-			}
-
-			// Incoming Join
-			for( int j=0; !bFound && j < GTFPartyClient()->GetNumIncomingJoinRequests(); ++j )
-			{
-				CSteamID joiner = GTFPartyClient()->GetIncomingJoinRequest( j );
-				if ( key == InviteKey_t( joiner, IPlayerGroup::ePending_JoinRequest, true ) )
-				{
-					bFound = true;
-					break;
-				}
-			}
-		}
-
-		// Invite is gone.  Make the panel go away
-		if ( !bFound )
-		{
-			if ( m_vecInviteHandles[ i ].Get() != NULL )
-			{
-				SpewInvitePanelThing( false, m_vecInviteHandles[ i ] );
-				m_vecInviteHandles[ i ]->SetToExpire();
-			}
-			m_vecInviteHandles.Remove( i );
-		}
-	}
-
-
-	auto lambdaEnsurePanel = [ & ]( const CSteamID& steamID, CTFParty::EPendingType eType, bool bIncoming, bool bRequirePartyControl )
-	{
-		if ( bRequirePartyControl && !GTFPartyClient()->BControllingPartyActions() )
-			return;
-
-		// Doesn't exist!  Create a panel
-		if ( !lambdaHasNotification( InviteKey_t{ steamID, eType, bIncoming } ) )
-		{
-			CInviteNotification* pNewNotification = new CInviteNotification( steamID, eType, bIncoming );
-			m_vecInviteHandles[ m_vecInviteHandles.AddToTail() ].Set( pNewNotification );
-			NotificationQueue_Add( pNewNotification );
-			SpewInvitePanelThing( true, pNewNotification );
-		}
-	};
-
-	//
-	// Now that all the stale panels are gone, check if there's any invites that we
-	// don't have a panel for.
-	//
-	// Loop through INCOMING INVITES and make sure there's a panel for each
-	for( int i=0; i < GTFPartyClient()->GetNumIncomingInvites(); ++i )
-	{
-		auto pInvite = GTFPartyClient()->GetIncomingInvite( i );
-		CSteamID steamIDInviter = pInvite->GetInviter();
-		lambdaEnsurePanel( steamIDInviter, pInvite->GetType(), true, false );
-	}
-
-	// Loop through OUTGOING INVITES and make sure there's a panel for each
-	for( int i=0; i < GTFPartyClient()->GetNumOutgoingInvites(); ++i )
-	{
-		CSteamID steamIDInvitee = GTFPartyClient()->GetOutgoingInvite( i );
-		lambdaEnsurePanel( steamIDInvitee, IPlayerGroup::ePending_Invite, false, true );
-	}
-
-	// Loop through OUTGOING JOIN REQUESTS and make sure there's a panel for each
-	for( int i=0; i < GTFPartyClient()->GetNumOutgoingJoinRequests(); ++i )
-	{
-		auto pInvite = GTFPartyClient()->GetOutgoingJoinRequest( i );
-		CSteamID steamIDInviter = pInvite->GetInviter();
-		lambdaEnsurePanel( steamIDInviter, pInvite->GetType(), false, true );
-	}
-
-
-	// Loop through INCOMING JOIN REQUESTS and make sure there's a panel for each
-	for( int i=0; i < GTFPartyClient()->GetNumIncomingJoinRequests(); ++i )
-	{
-		CSteamID steamIDJoiner = GTFPartyClient()->GetIncomingJoinRequest( i );
-		lambdaEnsurePanel( steamIDJoiner, IPlayerGroup::ePending_JoinRequest, true, true );
-	}
 }
-
 void CTFMatchmakingDashboard::OnPlayCompetitive()
 {
-	if ( tf_comp_welcome_hide.GetBool() == false && !GTFPartyClient()->BInQueueForMatchGroup( k_eTFMatchGroup_Ladder_6v6 ) )
-	{
-		tf_comp_welcome_hide.SetValue( 1 );
-		ShowDashboardExplanation( "CompIntro" );
-	}
-
-	// Show comp panel
-	PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eCompetitive ) );
-	GTFPartyClient()->SetLocalUIState( k_eTFSyncedMMMenuStep_Configuring_Mode, k_eTFMatchGroup_Ladder_6v6 );
 }
 
 void CTFMatchmakingDashboard::OnPlayCasual()
 {
-	if ( tf_casual_welcome_hide.GetBool() == false && !GTFPartyClient()->BInQueueForMatchGroup( k_eTFMatchGroup_Casual_12v12 ) )
-	{
-		tf_casual_welcome_hide.SetValue( 1 );
-		ShowDashboardExplanation( "CasualIntro" );
-	}
-
-	PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eCasual ) );
-	GTFPartyClient()->SetLocalUIState( k_eTFSyncedMMMenuStep_Configuring_Mode, k_eTFMatchGroup_Casual_12v12 );
 }
 
 void CTFMatchmakingDashboard::OnPlayMvM()
 {
-	// Open the choice panel
-	PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eMvM_Mode_Select ) );
 }
 
 void CTFMatchmakingDashboard::OnPlayMvM_MannUp()
 {
-	// Make sure the MvM panel goes first.  We're not going to show it, just ensure it's created
-	GetDashboardPanel().GetPanel( k_eMvM_Mode_Select );
-
-	auto pConfigPanel = GetDashboardPanel().GetTypedPanel< CTFDashboardMvMPanel >( k_eMvM_Mode_Configure );
-	PushSlidePanel( pConfigPanel );
-
-#ifdef USE_MVM_TOUR
-	// If no tour selected, then show the tour selection screen,
-	// or else show the mission selection
-	ETFSyncedMMMenuStep eMenuStep = GTFPartyClient()->GetLocalGroupCriteria().GetMannUpTourIndex() == k_iMvmTourIndex_Empty 
-								  ? k_eTFSyncedMMMenuStep_MvM_Selecting_Tour
-								  : k_eTFSyncedMMMenuStep_MvM_Selecting_Missions;
-
-	GTFPartyClient()->SetLocalUIState( eMenuStep, k_eTFMatchGroup_MvM_MannUp );
-#else // new mm
-	GTFPartyClient()->SetLocalUIState( k_eTFSyncedMMMenuStep_MvM_Selecting_Missions, k_eTFMatchGroup_MvM_MannUp );
-#endif // USE_MVM_TOUR
 }
 
 void CTFMatchmakingDashboard::OnPlayMvM_BootCamp()
 {
-	// Make sure the MvM panel goes first.  We're not going to show it, just ensure it's created
-	GetDashboardPanel().GetPanel( k_eMvM_Mode_Select );
-
-	auto pConfigPanel = GetDashboardPanel().GetTypedPanel< CTFDashboardMvMPanel >( k_eMvM_Mode_Configure );
-	PushSlidePanel( pConfigPanel );
-
-	GTFPartyClient()->SetLocalUIState( k_eTFSyncedMMMenuStep_MvM_Selecting_Missions, k_eTFMatchGroup_MvM_Practice );
 }
 
 void CTFMatchmakingDashboard::OnPlayTraining()
@@ -930,71 +619,14 @@ void CTFMatchmakingDashboard::OnCreateServer()
 
 void CTFMatchmakingDashboard::OnPlayEvent()
 {
-	// First make sure that there's an event going on, and they didn't
-	// just spoof the message
-	ETFMatchGroup eEventMatchGroup = GTFGCClientSystem()->WorldStatus().event_match_group();
-	CRTime rtimeExpireTime( GTFGCClientSystem()->WorldStatus().event_expire_time() );
-
-	if ( eEventMatchGroup == k_eTFMatchGroup_Invalid )
-		return;
-
-	if ( rtimeExpireTime < CRTime::RTime32TimeCur() )
-		return;
-
-	if ( eEventMatchGroup == k_eTFMatchGroup_Event_Placeholder
-		 && tf_comp_welcome_hide.GetBool() == false 
-		 && !GTFPartyClient()->BInQueueForMatchGroup( eEventMatchGroup ) )
-	{
-		tf_comp_welcome_hide.SetValue( 1 );
-		ShowDashboardExplanation( "Comp12v12Intro" );
-	}
-
-	// Show event panel
-	CMatchMakingDashboardSidePanel* pSidePanel = GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eEventMatch );
-	if ( !pSidePanel )
-		return;
-
-	PushSlidePanel( pSidePanel );
-
-	GTFPartyClient()->SetLocalUIState( k_eTFSyncedMMMenuStep_Configuring_Mode, eEventMatchGroup );
 }
 
 void CTFMatchmakingDashboard::OnShowCompAccess()
 {
-	PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_eCompAccess ) );
 }
 
 void CTFMatchmakingDashboard::OnViewMatchSettings()
 {
-	const TFSyncedMMUIState& uiState = GTFPartyClient()->GetLeaderUIState();
-	auto eMatchGroup = uiState.match_group();
-
-	switch ( eMatchGroup )
-	{
-		case k_eTFMatchGroup_Casual_12v12:
-		{
-			OnPlayCasual();
-		}
-		break;
-
-		case k_eTFMatchGroup_Ladder_6v6:
-		{
-			OnPlayCompetitive();
-		}
-		break;
-
-		case k_eTFMatchGroup_MvM_MannUp:
-		{
-			OnPlayMvM_MannUp();
-		}
-		break;
-
-		case k_eTFMatchGroup_MvM_Practice:
-		{
-			OnPlayMvM_BootCamp();
-		}
-		break;
-	}
 }
 
 void CTFMatchmakingDashboard::OnCloseSideStack( KeyValues* pParams )

@@ -33,14 +33,6 @@ ConVar tf_quest_turn_in_confirm_opt_out( "tf_quest_turn_in_confirm_opt_out", "0"
 extern CQuestLogPanel *GetQuestLog();
 extern CQuestTooltip* g_spTextTooltip;
 
-extern const char *s_pszMMTypes[kMatchmakingTypeCount];
-extern const char *s_pszGameModes[eNumGameCategories];
-
-void SelectGroup( EMatchmakingGroupType eGroup, bool bSelected );
-void SelectCategory( EGameCategory eCategory, bool bSelected );
-
-void PromptOrFireCommand( const char* pszCommand );
-
 static void ConfirmDiscardQuest( bool bConfirmed, void* pContext )
 {
 	CQuestItemPanel *pQuestItemPanel = ( CQuestItemPanel* )pContext;
@@ -1021,50 +1013,6 @@ void CQuestItemPanel::OnCommand( const char *command )
 	else if( Q_strnicmp( "playsound", command, 9 ) == 0 )
 	{
 		vgui::surface()->PlaySound( command + 10 );
-	}
-	else if ( FStrEq( "mm_casual_open", command ) )
-	{
-		if ( GTFGCClientSystem() )
-		{
-			if ( ( m_strMatchmakingGroupName != 0 ) || ( m_strMatchmakingCategoryName != 0 ) || ( m_strMatchmakingMapName != 0 ) )
-			{
-				GTFGCClientSystem()->ClearCasualSearchCriteria();
-
-				if ( m_strMatchmakingGroupName != 0 )
-				{
-					int iGroupType = StringFieldToInt( m_strMatchmakingGroupName.Get(), s_pszMMTypes, ARRAYSIZE( s_pszMMTypes ) );
-					if ( iGroupType > -1 )
-					{
-						SelectGroup( (EMatchmakingGroupType)iGroupType, true );
-					}
-				}
-
-				if ( m_strMatchmakingCategoryName != 0 )
-				{
-					int iCategoryType = StringFieldToInt( m_strMatchmakingCategoryName.Get(), s_pszGameModes, ARRAYSIZE( s_pszGameModes ) );
-					if ( iCategoryType > -1 )
-					{
-						SelectCategory( (EGameCategory)iCategoryType, true );
-					}
-				}
-
-				if ( m_strMatchmakingMapName != 0 )
-				{
-					if ( GetItemSchema() )
-					{
-						const MapDef_t *pMap = GetItemSchema()->GetMasterMapDefByName( m_strMatchmakingMapName.Get() );
-						if ( pMap )
-						{
-							GTFGCClientSystem()->SelectCasualMap( pMap->m_nDefIndex, true );
-						}
-					}
-				}
-			}
-		}
-
-		// Defaulting to 12v12
-		GTFGCClientSystem()->SetLadderType( k_eTFMatchGroup_Casual_12v12 );
-		PromptOrFireCommand( "OpenMatchmakingLobby casual" );
 	}
 }
 

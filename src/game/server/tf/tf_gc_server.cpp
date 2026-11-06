@@ -1280,6 +1280,7 @@ CTFGCServerSystem::CTFGCServerSystem()
 	m_flTimeBecameEmptyWithLobby = 0.0f;
 	m_timeLastConnectedToGC = 0.f;
 	m_pMatchInfo = NULL;
+	m_bMMServerMode = false;
 
 	g_bWarnedAboutMaxplayersInMVM = false;
 }
@@ -1315,11 +1316,6 @@ void CTFGCServerSystem::PreInitGC()
 
 	if ( !m_bSetupSchema )
 	{
-//		REG_SHARED_OBJECT_SUBCLASS( CDOTAHeroStandings );
-//		REG_SHARED_OBJECT_SUBCLASS( CDOTAGameAccountClient );
-		REG_SHARED_OBJECT_SUBCLASS( CTFGSLobby );
-		REG_SHARED_OBJECT_SUBCLASS( CTFParty );
-
 		m_bSetupSchema = true;
 	}
 }
@@ -2208,25 +2204,7 @@ bool CTFGCServerSystem::CanRequestNewMatchForLobby()
 
 void CTFGCServerSystem::RequestNewMatchForLobby( const MapDef_t* pNewMap )
 {
-	// Wat r u doin
-	if ( !CanRequestNewMatchForLobby() )
-	{
-		AbortInvalidMatchState();
-	}
-
-	m_flWaitingForNewMatchTime = Plat_FloatTime() + tf_mm_next_map_result_hold_time.GetFloat();
-	m_bWaitingForNewMatchID = true;
-	m_pMatchInfo->m_strMapName = pNewMap->pszMapName;
-
-	ReliableMsgNewMatchForLobby *pReliable = new ReliableMsgNewMatchForLobby();
-	auto &msg = pReliable->Msg().Body();
-
-	msg.set_next_map_id( pNewMap->m_nDefIndex );
-	msg.set_lobby_id( GetLobby()->GetGroupID() );
-	msg.set_current_match_id( GetMatch()->m_nMatchID );
-	MMLog( "Sending request to GC for a new match ID.\n" );
-
-	ReliableMsgQueue().Enqueue( pReliable );
+	NoteUnused( pNewMap );
 }
 
 //-----------------------------------------------------------------------------
@@ -2382,116 +2360,10 @@ CMatchInfo::PlayerMatchData_t *CTFGCServerSystem::GetLiveMatchPlayer( CSteamID s
 
 void CTFGCServerSystem::SOCreated( const CSteamID & steamIDOwner, const GCSDK::CSharedObject *pObject, GCSDK::ESOCacheEvent eEvent )
 {
-//	Msg( "CTFGCServerSystem::SOCreated type = %d owner = %s\n", pObject->GetTypeID(), steamIDOwner.Render() );
-
-	// Lobby handling
-	if ( pObject->GetTypeID() == CTFGSLobby::k_nTypeID )
-	{
-		const CTFGSLobby *pConstLobby = static_cast<const CTFGSLobby*>( pObject );
-		CTFGSLobby *pLobby = const_cast<CTFGSLobby *>( pConstLobby ); // GROSS
-		Assert( pLobby == GetLobby() ); // There can be only be one...
-
-		MMLog( "Lobby %016llx instanced on this server in state %s\n",
-		       pLobby->GetGroupID(), CSOTFGameServerLobby_State_Name( pLobby->GetState() ).c_str() );
-
-		// Check if we need to switch the map or load a pop file.
-		CMsgGameServerMatchmakingStatus_Event statusEvent = CMsgGameServerMatchmakingStatus_Event_None;
-		bool bNewLobby = ( pLobby->GetState() == CSOTFGameServerLobby_State_SERVERSETUP );
-
-		if ( m_bMMServerMode && bNewLobby )
-		{
-			// Delivered a new match lobby
-			MMLog( "  Map: '%s'\n", pLobby->GetMapName() );
-			MMLog( "  Mission: '%s'\n", pLobby->GetMissionName() );
-
-			ETFMatchGroup eMatchGroup = (ETFMatchGroup)pLobby->Obj().match_group();
-
-			// Acknowledge the players that just connected.  (This will create
-			// reservations for the players and let the GC we are expecting the
-			// players.)
-			statusEvent = CMsgGameServerMatchmakingStatus_Event_AcknowledgePlayers;
-
-			// Create a record of the match on first connect.
-			if ( m_pMatchInfo )
-			{
-				// But we already have one. What. Even if the GC lost track of our match, we shouldn't have marked
-				// ourselves eligible for a new match if we think we have one.
-				MMLog( "!! Received new anticipated lobby while running existing match. "
-						"Old match ID [ %llu ] ended [ %u ] "
-						"New matchID [ %llu ]\n",
-						m_pMatchInfo->m_nMatchID, m_pMatchInfo->m_bMatchEnded,
-						pLobby->GetMatchID() );
-				Assert( false );
-
-				AbortInvalidMatchState();
-			}
-
-			m_pMatchInfo = new CMatchInfo( pLobby );
-			GTFGCClientSystem()->DumpLobby();
-
-			if ( eMatchGroup == ETFMatchGroup::k_eTFMatchGroup_Invalid ||
-				 !GetMatchGroupDescription( eMatchGroup )->InitServerSettingsForMatch( pConstLobby ) )
-			{
-				AbortInvalidMatchState();
-			}
-
-			// FIXME We should have some version checking like this.
-			//		int engineServerVersion = engine->GetServerVersion();
-			//
-			//		// Version checking is enforced if both sides do not report zero as their version
-			//		if ( engineServerVersion && g_gcServerVersion && engineServerVersion != g_gcServerVersion )
-			//		{
-			//			// If we're out of date exit
-			//			Msg("Version out of date (GC wants %d, we are %d), terminating!\n", g_gcServerVersion, engine->GetServerVersion() );
-			//			engine->ServerCommand( "quit\n" );
-			//		}
-		}
-		else
-		{
-			// Just delivered an already running lobby -- this can happen if the GC restarts while we're running a
-			// match, in which case it should be restoring the lobby for our already-running match. If we are running a
-			// match for a different lobby, something is super wrong.
-			uint64 nExistingMatchID = m_pMatchInfo ? m_pMatchInfo->m_nMatchID : 0;
-			uint64 nLobbyMatchID = pLobby->Obj().has_match_id() ? pLobby->GetMatchID() : 0;
-			// If we are running a match and this lobby is:
-			// - That match
-			// - The previous match for our match, and m_bAwaitingMatchID is true.
-			//   (that is, the lobby's expected state prior to our outstanding NewMatchIDForLobby request being
-			//   processed, which we wouldn't expect to have been processed yet if the GC was, in fact, restarting)
-			if ( m_pMatchInfo && ( nExistingMatchID == nLobbyMatchID ||
-			                       ( m_pMatchInfo->m_bAwaitingMatchID &&
-			                         m_pMatchInfo->m_nPreviousMatchID == nLobbyMatchID ) ) )
-			{
-				MMLog( "GC refreshed lobby for match ID [ %llu ]\n", m_pMatchInfo->m_nMatchID );
-			}
-			else
-			{
-				MMLog( "!! Got assigned a lobby not in server-setup state, or when not accepting lobbies. Rejecting.\n"
-				       "Lobby matchID [ %llu ], existing match [ %llu ]\n",
-				       pLobby->GetMatchID(), m_pMatchInfo ? m_pMatchInfo->m_nMatchID : 0ull );
-
-				if ( !m_pMatchInfo )
-				{
-					// Not running a match, don't want this one, just reject the lobby.
-					//
-					// This can happen when we crash and are handed a stale lobby upon reboot, rejecting it will
-					// terminate that match.
-					SendRejectLobby();
-				}
-				else
-				{
-					// Otherwise, we thought we had a lobby, but the GC sent us a different match? No idea what is going
-					// on, probably some bad de-sync happened.
-					//
-					// No faith we can continue and send authoritative match results about anything.
-					AbortInvalidMatchState();
-				}
-			}
-
-		}
-
-		UpdateConnectedPlayersAndServerInfo( statusEvent, false );
-	}
+	NoteUnused( steamIDOwner );
+	NoteUnused( pObject );
+	NoteUnused( eEvent );
+	// Managed-match lobbies are not accepted.
 }
 
 void CTFGCServerSystem::SOUpdated( const CSteamID & steamIDOwner, const GCSDK::CSharedObject *pObject, GCSDK::ESOCacheEvent eEvent )
@@ -2743,6 +2615,10 @@ ConVar dbg_spew_connected_players_level( "dbg_spew_connected_players_level", "0"
 // Inform the GC of any change in the connected players
 void CTFGCServerSystem::UpdateConnectedPlayersAndServerInfo( CMsgGameServerMatchmakingStatus_Event event, bool bForceSendMessages )
 {
+	// Matchmaking heartbeats are unused. Inventory/equipment still runs from PreClientUpdate.
+	if ( !m_bMMServerMode && !GetMatch() && !GetLobby() )
+		return;
+
 	VPROF_BUDGET( "CTFGCServerSystem::UpdateConnectedPlayersAndServerInfo", VPROF_BUDGETGROUP_OTHER_NETWORKING );
 
 	// Don't bother sending if we aren't initialized yet
@@ -3799,196 +3675,20 @@ void CTFGCServerSystem::AbortInvalidMatchState()
 // **************************************************************************************************
 void CTFGCServerSystem::MMServerModeChanged()
 {
-	// Save old boolean state
-	bool bSaveMMServerMode = m_bMMServerMode;
-
-	// Set new state
-	m_bMMServerMode = ( tf_mm_servermode.GetInt() != 0 );
-
-	// Check if logical state is changing; output some text no matter what
-	if ( m_bMMServerMode )
+	// Managed matchmaking is not used. Never enter the pool.
+	if ( tf_mm_servermode.GetInt() != 0 )
 	{
-		if ( bSaveMMServerMode )
-		{
-			MMLog( "Lobby-based matchmaking is active\n" );
-		}
-		else
-		{
-			MMLog( "Entering lobby-based matchmaking mode\n" );
-		}
-
-		if ( tf_mm_strict.GetInt() == 0 )
-		{
-			MMLog( "   Open mode active.  Gameserver will show in server browser and accept ad-hoc joins.\n" );
-		}
-		else if ( tf_mm_strict.GetInt() == 1 )
-		{
-			MMLog( "   Strict mode is active.  Gameserver will not show in server browser or accept ad-hoc joins.\n" );
-		}
-		else
-		{
-			MMLog( "   Server is hidden from server browser list, but will accept ad-hoc joins.\n" );
-		}
-
-		if ( tf_mm_trusted.GetInt() != 0 )
-		{
-			MMLog( "   Requested trusted server status.\n" );
-		}
-
-	}
-	else
-	{
-		if ( bSaveMMServerMode )
-		{
-			MMLog( "Leaving lobby-based matchmaking mode\n" );
-		}
-		else
-		{
-			MMLog( "Lobby-based matchmaking mode not active\n" );
-		}
+		tf_mm_servermode.SetValue( 0 );
+		return;
 	}
 
-	// Force this major change out immediately
-	UpdateConnectedPlayersAndServerInfo( CMsgGameServerMatchmakingStatus_Event_None, true );
+	m_bMMServerMode = false;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
 void CTFGCServerSystem::LaunchNewMatchForLobby()
 {
-	/// XXX(JohnS): Technically the lobby might legitimately be gone here -- if we have gotten the NewMatchForLobby
-	///             response and the GC then croaks, we might be told it lost our lobby, but have the new match
-	///             assignment and be able to proceed without needing the lobby at all (as in normal cases where the GC
-	///             loses state after giving us the authority to run a match).
-	///
-	///             Since the match in question hasn't started yet, and this is nearly impossible given the timing
-	///             window, I'm not doing the work to cache the lobby values we need in here just to let the
-	///             just-created match survive that edge case.
-	const CTFGSLobby* pLobby = GetLobby();
-
-	if ( !pLobby || m_flWaitingForNewMatchTime == 0.f || !m_pMatchInfo || \
-	     m_pMatchInfo->BMatchTerminated() || m_pMatchInfo->m_bAwaitingMatchID )
-	{
-		// You need to prepare for the switch with RequestNewMatchForLobby first. Should not have gotten here if we have
-		// a terminated or server created match -- Must still be managed by the GC in order to roll into a new match.
-		Assert( false );
-		MMLog( "!! Attempting to launch a new match for a lobby without valid state\n" );
-		AbortInvalidMatchState();
-	}
-
-	m_flWaitingForNewMatchTime = 0.f;
-
-	CMatchInfo* pNewMatchInfo = new CMatchInfo( pLobby );
-	// Track that we are a chained match.
-	pNewMatchInfo->m_nPreviousMatchID = m_pMatchInfo->m_nMatchID;
-	// The old match info is holding the vote-winning map name
-	pNewMatchInfo->m_strMapName = m_pMatchInfo->m_strMapName;
-	ETFMatchGroup eMatchGroup = pLobby->GetMatchGroup();
-
-	// We still need a new match ID from the GC.  Mark that this new match is
-	// created by us so that:	1) If we do get a response for a new match ID
-	//							   we know what to do with it
-	//							2) The GC knows to assign it a match ID if it
-	//							   gets a match result for it before (1) occurs
-	if ( m_bWaitingForNewMatchID )
-	{
-		// Mark that we're going rogue
-		pNewMatchInfo->m_bAwaitingMatchID = true;
-		pNewMatchInfo->m_nMatchID = 0; // Don't inherit the stale one from the lobby
-
-		if ( !CanChangeMatchPlayerTeams() )
-		{
-			// Server created speculative matches are counting on the GC approving this when it wakes up, and also
-			// approving our override of player teams below.  If we want a mode that does rolling matches but has no
-			// authority to override teams, we'd need to just cancel the pending match here instead of using
-			// m_bServerCreated
-			AbortInvalidMatchState();
-		}
-	}
-	else if ( m_pMatchInfo->m_nNextMatchID != pNewMatchInfo->m_nMatchID )
-	{
-		// We got a new match ID but our lobby has updated again to something else?
-		AbortInvalidMatchState();
-	}
-
-	for( int idx = 0; idx < m_pMatchInfo->GetNumTotalMatchPlayers(); idx++ )
-	{
-		const CMatchInfo::PlayerMatchData_t* pPlayerMatchData = m_pMatchInfo->GetMatchDataForPlayer( idx );
-		// We don't need record of dropped players for the new match
-		if ( pPlayerMatchData->bDropped )
-			{ continue; }
-
-		// We stop doing maintenance on lobby->match sync during the pending-new-match period, but we don't want to
-		// include players who would be dropped on the first think -- we'd have erroneous record that they were
-		// officially part of the match for some period, when they were not.
-		//
-		// XXX(JohnS): Technically, we could create a speculative match, then when the new match ID arrives, some
-		//             members vanished -- those members were never actually part of the lobby from the GC
-		//             perspective. We might need to cull these people on the first post-new-matchID-think if having
-		//             record of them is causing problems. (a bWasEverConfirmedByGC flag?)
-		auto matchPlayers = pLobby->GatherMatchPlayers();
-		auto idxLobby = matchPlayers.GetIndexBySteamID( pPlayerMatchData->steamID );
-		if ( !matchPlayers.BValidIdx( idxLobby ) )
-			{ continue; }
-
-		auto memberDetails = matchPlayers.GetDetails( idxLobby );
-
-		// AddPlayer needs to know if they are connected/active right now
-		int nEntIndex = 0;
-		bool bActive = false;
-		if ( pPlayerMatchData->bConnected )
-		{
-			if ( pPlayerMatchData->nConnectingButNotActiveIndex )
-			{
-				// Connected, not active
-				bActive = false;
-				nEntIndex = pPlayerMatchData->nConnectingButNotActiveIndex;
-			}
-			else
-			{
-				// Connected and active
-				bActive = true;
-				// We could null check this but we'd just use the information to call AbortInvalidMatchState().
-				nEntIndex = UTIL_PlayerBySteamID( pPlayerMatchData->steamID )->entindex();
-			}
-		}
-
-		pNewMatchInfo->AddPlayer( pPlayerMatchData->steamID, memberDetails, /* bLateJoin */ false, nEntIndex, bActive );
-	}
-
-	delete m_pMatchInfo;
-	m_pMatchInfo = pNewMatchInfo;
-
-	// If we are going ahead with a server-created match before getting a reply to NewMatchForLobby, the new team
-	// assignments from the still-not-received new match will be too late.  Fix this by queuing a ChangeMatchPlayerTeams
-	// message in sequence with our pending new match request -- the GC will process, in order:
-	//
-	// - Give us a new match!
-	//   -> Okay here's new match & teams
-	// - Set everyone's teams to (the previous match teams)!
-	//   -> Okay here's new lobby with teams that match your state
-	//
-	// ... And since we don't run UpdateConnectedPlayers() while messages are in queue, by time we run our next
-	// look-at-the-lobby think, we'll be in sync again.
-	if ( pNewMatchInfo->m_bAwaitingMatchID )
-	{
-		CUtlVector< PlayerTeamPair_t > vecPlayerTeams;
-		for( int idx = 0; idx < m_pMatchInfo->GetNumTotalMatchPlayers(); idx++ )
-		{
-			const CMatchInfo::PlayerMatchData_t *pPlayer = m_pMatchInfo->GetMatchDataForPlayer( idx );
-			vecPlayerTeams.AddToTail( { pPlayer->steamID, pPlayer->eGCTeam } );
-		}
-		ChangeMatchPlayerTeams( vecPlayerTeams );
-	}
-
-	GTFGCClientSystem()->DumpLobby();
-
-	if ( eMatchGroup == ETFMatchGroup::k_eTFMatchGroup_Invalid ||
-		!GetMatchGroupDescription( eMatchGroup )->InitServerSettingsForMatch( pLobby ) )
-	{
-		AbortInvalidMatchState();
-	}
+	return;
 }
 
 //-----------------------------------------------------------------------------
