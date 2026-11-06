@@ -7989,7 +7989,9 @@ void CTFPlayerShared::FadeInvis( float fAdditionalRateScale )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::InvisibilityThink( void )
 {
-	if ( m_pOuter->GetPlayerClass()->GetClassIndex() != TF_CLASS_SPY && InCond( TF_COND_STEALTHED ) )
+	const int iClass = m_pOuter->GetPlayerClass()->GetClassIndex();
+	// Witch stealth uses the Spy cloak. Anyone else with this cond is a bug.
+	if ( iClass != TF_CLASS_SPY && iClass != TF_CLASS_WITCH && InCond( TF_COND_STEALTHED ) )
 	{
 		// Shouldn't happen, but it's a safety net
 		m_flInvisibility = 0.0f;
@@ -12434,6 +12436,42 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			if ( iSpell < 0 || iSpell >= GetWitchSpellCount() )
 				iSpell = 0;
 
+			// Stealth is the Spy watch: secondary toggles it, and it drains
+			// the meter. While it is up, another secondary drops it instead
+			// of casting. Attacks stay blocked until the decloak lockout ends.
+			if ( m_Shared.InCond( TF_COND_STEALTHED ) )
+			{
+				m_Shared.FadeInvis( 1.0f );
+				m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
+				return true;
+			}
+
+			if ( IsWitchSpellStealth( iSpell ) )
+			{
+				// Same floor as the invis watch. Under that, the watch won't start.
+				if ( CanGoInvisible() && m_Shared.GetSpyCloakMeter() > 8.0f )
+				{
+					m_Shared.AddCond( TF_COND_STEALTHED, -1.f, this );
+					m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+				}
+				else
+				{
+#ifdef CLIENT_DLL
+					EmitSound( "Player.DenyWeaponSelection" );
+#endif
+					return false;
+				}
+				return true;
+			}
+
+			if ( m_Shared.GetStealthNoAttackExpireTime() > gpGlobals->curtime )
+			{
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
+				return false;
+			}
+
 			const float flCost = (float)GetWitchSpellManaCost( iSpell );
 			if ( m_Shared.GetSpyCloakMeter() < flCost )
 			{
@@ -14232,22 +14270,9 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateCloakMeter( void )
 {
-	// Witch mana refills like the Spy cloak and never drains for stealth.
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
-	{
-		m_flCloakMeter += gpGlobals->frametime * m_fCloakRegenRate;
-		if ( m_flCloakMeter >= 100.0f )
-		{
-			m_flCloakMeter = 100.0f;
-		}
-		else if ( m_flCloakMeter < 0.0f )
-		{
-			m_flCloakMeter = 0.0f;
-		}
-		return;
-	}
-
-	if ( !m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
+	// Witch mana is the Spy meter. Stealth drains it the same way the watch does.
+	const bool bWitch = m_pOuter->IsPlayerClass( TF_CLASS_WITCH );
+	if ( !bWitch && !m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
 		return;
 
 	if ( InCond( TF_COND_STEALTHED ) )

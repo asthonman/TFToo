@@ -274,7 +274,7 @@ static const int s_nWitchSpellIndex[] =
 static const int s_nWitchSpellManaCost[] =
 {
 	75,		// Pumpkin MIRV
-	50,		// Stealth
+	50,		// Stealth (unused lump; this one drains like the Spy watch)
 	50,		// Bat swarm
 	50,		// Fireball
 	25,		// Blast jump
@@ -322,6 +322,12 @@ const char *GetWitchSpellIcon( int iSlot )
 		return "";
 
 	return pSpell->m_pIconName;
+}
+
+bool IsWitchSpellStealth( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	return pSpell && pSpell->m_pCastSpell == &CTFSpellBook::CastSelfStealth;
 }
 
 int GetSpellIndexFromContext( int iContext )
@@ -610,14 +616,24 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 			if ( pLocalPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 			{
 				m_pKeyBinding->SetVisible( false );
-				const int iCost = GetWitchSpellManaCost( pLocalPlayer->m_Shared.GetWitchSpell() );
-				int nCasts = 0;
-				if ( iCost > 0 )
-					nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
-				SetDialogVariable( "counttext", nCasts );
 				vgui::Panel *pCount = FindChildByName( "CountText", true );
-				if ( pCount )
-					pCount->SetVisible( true );
+				// Stealth drains the meter. The bar is the readout, not a cast count.
+				if ( IsWitchSpellStealth( pLocalPlayer->m_Shared.GetWitchSpell() ) )
+				{
+					SetDialogVariable( "counttext", "" );
+					if ( pCount )
+						pCount->SetVisible( false );
+				}
+				else
+				{
+					const int iCost = GetWitchSpellManaCost( pLocalPlayer->m_Shared.GetWitchSpell() );
+					int nCasts = 0;
+					if ( iCost > 0 )
+						nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
+					SetDialogVariable( "counttext", nCasts );
+					if ( pCount )
+						pCount->SetVisible( true );
+				}
 			}
 			else
 			{
@@ -763,6 +779,17 @@ void CTFSpellBook::Precache()
 	PrecacheScriptSound( "Halloween.spell_stealth" );
 	PrecacheScriptSound( "Halloween.spell_teleport" );
 	PrecacheScriptSound( "Halloween.spell_overheal" );
+
+	// The MIRV is a cannonball. Its first impact otherwise force-loads a
+	// physics sound inside the projectile think and stalls that think.
+	PrecacheModel( "models/weapons/w_models/w_cannonball.mdl" );
+	PrecacheModel( "models/props_halloween/pumpkin_explode.mdl" );
+	PrecacheModel( "models/props_halloween/pumpkin_explode_teamcolor.mdl" );
+	PrecacheScriptSound( "Halloween.PumpkinExplode" );
+	PrecacheSound( "physics/metal/metal_solid_impact_soft1.wav" );
+	PrecacheSound( "physics/metal/metal_solid_impact_soft2.wav" );
+	PrecacheSound( "physics/metal/metal_solid_impact_soft3.wav" );
+	PrecacheSound( "physics/metal/metal_solid_impact_soft4.wav" );
 
 	PrecacheParticleSystem( "merasmus_zap" );
 	PrecacheParticleSystem( "spell_cast_wheel_red" );
@@ -2467,10 +2494,13 @@ public:
 
 	virtual bool InitialExplodeEffects( CTFPlayer *pThrower, const trace_t *pTrace ) OVERRIDE
 	{
-		// Spawn a tonne of extra grenades (mirv style)
-		CTFSpellBook *pSpellBook = dynamic_cast< CTFSpellBook* >( pThrower->GetEntityForLoadoutSlot( LOADOUT_POSITION_ACTION ) );
-		if ( !pSpellBook )
+		// Spawn a tonne of extra grenades (mirv style).
+		// The Witch's book is not in the action slot, so don't require one.
+		// The bomblets carry no weapon damage; the pumpkin bomb sets its own.
+		if ( !pThrower )
 			return false;
+
+		CTFSpellBook *pSpellBook = dynamic_cast< CTFSpellBook* >( pThrower->GetEntityForLoadoutSlot( LOADOUT_POSITION_ACTION ) );
 
 		// Create bomblets
 		Vector offset = Vector( 0, -100, 400 );
@@ -2495,7 +2525,10 @@ public:
 				// Set the pipebomb mode before calling spawn, so the model & associated vphysics get setup properly.
 				pGrenade->SetPipebombMode();
 				DispatchSpawn( pGrenade );
-				pGrenade->InitGrenade( offset, angVelocity, pThrower, pSpellBook->GetTFWpnData() );
+				if ( pSpellBook )
+					pGrenade->InitGrenade( offset, angVelocity, pThrower, pSpellBook->GetTFWpnData() );
+				else
+					pGrenade->InitGrenade( offset, angVelocity, pThrower, 0, 0.f );
 				pGrenade->m_flFullDamage = 0;
 				pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
 				pGrenade->SetDetonateTimerLength( 2.0f + 0.05f * i );

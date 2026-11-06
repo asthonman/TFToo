@@ -62,12 +62,9 @@ bool CTFRevolver::DefaultReload( int iClipSize1, int iClipSize2, int iActivity )
 	if ( !pPlayer )
 		return false;
 
-	if ( pPlayer->IsPlayerClass( TF_CLASS_SPY ) )
+	if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED ) )
 	{
-		if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED ) )
-		{
-			return false;
-		}
+		return false;
 	}
 
 	if ( pPlayer->m_Shared.IsFeignDeathReady() )

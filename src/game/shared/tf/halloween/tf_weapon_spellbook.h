@@ -146,6 +146,8 @@ int GetWitchSpellGameIndex( int iSlot );
 int GetWitchSpellManaCost( int iSlot );
 const char *GetWitchSpellUiName( int iSlot );
 const char *GetWitchSpellIcon( int iSlot );
+// Stealth is a Spy cloak toggle. It drains the mana meter instead of spending a lump cost.
+bool IsWitchSpellStealth( int iSlot );
 
 //=============================================================================
 //

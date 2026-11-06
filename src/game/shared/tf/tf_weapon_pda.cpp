@@ -1089,12 +1089,21 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 					sh = scheme()->GetProportionalScaledValueEx( GetScheme(), 120 );
 				pCosts[nSide]->SetBounds( 0, sh - iCostH, sw, iCostH );
 				pCosts[nSide]->SetContentAlignment( vgui::Label::a_center );
-				char szCost[16];
-				Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCost( i ) );
-				pCosts[nSide]->SetText( szCost );
-				pCosts[nSide]->SetVisible( true );
-				pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
-				pCosts[nSide]->MoveToFront();
+				// Stealth has no lump cost. The meter drains while cloaked.
+				if ( IsWitchSpellStealth( i ) )
+				{
+					pCosts[nSide]->SetText( "" );
+					pCosts[nSide]->SetVisible( false );
+				}
+				else
+				{
+					char szCost[16];
+					Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCost( i ) );
+					pCosts[nSide]->SetText( szCost );
+					pCosts[nSide]->SetVisible( true );
+					pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
+					pCosts[nSide]->MoveToFront();
+				}
 			}
 		}
 	}
