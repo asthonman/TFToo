@@ -5318,15 +5318,29 @@ void CTFPlayer::ManageRegularWeapons( TFPlayerClassData_t *pData )
 		{
 			SetActiveWeapon( NULL );
 
-			// Find a weapon to switch to, starting with primary.
-			CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_PRIMARY ) );
-			if ( !pWeapon || !pWeapon->CanBeSelected() || !Weapon_Switch( pWeapon ) )
+			// Witch has no primary. The stock fallback below skips a secondary
+			// that can be selected, which leaves her on the broom.
+			if ( GetPlayerClass()->GetClassIndex() == TF_CLASS_WITCH )
 			{
-				pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_SECONDARY ) );
-				if ( !pWeapon || pWeapon->CanBeSelected() || !Weapon_Switch( pWeapon ) )
+				CTFWeaponBase *pSecondary = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_SECONDARY ) );
+				if ( pSecondary )
 				{
-					pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );
-					Weapon_Switch( pWeapon );
+					bWepSwitched = Weapon_Switch( pSecondary );
+				}
+			}
+
+			if ( !bWepSwitched )
+			{
+				// Find a weapon to switch to, starting with primary.
+				CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_PRIMARY ) );
+				if ( !pWeapon || !pWeapon->CanBeSelected() || !Weapon_Switch( pWeapon ) )
+				{
+					pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_SECONDARY ) );
+					if ( !pWeapon || pWeapon->CanBeSelected() || !Weapon_Switch( pWeapon ) )
+					{
+						pWeapon = dynamic_cast<CTFWeaponBase*>( GetEntityForLoadoutSlot( LOADOUT_POSITION_MELEE ) );
+						Weapon_Switch( pWeapon );
+					}
 				}
 			}
 		}
