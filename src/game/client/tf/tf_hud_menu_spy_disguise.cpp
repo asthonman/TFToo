@@ -22,8 +22,6 @@
 #endif
 
 #include "tf_hud_menu_spy_disguise.h"
-#include "halloween/tf_weapon_spellbook.h"
-#include "vgui_controls/ImagePanel.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -242,11 +240,12 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 			{
 				// select disguise
 				int iClass = ClassMenuClassForPageSlot( m_iClassPage, m_iSelectedItem - 1 );
+				int iTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? 1 : 0;
 
-				if ( !IsValidTFPlayerClass( iClass ) && !( C_TFPlayer::GetLocalTFPlayer() && C_TFPlayer::GetLocalTFPlayer()->IsPlayerClass( TF_CLASS_WITCH ) ) )
+				if ( !IsValidTFPlayerClass( iClass ) )
 					return 0;
 
-				ChooseSlot( m_iSelectedItem - 1 );
+				SelectDisguise( iClass, iTeam );
 			}
 			return 0;
 
@@ -420,7 +419,11 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 
 		if ( iSlot >= 0 )
 		{
-			ChooseSlot( iSlot );
+			int iClass = ClassMenuClassForPageSlot( m_iClassPage, iSlot );
+			int iTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? 1 : 0;
+
+			if ( IsValidTFPlayerClass( iClass ) )
+				SelectDisguise( iClass, iTeam );
 
 			m_iGroupSelection = -1;
 			ToggleSelectionIcons( false );
@@ -545,30 +548,6 @@ void CHudMenuSpyDisguise::ToggleSelectionIcons( bool bGroup )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CHudMenuSpyDisguise::ChooseSlot( int iSlot )
-{
-	CTFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
-	{
-		if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
-			return;
-
-		char szCmd[32];
-		Q_snprintf( szCmd, sizeof( szCmd ), "witch_spell %d", iSlot + 1 );
-		engine->ClientCmd( szCmd );
-		engine->ExecuteClientCmd( "lastinv" );
-		return;
-	}
-
-	const int iClass = ClassMenuClassForPageSlot( m_iClassPage, iSlot );
-	const int iTeam = ( m_iShowingTeam == TF_TEAM_BLUE ) ? 1 : 0;
-	if ( IsValidTFPlayerClass( iClass ) )
-		SelectDisguise( iClass, iTeam );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void CHudMenuSpyDisguise::SelectDisguise( int iClass, int iTeam )
 {
 	CTFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
@@ -630,18 +609,12 @@ void CHudMenuSpyDisguise::UpdateClassItems( void )
 	if ( m_iClassPage < 0 || m_iClassPage >= nPages )
 		m_iClassPage = 0;
 
-	CTFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
-	const bool bWitch = pLocal && pLocal->IsPlayerClass( TF_CLASS_WITCH );
 	const bool bShowBlue = ( m_iShowingTeam == TF_TEAM_BLUE );
-
-	vgui::Label *pTitle = dynamic_cast< vgui::Label * >( FindChildByName( "TitleLabel" ) );
-	if ( pTitle )
-		pTitle->SetText( bWitch ? "#TF_Weapon_WitchSpellbook" : "#TF_Disguise" );
 
 	for ( int i = 0; i < 9; ++i )
 	{
 		const int iClass = ClassMenuClassForPageSlot( m_iClassPage, i );
-		const bool bHasClass = bWitch ? ( i < GetWitchSpellCount() ) : IsValidTFPlayerClass( iClass );
+		const bool bHasClass = IsValidTFPlayerClass( iClass );
 
 		m_pClassItems_Red[i]->SetVisible( bHasClass && !bShowBlue );
 		m_pClassItems_Blue[i]->SetVisible( bHasClass && bShowBlue );
@@ -649,50 +622,16 @@ void CHudMenuSpyDisguise::UpdateClassItems( void )
 		if ( !bHasClass )
 			continue;
 
-		const char *pszIcon = bWitch ? GetWitchSpellIcon( i ) : ClassMenuHudIconName( iClass );
-		const char *pszName = "";
-		if ( bWitch )
-			pszName = GetWitchSpellUiName( i );
-		else if ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS )
-			pszName = g_aPlayerClassNames[ iClass ];
+		const char *pszIcon = ClassMenuHudIconName( iClass );
+		const char *pszName = ( iClass > TF_CLASS_UNDEFINED && iClass < TF_CLASS_MENU_BUTTONS ) ? g_aPlayerClassNames[ iClass ] : "";
 
 		EditablePanel *pPanels[2] = { m_pClassItems_Red[i], m_pClassItems_Blue[i] };
 		const char *pszTeams[2] = { "red", "blu" };
 		for ( int nSide = 0; nSide < 2; ++nSide )
 		{
 			CIconPanel *pIcon = dynamic_cast< CIconPanel * >( pPanels[nSide]->FindChildByName( "ClassIcon" ) );
-			vgui::ImagePanel *pSpellIcon = dynamic_cast< vgui::ImagePanel * >( pPanels[nSide]->FindChildByName( "WitchSpellIcon" ) );
-
-			if ( bWitch )
-			{
-				if ( !pSpellIcon )
-				{
-					pSpellIcon = new vgui::ImagePanel( pPanels[nSide], "WitchSpellIcon" );
-					pSpellIcon->SetShouldScaleImage( true );
-				}
-
-				if ( pIcon )
-				{
-					int x, y, w, h;
-					pIcon->GetBounds( x, y, w, h );
-					pSpellIcon->SetBounds( x, y, w > 0 ? w : 32, h > 0 ? h : 32 );
-					pIcon->SetVisible( false );
-				}
-
-				pSpellIcon->SetVisible( true );
-				pSpellIcon->SetImage( pszIcon ? pszIcon : "" );
-			}
-			else
-			{
-				if ( pSpellIcon )
-					pSpellIcon->SetVisible( false );
-				if ( pIcon )
-				{
-					pIcon->SetVisible( true );
-					if ( pszIcon && pszIcon[0] )
-						pIcon->SetIcon( CFmtStr( "hud_menu_%s_%s", pszIcon, pszTeams[nSide] ) );
-				}
-			}
+			if ( pIcon && pszIcon && pszIcon[0] )
+				pIcon->SetIcon( CFmtStr( "hud_menu_%s_%s", pszIcon, pszTeams[nSide] ) );
 
 			vgui::Label *pName = dynamic_cast< vgui::Label * >( pPanels[nSide]->FindChildByName( "ItemNameLabel" ) );
 			if ( !pName )

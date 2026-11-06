@@ -49,7 +49,6 @@ private:
 	void UpdateClassItems( void );
 	void ToggleSelectionIcons( bool bGroup );
 	void FindToggleBinding( void );
-	void ChooseSlot( int iSlot );
 
 private:
 	EditablePanel *m_pClassItems_Red[9];

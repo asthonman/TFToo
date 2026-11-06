@@ -467,7 +467,10 @@ public:
 	bool EndClassSpecialSkill( void );
 #ifdef GAME_DLL
 	bool CastWitchSpell( int iSlot );
+	void SelectWitchSpell( int iSlot );
+	void SwitchLastWitchSpell( void );
 	EHANDLE m_hWitchSpellbook;
+	int m_nLastWitchSpell;
 #endif
 
 	bool	CanPickupBuilding( CBaseObject *pPickupObject );

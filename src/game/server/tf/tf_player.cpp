@@ -1016,6 +1016,7 @@ CTFPlayer::CTFPlayer()
 	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
 	m_hWitchSpellbook = NULL;
+	m_nLastWitchSpell = 0;
 	m_vecMadcapCourse.Init();
 	m_bMadcapCourse = false;
 	m_szTauntSequence.GetForModify()[0] = '\0';
@@ -1532,6 +1533,24 @@ bool CTFPlayer::CastWitchSpell( int iSlot )
 	return pBook->CastSpellIndex( iIndex );
 }
 
+void CTFPlayer::SelectWitchSpell( int iSlot )
+{
+	if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
+		return;
+
+	const int iCur = m_Shared.GetWitchSpell();
+	if ( iSlot == iCur )
+		return;
+
+	m_nLastWitchSpell = iCur;
+	m_Shared.SetWitchSpell( iSlot );
+}
+
+void CTFPlayer::SwitchLastWitchSpell( void )
+{
+	SelectWitchSpell( m_nLastWitchSpell );
+}
+
 #ifndef CLIENT_DLL
 static void CC_WitchSpell( const CCommand &args )
 {
@@ -1543,12 +1562,19 @@ static void CC_WitchSpell( const CCommand &args )
 		return;
 
 	const int iSlot = atoi( args.Arg( 1 ) ) - 1;
-	if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
-		return;
-
-	pPlayer->m_Shared.SetWitchSpell( iSlot );
+	pPlayer->SelectWitchSpell( iSlot );
 }
 static ConCommand witch_spell( "witch_spell", CC_WitchSpell, "Select the Witch's spell, 1 through 9.", 0 );
+
+static void CC_WitchLastSpell( const CCommand &args )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return;
+
+	pPlayer->SwitchLastWitchSpell();
+}
+static ConCommand witch_lastspell( "witch_lastspell", CC_WitchLastSpell, "Switch the Witch to her previous spell.", 0 );
 #endif
 
 void CTFPlayer::ThinkBrickGrow( void )
@@ -16596,6 +16622,7 @@ void CTFPlayer::OnMyWeaponFired( CBaseCombatWeapon *weapon )
 		case TF_WEAPON_PDA_ENGINEER_BUILD:
 		case TF_WEAPON_PDA_ENGINEER_DESTROY:
 		case TF_WEAPON_PDA_SPY:
+		case TF_WEAPON_PDA_SPELLBOOK:
 		case TF_WEAPON_BUILDER:
 		case TF_WEAPON_DISPENSER:
 		case TF_WEAPON_INVIS:

@@ -1,0 +1,30 @@
+// Witch spellbook. Disguise-kit viewmodel, its own PDA so it can be switched to.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_WitchSpellbook"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"pda"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.1"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"3"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/v_models/v_pda_spy.mdl"
+	"playermodel"		"models/weapons/w_models/w_cigarette_case.mdl"
+	"anim_prefix"		"building"
+}

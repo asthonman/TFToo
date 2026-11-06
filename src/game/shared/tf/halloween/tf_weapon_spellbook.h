@@ -65,6 +65,8 @@ public:
 	void UpdateSpellText( int iSpellIndex, int iCharges );
 
 private:
+	void PlaceBesideManaMeter( void );
+
 	vgui::ImagePanel	*m_pSpellIcon;
 	CExLabel			*m_pKeyBinding;
 
@@ -74,6 +76,10 @@ private:
 	bool	m_bTickSoundA;
 
 	bool	m_bKillstreakMeterDrawing;
+
+	int		m_iRestX;
+	int		m_iRestY;
+	bool	m_bRestPosSaved;
 };
 
 //=============================================================================

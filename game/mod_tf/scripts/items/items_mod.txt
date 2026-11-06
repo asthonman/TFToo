@@ -456,7 +456,7 @@
 		"b12"
 		{
 			"name"				"b12"
-			"item_class"		"tf_weapon_pda_spy"
+			"item_class"		"tf_weapon_pda_spellbook"
 			"item_name"			"#TF_Weapon_WitchSpellbook"
 			"item_type_name"	"#TF_Weapon_WitchSpellbook"
 			"item_logname"		"spellbook"

@@ -254,7 +254,9 @@ const spell_data_t* GetSpellData( int iSpellIndex )
 }
 
 //-----------------------------------------------------------------------------
-// Witch. Same spells as Halloween, in menu order. Cost is 100 / charges.
+// Witch. Same spells as Halloween, in menu order.
+// Mana costs started as 100 / that spell's Halloween charges. They are
+// constants so they can be tuned without the charge count changing them.
 //-----------------------------------------------------------------------------
 static const int s_nWitchSpellIndex[] =
 {
@@ -268,6 +270,20 @@ static const int s_nWitchSpellIndex[] =
 	ARRAYSIZE( g_NormalSpellList ) + 2,		// Meteor swarm
 	2,										// Overheal
 };
+
+static const int s_nWitchSpellManaCost[] =
+{
+	100,	// Pumpkin MIRV, 1 charge
+	100,	// Stealth, 1
+	50,		// Bat swarm, 2
+	50,		// Fireball, 2
+	50,		// Blast jump, 2
+	100,	// Ball o' Lightning, 1
+	100,	// Minify, 1
+	100,	// Meteor swarm, 1
+	100,	// Overheal, 1
+};
+COMPILE_TIME_ASSERT( ARRAYSIZE( s_nWitchSpellIndex ) == ARRAYSIZE( s_nWitchSpellManaCost ) );
 
 int GetWitchSpellCount( void )
 {
@@ -284,11 +300,10 @@ int GetWitchSpellGameIndex( int iSlot )
 
 int GetWitchSpellManaCost( int iSlot )
 {
-	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
-	if ( !pSpell || pSpell->m_iSpellCharges <= 0 )
+	if ( iSlot < 0 || iSlot >= ARRAYSIZE( s_nWitchSpellManaCost ) )
 		return 100;
 
-	return 100 / pSpell->m_iSpellCharges;
+	return s_nWitchSpellManaCost[ iSlot ];
 }
 
 const char *GetWitchSpellUiName( int iSlot )
@@ -353,6 +368,10 @@ CHudSpellMenu::CHudSpellMenu( const char *pElementName ) : CHudElement( pElement
 
 	m_bKillstreakMeterDrawing = false;
 
+	m_iRestX = 0;
+	m_iRestY = 0;
+	m_bRestPosSaved = false;
+
 	m_pSpellIcon = new vgui::ImagePanel( this, "SpellIcon" );
 	m_pKeyBinding = new CExLabel( this, "ActionText", "" );
 
@@ -365,6 +384,12 @@ CHudSpellMenu::CHudSpellMenu( const char *pElementName ) : CHudElement( pElement
 //-----------------------------------------------------------------------------
 void CHudSpellMenu::ApplySchemeSettings( vgui::IScheme *pScheme )
 {
+	if ( !m_bRestPosSaved )
+	{
+		GetPos( m_iRestX, m_iRestY );
+		m_bRestPosSaved = true;
+	}
+
 	BaseClass::ApplySchemeSettings( pScheme );
 
 	KeyValues *pConditions = NULL;
@@ -428,8 +453,88 @@ void CHudSpellMenu::FireGameEvent( IGameEvent * event )
 }
 
 //=============================================================================
+void CHudSpellMenu::PlaceBesideManaMeter( void )
+{
+	int iIconX = 0, iIconY = 0, iIconW = 26, iIconH = 26;
+	if ( m_pSpellIcon )
+		m_pSpellIcon->GetBounds( iIconX, iIconY, iIconW, iIconH );
+
+	int iRight = iIconX + iIconW;
+	vgui::Panel *pCount = FindChildByName( "CountText", true );
+	if ( pCount )
+	{
+		int cx, cy, cw, ch;
+		pCount->GetBounds( cx, cy, cw, ch );
+		if ( cx + cw > iRight )
+			iRight = cx + cw;
+	}
+
+	int mx = 0, my = 0, mw = 0, mh = 0;
+	bool bFound = false;
+	for ( int i = 0; i < IHudItemEffectMeterAutoList::AutoList().Count(); ++i )
+	{
+		CHudItemEffectMeter *pMeter = static_cast< CHudItemEffectMeter * >( IHudItemEffectMeterAutoList::AutoList()[i] );
+		if ( !pMeter )
+			continue;
+
+		const char *pszLabel = pMeter->GetLabelText();
+		if ( !pszLabel || !FStrEq( pszLabel, "#TF_Mana" ) )
+			continue;
+
+		pMeter->GetBounds( mx, my, mw, mh );
+		bFound = ( mw > 0 && mh > 0 );
+		break;
+	}
+
+	int x, y;
+	if ( bFound )
+	{
+		const int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 6 );
+		x = mx - iRight - iGap;
+		y = my + ( mh - iIconH ) / 2 - iIconY;
+	}
+	else if ( GetParent() )
+	{
+		x = GetParent()->GetWide() - scheme()->GetProportionalScaledValueEx( GetScheme(), 280 );
+		y = GetParent()->GetTall() - scheme()->GetProportionalScaledValueEx( GetScheme(), 70 );
+	}
+	else
+	{
+		return;
+	}
+
+	if ( x < 0 )
+		x = 0;
+
+	SetPos( x, y );
+}
+
+//=============================================================================
 bool CHudSpellMenu::ShouldDraw( void )
 {
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	const bool bWitch = pPlayer && pPlayer->IsAlive() && pPlayer->IsPlayerClass( TF_CLASS_WITCH )
+		&& !pPlayer->m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE );
+
+	if ( bWitch )
+	{
+		if ( CTFMinigameLogic::GetMinigameLogic() && CTFMinigameLogic::GetMinigameLogic()->GetActiveMinigame() && TFGameRules() && ( TFGameRules()->State_Get() != GR_STATE_RND_RUNNING ) )
+			return false;
+
+		const int iSlot = pPlayer->m_Shared.GetWitchSpell();
+		UpdateSpellText( GetWitchSpellGameIndex( iSlot ), GetWitchSpellManaCost( iSlot ) );
+		PlaceBesideManaMeter();
+		return CHudElement::ShouldDraw();
+	}
+
+	if ( m_bRestPosSaved )
+	{
+		int x, y;
+		GetPos( x, y );
+		if ( x != m_iRestX || y != m_iRestY )
+			SetPos( m_iRestX, m_iRestY );
+	}
+
 	if ( TFGameRules() && TFGameRules()->IsUsingSpells() )
 	{
 		if ( CTFMinigameLogic::GetMinigameLogic() && CTFMinigameLogic::GetMinigameLogic()->GetActiveMinigame() && ( TFGameRules()->State_Get() != GR_STATE_RND_RUNNING ) )
@@ -502,12 +607,19 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 				pLocalPlayer->EmitSound( "Halloween.spelltick_set" );
 			}
 			m_iPrevSelectedSpell = iSpellIndex;
-			m_pKeyBinding->SetVisible( !cl_hud_minmode.GetBool() );
+			if ( pLocalPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+			{
+				m_pKeyBinding->SetVisible( false );
+			}
+			else
+			{
+				m_pKeyBinding->SetVisible( !cl_hud_minmode.GetBool() );
 
-			// Action Key Text
-			wchar_t wKeyReplaced[256];
-			UTIL_ReplaceKeyBindings( g_pVGuiLocalize->Find( "#TF_Spell_Action" ), 0, wKeyReplaced, sizeof( wKeyReplaced ) );
-			SetDialogVariable( "actiontext", wKeyReplaced );
+				// Action Key Text
+				wchar_t wKeyReplaced[256];
+				UTIL_ReplaceKeyBindings( g_pVGuiLocalize->Find( "#TF_Spell_Action" ), 0, wKeyReplaced, sizeof( wKeyReplaced ) );
+				SetDialogVariable( "actiontext", wKeyReplaced );
+			}
 		}
 	}
 }

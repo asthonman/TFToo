@@ -44,6 +44,7 @@
 #include "tf_hud_menu_engy_build.h"
 #include "tf_hud_menu_engy_destroy.h"
 #include "tf_hud_menu_spy_disguise.h"
+#include "tf_weapon_spellbook_pda.h"
 #include "tf_statsummary.h"
 #include "tf_hud_freezepanel.h"
 #include "item_quickswitch.h"
@@ -362,6 +363,7 @@ ClientModeTFNormal::ClientModeTFNormal()
 	m_pMenuEngyBuild = NULL;
 	m_pMenuEngyDestroy = NULL;
 	m_pMenuSpyDisguise = NULL;
+	m_pMenuSpellbook = NULL;
 	m_pEurekaTeleportMenu = NULL;
 	m_pMenuTauntSelection = NULL;
 	m_pGameUI = NULL;
@@ -417,6 +419,9 @@ void ClientModeTFNormal::Init()
 
 	m_pMenuSpyDisguise = ( CHudMenuSpyDisguise * )GET_HUDELEMENT( CHudMenuSpyDisguise );
 	Assert( m_pMenuSpyDisguise );
+
+	m_pMenuSpellbook = ( CHudMenuSpellbook * )GET_HUDELEMENT( CHudMenuSpellbook );
+	Assert( m_pMenuSpellbook );
 
 	m_pFreezePanel = ( CTFFreezePanel * )GET_HUDELEMENT( CTFFreezePanel );
 	Assert( m_pFreezePanel );
@@ -1527,6 +1532,14 @@ int	ClientModeTFNormal::HudElementKeyInput( int down, ButtonCode_t keynum, const
 	if ( m_pMenuSpyDisguise )
 	{
 		if ( !m_pMenuSpyDisguise->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
+		{
+			return 0;
+		}
+	}
+
+	if ( m_pMenuSpellbook )
+	{
+		if ( !m_pMenuSpellbook->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
 		{
 			return 0;
 		}

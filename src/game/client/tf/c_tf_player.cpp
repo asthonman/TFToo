@@ -9887,6 +9887,13 @@ static void cc_tf_player_lastdisguise( const CCommand &args )
 	if ( pPlayer == NULL )
 		return;
 
+	// The Witch's last-disguise key swaps her previous spell.
+	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		engine->ClientCmd( "witch_lastspell" );
+		return;
+	}
+
 	// disguise as our last known disguise. desired disguise will be initted to something sensible
 	if ( pPlayer->CanDisguise() || pPlayer->CanDisguise_OnKill() )
 	{
