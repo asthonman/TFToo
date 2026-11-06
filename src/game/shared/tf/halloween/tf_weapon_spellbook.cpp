@@ -1630,7 +1630,6 @@ public:
 	virtual int			GetWeaponID( void ) const			{ return TF_WEAPON_SPELLBOOK_PROJECTILE; }
 	virtual float		GetDamageRadius() const				{ return 200.0f; }
 	virtual int			GetCustomDamageType() const OVERRIDE	{ return m_bIsMeteor ? TF_DMG_CUSTOM_SPELL_METEOR : TF_DMG_CUSTOM_SPELL_FIREBALL; }
-	virtual bool		IsDeflectable() OVERRIDE { return false; }
 
 	void				SetMeteor( bool bIsMeteor ) { m_bIsMeteor = bIsMeteor; }
 
@@ -1874,7 +1873,6 @@ public:
 	virtual float		GetDamageRadius() const				{ return 250.0f; }
 	virtual float		GetModelScale() const				{ return 0.01f; }
 	virtual int			GetCustomDamageType() const OVERRIDE	{ return TF_DMG_CUSTOM_SPELL_BATS; }
-	virtual bool		IsDeflectable() OVERRIDE { return false; }
 
 #ifdef GAME_DLL
 	virtual void Spawn( void )
