@@ -357,6 +357,53 @@ bool IsWitchSpellStealth( int iSlot )
 	return pSpell && pSpell->m_pCastSpell == &CTFSpellBook::CastSelfStealth;
 }
 
+bool IsWitchSpellTeleport( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	return pSpell && pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spelltransposeteleport" );
+}
+
+static float SpellTossRightOffset( CTFPlayer *pPlayer )
+{
+	float fRight = 7.f;
+	CTFWeaponBase *pWeapon = pPlayer ? pPlayer->GetActiveTFWeapon() : NULL;
+	if ( pWeapon && pWeapon->IsViewModelFlipped() )
+		fRight *= -1.f;
+	return fRight;
+}
+
+// Same toss point TossJarThink uses, then the 32x32x36 box the teleport checks with.
+bool WitchTeleportSpawnBlocked( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+	Vector vecForward, vecRight, vecUp;
+	AngleVectors( pPlayer->EyeAngles(), &vecForward, &vecRight, &vecUp );
+
+	Vector vecSrc = pPlayer->Weapon_ShootPosition();
+	vecSrc += ( vecUp * -9.0f ) + ( vecRight * SpellTossRightOffset( pPlayer ) ) + ( vecForward * 3.0f );
+
+	trace_t trace;
+	CTraceFilterSimple traceFilter( pPlayer, COLLISION_GROUP_NONE );
+	UTIL_TraceHull( pPlayer->EyePosition(), vecSrc, -Vector( 8, 8, 8 ), Vector( 8, 8, 8 ), MASK_SOLID_BRUSHONLY, &traceFilter, &trace );
+	if ( trace.startsolid )
+		return true;
+
+	const Vector vecMins( -16.f, -16.f, 0.f );
+	const Vector vecMaxs( 16.f, 16.f, 36.f );
+	unsigned int nMask = MASK_PLAYERSOLID_BRUSHONLY;
+	if ( pPlayer->GetTeamNumber() == TF_TEAM_RED )
+		nMask |= CONTENTS_BLUETEAM;
+	else if ( pPlayer->GetTeamNumber() == TF_TEAM_BLUE )
+		nMask |= CONTENTS_REDTEAM;
+
+	trace_t tr;
+	CTraceFilterWorldOnly filter;
+	UTIL_TraceHull( trace.endpos, trace.endpos, vecMins, vecMaxs, nMask, &filter, &tr );
+	return tr.startsolid || tr.allsolid;
+}
+
 int GetSpellIndexFromContext( int iContext )
 {
 	const int nNormalSpellCount = ARRAYSIZE( g_NormalSpellList );
@@ -1173,11 +1220,7 @@ void CTFSpellBook::TossJarThink( void )
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( pPlayer->EyeAngles(), &vecForward, &vecRight, &vecUp );
 
-	float fRight = 7.f;
-	if ( IsViewModelFlipped() )
-	{
-		fRight *= -1;
-	}
+	float fRight = SpellTossRightOffset( pPlayer );
 	Vector vecSrc = pPlayer->Weapon_ShootPosition();
 	// Make spell toss position at the hand
 	vecSrc = vecSrc + ( vecUp * -9.0f ) + ( vecRight * fRight ) + ( vecForward * 3.0f );
@@ -1541,6 +1584,14 @@ bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
 
 	m_iSelectedSpellIndex = iSpellIndex;
 	m_iPreviouslyCastSpell = iSpellIndex;
+
+	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) && WitchTeleportSpawnBlocked( pPlayer ) )
+	{
+		const spell_data_t *pSpellData = GetSpellData( iSpellIndex );
+		if ( pSpellData && pSpellData->m_pSpellEntityName && !Q_stricmp( pSpellData->m_pSpellEntityName, "tf_projectile_spelltransposeteleport" ) )
+			return false;
+	}
+
 	PlayWitchCastEffects( pPlayer, NULL );
 	TossJarThink();
 	return true;

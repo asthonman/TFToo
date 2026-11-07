@@ -150,6 +150,9 @@ const char *GetWitchSpellUiName( int iSlot );
 const char *GetWitchSpellIcon( int iSlot );
 // Stealth is a Spy cloak toggle. It drains the mana meter instead of spending a lump cost.
 bool IsWitchSpellStealth( int iSlot );
+bool IsWitchSpellTeleport( int iSlot );
+// True when the teleport projectile's check box would be inside something at the muzzle.
+bool WitchTeleportSpawnBlocked( CTFPlayer *pPlayer );
 
 //=============================================================================
 //

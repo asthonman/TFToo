@@ -12503,6 +12503,14 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				return false;
 			}
 
+			if ( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( this ) )
+			{
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
+				return false;
+			}
+
 			const float flCost = (float)GetWitchSpellManaCostForPlayer( this, iSpell );
 			if ( m_Shared.GetSpyCloakMeter() < flCost )
 			{

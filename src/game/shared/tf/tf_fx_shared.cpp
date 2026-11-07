@@ -151,6 +151,31 @@ Vector g_vecFixedWpnSpreadPelletsWideLarge[] =
 // 	Vector( 0.f, 0.25f, 0.f ),
 };
 
+static void GetFixedPelletOffset( int iBullet, int nBulletsPerShot, float flScalar, bool bNoisy, float &x, float &y )
+{
+	if ( nBulletsPerShot >= 15 )
+	{
+		int iSpread = iBullet;
+		while ( iSpread >= ARRAYSIZE( g_vecFixedWpnSpreadPelletsWideLarge ) )
+		{
+			iSpread -= ARRAYSIZE( g_vecFixedWpnSpreadPelletsWideLarge );
+		}
+		const float flJitter = bNoisy ? random->RandomFloat( -0.07f, 0.07f ) : 0.f;
+		x = ( g_vecFixedWpnSpreadPelletsWideLarge[iSpread].x + flJitter ) * flScalar;
+		y = ( g_vecFixedWpnSpreadPelletsWideLarge[iSpread].y + flJitter ) * flScalar;
+	}
+	else
+	{
+		int iSpread = iBullet;
+		while ( iSpread >= ARRAYSIZE( g_vecFixedWpnSpreadPellets ) )
+		{
+			iSpread -= ARRAYSIZE( g_vecFixedWpnSpreadPellets );
+		}
+		x = g_vecFixedWpnSpreadPellets[iSpread].x * flScalar;
+		y = g_vecFixedWpnSpreadPellets[iSpread].y * flScalar;
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: This runs on both the client and the server.  On the server, it 
 // only does the damage calculations.  On the client, it does all the effects.
@@ -304,6 +329,13 @@ void FX_FireBullets( CTFWeaponBase *pWpn, int iPlayer, const Vector &vecOrigin, 
 	{
 		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pWeapon, nBulletsPerShot, mult_bullets_per_shot );
 	}
+
+	// Held fire long enough for the pattern to tighten. Same grid either way,
+	// including when fixed spread itself is off.
+	bool bSpreadRecovered = false;
+	if ( pWpn && nBulletsPerShot > 1 && ( gpGlobals->curtime - pWpn->m_flLastFireTime ) > 0.25f )
+		bSpreadRecovered = true;
+
 	for ( int iBullet = 0; iBullet < nBulletsPerShot; ++iBullet )
 	{
 		// Initialize random system with this seed.
@@ -312,30 +344,14 @@ void FX_FireBullets( CTFWeaponBase *pWpn, int iPlayer, const Vector &vecOrigin, 
 		float x = 0.f;
 		float y = 0.f;
 
-		if ( bFixedSpread )
+		if ( bSpreadRecovered )
 		{
-			if ( nBulletsPerShot >= 15 )
-			{
-				int iSpread = iBullet;
-				while ( iSpread >= ARRAYSIZE( g_vecFixedWpnSpreadPelletsWideLarge ) )
-				{
-					iSpread -= ARRAYSIZE( g_vecFixedWpnSpreadPelletsWideLarge );
-				}
-				float flScalar = 1.f;
-				x = ( g_vecFixedWpnSpreadPelletsWideLarge[iSpread].x + random->RandomFloat( -0.07f, 0.07f ) ) * flScalar;
-				y = ( g_vecFixedWpnSpreadPelletsWideLarge[iSpread].y + random->RandomFloat( -0.07f, 0.07f ) ) * flScalar;
-			}
-			else
-			{
-				int iSpread = iBullet;
-				while ( iSpread >= ARRAYSIZE( g_vecFixedWpnSpreadPellets ) )
-				{
-					iSpread -= ARRAYSIZE( g_vecFixedWpnSpreadPellets );
-				}
-				float flScalar = 0.5f;
-				x = g_vecFixedWpnSpreadPellets[iSpread].x * flScalar;
-				y = g_vecFixedWpnSpreadPellets[iSpread].y * flScalar;
-			}
+			GetFixedPelletOffset( iBullet, nBulletsPerShot, 0.5f, false, x, y );
+		}
+		else if ( bFixedSpread )
+		{
+			const bool bWide = nBulletsPerShot >= 15;
+			GetFixedPelletOffset( iBullet, nBulletsPerShot, bWide ? 1.f : 0.75f, bWide, x, y );
 		}
 		else
 		{
@@ -346,11 +362,7 @@ void FX_FireBullets( CTFWeaponBase *pWpn, int iPlayer, const Vector &vecOrigin, 
 				bool bAccuracyBonus = false;
 				float flTimeSinceLastShot = ( gpGlobals->curtime - pWpn->m_flLastFireTime );
 
-				if ( nBulletsPerShot > 1 && flTimeSinceLastShot > 0.25f )
-				{
-					bAccuracyBonus = true;
-				}
-				else if ( nBulletsPerShot == 1 && flTimeSinceLastShot > 1.25f )
+				if ( nBulletsPerShot == 1 && flTimeSinceLastShot > 1.25f )
 				{
 					bAccuracyBonus = true;
 				}
