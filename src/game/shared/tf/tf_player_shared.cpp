@@ -409,6 +409,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropInt( RECVINFO( m_nTeamTeleporterUsed ) ),
 	RecvPropFloat( RECVINFO( m_flCloakMeter ) ),
 	RecvPropInt( RECVINFO( m_nWitchSpell ) ),
+	RecvPropBool( RECVINFO( m_bWitchManaExhausted ) ),
 	RecvPropFloat( RECVINFO( m_flSpyTranqBuffDuration ) ),
 
 	// Local Data.
@@ -448,6 +449,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_nPlayerCond, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flCloakMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nWitchSpell, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_bWitchManaExhausted, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRageMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bRageDraining, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNextRageEarnTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -588,6 +590,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropInt( SENDINFO( m_nTeamTeleporterUsed ), 3, SPROP_UNSIGNED ),
 	SendPropFloat( SENDINFO( m_flCloakMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropInt( SENDINFO( m_nWitchSpell ), 4, SPROP_UNSIGNED ),
+	SendPropBool( SENDINFO( m_bWitchManaExhausted ) ),
 	SendPropFloat( SENDINFO( m_flSpyTranqBuffDuration ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	
 	// Local Data.
@@ -829,6 +832,7 @@ CTFPlayerShared::CTFPlayerShared()
 
 	m_nMaskClass = 0;
 	m_nWitchSpell = 0;
+	m_bWitchManaExhausted = false;
 
 	m_iItemFindBonus = 0;
 
@@ -12439,6 +12443,15 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				return true;
 			}
 
+			// Empty mana stays locked until the meter is full again.
+			if ( m_Shared.IsWitchManaExhausted() )
+			{
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
+				return false;
+			}
+
 			if ( m_Shared.m_flStealthNextChangeTime > gpGlobals->curtime )
 				return true;
 
@@ -12486,11 +12499,18 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			}
 
 			m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() - flCost );
+			if ( m_Shared.GetSpyCloakMeter() <= 0.0f )
+			{
+				m_Shared.SetSpyCloakMeter( 0.0f );
+				m_Shared.SetWitchManaExhausted( true );
+			}
 			m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
 #ifdef GAME_DLL
 			if ( !CastWitchSpell( iSpell ) )
 			{
 				m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() + flCost );
+				if ( m_Shared.GetSpyCloakMeter() > 0.0f )
+					m_Shared.SetWitchManaExhausted( false );
 			}
 #endif
 			bDoSkill = true;
@@ -14284,16 +14304,23 @@ void CTFPlayerShared::UpdateCloakMeter( void )
 			if ( m_flCloakMeter <= 0.0f )
 			{
 				m_flCloakMeter = 0.0f;
+				m_bWitchManaExhausted = true;
 				FadeInvis( 1.0f );
 			}
 		}
 		else
 		{
 			m_flCloakMeter += gpGlobals->frametime * m_fCloakRegenRate;
-			if ( m_flCloakMeter > 100.0f )
+			if ( m_flCloakMeter >= 100.0f )
+			{
 				m_flCloakMeter = 100.0f;
-			else if ( m_flCloakMeter < 0.0f )
+				m_bWitchManaExhausted = false;
+			}
+			else if ( m_flCloakMeter <= 0.0f )
+			{
 				m_flCloakMeter = 0.0f;
+				m_bWitchManaExhausted = true;
+			}
 		}
 		return;
 	}

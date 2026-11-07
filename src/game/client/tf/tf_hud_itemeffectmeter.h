@@ -113,6 +113,10 @@ protected:
 
 	int					m_nState;
 
+	// Restored after the Witch's empty mana meter stops drawing red.
+	bool				m_bWitchMeterBgSaved;
+	Color				m_WitchMeterBgColor;
+
 	CPanelAnimationVarAliasType( float, m_iXOffset, "x_offset", "0", "proportional_float" );
 };
 

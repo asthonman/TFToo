@@ -498,6 +498,9 @@ public:
 	void	SetSpyCloakMeter( float val ) { m_flCloakMeter = val; }
 	int		GetWitchSpell( void ) const		{ return m_nWitchSpell; }
 	void	SetWitchSpell( int iSpell )	{ m_nWitchSpell = iSpell; }
+	// True after the mana meter hits empty, until it reaches 100 again.
+	bool	IsWitchManaExhausted( void ) const	{ return m_bWitchManaExhausted; }
+	void	SetWitchManaExhausted( bool bExhausted ) { m_bWitchManaExhausted = bExhausted; }
 
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
@@ -1095,6 +1098,8 @@ private:
 	CNetworkVar( float, m_flCloakMeter );	// [0,100]
 	// Witch spell menu slot, 0-8. Mana is m_flCloakMeter.
 	CNetworkVar( int, m_nWitchSpell );
+	// Set when her mana hits 0. Cleared only at a full meter.
+	CNetworkVar( bool, m_bWitchManaExhausted );
 
 	CNetworkVar( bool, m_bInUpgradeZone );
 

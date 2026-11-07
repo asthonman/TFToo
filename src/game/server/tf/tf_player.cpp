@@ -4295,6 +4295,7 @@ void CTFPlayer::Spawn()
 	m_bAllowInstantSpawn = false;
 
 	m_Shared.SetSpyCloakMeter( 100.0f );
+	m_Shared.SetWitchManaExhausted( false );
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
@@ -4686,6 +4687,7 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 
 
 		m_Shared.SetSpyCloakMeter( 100.0f );
+		m_Shared.SetWitchManaExhausted( false );
 		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 		m_bBrickGrown = false;
 		m_flBrickGrowMeter = TF_BRICK_GROW_MAX;

@@ -491,6 +491,7 @@ CHudItemEffectMeter::CHudItemEffectMeter( const char *pszElementName, C_TFPlayer
 	m_bEnabled		= true;
 	m_flOldProgress = 1.f;
 	m_nState		= -1;
+	m_bWitchMeterBgSaved = false;
 
 	m_pItemEffectIcon = NULL;
 
@@ -856,6 +857,7 @@ void CHudItemEffectMeter::Update( C_TFPlayer* pPlayer )
 	}
 
 	const float flMaxProgressPerBar = 1.f / GetNumProgressBar();
+	const bool bWitchManaExhausted = m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_WITCH ) && m_pPlayer->m_Shared.IsWitchManaExhausted();
 
 	// Update the meter GUI element.
 	FOR_EACH_VEC( m_vecProgressBars, i )
@@ -870,11 +872,29 @@ void CHudItemEffectMeter::Update( C_TFPlayer* pPlayer )
 			int red = 160 + ( color_offset * 10 );
 			m_vecProgressBars[i]->SetFgColor( Color( red, 0, 0, 255 ) );
 		}
+		else if ( bWitchManaExhausted )
+		{
+			// Locked until the meter is full. Track and fill stay red while it recharges.
+			if ( !m_bWitchMeterBgSaved )
+			{
+				m_WitchMeterBgColor = m_vecProgressBars[i]->GetBgColor();
+				m_bWitchMeterBgSaved = true;
+			}
+			m_vecProgressBars[i]->SetFgColor( Color( 255, 48, 48, 255 ) );
+			m_vecProgressBars[i]->SetBgColor( Color( 140, 28, 28, 255 ) );
+		}
 		else
 		{
 			m_vecProgressBars[i]->SetFgColor( GetProgressBarColor() );
+			if ( m_bWitchMeterBgSaved )
+				m_vecProgressBars[i]->SetBgColor( m_WitchMeterBgColor );
 		}
 	}
+
+	if ( bWitchManaExhausted && m_pLabel )
+		m_pLabel->SetFgColor( Color( 255, 48, 48, 255 ) );
+	else if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_WITCH ) && m_pLabel )
+		m_pLabel->SetFgColor( GetLabelTextColor() );
 
 	// update these when state changes
 	int nCurrentState = GetState();
