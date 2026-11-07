@@ -1913,7 +1913,7 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 			"tf_weapon_shotgun_primary",// TF_CLASS_MOBSTER,
 			"",							// TF_CLASS_RESUPPLY,
 			"",							// TF_CLASS_BRICK,
-			"",							// TF_CLASS_WITCH,
+			"tf_weapon_shotgun_primary",// TF_CLASS_WITCH,
 		}
 	},
 

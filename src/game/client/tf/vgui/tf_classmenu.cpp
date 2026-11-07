@@ -733,7 +733,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_MOBSTER,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_RESUPPLY,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_BRICK,
-	LOADOUT_POSITION_SECONDARY,		// TF_CLASS_WITCH,
+	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_WITCH,
 };
 
 //-----------------------------------------------------------------------------

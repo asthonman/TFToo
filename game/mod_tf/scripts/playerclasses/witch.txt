@@ -1,10 +1,12 @@
 // Witch. 125 health, 107% move speed (same 320 as Spy and Medic).
 // The body is the Spy until her own model exists. Icons use the witch name.
-// Secondary is the Spy revolver (and his revolver unlocks). Melee is the
-// broom (schema b11). PDA is the spellbook (schema b12), the disguise-kit
-// model with a spell menu. Class-script weapons stay empty so the schema
-// items fill the loadout. Secondary fire spends mana, which is the Spy
-// cloak meter. The revolver uses TF_AMMO_SECONDARY, same 24 reserve as Spy.
+// Primary is the stock shotgun (32 reserve), plus the Panic Attack, Family
+// Business, and Reserve Shooter. Secondary is the Spy revolver (and his
+// revolver unlocks). Melee is the broom (schema b11). PDA is the spellbook
+// (schema b12), the disguise-kit model with a spell menu. Class-script
+// weapons stay empty so the schema items fill the loadout. Secondary fire
+// spends mana, which is the Spy cloak meter. The revolver uses
+// TF_AMMO_SECONDARY, same 24 reserve as Spy.
 "PlayerClassData"
 {
 	"name"				"witch"
@@ -25,7 +27,7 @@
 
 	"AmmoMax"
 	{
-		"TF_AMMO_PRIMARY"		"24"
+		"TF_AMMO_PRIMARY"		"32"
 		"TF_AMMO_SECONDARY"		"24"
 		"TF_AMMO_METAL"			"0"
 	}

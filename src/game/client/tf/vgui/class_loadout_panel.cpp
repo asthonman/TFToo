@@ -231,12 +231,12 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Brick =
 const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Witch =
 {
 	{
-		0,	// LOADOUT_POSITION_PRIMARY = 0,
-		1,	// LOADOUT_POSITION_SECONDARY,		// revolver
-		2,	// LOADOUT_POSITION_MELEE,			// broom
+		1,	// LOADOUT_POSITION_PRIMARY = 0,	// shotgun
+		2,	// LOADOUT_POSITION_SECONDARY,		// revolver
+		3,	// LOADOUT_POSITION_MELEE,			// broom
 		0,	// LOADOUT_POSITION_UTILITY,  // STAGING ONLY
 		0,	// LOADOUT_POSITION_BUILDING,
-		3,	// LOADOUT_POSITION_PDA,			// spellbook
+		4,	// LOADOUT_POSITION_PDA,			// spellbook
 		0,	// LOADOUT_POSITION_PDA2,
 		5,	// LOADOUT_POSITION_HEAD,
 		6,	// LOADOUT_POSITION_MISC,

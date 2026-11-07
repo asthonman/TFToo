@@ -20214,6 +20214,7 @@
 			{
 				"soldier"	"1"
 				"pyro"		"1"
+				"witch"		"primary"
 			}
 			"static_attrs"
 			{
@@ -20394,6 +20395,7 @@
 			
 				"engineer"	"primary"
 				"mobster"	"primary"
+				"witch"		"primary"
 			}
 			"static_attrs"
 			{
@@ -21009,6 +21011,7 @@
 				"pyro" "secondary"
 				"soldier" "secondary"
 				"heavy" "secondary"
+				"witch"		"primary"
 			}
 			"attributes"
 			{
@@ -21569,6 +21572,7 @@
 				"soldier" "secondary"
 				"heavy" "secondary"
 				"mobster"	"primary"
+				"witch"		"primary"
 			}
 			"static_attrs"
 			{
@@ -22603,6 +22607,7 @@
 			"used_by_classes"
 			{
 				"engineer"	"1"
+				"witch"		"1"
 			}
 			"baseitem" "1"
 		}
