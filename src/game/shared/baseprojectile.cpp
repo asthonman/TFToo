@@ -8,9 +8,11 @@
 #include "cbase.h"
 #include "baseprojectile.h"
 #include "basecombatweapon_shared.h"
+#include "collisionutils.h"
 
 #ifdef GAME_DLL
 	#include "iscorer.h"
+	#include "physics_shared.h"
 #endif
 
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseProjectile, DT_BaseProjectile )
@@ -129,6 +131,65 @@ void CBaseProjectile::Spawn()
 #ifdef GAME_DLL
 
 //-----------------------------------------------------------------------------
+// A model's bounding box is not collision. Brushes, players and a real
+// collision mesh are. Rockets already trace that way; this is the same test.
+//-----------------------------------------------------------------------------
+static bool ProjectileShouldCollideWith( CBaseEntity *pOther, const Vector &vecStart, const Vector &vecEnd )
+{
+	if ( !pOther )
+		return false;
+
+	if ( pOther->IsWorld() || pOther->GetSolid() == SOLID_BSP )
+		return true;
+
+	if ( pOther->IsPlayer() || pOther->IsBaseObject() || pOther->IsCombatCharacter() || pOther->IsCombatItem() || pOther->IsProjectileCollisionTarget() )
+		return true;
+
+	vcollide_t *pCollide = modelinfo->GetVCollide( pOther->GetModelIndex() );
+	if ( !pCollide || pCollide->solidCount <= 0 || !pCollide->solids )
+		return false;
+
+	for ( int i = 0; i < pCollide->solidCount; ++i )
+	{
+		if ( !pCollide->solids[i] )
+			continue;
+
+		trace_t tr;
+		physcollision->TraceBox( vecStart, vecEnd, vec3_origin, vec3_origin, pCollide->solids[i], pOther->GetAbsOrigin(), pOther->GetAbsAngles(), &tr );
+		if ( tr.DidHit() )
+			return true;
+	}
+
+	return false;
+}
+
+class CTraceFilterProjectileRealCollision : public CTraceFilterSimple
+{
+public:
+	CTraceFilterProjectileRealCollision( CBaseEntity *pPass, int collisionGroup, const Vector &start, const Vector &end )
+		: CTraceFilterSimple( pPass, collisionGroup ), m_vecStart( start ), m_vecEnd( end )
+	{
+	}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask ) OVERRIDE
+	{
+		if ( !CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask ) )
+			return false;
+
+		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
+		// Static props have no CBaseEntity. The engine trace already uses their mesh.
+		if ( !pEnt )
+			return true;
+
+		return ProjectileShouldCollideWith( pEnt, m_vecStart, m_vecEnd );
+	}
+
+private:
+	Vector m_vecStart;
+	Vector m_vecEnd;
+};
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CBaseProjectile::CollideWithTeammatesThink()
@@ -141,67 +202,84 @@ void CBaseProjectile::CollideWithTeammatesThink()
 //-----------------------------------------------------------------------------
 bool CBaseProjectile::ShouldTouchNonWorldSolid( CBaseEntity *pOther, const trace_t *pTrace )
 {
-	if ( !pOther )
+	if ( !pOther || !pTrace )
 		return false;
 
-	if ( !pTrace )
-		return false;
-
-	// Used when checking against things like FUNC_BRUSHES
-	if ( !pOther->IsWorld() && pOther->GetSolid() == SOLID_VPHYSICS )
+	Vector vecStart = pTrace->startpos;
+	Vector vecEnd = pTrace->endpos;
+	if ( vecStart.DistToSqr( vecEnd ) < 1.0f )
 	{
-		vcollide_t *pOtherVCollide = NULL;
-		IPhysicsObject *pList[VPHYSICS_MAX_OBJECT_LIST_COUNT];
-		int nPhysicsCount = 0;
-
-		CPhysCollide *pTriggerCollide = ( modelinfo->GetVCollide( GetModelIndex() ) ) ? modelinfo->GetVCollide( GetModelIndex() )->solids[0] : NULL;
-		Assert( pTriggerCollide );
-		if ( pTriggerCollide )
-		{
-			nPhysicsCount = pOther->VPhysicsGetObjectList( pList, ARRAYSIZE( pList ) );
-			pOtherVCollide = modelinfo->GetVCollide( pOther->GetModelIndex() );
-		}
-
-		CUtlVector< collidelist_t > collideList;
-
-		if ( nPhysicsCount )
-		{
-			for ( int i = 0; i < nPhysicsCount; i++ )
-			{
-				const CPhysCollide *pCollide = pList[i]->GetCollide();
-				if ( pCollide )
-				{
-					collidelist_t element;
-					element.pCollide = pCollide;
-					pList[i]->GetPosition( &element.origin, &element.angles );
-					collideList.AddToTail( element );
-				}
-			}
-		}
-		else if ( pOtherVCollide && pOtherVCollide->solidCount )
-		{
-			collidelist_t element;
-			element.pCollide = pOtherVCollide->solids[0];
-			element.origin = pOther->GetAbsOrigin();
-			element.angles = pOther->GetAbsAngles();
-			collideList.AddToTail( element );
-		}
-		else
-		{
-			return false;
-		}
-
-		for ( int i = collideList.Count() - 1; i >= 0; --i )
-		{
-			const collidelist_t &element = collideList[i];
-			trace_t tr;
-			physcollision->TraceCollide( pTrace->startpos, element.origin, element.pCollide, element.angles, pTriggerCollide, GetAbsOrigin(), GetAbsAngles(), &tr );
-			if ( !tr.DidHit() )
-				return false;
-		}
+		Vector vecDir = GetAbsVelocity();
+		if ( vecDir.LengthSqr() < 1.0f )
+			vecDir = -pTrace->plane.normal;
+		if ( vecDir.LengthSqr() < 0.01f )
+			vecDir = Vector( 1.0f, 0.0f, 0.0f );
+		VectorNormalize( vecDir );
+		vecStart -= vecDir * 8.0f;
+		vecEnd = vecStart + vecDir * 48.0f;
 	}
 
-	return true;
+	return ProjectileShouldCollideWith( pOther, vecStart, vecEnd );
+}
+
+//-----------------------------------------------------------------------------
+// The sweep stopped on a bounding box. Finish the move, ignoring every model
+// that doesn't have a collision mesh in the way, and stop on real geometry.
+//-----------------------------------------------------------------------------
+void CBaseProjectile::FlyThroughBoundingBoxHit( const trace_t &trace, const Vector &vecMove )
+{
+	Vector vecDir = vecMove;
+	float flMove = VectorNormalize( vecDir );
+	if ( flMove < 0.01f )
+	{
+		vecDir = GetAbsVelocity() * gpGlobals->frametime;
+		flMove = VectorNormalize( vecDir );
+	}
+	if ( flMove < 0.01f )
+		return;
+
+	Vector vecEnd = trace.startpos + vecDir * flMove;
+	CTraceFilterProjectileRealCollision filter( this, GetCollisionGroup(), trace.startpos, vecEnd );
+	unsigned int nMask = PhysicsSolidMaskForEntity();
+
+	Vector vecStart = GetAbsOrigin();
+	trace_t tr;
+	UTIL_TraceHull( vecStart, vecEnd, WorldAlignMins(), WorldAlignMaxs(), nMask, &filter, &tr );
+
+	if ( tr.startsolid && trace.m_pEnt )
+	{
+		Vector vecMins, vecMaxs;
+		trace.m_pEnt->CollisionProp()->WorldSpaceAABB( &vecMins, &vecMaxs );
+		float flPad = ( WorldAlignMaxs() - WorldAlignMins() ).Length() + 1.0f;
+		vecMins -= Vector( flPad, flPad, flPad );
+		vecMaxs += Vector( flPad, flPad, flPad );
+
+		float flLeftSolid = 1.0f;
+		CBaseTrace boxTrace;
+		Vector vecDelta = vecDir * ( ( vecMaxs - vecMins ).Length() + flMove );
+		IntersectRayWithBox( GetAbsOrigin(), vecDelta, vecMins, vecMaxs, 0.0f, &boxTrace, &flLeftSolid );
+		vecStart = GetAbsOrigin() + vecDelta * flLeftSolid + vecDir;
+		vecEnd = vecStart + vecDir * flMove;
+		UTIL_TraceHull( vecStart, vecEnd, WorldAlignMins(), WorldAlignMaxs(), nMask, &filter, &tr );
+	}
+
+	if ( !tr.startsolid )
+		SetAbsOrigin( tr.endpos );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Don't park on a bounding box. Real hits keep the old fly resolution
+// (rockets explode from their touch, and never get here still alive).
+//-----------------------------------------------------------------------------
+void CBaseProjectile::ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity )
+{
+	if ( GetModelName() != NULL_STRING && trace.m_pEnt && !ShouldTouchNonWorldSolid( trace.m_pEnt, &trace ) )
+	{
+		FlyThroughBoundingBoxHit( trace, vecVelocity );
+		return;
+	}
+
+	BaseClass::ResolveFlyCollisionCustom( trace, vecVelocity );
 }
 
 extern float g_flServerCurTime;

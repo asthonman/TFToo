@@ -52,6 +52,12 @@ public:
 
 	virtual bool CanCollideWithTeammates() const { return m_bCanCollideWithTeammates; }
 	virtual float GetCollideWithTeammatesDelay() const { return 0.25f; }
+
+	// True when this overlap is real geometry (a brush, a player, or a model's
+	// collision mesh). A bounding-box overlap by itself is not.
+	virtual bool ShouldTouchNonWorldSolid( CBaseEntity *pOther, const trace_t *pTrace );
+	virtual void ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity );
+	void FlyThroughBoundingBoxHit( const trace_t &trace, const Vector &vecMove );
 #endif // GAME_DLL
 
 #ifdef TF_DLL
@@ -67,7 +73,6 @@ public:
 protected:
 #ifdef GAME_DLL
 	void CollideWithTeammatesThink();
-	virtual bool ShouldTouchNonWorldSolid( CBaseEntity *pOther, const trace_t *pTrace );
 
 	int m_iDestroyableHitCount;
 #endif // GAME_DLL

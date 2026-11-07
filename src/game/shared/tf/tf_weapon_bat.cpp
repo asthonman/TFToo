@@ -26,6 +26,7 @@
 #include "particle_parse.h"
 #include "tf_projectile_base.h"
 #include "tf_gamerules.h"
+#include "physics_shared.h"
 #endif
 
 const float DEFAULT_ORNAMENT_EXPLODE_RADIUS = 50.0f;
@@ -888,6 +889,34 @@ void CTFStunBall::PipebombTouch( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 void CTFStunBall::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
 {
+	int otherIndex = !index;
+	CBaseEntity *pHitEntity = pEvent->pEntities[otherIndex];
+
+	// The physics broadphase only checked the bounding box. If the model has
+	// no collision mesh in the way, don't bounce or pop.
+	if ( pHitEntity && !pHitEntity->IsWorld() )
+	{
+		Vector vecVel = pEvent->preVelocity[index];
+		Vector vecDir = vecVel;
+		if ( VectorNormalize( vecDir ) < 1.0f )
+			vecDir = Vector( 1.0f, 0.0f, 0.0f );
+
+		trace_t probe;
+		memset( &probe, 0, sizeof( probe ) );
+		probe.m_pEnt = pHitEntity;
+		probe.startpos = GetAbsOrigin() - vecDir * 8.0f;
+		probe.endpos = GetAbsOrigin() + vecDir * 32.0f;
+
+		if ( !ShouldTouchNonWorldSolid( pHitEntity, &probe ) )
+		{
+			PhysDisableEntityCollisions( this, pHitEntity );
+			IPhysicsObject *pPhys = VPhysicsGetObject();
+			if ( pPhys )
+				pPhys->SetVelocity( &vecVel, NULL );
+			return;
+		}
+	}
+
 	CTFPlayer* pOwner = ToTFPlayer( GetOwnerEntity() );
 	bool bWasTouched = m_bTouched;
 	BaseClass::VPhysicsCollision( index, pEvent );
