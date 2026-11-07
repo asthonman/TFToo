@@ -372,36 +372,54 @@ static float SpellTossRightOffset( CTFPlayer *pPlayer )
 	return fRight;
 }
 
-// Same toss point TossJarThink uses, then the 32x32x36 box the teleport checks with.
+// The 32x32x36 box is tested 32 units out along her eyes, not at the hand.
+// A point that close to a wall she is already touching used to miss the wall.
 bool WitchTeleportSpawnBlocked( CTFPlayer *pPlayer )
 {
 	if ( !pPlayer )
 		return false;
 
-	Vector vecForward, vecRight, vecUp;
-	AngleVectors( pPlayer->EyeAngles(), &vecForward, &vecRight, &vecUp );
+	Vector vecForward;
+	AngleVectors( pPlayer->EyeAngles(), &vecForward );
 
-	Vector vecSrc = pPlayer->Weapon_ShootPosition();
-	vecSrc += ( vecUp * -9.0f ) + ( vecRight * SpellTossRightOffset( pPlayer ) ) + ( vecForward * 3.0f );
-
-	trace_t trace;
-	CTraceFilterSimple traceFilter( pPlayer, COLLISION_GROUP_NONE );
-	UTIL_TraceHull( pPlayer->EyePosition(), vecSrc, -Vector( 8, 8, 8 ), Vector( 8, 8, 8 ), MASK_SOLID_BRUSHONLY, &traceFilter, &trace );
-	if ( trace.startsolid )
-		return true;
-
-	const Vector vecMins( -16.f, -16.f, 0.f );
-	const Vector vecMaxs( 16.f, 16.f, 36.f );
 	unsigned int nMask = MASK_PLAYERSOLID_BRUSHONLY;
 	if ( pPlayer->GetTeamNumber() == TF_TEAM_RED )
 		nMask |= CONTENTS_BLUETEAM;
 	else if ( pPlayer->GetTeamNumber() == TF_TEAM_BLUE )
 		nMask |= CONTENTS_REDTEAM;
 
-	trace_t tr;
 	CTraceFilterWorldOnly filter;
-	UTIL_TraceHull( trace.endpos, trace.endpos, vecMins, vecMaxs, nMask, &filter, &tr );
-	return tr.startsolid || tr.allsolid;
+	const Vector vecEye = pPlayer->EyePosition();
+	const Vector vecCheck = vecEye + vecForward * 32.f;
+
+	trace_t ray;
+	UTIL_TraceLine( vecEye, vecCheck, nMask, &filter, &ray );
+	if ( ray.startsolid || ray.fraction < 1.f )
+		return true;
+
+	// Same box the projectile sweeps. Its center sits on that point.
+	const Vector vecMins( -16.f, -16.f, -18.f );
+	const Vector vecMaxs( 16.f, 16.f, 18.f );
+	trace_t box;
+	UTIL_TraceHull( vecCheck, vecCheck, vecMins, vecMaxs, nMask, &filter, &box );
+	if ( box.startsolid || box.allsolid )
+		return true;
+
+	// Pressed against a surface and looking into it. The ray can miss a
+	// wall her hull is already touching if she aims along the face.
+	Vector vecAim = vecForward;
+	vecAim.z = 0.f;
+	if ( vecAim.LengthSqr() > 0.01f )
+	{
+		VectorNormalize( vecAim );
+		const Vector vecStart = pPlayer->GetAbsOrigin() + Vector( 0.f, 0.f, 2.f );
+		trace_t touch;
+		UTIL_TraceHull( vecStart, vecStart + vecAim * 2.f, pPlayer->GetPlayerMins(), pPlayer->GetPlayerMaxs(), nMask, &filter, &touch );
+		if ( touch.startsolid || ( touch.fraction < 1.f && touch.plane.normal.Dot( vecAim ) < 0.f ) )
+			return true;
+	}
+
+	return false;
 }
 
 int GetSpellIndexFromContext( int iContext )
