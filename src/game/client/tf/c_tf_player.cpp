@@ -12131,3 +12131,15 @@ static void cc_helpme_released( const CCommand &args )
 	engine->ServerCmdKeyValues( kv );
 }
 static ConCommand helpme_released( "-helpme", cc_helpme_released );
+
+static int s_nItemDescriptionClass = TF_CLASS_UNDEFINED;
+
+void TF_SetItemDescriptionClass( int iClass )
+{
+	s_nItemDescriptionClass = iClass;
+}
+
+int TF_GetItemDescriptionClass( void )
+{
+	return s_nItemDescriptionClass;
+}

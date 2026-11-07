@@ -808,6 +808,9 @@ void CClassLoadoutPanel::OnShowPanel( bool bVisible, bool bReturningFromArmory )
 {
 	if ( bVisible )
 	{
+		if ( m_iCurrentClassIndex != TF_CLASS_UNDEFINED )
+			TF_SetItemDescriptionClass( m_iCurrentClassIndex );
+
 		// always start in character loadout page
 		SetLoadoutPage( CHARACTER_LOADOUT_PAGE );
 
@@ -842,6 +845,9 @@ void CClassLoadoutPanel::OnShowPanel( bool bVisible, bool bReturningFromArmory )
 	}
 	else
 	{
+		if ( !bReturningFromArmory )
+			TF_SetItemDescriptionClass( TF_CLASS_UNDEFINED );
+
 		if ( m_pPlayerModelPanel )
 		{
 			m_pPlayerModelPanel->ClearCarriedItems();
@@ -873,6 +879,7 @@ void CClassLoadoutPanel::PostShowPanel( bool bVisible )
 void CClassLoadoutPanel::SetClass( int iClass )
 {
 	m_iCurrentClassIndex = iClass;
+	TF_SetItemDescriptionClass( iClass );
 
 	if ( m_pLoadoutPresetPanel )
 	{
@@ -1106,6 +1113,8 @@ void CClassLoadoutPanel::ApplyKVsToItemPanels( void )
 //-----------------------------------------------------------------------------
 void CClassLoadoutPanel::OnClosing( void )
 {
+	TF_SetItemDescriptionClass( TF_CLASS_UNDEFINED );
+
 	if ( m_pPlayerModelPanel )
 	{
 		m_pPlayerModelPanel->ClearCarriedItems();

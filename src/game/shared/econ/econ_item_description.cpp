@@ -34,6 +34,7 @@
 	#ifdef TF_CLIENT_DLL
 		#include "tf_gamerules.h"
 		#include "tf_mapinfo.h"
+		#include "c_tf_player.h"
 	#endif 
 #endif
 
@@ -3472,6 +3473,73 @@ static attrib_colors_t GetAttributeDefaultColor( const CEconItemAttributeDefinit
 	return ATTRIB_COL_NEUTRAL;
 }
 
+#ifdef TF_CLIENT_DLL
+static bool DescribeCloakAsMana( void )
+{
+	int iClass = TF_GetItemDescriptionClass();
+	if ( iClass <= TF_CLASS_UNDEFINED )
+	{
+		C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+		if ( pLocal && pLocal->GetPlayerClass() )
+			iClass = pLocal->GetPlayerClass()->GetClassIndex();
+	}
+
+	return iClass == TF_CLASS_WITCH;
+}
+
+static bool IsCloakMeterAttribute( const CEconItemAttributeDefinition *pAttribDef )
+{
+	const char *pszClass = pAttribDef ? pAttribDef->GetAttributeClass() : NULL;
+	if ( !pszClass )
+		return false;
+
+	return FStrEq( pszClass, "add_cloak_on_hit" )
+		|| FStrEq( pszClass, "mult_cloak_meter_consume_rate" )
+		|| FStrEq( pszClass, "mult_cloak_meter_regen_rate" );
+}
+
+// "cloak" and "mana" are different lengths, so this copies into a static buffer.
+static const locchar_t *CloakTextAsMana( const locchar_t *pIn, int iSlot )
+{
+	if ( !pIn )
+		return NULL;
+
+	static locchar_t s_buf[2][1024];
+	if ( iSlot < 0 || iSlot > 1 )
+		iSlot = 0;
+
+	const locchar_t *pCloak[3] = { LOCCHAR( "Cloak" ), LOCCHAR( "cloak" ), LOCCHAR( "CLOAK" ) };
+	const locchar_t *pMana[3] = { LOCCHAR( "Mana" ), LOCCHAR( "mana" ), LOCCHAR( "MANA" ) };
+
+	int o = 0;
+	for ( int i = 0; pIn[i] && o < 1022; )
+	{
+		bool bMatched = false;
+		for ( int k = 0; k < 3; ++k )
+		{
+			int n = 0;
+			while ( pCloak[k][n] && pIn[i + n] == pCloak[k][n] )
+				++n;
+
+			if ( n > 0 && pCloak[k][n] == 0 )
+			{
+				for ( int m = 0; pMana[k][m] && o < 1022; ++m )
+					s_buf[iSlot][o++] = pMana[k][m];
+				i += n;
+				bMatched = true;
+				break;
+			}
+		}
+
+		if ( !bMatched )
+			s_buf[iSlot][o++] = pIn[i++];
+	}
+
+	s_buf[iSlot][o] = 0;
+	return s_buf[iSlot];
+}
+#endif
+
 // --------------------------------------------------------------------------
 // Purpose:
 // --------------------------------------------------------------------------
@@ -3500,12 +3568,26 @@ void CEconAttributeDescription::InternalConstruct
 	if ( !loc_String )
 		return;
 
+#ifdef TF_CLIENT_DLL
+	if ( DescribeCloakAsMana() && IsCloakMeterAttribute( pAttribDef ) )
+	{
+		loc_String = const_cast<locchar_t *>( CloakTextAsMana( loc_String, 0 ) );
+		if ( !loc_String )
+			return;
+	}
+#endif
+
 	char szAttrShortDescToken[MAX_PATH];
 	V_sprintf_safe( szAttrShortDescToken, "%s%s", pAttribDef->GetDescriptionString(), "_shortdesc" );
 
 	locchar_t *loc_ShortString = pLocalizationProvider 
 							   ? pLocalizationProvider->Find( szAttrShortDescToken ) 
 							   : NULL;
+
+#ifdef TF_CLIENT_DLL
+	if ( loc_ShortString && DescribeCloakAsMana() && IsCloakMeterAttribute( pAttribDef ) )
+		loc_ShortString = const_cast<locchar_t *>( CloakTextAsMana( loc_ShortString, 1 ) );
+#endif
 
 	// How do we format an attribute value of this type?
 	switch ( pAttribDef->GetDescriptionFormat() )

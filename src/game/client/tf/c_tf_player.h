@@ -1166,4 +1166,9 @@ private:
 	bool  m_bCreatedWhilePlaybackSkipping;
 };
 
+// Loadout class used while an item description is built. TF_CLASS_UNDEFINED
+// means "use the local player's class".
+void TF_SetItemDescriptionClass( int iClass );
+int TF_GetItemDescriptionClass( void );
+
 #endif // C_TF_PLAYER_H

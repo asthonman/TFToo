@@ -6905,7 +6905,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		flDamage += flCritDamage;
 	}
 
-	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) )
+	if ( pTFAttacker && ( pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) || pTFAttacker->IsPlayerClass( TF_CLASS_WITCH ) ) )
 	{
 		if ( pTFAttacker->GetActiveWeapon() )
 		{

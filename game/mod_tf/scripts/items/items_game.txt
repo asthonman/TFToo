@@ -16303,7 +16303,6 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
-				"witch"	"1"
 			}
 			"static_attrs"
 			{
@@ -39351,7 +39350,6 @@
 			"used_by_classes"
 			{
 				"spy"	"1"
-				"witch"	"1"
 			}
 			"static_attrs"
 			{

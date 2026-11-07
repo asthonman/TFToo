@@ -185,6 +185,8 @@ static const int g_doomsdayNormalSpellIndexList[] =
 	2,	//overheal
 	4,	//Jump
 	5,	//Stealth
+	6,	//Teleport
+	6,	//Teleport
 };
 
 static const int g_doomsdayRareSpellIndexList[] =
@@ -199,10 +201,10 @@ static const int g_doomsdayRareSpellIndexList[] =
 };
 
 // Regular SpellList
-// teleport and summons removed
+// summons removed. Teleport is allowed; its check box stops it in map gaps.
 static const int g_generalSpellIndexList[] =
 {
-	0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 
+	0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
 	ARRAYSIZE ( g_NormalSpellList ) + 0, 
 	ARRAYSIZE ( g_NormalSpellList ) + 1, 
 	ARRAYSIZE ( g_NormalSpellList ) + 2
@@ -262,7 +264,7 @@ const spell_data_t* GetSpellData( int iSpellIndex )
 static const int s_nWitchSpellIndex[] =
 {
 	5,										// Stealth
-	4,										// Blast jump
+	6,										// Teleport
 	ARRAYSIZE( g_NormalSpellList ) + 1,		// Athletic
 	3,										// Pumpkin MIRV
 	0,										// Fireball
@@ -275,7 +277,7 @@ static const int s_nWitchSpellIndex[] =
 static const int s_nWitchSpellManaCost[] =
 {
 	50,		// Stealth (unused lump; this one drains like the Spy watch)
-	25,		// Blast jump
+	50,		// Teleport
 	75,		// Athletic
 	75,		// Pumpkin MIRV
 	50,		// Fireball
@@ -2904,6 +2906,8 @@ public:
 		BaseClass::Spawn();
 		SetCollisionGroup( COLLISION_GROUP_PLAYER_MOVEMENT );
 #ifdef GAME_DLL
+		m_bTeleportExploded = false;
+		m_bTeleportCheckHasPos = false;
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
 #endif
 	}
@@ -2919,9 +2923,74 @@ public:
 	}
 
 #ifdef GAME_DLL
+	// The projectile itself keeps its normal flight. This box only asks
+	// whether a 32x32x36 axis-aligned hull could have come along.
+	bool SweepTeleportCheckBox( void )
+	{
+		if ( m_bTeleportExploded )
+			return true;
+
+		const Vector vecEnd = GetAbsOrigin();
+		if ( !m_bTeleportCheckHasPos )
+		{
+			m_vecTeleportCheckPos = vecEnd;
+			m_bTeleportCheckHasPos = true;
+			return false;
+		}
+
+		// 32 x 32 x 36, centered on the projectile, never rotated.
+		const Vector vecMins( -16.f, -16.f, -18.f );
+		const Vector vecMaxs( 16.f, 16.f, 18.f );
+
+		unsigned int nMask = MASK_PLAYERSOLID_BRUSHONLY;
+		if ( GetTeamNumber() == TF_TEAM_RED )
+			nMask |= CONTENTS_BLUETEAM;
+		else if ( GetTeamNumber() == TF_TEAM_BLUE )
+			nMask |= CONTENTS_REDTEAM;
+
+		trace_t tr;
+		CTraceFilterWorldOnly filter;
+		UTIL_TraceHull( m_vecTeleportCheckPos, vecEnd, vecMins, vecMaxs, nMask, &filter, &tr );
+
+		if ( !tr.DidHit() && !tr.startsolid )
+		{
+			m_vecTeleportCheckPos = vecEnd;
+			return false;
+		}
+
+		if ( tr.surface.flags & SURF_SKY )
+		{
+			UTIL_Remove( this );
+			return true;
+		}
+
+		if ( tr.startsolid )
+		{
+			tr.endpos = m_vecTeleportCheckPos;
+			tr.fraction = 0.f;
+			Vector vecDir = vecEnd - m_vecTeleportCheckPos;
+			VectorNormalize( vecDir );
+			tr.plane.normal = -vecDir;
+		}
+
+		Explode( &tr, GetDamageType() );
+		return true;
+	}
+
+	virtual void Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE
+	{
+		if ( m_bTeleportExploded )
+			return;
+
+		m_bTeleportExploded = true;
+		BaseClass::Explode( pTrace, bitsDamageType );
+	}
 
 	void RecordPosThink( void )
 	{
+		if ( SweepTeleportCheckBox() )
+			return;
+
 		m_vecTrailingPos.AddToTail( GetAbsOrigin() );
 
 		// Only retain 5 positions
@@ -2999,6 +3068,9 @@ public:
 private:
 #ifdef GAME_DLL
 	CUtlVector< Vector > m_vecTrailingPos;
+	Vector m_vecTeleportCheckPos;
+	bool m_bTeleportCheckHasPos;
+	bool m_bTeleportExploded;
 #endif
 };
 

@@ -9744,6 +9744,20 @@ bool CTFPlayerShared::AddToSpyCloakMeter( float val, bool bForce )
 		return m_pOuter->AddResupplyThrowMeter( val );
 #endif
 
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		if ( val == 0.f )
+			return false;
+
+		const bool bResult = ( val > 0 && m_flCloakMeter < 100.0f );
+		m_flCloakMeter = clamp( m_flCloakMeter + val, 0.0f, 100.0f );
+		if ( m_flCloakMeter >= 100.0f )
+			m_bWitchManaExhausted = false;
+		else if ( m_flCloakMeter <= 0.0f )
+			m_bWitchManaExhausted = true;
+		return bResult;
+	}
+
 	CTFWeaponInvis *pWpn = (CTFWeaponInvis *) m_pOuter->Weapon_OwnsThisID( TF_WEAPON_INVIS );
 	if ( !pWpn )
 		return false;
@@ -14298,6 +14312,19 @@ void CTFPlayerShared::UpdateCloakMeter( void )
 	// watch itself are not part of this.
 	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
+		// L'Etranger's cloak rates apply to mana. Same conversion the watch uses.
+		float fCloakConsumeRate = tf_spy_cloak_consume_rate.GetFloat();
+		float fCloakConsumeFactor = 1.0f;
+		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_pOuter, fCloakConsumeFactor, mult_cloak_meter_consume_rate );
+		if ( fCloakConsumeFactor < 1.0f )
+			fCloakConsumeFactor = 1.0f / ( 2.0f - fCloakConsumeFactor );
+		m_fCloakConsumeRate = fCloakConsumeRate * fCloakConsumeFactor;
+
+		float fCloakRegenRate = tf_spy_cloak_regen_rate.GetFloat();
+		float fCloakRegenFactor = 1.0f;
+		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_pOuter, fCloakRegenFactor, mult_cloak_meter_regen_rate );
+		m_fCloakRegenRate = fCloakRegenRate * fCloakRegenFactor;
+
 		if ( InCond( TF_COND_STEALTHED ) )
 		{
 			m_flCloakMeter -= gpGlobals->frametime * m_fCloakConsumeRate;
