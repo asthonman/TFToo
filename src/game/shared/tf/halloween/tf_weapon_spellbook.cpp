@@ -2273,6 +2273,23 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_SpellBats, DT_TFProjectile_SpellBat
 PRECACHE_WEAPON_REGISTER( tf_projectile_spellbats );
 
 // *************************************************************************************************************************
+#ifdef GAME_DLL
+// Airblast still turns the projectile around, but the summoned boss or
+// skeletons stay on the caster's team.
+static void DeflectSpellKeepSummonTeam( CTFGrenadePipebombProjectile *pProjectile, CBaseEntity *pDeflectedBy, Vector &vecDir )
+{
+	const int nTeam = pProjectile->GetTeamNumber();
+	CBaseCombatCharacter *pThrower = pProjectile->GetThrower();
+	CBaseEntity *pLauncher = pProjectile->GetLauncher();
+
+	pProjectile->CTFGrenadePipebombProjectile::Deflected( pDeflectedBy, vecDir );
+
+	pProjectile->ChangeTeam( nTeam );
+	pProjectile->SetThrower( pThrower );
+	pProjectile->SetLauncher( pLauncher );
+}
+#endif
+
 class CTFProjectile_SpellSpawnZombie : public CTFProjectile_SpellBats
 {
 public:
@@ -2292,6 +2309,11 @@ public:
 	virtual int			GetCustomDamageType() const OVERRIDE { return TF_DMG_CUSTOM_SPELL_SKELETON; }
 
 #ifdef GAME_DLL
+
+	virtual void Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE
+	{
+		DeflectSpellKeepSummonTeam( this, pDeflectedBy, vecDir );
+	}
 
 	virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) { }
 	virtual void PipebombTouch( CBaseEntity *pOther ) { }
@@ -2409,6 +2431,11 @@ public:
 	virtual int			GetCustomDamageType() const OVERRIDE { return TF_DMG_CUSTOM_SPELL_SKELETON; }
 
 #ifdef GAME_DLL
+	virtual void Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE
+	{
+		DeflectSpellKeepSummonTeam( this, pDeflectedBy, vecDir );
+	}
+
 	//virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) { }
 	//virtual void PipebombTouch( CBaseEntity *pOther ) { }
 
@@ -2623,6 +2650,11 @@ public:
 	virtual int			GetCustomDamageType() const OVERRIDE { return TF_DMG_CUSTOM_SPELL_MONOCULUS; }
 
 #ifdef GAME_DLL
+
+		virtual void Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE
+		{
+			DeflectSpellKeepSummonTeam( this, pDeflectedBy, vecDir );
+		}
 
 		//virtual void		Explode( trace_t *pTrace, int bitsDamageType );	
 		virtual bool InitialExplodeEffects( CTFPlayer *pThrower, const trace_t *pTrace ) OVERRIDE
