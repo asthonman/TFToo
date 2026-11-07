@@ -12503,7 +12503,7 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				return false;
 			}
 
-			const float flCost = (float)GetWitchSpellManaCost( iSpell );
+			const float flCost = (float)GetWitchSpellManaCostForPlayer( this, iSpell );
 			if ( m_Shared.GetSpyCloakMeter() < flCost )
 			{
 #ifdef CLIENT_DLL

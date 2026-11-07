@@ -53,6 +53,18 @@ CTFRevolver::CTFRevolver()
 }
 
 //-----------------------------------------------------------------------------
+// The spy script keeps this gun on key 1. The Witch's copy is her secondary.
+//-----------------------------------------------------------------------------
+int CTFRevolver::GetSlot( void ) const
+{
+	const CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
+	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return 1;
+
+	return BaseClass::GetSlot();
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 bool CTFRevolver::DefaultReload( int iClipSize1, int iClipSize2, int iActivity )

@@ -144,6 +144,8 @@ void RemoveAll2013HalloweenTeleportSpellsInMidFlight( void );
 int GetWitchSpellCount( void );
 int GetWitchSpellGameIndex( int iSlot );
 int GetWitchSpellManaCost( int iSlot );
+// L'Etranger's slower drain also cuts this, except Overheal and meteor storm.
+int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot );
 const char *GetWitchSpellUiName( int iSlot );
 const char *GetWitchSpellIcon( int iSlot );
 // Stealth is a Spy cloak toggle. It drains the mana meter instead of spending a lump cost.

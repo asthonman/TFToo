@@ -9,6 +9,7 @@
 #include "decals.h"
 #include "tf_gamerules.h"
 #include "tf_pumpkin_bomb.h"
+#include "attribute_manager.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -309,6 +310,29 @@ int GetWitchSpellManaCost( int iSlot )
 	return s_nWitchSpellManaCost[ iSlot ];
 }
 
+int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot )
+{
+	const int iCost = GetWitchSpellManaCost( iSlot );
+	if ( !pPlayer || iCost <= 0 || IsWitchSpellStealth( iSlot ) )
+		return iCost;
+
+	// Overheal and meteor storm stay at full price. Not listed on the gun.
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( pSpell && ( pSpell->m_pCastSpell == &CTFSpellBook::CastSelfHeal
+		|| ( pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" ) ) ) )
+		return iCost;
+
+	float flFactor = 1.0f;
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flFactor, mult_cloak_meter_consume_rate );
+	if ( flFactor <= 0.0f || flFactor >= 1.0f )
+		return iCost;
+
+	// Same conversion the cloak drain uses, so the cost falls with the drain.
+	flFactor = 1.0f / ( 2.0f - flFactor );
+	const int iAdjusted = (int)( iCost * flFactor + 0.5f );
+	return iAdjusted > 0 ? iAdjusted : 1;
+}
+
 const char *GetWitchSpellUiName( int iSlot )
 {
 	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
@@ -531,7 +555,7 @@ bool CHudSpellMenu::ShouldDraw( void )
 			return false;
 
 		const int iSlot = pPlayer->m_Shared.GetWitchSpell();
-		UpdateSpellText( GetWitchSpellGameIndex( iSlot ), GetWitchSpellManaCost( iSlot ) );
+		UpdateSpellText( GetWitchSpellGameIndex( iSlot ), GetWitchSpellManaCostForPlayer( pPlayer, iSlot ) );
 		PlaceBesideManaMeter();
 		return CHudElement::ShouldDraw();
 	}
@@ -629,7 +653,7 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 				}
 				else
 				{
-					const int iCost = GetWitchSpellManaCost( pLocalPlayer->m_Shared.GetWitchSpell() );
+					const int iCost = GetWitchSpellManaCostForPlayer( pLocalPlayer, pLocalPlayer->m_Shared.GetWitchSpell() );
 					int nCasts = 0;
 					if ( iCost > 0 )
 						nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
@@ -3002,6 +3026,70 @@ public:
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
 	}
 
+	bool DuckHullFits( CTFPlayer *pPlayer, const Vector &vecOrigin, unsigned int nMask, ITraceFilter *pFilter )
+	{
+		trace_t tr;
+		UTIL_TraceHull( vecOrigin, vecOrigin, VEC_DUCK_HULL_MIN_SCALED( pPlayer ), VEC_DUCK_HULL_MAX_SCALED( pPlayer ), nMask, pFilter, &tr );
+		return !tr.startsolid && !tr.allsolid;
+	}
+
+	// The check box already hit. Put her where a crouched hull fits, or on the
+	// impact itself if nothing larger is clear.
+	bool FindTeleportDestination( CTFPlayer *pThrower, const trace_t *pTrace, Vector *pOut )
+	{
+		unsigned int nMask = pThrower->GetTeamNumber() == TF_TEAM_RED ? CONTENTS_BLUETEAM : CONTENTS_REDTEAM;
+		nMask |= MASK_PLAYERSOLID;
+		CTraceFilterIgnoreTeammates filter( this, COLLISION_GROUP_PLAYER_MOVEMENT, GetTeamNumber() );
+
+		Vector vecImpact = pTrace->endpos;
+		if ( pTrace->fraction < 1.0f )
+			vecImpact += pTrace->plane.normal * 4.0f;
+
+		// Box is centered on the projectile. Feet sit on its bottom.
+		const Vector vecFeet = vecImpact + Vector( 0.f, 0.f, -18.f );
+
+		CUtlVector< Vector > candidates;
+		candidates.AddToTail( vecFeet );
+		candidates.AddToTail( vecImpact );
+
+		Vector vecBack = pTrace->plane.normal;
+		if ( vecBack.LengthSqr() < 0.01f )
+			vecBack = m_vecTeleportCheckPos - vecImpact;
+		VectorNormalize( vecBack );
+		for ( int i = 1; i <= 8; ++i )
+			candidates.AddToTail( vecFeet + vecBack * ( i * 8.0f ) );
+
+		FOR_EACH_VEC_BACK( m_vecTrailingPos, i )
+			candidates.AddToTail( m_vecTrailingPos[i] + Vector( 0.f, 0.f, -18.f ) );
+
+		FOR_EACH_VEC( candidates, i )
+		{
+			if ( DuckHullFits( pThrower, candidates[i], nMask, &filter ) )
+			{
+				*pOut = candidates[i];
+				return true;
+			}
+		}
+
+		*pOut = vecFeet;
+		return true;
+	}
+
+	void SnapTeleportCrouch( CTFPlayer *pPlayer )
+	{
+		// Arriving crouched. If she is not holding crouch, movement stands her
+		// back up unless the ceiling or a wall is in the way.
+		pPlayer->AddFlag( FL_DUCKING );
+		pPlayer->m_Local.m_bDucked = true;
+		pPlayer->m_Local.m_bDucking = false;
+		pPlayer->m_Local.m_bInDuckJump = false;
+		pPlayer->m_Local.m_flDucktime = 1000.0f;
+		pPlayer->m_Local.m_flDuckJumpTime = 0.0f;
+		pPlayer->m_Local.m_flJumpTime = 0.0f;
+		pPlayer->SetViewOffset( VEC_DUCK_VIEW_SCALED( pPlayer ) );
+		pPlayer->SetCollisionBounds( VEC_DUCK_HULL_MIN_SCALED( pPlayer ), VEC_DUCK_HULL_MAX_SCALED( pPlayer ) );
+	}
+
 	virtual bool InitialExplodeEffects( CTFPlayer *pThrower, const trace_t *pTrace ) OVERRIDE
 	{
 		if ( !pThrower->IsAlive() )
@@ -3010,48 +3098,29 @@ public:
 		// Grant a small amount of health
 		pThrower->TakeHealth( 30, DMG_GENERIC );
 
-		trace_t result;
-		CTraceFilterIgnoreTeammates traceFilter( this, COLLISION_GROUP_PLAYER_MOVEMENT, GetTeamNumber() );
-		unsigned int nMask = pThrower->GetTeamNumber() == TF_TEAM_RED ? CONTENTS_BLUETEAM : CONTENTS_REDTEAM;
-		nMask |= MASK_PLAYERSOLID;
+		Vector vecDest;
+		FindTeleportDestination( pThrower, pTrace, &vecDest );
 
-		m_vecTrailingPos.AddToTail( pTrace->endpos + ( pTrace->plane.normal * 50.f ) );
+		const Vector vecOrigin = pThrower->GetAbsOrigin();
+		CPVSFilter pvsFilter( vecOrigin );
+		TE_TFParticleEffect( pvsFilter, 0.0, GetExplodeEffectParticle(), vecOrigin, vec3_angle );
 
-		// Try a few spots
-		FOR_EACH_VEC_BACK( m_vecTrailingPos, i )
+		Vector vecStop( vec3_origin );
+		pThrower->Teleport( &vecDest, &pThrower->GetAbsAngles(), &vecStop );
+		pThrower->SetGroundEntity( NULL );
+		SnapTeleportCrouch( pThrower );
+
+		pThrower->SetFOV( pThrower, 0, 0.3f, 120 );
+
+		color32 fadeColor = {255,255,255,100};
+		UTIL_ScreenFade( pThrower, fadeColor, 0.25, 0.4, FFADE_IN );
+
+		if ( TFGameRules() )
 		{
-			// Try positions starting with the current, and moving back in time a bit
-			Vector vecStart = m_vecTrailingPos[i];
-			UTIL_TraceHull( vecStart, vecStart, VEC_HULL_MIN, VEC_HULL_MAX, nMask, &traceFilter, &result );
-
-			if( !result.DidHit() )
-			{
-				// Place a teleport effect where they came from
-				const Vector& vecOrigin = pThrower->GetAbsOrigin();
-				CPVSFilter pvsFilter( vecOrigin );
-				TE_TFParticleEffect( pvsFilter, 0.0, GetExplodeEffectParticle(), vecOrigin, vec3_angle );
-
-				// Move 'em!
-				pThrower->Teleport( &vecStart, &pThrower->GetAbsAngles(), NULL );
-
-				// Do a zoom effect
-				pThrower->SetFOV( pThrower, 0, 0.3f, 120 );
-
-				// Screen flash
-				color32 fadeColor = {255,255,255,100};
-				UTIL_ScreenFade( pThrower, fadeColor, 0.25, 0.4, FFADE_IN );
-
-				if ( TFGameRules() )
-				{
-					TFGameRules()->HaveAllPlayersSpeakConceptIfAllowed( MP_CONCEPT_PLAYER_SPELL_TELEPORT, ( pThrower->GetTeamNumber() == TF_TEAM_RED ) ? TF_TEAM_BLUE : TF_TEAM_RED );
-				}
-				
-				// Success!
-				return true;
-			}
+			TFGameRules()->HaveAllPlayersSpeakConceptIfAllowed( MP_CONCEPT_PLAYER_SPELL_TELEPORT, ( pThrower->GetTeamNumber() == TF_TEAM_RED ) ? TF_TEAM_BLUE : TF_TEAM_RED );
 		}
 
-		return false;
+		return true;
 	}
 	virtual void ExplodeEffectOnTarget( CTFPlayer *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget )
 	{

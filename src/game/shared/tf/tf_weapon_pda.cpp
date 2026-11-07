@@ -1098,7 +1098,7 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 				else
 				{
 					char szCost[16];
-					Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCost( i ) );
+					Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i ) );
 					pCosts[nSide]->SetText( szCost );
 					pCosts[nSide]->SetVisible( true );
 					pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
