@@ -2940,6 +2940,7 @@ public:
 	virtual int			GetWeaponID( void ) const			{ return TF_PROJECTILE_SPELL; }
 	virtual float		GetDamageRadius()	const			{ return 5.0f; }
 	virtual int			GetCustomDamageType() const OVERRIDE { return TF_DMG_CUSTOM_SPELL_TELEPORT; }
+	virtual bool		IsDeflectable() OVERRIDE { return false; }
 
 	virtual unsigned int PhysicsSolidMaskForEntity( void ) const
 	{
@@ -2962,9 +2963,10 @@ public:
 			return false;
 		}
 
-		// 32 x 32 x 36, centered on the projectile, never rotated.
-		const Vector vecMins( -16.f, -16.f, -18.f );
-		const Vector vecMaxs( 16.f, 16.f, 18.f );
+		// 32 x 32 x 36. The bottom face sits on the projectile, which is also
+		// where her feet land, so the clear space and the teleport match.
+		const Vector vecMins( -16.f, -16.f, 0.f );
+		const Vector vecMaxs( 16.f, 16.f, 36.f );
 
 		unsigned int nMask = MASK_PLAYERSOLID_BRUSHONLY;
 		if ( GetTeamNumber() == TF_TEAM_RED )
@@ -3045,12 +3047,11 @@ public:
 		if ( pTrace->fraction < 1.0f )
 			vecImpact += pTrace->plane.normal * 4.0f;
 
-		// Box is centered on the projectile. Feet sit on its bottom.
-		const Vector vecFeet = vecImpact + Vector( 0.f, 0.f, -18.f );
+		// The check hull's bottom is the projectile origin, and that is her feet.
+		const Vector vecFeet = vecImpact;
 
 		CUtlVector< Vector > candidates;
 		candidates.AddToTail( vecFeet );
-		candidates.AddToTail( vecImpact );
 
 		Vector vecBack = pTrace->plane.normal;
 		if ( vecBack.LengthSqr() < 0.01f )
@@ -3060,7 +3061,7 @@ public:
 			candidates.AddToTail( vecFeet + vecBack * ( i * 8.0f ) );
 
 		FOR_EACH_VEC_BACK( m_vecTrailingPos, i )
-			candidates.AddToTail( m_vecTrailingPos[i] + Vector( 0.f, 0.f, -18.f ) );
+			candidates.AddToTail( m_vecTrailingPos[i] );
 
 		FOR_EACH_VEC( candidates, i )
 		{
