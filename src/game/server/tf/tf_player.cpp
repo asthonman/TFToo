@@ -1513,23 +1513,8 @@ static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, bool bDucking
 //-----------------------------------------------------------------------------
 // Athletic. Shrink and grow use the same short window as Brick. Voice pitch
 // and head scale follow the hull, so a pause holds those too. Growing back
-// steps her off a blocking surface, and holds if 64 units is not enough.
+// steps the caster off a blocking surface, and holds if 64 units is not enough.
 //-----------------------------------------------------------------------------
-static void AthleticSyncLook( CTFPlayer *pPlayer, float flScale )
-{
-	// 0 at full size, 1 at half size. 1.3 pitch and 3x head are the tiny end.
-	const float t = clamp( ( 1.f - flScale ) / 0.5f, 0.f, 1.f );
-	if ( t <= 0.02f )
-	{
-		pPlayer->m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
-		pPlayer->m_Shared.RemoveAttributeFromPlayer( "head scale" );
-		return;
-	}
-
-	pPlayer->m_Shared.ApplyAttributeToPlayer( "voice pitch scale", Lerp( t, 1.f, 1.3f ) );
-	pPlayer->m_Shared.ApplyAttributeToPlayer( "head scale", Lerp( t, 1.f, 3.f ) );
-}
-
 static void AthleticSyncEyes( CTFPlayer *pPlayer )
 {
 	if ( pPlayer->GetFlags() & FL_DUCKING )
@@ -1549,7 +1534,7 @@ void CTFPlayer::BeginAthleticResize( float flGoal )
 	{
 		m_flModelScale = flGoal;
 		RefreshCollisionBounds();
-		AthleticSyncLook( this, flGoal );
+		m_Shared.UpdateAthleticLook( flGoal );
 		AthleticSyncEyes( this );
 		return;
 	}
@@ -1563,20 +1548,20 @@ void CTFPlayer::BeginAthleticResize( float flGoal )
 
 void CTFPlayer::ThinkAthleticGrow( void )
 {
-	if ( !IsPlayerClass( TF_CLASS_WITCH ) )
-		return;
-
 	if ( !IsAlive() )
 	{
-		if ( GetModelScale() != 1.f )
+		// Only an unfinished Athletic shrink. Brick's scale is above 1.
+		if ( GetModelScale() < 0.99f )
+		{
 			SetModelScale( 1.f );
-		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
-		m_Shared.RemoveAttributeFromPlayer( "head scale" );
+			m_Shared.UpdateAthleticLook( 1.f );
+		}
 		return;
 	}
 
 	ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
-	if ( !mvs || mvs->m_flModelScaleGoal > 1.01f || mvs->m_flModelScaleGoal < 0.49f )
+	// Brick's grow starts at or climbs past full size. Leave that alone.
+	if ( !mvs || mvs->m_flModelScaleStart > 1.01f || mvs->m_flModelScaleGoal > 1.01f || mvs->m_flModelScaleGoal < 0.49f )
 		return;
 
 	const bool bShrink = mvs->m_flModelScaleGoal < mvs->m_flModelScaleStart - 0.01f;
@@ -1656,7 +1641,7 @@ void CTFPlayer::ThinkAthleticGrow( void )
 
 	if ( bScaleChanged || bDone )
 	{
-		AthleticSyncLook( this, flScale );
+		m_Shared.UpdateAthleticLook( flScale );
 		AthleticSyncEyes( this );
 	}
 }

@@ -5307,17 +5307,8 @@ void CTFPlayerShared::OnRemoveHalloweenGiant( void )
 void CTFPlayerShared::OnAddHalloweenTiny( void )
 {
 #ifdef GAME_DLL
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
-	{
-		// Ease to half size. Pitch and head scale follow the hull.
-		m_pOuter->BeginAthleticResize( 0.5f );
-	}
-	else
-	{
-		m_pOuter->SetModelScale( 0.5f );
-		ApplyAttributeToPlayer( "voice pitch scale", 1.3f );
-		ApplyAttributeToPlayer( "head scale", 3.f );
-	}
+	// Ease to half size. Pitch and head scale follow the hull.
+	m_pOuter->BeginAthleticResize( 0.5f );
 #endif
 }
 
@@ -5425,60 +5416,9 @@ void CTFPlayerShared::OnRemoveHalloweenKartDash()
 void CTFPlayerShared::OnRemoveHalloweenTiny( void )
 {
 #ifdef GAME_DLL
-	// Athletic. Grow back instead of snapping to full size and dying if the
-	// full hull does not fit. The voice and head stay tiny until she does.
-	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
-	{
-		m_pOuter->BeginAthleticResize( 1.f );
-		return;
-	}
-
-	m_pOuter->SetModelScale( 1.f );
-
-	RemoveAttributeFromPlayer( "voice pitch scale" );
-	RemoveAttributeFromPlayer( "head scale" );
-
-	const Vector& vOrigin = m_pOuter->GetAbsOrigin();
-	const QAngle& qAngle = m_pOuter->GetAbsAngles();
-	const Vector& vHullMins = m_pOuter->GetFlags() & FL_DUCKING ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN;
-	const Vector& vHullMaxs = m_pOuter->GetFlags() & FL_DUCKING ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX;
-
-	trace_t result;
-	CTraceFilterIgnoreTeammates filter( m_pOuter, COLLISION_GROUP_NONE, m_pOuter->GetTeamNumber() );
-	UTIL_TraceHull( vOrigin, vOrigin, vHullMins, vHullMaxs, MASK_PLAYERSOLID, &filter, &result );
-	// am I stuck? try to resolve it
-	if ( result.DidHit() )
-	{
-		float flPlayerHeight = vHullMaxs.z - vHullMins.z;
-		float flExtraHeight = 10;
-		static Vector vTest[] =
-		{
-			Vector( 32, 32, flExtraHeight ),
-			Vector( -32, -32, flExtraHeight ),
-			Vector( -32, 32, flExtraHeight ),
-			Vector( 32, -32, flExtraHeight ),
-			Vector( 0, 0, flPlayerHeight + flExtraHeight ),
-			Vector( 0, 0, -flPlayerHeight - flExtraHeight )
-		};
-		for ( int i=0; i<ARRAYSIZE( vTest ); ++i )
-		{
-			Vector vTestPos = vOrigin + vTest[i];
-			UTIL_TraceHull( vOrigin, vTestPos, vHullMins, vHullMaxs, MASK_PLAYERSOLID, &filter, &result );
-			if ( !result.DidHit() )
-			{
-				//NDebugOverlay::Box( vTestPos, vHullMins, vHullMaxs, 0, 255, 0, 0, 5.f );
-				m_pOuter->Teleport( &vTestPos, &qAngle, NULL );
-				return;
-			}
-			else
-			{
-				//NDebugOverlay::Box( vTestPos, vHullMins, vHullMaxs, 255, 0, 0, 0, 5.f );
-			}
-		}
-
-		// just kill the player if we can't resolve getting stuck
-		m_pOuter->CommitSuicide( false, true );
-	}
+	// Grow back instead of snapping to full size and dying if the hull does
+	// not fit. Pitch and head scale follow the hull.
+	m_pOuter->BeginAthleticResize( 1.f );
 #endif
 }
 
@@ -9385,6 +9325,23 @@ void CTFPlayerShared::ApplyAttributeToPlayer( const char* pszAttribName, float f
 	m_pOuter->TeamFortress_SetSpeed();
 	m_pOuter->GetAttributeManager()->OnAttributeValuesChanged();
 }
+
+#ifdef GAME_DLL
+void CTFPlayerShared::UpdateAthleticLook( float flScale )
+{
+	// 0 at full size, 1 at half size. 1.3 pitch and 3x head are the tiny end.
+	const float t = clamp( ( 1.f - flScale ) / 0.5f, 0.f, 1.f );
+	if ( t <= 0.02f )
+	{
+		RemoveAttributeFromPlayer( "voice pitch scale" );
+		RemoveAttributeFromPlayer( "head scale" );
+		return;
+	}
+
+	ApplyAttributeToPlayer( "voice pitch scale", Lerp( t, 1.f, 1.3f ) );
+	ApplyAttributeToPlayer( "head scale", Lerp( t, 1.f, 3.f ) );
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: 

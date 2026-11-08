@@ -944,6 +944,8 @@ private:
 public:
 	void SetAfterburnDuration( float flDuration ) { m_flAfterburnDuration = flDuration; }
 	float GetAfterburnDuration( void ) { return m_flAfterburnDuration; }
+	// 0 is full size, 1 is half size. Pitch and head scale follow the hull.
+	void UpdateAthleticLook( float flScale );
 #endif // GAME_DLL
 
 private:
