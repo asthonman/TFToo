@@ -1587,8 +1587,22 @@ void CTFSpellBook::PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCast
 	else if ( pPlayer->LookupAttachment( "weapon_bone" ) > 0 )
 		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "weapon_bone" );
 
-	// The spellbook's attack is remapped to this throw. Play it on her, not on the gun.
-	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_THROW );
+	// The spellbook is an item1. Its primary fire becomes this gesture.
+	// Her gun is still out, so ask for the item1 activity directly.
+	bool bInDuck = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
+	if ( bInDuck && pPlayer->SelectWeightedSequence( ACT_MP_CROUCHWALK ) < 0 )
+		bInDuck = false;
+
+	Activity act = ACT_MP_ATTACK_STAND_ITEM1;
+	if ( pPlayer->GetWaterLevel() >= WL_Waist )
+		act = ACT_MP_ATTACK_SWIM_ITEM1;
+	else if ( bInDuck )
+		act = ACT_MP_ATTACK_CROUCH_ITEM1;
+
+	if ( pPlayer->SelectWeightedSequence( act ) < 0 )
+		act = ACT_MP_ATTACK_STAND_ITEM1;
+
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, act );
 }
 
 bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
