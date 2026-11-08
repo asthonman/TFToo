@@ -26,6 +26,7 @@
 	#include "tf_hud_itemeffectmeter.h"
 	#include "dlight.h"
 	#include "iefx.h"
+	#include "engine/ivdebugoverlay.h"
 	extern void AddSubKeyNamed( KeyValues *pKeys, const char *pszName );
 // Server specific.
 #else
@@ -381,6 +382,12 @@ bool IsWitchSpellStealth( int iSlot )
 {
 	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
 	return pSpell && pSpell->m_pCastSpell == &CTFSpellBook::CastSelfStealth;
+}
+
+bool IsWitchSpellOverheal( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	return pSpell && pSpell->m_pCastSpell == &CTFSpellBook::CastSelfHeal;
 }
 
 bool IsWitchSpellTeleport( int iSlot )

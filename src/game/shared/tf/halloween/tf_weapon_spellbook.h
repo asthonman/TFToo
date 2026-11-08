@@ -153,6 +153,7 @@ const char *GetWitchSpellUiName( int iSlot );
 const char *GetWitchSpellIcon( int iSlot );
 // Stealth is a Spy cloak toggle. It drains the mana meter instead of spending a lump cost.
 bool IsWitchSpellStealth( int iSlot );
+bool IsWitchSpellOverheal( int iSlot );
 bool IsWitchSpellTeleport( int iSlot );
 // False for stealth and athletic. Those only affect her.
 bool WitchSpellHasPreview( int iSlot );

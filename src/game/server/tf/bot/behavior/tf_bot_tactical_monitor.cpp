@@ -512,8 +512,7 @@ ActionResult< CTFBot >	CTFBotTacticalMonitor::Update( CTFBot *me, float interval
 			continue;
 		if ( !pWitch->IsPlayerClass( TF_CLASS_WITCH ) || !pWitch->m_Shared.IsWitchHoldingCast() )
 			continue;
-		const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( pWitch->m_Shared.GetWitchSpell() ) );
-		if ( !pSpell || pSpell->m_pCastSpell != &CTFSpellBook::CastSelfHeal )
+		if ( !IsWitchSpellOverheal( pWitch->m_Shared.GetWitchSpell() ) )
 			continue;
 		if ( me->GetAbsOrigin().DistTo( pWitch->GetAbsOrigin() ) > 800.f )
 			continue;

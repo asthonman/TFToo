@@ -2490,7 +2490,7 @@ void CTFWeaponBase::ItemPostFrame( void )
 					pOwner->m_Shared.SetSpyCloakMeter( 0.0f );
 					pOwner->m_Shared.SetWitchManaExhausted( true );
 				}
-				pOwner->m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+				pOwner->m_Shared.SetNextStealthTime( gpGlobals->curtime + 0.5f );
 				CTFSpellBook::PlayWitchThrowViewmodel( pOwner );
 #ifdef GAME_DLL
 				if ( !pOwner->CastWitchSpell( iSpell ) )
