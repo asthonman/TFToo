@@ -2470,6 +2470,39 @@ void CTFWeaponBase::ItemPostFrame( void )
 		return;
 	}
 
+	// Preview spells cast on release so the arc or circle can show while held.
+	if ( pOwner->IsPlayerClass( TF_CLASS_WITCH ) && pOwner->m_Shared.IsWitchHoldingCast()
+		&& !( pOwner->m_nButtons & IN_ATTACK2 ) )
+	{
+		pOwner->m_Shared.SetWitchHoldingCast( false );
+		const int iSpell = pOwner->m_Shared.GetWitchSpell();
+		if ( iSpell >= 0 && iSpell < GetWitchSpellCount() && WitchSpellHasPreview( iSpell )
+			&& !pOwner->m_Shared.IsWitchManaExhausted()
+			&& !( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( pOwner ) ) )
+		{
+			const float flCost = (float)GetWitchSpellManaCostForPlayer( pOwner, iSpell );
+			if ( pOwner->m_Shared.GetSpyCloakMeter() >= flCost )
+			{
+				pOwner->m_Shared.SetSpyCloakMeter( pOwner->m_Shared.GetSpyCloakMeter() - flCost );
+				if ( pOwner->m_Shared.GetSpyCloakMeter() <= 0.0f )
+				{
+					pOwner->m_Shared.SetSpyCloakMeter( 0.0f );
+					pOwner->m_Shared.SetWitchManaExhausted( true );
+				}
+				pOwner->m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+				CTFSpellBook::PlayWitchThrowViewmodel( pOwner );
+#ifdef GAME_DLL
+				if ( !pOwner->CastWitchSpell( iSpell ) )
+				{
+					pOwner->m_Shared.SetSpyCloakMeter( pOwner->m_Shared.GetSpyCloakMeter() + flCost );
+					if ( pOwner->m_Shared.GetSpyCloakMeter() > 0.0f )
+						pOwner->m_Shared.SetWitchManaExhausted( false );
+				}
+#endif
+			}
+		}
+	}
+
 	bool bNeedsReload = NeedsReloadForAmmo1( GetMaxClip1() ) || ( IsEnergyWeapon() && !Energy_FullyCharged() );
 
 	// If we're not shooting, and we want to autoreload, press our reload key

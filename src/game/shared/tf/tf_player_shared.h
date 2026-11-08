@@ -501,6 +501,9 @@ public:
 	// True after the mana meter hits empty, until it reaches 100 again.
 	bool	IsWitchManaExhausted( void ) const	{ return m_bWitchManaExhausted; }
 	void	SetWitchManaExhausted( bool bExhausted ) { m_bWitchManaExhausted = bExhausted; }
+	// True while she is holding right-click on a spell that has a preview.
+	bool	IsWitchHoldingCast( void ) const	{ return m_bWitchHoldingCast; }
+	void	SetWitchHoldingCast( bool bHolding ) { m_bWitchHoldingCast = bHolding; }
 
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
@@ -1100,6 +1103,8 @@ private:
 	CNetworkVar( int, m_nWitchSpell );
 	// Set when her mana hits 0. Cleared only at a full meter.
 	CNetworkVar( bool, m_bWitchManaExhausted );
+	// Holding right-click to aim a spell. Teammates draw the arc or circle.
+	CNetworkVar( bool, m_bWitchHoldingCast );
 
 	CNetworkVar( bool, m_bInUpgradeZone );
 

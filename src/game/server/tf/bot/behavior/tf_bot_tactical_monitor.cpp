@@ -34,6 +34,7 @@
 
 #include "tf_obj_sentrygun.h"
 #include "tf_item_system.h"
+#include "halloween/tf_weapon_spellbook.h"
 
 //---------------------------------------------------------------------------------------------
 // An allied Brick is mobile cover. Under fire, stand on the far side of him
@@ -366,6 +367,55 @@ void CTFBotTacticalMonitor::AvoidBumpingEnemies( CTFBot *me )
 
 
 //-----------------------------------------------------------------------------------------
+// Allied bots step into an Overheal preview circle while she holds right-click.
+//-----------------------------------------------------------------------------------------
+class CTFBotGatherForOverheal : public Action< CTFBot >
+{
+public:
+	CTFBotGatherForOverheal( CTFPlayer *pWitch ) : m_witch( pWitch ) {}
+
+	virtual const char *GetName( void ) const { return "GatherForOverheal"; }
+
+	virtual ActionResult< CTFBot > OnStart( CTFBot *me, Action< CTFBot > *priorAction )
+	{
+		if ( !m_witch || !m_witch->IsAlive() || !m_witch->m_Shared.IsWitchHoldingCast() )
+			return Done( "No Overheal preview" );
+		m_path.SetMinLookAheadDistance( me->GetDesiredPathLookAheadRange() );
+		return Continue();
+	}
+
+	virtual ActionResult< CTFBot > Update( CTFBot *me, float interval )
+	{
+		if ( !m_witch || !m_witch->IsAlive() || !m_witch->m_Shared.IsWitchHoldingCast() )
+			return Done( "Overheal preview ended" );
+		if ( me->GetTeamNumber() != m_witch->GetTeamNumber() )
+			return Done( "Wrong team" );
+
+		const Vector goal = m_witch->GetAbsOrigin();
+		if ( me->GetAbsOrigin().DistTo( goal ) > 200.f )
+		{
+			if ( m_repathTimer.IsElapsed() )
+			{
+				m_repathTimer.Start( RandomFloat( 0.3f, 0.5f ) );
+				CTFBotPathCost cost( me, FASTEST_ROUTE );
+				m_path.Compute( me, goal, cost );
+			}
+			m_path.Update( me );
+		}
+		else
+		{
+			me->GetBodyInterface()->AimHeadTowards( m_witch, IBody::IMPORTANT, 0.5f, NULL, "Waiting for Overheal" );
+		}
+		return Continue();
+	}
+
+private:
+	CHandle< CTFPlayer > m_witch;
+	PathFollower m_path;
+	CountdownTimer m_repathTimer;
+};
+
+//-----------------------------------------------------------------------------------------
 ActionResult< CTFBot >	CTFBotTacticalMonitor::Update( CTFBot *me, float interval )
 {
 	if ( TFGameRules()->RoundHasBeenWon() )
@@ -452,6 +502,22 @@ ActionResult< CTFBot >	CTFBotTacticalMonitor::Update( CTFBot *me, float interval
 				m_attentionTimer.Invalidate();
 			}
 		}
+	}
+
+	// Step into an allied Witch's Overheal circle while she is aiming it.
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pWitch = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pWitch || !pWitch->IsAlive() || pWitch->GetTeamNumber() != me->GetTeamNumber() )
+			continue;
+		if ( !pWitch->IsPlayerClass( TF_CLASS_WITCH ) || !pWitch->m_Shared.IsWitchHoldingCast() )
+			continue;
+		const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( pWitch->m_Shared.GetWitchSpell() ) );
+		if ( !pSpell || pSpell->m_pCastSpell != &CTFSpellBook::CastSelfHeal )
+			continue;
+		if ( me->GetAbsOrigin().DistTo( pWitch->GetAbsOrigin() ) > 800.f )
+			continue;
+		return SuspendFor( new CTFBotGatherForOverheal( pWitch ), "Gathering for Overheal" );
 	}
 
 	// check if we need to get to cover

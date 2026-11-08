@@ -389,6 +389,30 @@ bool IsWitchSpellTeleport( int iSlot )
 	return pSpell && pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spelltransposeteleport" );
 }
 
+// Stealth and athletic only affect her. Everything else gets a hold-to-aim preview.
+bool WitchSpellHasPreview( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell )
+		return false;
+	if ( pSpell->m_pCastSpell == &CTFSpellBook::CastSelfStealth || pSpell->m_pCastSpell == &CTFSpellBook::CastSelfSpeedBoost )
+		return false;
+	return true;
+}
+
+// Overheal is a 250 sphere. Meteor shower spreads 200 from the impact.
+float WitchSpellPreviewRadius( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell )
+		return 0.f;
+	if ( pSpell->m_pCastSpell == &CTFSpellBook::CastSelfHeal )
+		return 250.f;
+	if ( pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" ) )
+		return 200.f;
+	return 0.f;
+}
+
 static float SpellTossRightOffset( CTFPlayer *pPlayer )
 {
 	float fRight = 7.f;
@@ -473,6 +497,81 @@ int GetSpellIndexFromContext( int iContext )
 
 //=============================================================================
 #ifdef CLIENT_DLL
+//=============================================================================
+// Hold-to-aim preview. Drawn for the Witch and her teammates only.
+//=============================================================================
+static void DrawPreviewCircle( const Vector &center, float flRadius, int r, int g, int b )
+{
+	if ( !debugoverlay || flRadius <= 0.f )
+		return;
+	const int nSegs = 24;
+	Vector prev = center + Vector( flRadius, 0.f, 2.f );
+	for ( int i = 1; i <= nSegs; ++i )
+	{
+		const float a = ( float )i / ( float )nSegs * M_PI * 2.f;
+		Vector next = center + Vector( cosf( a ) * flRadius, sinf( a ) * flRadius, 2.f );
+		debugoverlay->AddLineOverlay( prev, next, r, g, b, false, 0.05f );
+		prev = next;
+	}
+}
+
+void DrawWitchSpellPreview( CTFPlayer *pWitch )
+{
+	if ( !pWitch || !pWitch->IsAlive() || !pWitch->m_Shared.IsWitchHoldingCast() )
+		return;
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocal || pLocal->GetTeamNumber() != pWitch->GetTeamNumber() )
+		return;
+
+	const int iSpell = pWitch->m_Shared.GetWitchSpell();
+	if ( !WitchSpellHasPreview( iSpell ) )
+		return;
+
+	const float flRadius = WitchSpellPreviewRadius( iSpell );
+	const bool bOverheal = ( flRadius > 0.f && GetSpellData( GetWitchSpellGameIndex( iSpell ) ) &&
+		GetSpellData( GetWitchSpellGameIndex( iSpell ) )->m_pCastSpell == &CTFSpellBook::CastSelfHeal );
+
+	if ( bOverheal )
+	{
+		DrawPreviewCircle( pWitch->GetAbsOrigin(), flRadius, 80, 200, 255 );
+		return;
+	}
+
+	// Ballistic arc for jars, straight line for rockets.
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSpell ) );
+	if ( !pSpell )
+		return;
+
+	Vector vecForward, vecRight, vecUp;
+	AngleVectors( pWitch->EyeAngles(), &vecForward, &vecRight, &vecUp );
+	Vector vecSrc = pWitch->Weapon_ShootPosition() + ( vecUp * -9.f ) + ( vecRight * SpellTossRightOffset( pWitch ) ) + ( vecForward * 3.f );
+	Vector vecVel = ( ( vecForward * 1000.f ) + ( vecUp * 200.f ) ) * pSpell->m_flSpeedScale;
+	const bool bRocket = ( pSpell->m_eSpellType == SPELL_ROCKET );
+	if ( bRocket )
+		vecVel = vecForward * 1000.f * pSpell->m_flSpeedScale;
+
+	const float flGravity = 800.f;
+	const float flStep = 0.05f;
+	Vector pos = vecSrc;
+	Vector vel = vecVel;
+	Vector land = pos;
+	for ( int i = 0; i < 60; ++i )
+	{
+		Vector next = pos + vel * flStep;
+		if ( !bRocket )
+			vel.z -= flGravity * flStep;
+		trace_t tr;
+		UTIL_TraceLine( pos, next, MASK_SOLID_BRUSHONLY, pWitch, COLLISION_GROUP_NONE, &tr );
+		if ( debugoverlay )
+			debugoverlay->AddLineOverlay( pos, tr.endpos, 255, 220, 80, false, 0.05f );
+		land = tr.endpos;
+		if ( tr.fraction < 1.f )
+			break;
+		pos = next;
+	}
+	if ( flRadius > 0.f )
+		DrawPreviewCircle( land, flRadius, 255, 140, 40 );
+}
 //=============================================================================
 // Ui Hud
 //=============================================================================

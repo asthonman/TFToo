@@ -410,6 +410,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropFloat( RECVINFO( m_flCloakMeter ) ),
 	RecvPropInt( RECVINFO( m_nWitchSpell ) ),
 	RecvPropBool( RECVINFO( m_bWitchManaExhausted ) ),
+	RecvPropBool( RECVINFO( m_bWitchHoldingCast ) ),
 	RecvPropFloat( RECVINFO( m_flSpyTranqBuffDuration ) ),
 
 	// Local Data.
@@ -450,6 +451,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_flCloakMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nWitchSpell, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bWitchManaExhausted, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_bWitchHoldingCast, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRageMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bRageDraining, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNextRageEarnTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -591,6 +593,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropFloat( SENDINFO( m_flCloakMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropInt( SENDINFO( m_nWitchSpell ), 4, SPROP_UNSIGNED ),
 	SendPropBool( SENDINFO( m_bWitchManaExhausted ) ),
+	SendPropBool( SENDINFO( m_bWitchHoldingCast ) ),
 	SendPropFloat( SENDINFO( m_flSpyTranqBuffDuration ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	
 	// Local Data.
@@ -833,6 +836,7 @@ CTFPlayerShared::CTFPlayerShared()
 	m_nMaskClass = 0;
 	m_nWitchSpell = 0;
 	m_bWitchManaExhausted = false;
+	m_bWitchHoldingCast = false;
 
 	m_iItemFindBonus = 0;
 
@@ -12510,6 +12514,13 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				EmitSound( "Player.DenyWeaponSelection" );
 #endif
 				return false;
+			}
+
+			// Preview spells wait for the button release so the arc or circle can show.
+			if ( WitchSpellHasPreview( iSpell ) )
+			{
+				m_Shared.SetWitchHoldingCast( true );
+				return true;
 			}
 
 			const float flCost = (float)GetWitchSpellManaCostForPlayer( this, iSpell );

@@ -12253,6 +12253,8 @@ void CTFPlayer::OnKilledOther_Effects( CBaseEntity *pVictim, const CTakeDamageIn
 //-----------------------------------------------------------------------------
 void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 {
+	m_Shared.SetWitchHoldingCast( false );
+
 	CTFPlayer *pPlayerAttacker = NULL;
 	if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
 	{

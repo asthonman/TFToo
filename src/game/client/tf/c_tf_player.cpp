@@ -6199,6 +6199,9 @@ void C_TFPlayer::ClientThink()
 	// Pass on through to the base class.
 	BaseClass::ClientThink();
 
+	if ( IsPlayerClass( TF_CLASS_WITCH ) && m_Shared.IsWitchHoldingCast() )
+		DrawWitchSpellPreview( this );
+
 	UpdateIDTarget();
 
 	UpdateLookAt();
