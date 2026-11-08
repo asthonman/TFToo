@@ -579,15 +579,13 @@ bool CTFGameMovement::ChargeMove()
 }
 
 //-----------------------------------------------------------------------------
-// Madcap P-meter. Fills only while he is moving forward, near his current
-// top speed. The turn test is his absolute direction of travel, not where
-// he is looking: the course locks while the meter is up, and a velocity
-// heading more than the allowed angle off that course drains it. 45 degrees,
-// widened by charge_turn_control from the booties. A shield charge fills faster.
+// Madcap velocity meter. He is on rollerskates: low friction, so he
+// accelerates gradually to a top speed that is the same in every direction.
+// Facing only changes how fast he accelerates, not the top speed he can hold.
+// The meter is his current speed as a percent of that top speed.
 //-----------------------------------------------------------------------------
-static const float tf_madcap_pmeter_fill = 40.f;   // 2.5s from empty to full
-static const float tf_madcap_pmeter_drain = 80.f;  // 1.25s from full to empty
-static const float tf_madcap_pmeter_charge_fill = 1.5f;
+static const float tf_madcap_friction_scale = 0.25f;	// rollerskate coast
+static const float tf_madcap_back_accel = 0.4f;		// slower build when not facing travel
 
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
@@ -607,86 +605,21 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 		return;
 	}
 
-	Vector vecForward, vecRight;
-	AngleVectors( mv->m_vecViewAngles, &vecForward, &vecRight, NULL );
-	vecForward.z = 0.f;
-	vecRight.z = 0.f;
-	VectorNormalize( vecForward );
-	VectorNormalize( vecRight );
-
-	const float flForwardMove = mv->m_flForwardMove;
-	const float flSideMove = mv->m_flSideMove;
-	Vector vecWish( ( vecForward.x * flForwardMove ) + ( vecRight.x * flSideMove ),
-		( vecForward.y * flForwardMove ) + ( vecRight.y * flSideMove ),
-		0.f );
-	const bool bHasWish = VectorNormalize( vecWish ) > 1.f;
-	// Mostly forward. An even W+A is a strafe and does not build the meter.
-	const bool bForward = ( flForwardMove > 0.f ) && ( fabsf( flSideMove ) <= fabsf( flForwardMove ) * 0.5f );
+	// Absolute top speed. Facing does not change it.
+	const float flTop = Max( m_pTFPlayer->MaxSpeed(), 1.f );
 
 	Vector vecVel = mv->m_vecVelocity;
 	vecVel.z = 0.f;
 	const float flSpeed = vecVel.Length();
-	Vector vecVelDir = vec3_origin;
-	if ( flSpeed > 1.f )
-		vecVelDir = vecVel / flSpeed;
+	const float flRatio = clamp( flSpeed / flTop, 0.f, 1.f );
+	const float flMeter = flRatio * TF_MADCAP_PMETER_MAX;
 
-	// A shield charge is steered. Follow that heading, or the steer
-	// would count as a turn and drain the meter the charge is filling.
-	const bool bCharging = m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE );
-
-	// Empty meter tracks wherever he is actually going. Once it is up, that
-	// absolute heading stays put, so a turn accumulates instead of being
-	// hidden by the eyes moving with him.
-	if ( flSpeed <= 1.f || m_pTFPlayer->GetPMeter() <= 0.f )
+	if ( m_pTFPlayer->GetPMeter() != flMeter )
 	{
-		if ( flSpeed > 1.f )
-			m_pTFPlayer->SetMadcapCourse( vecVelDir );
-		else
-			m_pTFPlayer->ClearMadcapCourse();
-	}
-	else if ( ( bCharging || !m_pTFPlayer->HasMadcapCourse() ) && flSpeed > 1.f )
-	{
-		m_pTFPlayer->SetMadcapCourse( vecVelDir );
-	}
-
-	float flDot = 1.f;
-	if ( m_pTFPlayer->HasMadcapCourse() && flSpeed > 1.f )
-		flDot = DotProduct( vecVelDir, m_pTFPlayer->GetMadcapCourse() );
-
-	// Booties store a 3x multiplier on charge_turn_control. The Tide Turner adds.
-	float flAngle = 45.f;
-	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_pTFPlayer, flAngle, charge_turn_control );
-	flAngle = clamp( flAngle, 1.f, 180.f );
-	const float flKeepDot = cosf( DEG2RAD( flAngle ) );
-	const bool bAligned = ( flDot + 0.001f ) >= flKeepDot;
-	const float flMaxSpeed = Max( m_pTFPlayer->MaxSpeed(), 1.f );
-	const bool bAtSpeed = flSpeed >= ( flMaxSpeed * 0.85f );
-
-	float flDelta = -tf_madcap_pmeter_drain;
-	if ( bCharging && ( bAligned || flSpeed < 120.f ) )
-	{
-		flDelta = tf_madcap_pmeter_fill * tf_madcap_pmeter_charge_fill;
-	}
-	else if ( !bCharging && bForward && bAligned && bAtSpeed )
-	{
-		flDelta = tf_madcap_pmeter_fill;
-	}
-	else if ( bAligned && bHasWish && flSpeed >= 80.f )
-	{
-		// Accelerating, strafing along the velocity he already has, or a
-		// sweep that has not changed that velocity much. Standing still drains.
-		flDelta = 0.f;
-	}
-
-	// Reversing or a hard cut. He keeps his old velocity and friction slows it.
-	m_bMadcapSkid = !bCharging && bHasWish && flSpeed > 120.f && !bAligned;
-
-	const float flBefore = m_pTFPlayer->GetPMeter();
-	m_pTFPlayer->SetPMeter( flBefore + ( flDelta * gpGlobals->frametime ) );
-	if ( m_pTFPlayer->GetPMeter() != flBefore )
-	{
+		m_pTFPlayer->SetPMeter( flMeter );
 		m_pTFPlayer->TeamFortress_SetSpeed();
 	}
+
 }
 
 //-----------------------------------------------------------------------------
@@ -1929,17 +1862,22 @@ void CTFGameMovement::WalkMove( void )
 	float flWishSpeed = VectorNormalize( vecWishDirection );
 	flWishSpeed = clamp( flWishSpeed, 0.0f, mv->m_flMaxSpeed );
 
-	// A sharp turn slides along the velocity he already has. Friction, which
-	// already ran this tick, is what slows that slide down.
-	if ( m_bMadcapSkid && flWishSpeed > 0.f )
-	{
-		flWishSpeed = 0.f;
-	}
-
 	// Accelerate in the x,y plane.
 	mv->m_vecVelocity.z = 0;
 
 	float flAccelerate = sv_accelerate.GetFloat();
+	// Madcap: facing changes how fast he builds to top speed, not the top itself.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && flWishSpeed > 0.f )
+	{
+		Vector vecForward;
+		AngleVectors( mv->m_vecViewAngles, &vecForward, NULL, NULL );
+		vecForward.z = 0.f;
+		VectorNormalize( vecForward );
+		const float flFace = DotProduct( vecWishDirection, vecForward );
+		// Full accel facing the wish; reduced when strafing or reversing.
+		const float flAccelScale = RemapValClamped( flFace, -1.f, 1.f, tf_madcap_back_accel, 1.f );
+		flAccelerate *= flAccelScale;
+	}
 	float flFriction = sv_friction.GetFloat() * player->m_surfaceFriction;
 
 	float flWishSpeedThreshold = 100.0f * flFriction / sv_accelerate.GetFloat();
@@ -1994,8 +1932,8 @@ void CTFGameMovement::WalkMove( void )
 
 	// Now reduce their backwards speed to some percent of max, if they are traveling backwards
 	// unless they are under some minimum, to not penalize deployed snipers or heavies.
-	// A P-meter skid is supposed to keep that backwards speed until friction eats it.
-	if ( !m_bMadcapSkid && tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
+	// Madcap's top speed is the same in every direction.
+	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
 	{
 		float flDot = DotProduct( vecForward, mv->m_vecVelocity );
 
@@ -2844,6 +2782,9 @@ void CTFGameMovement::FullWalkMove()
 	if (player->GetGroundEntity() != NULL)
 	{
 		mv->m_vecVelocity[2] = 0.0;
+		// Rollerskates: low friction so he coasts and builds to top speed.
+		if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
+			player->m_surfaceFriction *= tf_madcap_friction_scale;
 		Friction();
 		WalkMove();
 	}

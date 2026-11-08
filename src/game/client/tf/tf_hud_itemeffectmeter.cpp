@@ -194,7 +194,7 @@ public:
 		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_MADCAP );
 	}
 
-	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_PMeter"; }
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_Velocity"; }
 	virtual bool ShouldBeep( void ) OVERRIDE { return false; }
 	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
 	virtual void PerformLayout() OVERRIDE;

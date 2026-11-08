@@ -298,7 +298,7 @@ inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMA
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
 
 //-----------------------------------------------------------------------------
-// Madcap's P-meter. 0 is walking, 100 is a full sprint: +60% move speed
+// Madcap's velocity meter. 0 is stopped, 100 is top speed: +60% move speed
 // (the old Escape Plan cap) and 300% damage. It is not based on health.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f

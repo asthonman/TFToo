@@ -7,7 +7,7 @@
 // Claidheamh Mòr are Madcap melees only. Equalizer and Escape Plan
 // are shared melees with Soldier. Cleaver and
 // Mad Milk are shared secondaries. Blutsauger is a shared primary.
-// The P-meter fills only while running forward. Full is +60% speed
+// Velocity meter. Top speed is +60% and the same in every direction. Facing changes acceleration rate.
 // and 300% damage. A turn past 45 degrees drains it and he skids.
 // Booties widen that angle. A shield charge fills the meter.
 // Class passives (unset here): "airdash" "1", "afterburn_immune" "1",

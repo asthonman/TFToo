@@ -11019,10 +11019,10 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed *= pWeapon->GetSpeedMod();
 	}
 
-	// P-meter sprint. Not tied to health, and not tied to the active weapon.
+	// Top speed is fixed. Facing does not change it. The meter only tracks velocity.
 	if ( playerclass == TF_CLASS_MADCAP )
 	{
-		maxfbspeed *= Madcap_SpeedModFromPMeter( GetPMeter() );
+		maxfbspeed *= 1.6f;
 	}
 
 	// Eyelander heads, and the shield charge speed. Madcap can equip both.
