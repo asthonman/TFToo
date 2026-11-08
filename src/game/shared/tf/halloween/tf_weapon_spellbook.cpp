@@ -541,6 +541,32 @@ static void DrawPreviewCircle( const Vector &center, float flRadius, int r, int 
 	}
 }
 
+// Splash is a volume, so the private previews are three great circles.
+static void DrawPreviewRing( const Vector &center, const Vector &axisU, const Vector &axisV, float flRadius, int r, int g, int b )
+{
+	const int nSegs = 24;
+	Vector prev = center + axisU * flRadius;
+	for ( int i = 1; i <= nSegs; ++i )
+	{
+		const float a = ( float )i / ( float )nSegs * M_PI * 2.f;
+		Vector next = center + axisU * ( cosf( a ) * flRadius ) + axisV * ( sinf( a ) * flRadius );
+		debugoverlay->AddLineOverlay( prev, next, r, g, b, false, 0.05f );
+		prev = next;
+	}
+}
+
+static void DrawPreviewSphere( const Vector &center, float flRadius, int r, int g, int b )
+{
+	if ( !debugoverlay || flRadius <= 0.f )
+		return;
+	const Vector ax( 1.f, 0.f, 0.f );
+	const Vector ay( 0.f, 1.f, 0.f );
+	const Vector az( 0.f, 0.f, 1.f );
+	DrawPreviewRing( center, ax, ay, flRadius, r, g, b );
+	DrawPreviewRing( center, ax, az, flRadius, r, g, b );
+	DrawPreviewRing( center, ay, az, flRadius, r, g, b );
+}
+
 void DrawWitchSpellPreview( CTFPlayer *pWitch )
 {
 	if ( !pWitch || !pWitch->IsAlive() || !pWitch->m_Shared.IsWitchHoldingCast() )
@@ -614,7 +640,14 @@ void DrawWitchSpellPreview( CTFPlayer *pWitch )
 		pos = next;
 	}
 	if ( flRadius > 0.f )
-		DrawPreviewCircle( land, flRadius, 255, 140, 40 );
+	{
+		// Meteor marks a patch of ground. Everything else is a 3D splash.
+		const bool bMeteor = pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" );
+		if ( bMeteor )
+			DrawPreviewCircle( land, flRadius, 255, 140, 40 );
+		else
+			DrawPreviewSphere( land, flRadius, 255, 140, 40 );
+	}
 }
 //=============================================================================
 // Ui Hud
