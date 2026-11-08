@@ -865,10 +865,9 @@ void CHudItemEffectMeter::Update( C_TFPlayer* pPlayer )
 			if ( m_flOldWitchMeter >= 0.f && flMeter > m_flOldWitchMeter )
 			{
 				const int iSlot = pPlayer->m_Shared.GetWitchSpell();
-				const bool bStealth = !bLocked && IsWitchSpellStealth( iSlot );
-				const float flNeed = bLocked ? 100.f : ( bStealth ? 8.f : (float)GetWitchSpellManaCostForPlayer( pPlayer, iSlot ) );
-				const bool bWasReady = bStealth ? ( m_flOldWitchMeter > flNeed ) : ( m_flOldWitchMeter >= flNeed );
-				const bool bNowReady = bStealth ? ( flMeter > flNeed ) : ( flMeter >= flNeed );
+				const float flNeed = bLocked ? 100.f : (float)GetWitchSpellManaCostForPlayer( pPlayer, iSlot );
+				const bool bWasReady = m_flOldWitchMeter >= flNeed;
+				const bool bNowReady = flMeter >= flNeed;
 				if ( !bWasReady && bNowReady )
 					pPlayer->EmitSound( "TFPlayer.ReCharged" );
 			}

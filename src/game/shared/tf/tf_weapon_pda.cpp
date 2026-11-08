@@ -1089,27 +1089,18 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 					sh = scheme()->GetProportionalScaledValueEx( GetScheme(), 120 );
 				pCosts[nSide]->SetBounds( 0, sh - iCostH, sw, iCostH );
 				pCosts[nSide]->SetContentAlignment( vgui::Label::a_center );
-				// Stealth has no lump cost. The meter drains while cloaked.
-				if ( IsWitchSpellStealth( i ) )
-				{
-					pCosts[nSide]->SetText( "" );
-					pCosts[nSide]->SetVisible( false );
-				}
+				const int iBase = GetWitchSpellManaCost( i );
+				const int iCost = GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i );
+				char szCost[16];
+				Q_snprintf( szCost, sizeof( szCost ), "%d%%", iCost );
+				pCosts[nSide]->SetText( szCost );
+				pCosts[nSide]->SetVisible( true );
+				// Same idea as the Eureka Effect's cheaper teleporter metal: show the price you actually pay.
+				if ( iCost < iBase )
+					pCosts[nSide]->SetFgColor( Color( 90, 200, 90, 255 ) );
 				else
-				{
-					const int iBase = GetWitchSpellManaCost( i );
-					const int iCost = GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i );
-					char szCost[16];
-					Q_snprintf( szCost, sizeof( szCost ), "%d%%", iCost );
-					pCosts[nSide]->SetText( szCost );
-					pCosts[nSide]->SetVisible( true );
-					// Same idea as the Eureka Effect's cheaper teleporter metal: show the price you actually pay.
-					if ( iCost < iBase )
-						pCosts[nSide]->SetFgColor( Color( 90, 200, 90, 255 ) );
-					else
-						pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
-					pCosts[nSide]->MoveToFront();
-				}
+					pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
+				pCosts[nSide]->MoveToFront();
 			}
 		}
 	}

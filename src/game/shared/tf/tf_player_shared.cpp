@@ -7806,7 +7806,10 @@ bool CTFPlayerShared::IsSpyDisguisedAsMyTeam( CTFPlayer *pPlayer )
 void CTFPlayerShared::NoteLastDamageTime( int nDamage )
 {
 	// we took damage
-	if ( ( nDamage > 5 || InCond( TF_COND_BLEEDING ) ) && !InCond( TF_COND_FEIGN_DEATH ) && InCond( TF_COND_STEALTHED ) )
+	// Witch stealth is a timed USER_BUFF; it still flickers like Spy cloak on damage.
+	const bool bCloaked = InCond( TF_COND_STEALTHED ) ||
+		( InCond( TF_COND_STEALTHED_USER_BUFF ) && m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) );
+	if ( ( nDamage > 5 || InCond( TF_COND_BLEEDING ) ) && !InCond( TF_COND_FEIGN_DEATH ) && bCloaked )
 	{
 		m_flLastStealthExposeTime = gpGlobals->curtime;
 		AddCond( TF_COND_STEALTHED_BLINK );
@@ -7818,7 +7821,9 @@ void CTFPlayerShared::NoteLastDamageTime( int nDamage )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::OnSpyTouchedByEnemy( void )
 {
-	if ( !InCond( TF_COND_FEIGN_DEATH ) && InCond( TF_COND_STEALTHED ) )
+	const bool bCloaked = InCond( TF_COND_STEALTHED ) ||
+		( InCond( TF_COND_STEALTHED_USER_BUFF ) && m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) );
+	if ( !InCond( TF_COND_FEIGN_DEATH ) && bCloaked )
 	{
 		m_flLastStealthExposeTime = gpGlobals->curtime;
 		AddCond( TF_COND_STEALTHED_BLINK );
@@ -12451,10 +12456,9 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 		break;
 	case TF_CLASS_WITCH:
 		{
-			// A second press, or any press while the cloak or the old stealth
-			// buff is up, drops it. The cast cooldown must not eat that press.
-			// Melee never reaches here while cloaked; ItemPostFrame does.
-			if ( m_Shared.InCond( TF_COND_STEALTHED ) || m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
+			// Continuous cloak (legacy) drops on a second press. The timed
+			// stealth buff does not; it runs out and blocks other casts.
+			if ( m_Shared.InCond( TF_COND_STEALTHED ) )
 			{
 				m_Shared.FadeInvis( 1.0f );
 				m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
@@ -12477,27 +12481,13 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			if ( iSpell < 0 || iSpell >= GetWitchSpellCount() )
 				iSpell = 0;
 
-			if ( IsWitchSpellStealth( iSpell ) )
+			// Stealth is a fixed-cost timed buff. No other spell while it is up.
+			if ( m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
 			{
-				// Same floor as the invis watch. Under that, the watch won't start.
-				// Drain is the Witch meter only. This does not touch the Spy watch.
-				if ( CanGoInvisible() && m_Shared.GetSpyCloakMeter() > 8.0f )
-				{
-					m_Shared.AddCond( TF_COND_STEALTHED, -1.f, this );
-					m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
-					CTFSpellBook::PlayWitchThrowViewmodel( this );
-#ifdef GAME_DLL
-					CTFSpellBook::PlayWitchCastEffects( this, "Halloween.spell_stealth" );
-#endif
-				}
-				else
-				{
 #ifdef CLIENT_DLL
-					EmitSound( "Player.DenyWeaponSelection" );
+				EmitSound( "Player.DenyWeaponSelection" );
 #endif
-					return false;
-				}
-				return true;
+				return false;
 			}
 
 			if ( m_Shared.GetStealthNoAttackExpireTime() > gpGlobals->curtime )
@@ -14329,7 +14319,7 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateCloakMeter( void )
 {
-	// Witch mana. Her stealth drains it. Spy debuffs, motion cloak, and the
+	// Witch mana. Stealth is a fixed-cost buff now. Spy debuffs, motion cloak, and the
 	// watch itself are not part of this.
 	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
 	{

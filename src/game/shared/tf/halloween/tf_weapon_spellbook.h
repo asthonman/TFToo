@@ -158,6 +158,7 @@ bool IsWitchSpellTeleport( int iSlot );
 bool WitchSpellHasPreview( int iSlot );
 // Ground circle radius. 0 if the spell is not an area effect.
 float WitchSpellPreviewRadius( int iSlot );
+bool WitchSpellIsTeamVisible( int iSlot );
 // True when the teleport check box, 32 units along her aim, is already inside something,
 // or her hull is touching a surface she is facing.
 bool WitchTeleportSpawnBlocked( CTFPlayer *pPlayer );

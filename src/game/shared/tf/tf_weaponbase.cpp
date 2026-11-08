@@ -2478,6 +2478,7 @@ void CTFWeaponBase::ItemPostFrame( void )
 		const int iSpell = pOwner->m_Shared.GetWitchSpell();
 		if ( iSpell >= 0 && iSpell < GetWitchSpellCount() && WitchSpellHasPreview( iSpell )
 			&& !pOwner->m_Shared.IsWitchManaExhausted()
+			&& !pOwner->m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF )
 			&& !( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( pOwner ) ) )
 		{
 			const float flCost = (float)GetWitchSpellManaCostForPlayer( pOwner, iSpell );

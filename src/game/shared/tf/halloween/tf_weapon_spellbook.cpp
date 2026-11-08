@@ -277,7 +277,7 @@ static const int s_nWitchSpellIndex[] =
 
 static const int s_nWitchSpellManaCost[] =
 {
-	50,		// Stealth (unused lump; this one drains like the Spy watch)
+	25,		// Stealth
 	50,		// Teleport
 	75,		// Athletic
 	75,		// Pumpkin MIRV
@@ -328,7 +328,7 @@ static float WitchCloakConsumeFactor( CTFPlayer *pPlayer )
 int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot )
 {
 	const int iCost = GetWitchSpellManaCost( iSlot );
-	if ( !pPlayer || iCost <= 0 || IsWitchSpellStealth( iSlot ) )
+	if ( !pPlayer || iCost <= 0 )
 		return iCost;
 
 	// Overheal and meteor storm stay at full price. Not listed on the gun.
@@ -401,6 +401,7 @@ bool WitchSpellHasPreview( int iSlot )
 }
 
 // Overheal is a 250 sphere. Meteor shower spreads 200 from the impact.
+// Rocket spells use their projectile splash (fireball / lightning orb = 200).
 float WitchSpellPreviewRadius( int iSlot )
 {
 	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
@@ -410,7 +411,25 @@ float WitchSpellPreviewRadius( int iSlot )
 		return 250.f;
 	if ( pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" ) )
 		return 200.f;
+	if ( pSpell->m_eSpellType == SPELL_ROCKET )
+		return 200.f;
+	if ( pSpell->m_eSpellType == SPELL_JAR && pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellbats" ) )
+		return 250.f;
 	return 0.f;
+}
+
+// Only Meteor and Overheal reward team coordination and leave her exposed.
+// Everything else is a private aim aid.
+bool WitchSpellIsTeamVisible( int iSlot )
+{
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
+	if ( !pSpell )
+		return false;
+	if ( pSpell->m_pCastSpell == &CTFSpellBook::CastSelfHeal )
+		return true;
+	if ( pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" ) )
+		return true;
+	return false;
 }
 
 static float SpellTossRightOffset( CTFPlayer *pPlayer )
@@ -520,35 +539,50 @@ void DrawWitchSpellPreview( CTFPlayer *pWitch )
 	if ( !pWitch || !pWitch->IsAlive() || !pWitch->m_Shared.IsWitchHoldingCast() )
 		return;
 	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
-	if ( !pLocal || pLocal->GetTeamNumber() != pWitch->GetTeamNumber() )
+	if ( !pLocal )
 		return;
 
 	const int iSpell = pWitch->m_Shared.GetWitchSpell();
 	if ( !WitchSpellHasPreview( iSpell ) )
 		return;
 
-	const float flRadius = WitchSpellPreviewRadius( iSpell );
-	const bool bOverheal = ( flRadius > 0.f && GetSpellData( GetWitchSpellGameIndex( iSpell ) ) &&
-		GetSpellData( GetWitchSpellGameIndex( iSpell ) )->m_pCastSpell == &CTFSpellBook::CastSelfHeal );
+	// Meteor and Overheal are team coordination tools. Everything else is private.
+	const bool bTeamVisible = WitchSpellIsTeamVisible( iSpell );
+	if ( bTeamVisible )
+	{
+		if ( pLocal->GetTeamNumber() != pWitch->GetTeamNumber() )
+			return;
+	}
+	else if ( pLocal != pWitch )
+	{
+		return;
+	}
 
+	const float flRadius = WitchSpellPreviewRadius( iSpell );
+	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSpell ) );
+	if ( !pSpell )
+		return;
+
+	const bool bOverheal = ( pSpell->m_pCastSpell == &CTFSpellBook::CastSelfHeal );
 	if ( bOverheal )
 	{
 		DrawPreviewCircle( pWitch->GetAbsOrigin(), flRadius, 80, 200, 255 );
 		return;
 	}
 
-	// Ballistic arc for jars, straight line for rockets.
-	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSpell ) );
-	if ( !pSpell )
-		return;
+	// Rockets: only the landing splash circle (no arc). Jars keep the ballistic line.
+	const bool bRocket = ( pSpell->m_eSpellType == SPELL_ROCKET );
 
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( pWitch->EyeAngles(), &vecForward, &vecRight, &vecUp );
 	Vector vecSrc = pWitch->Weapon_ShootPosition() + ( vecUp * -9.f ) + ( vecRight * SpellTossRightOffset( pWitch ) ) + ( vecForward * 3.f );
 	Vector vecVel = ( ( vecForward * 1000.f ) + ( vecUp * 200.f ) ) * pSpell->m_flSpeedScale;
-	const bool bRocket = ( pSpell->m_eSpellType == SPELL_ROCKET );
 	if ( bRocket )
 		vecVel = vecForward * 1000.f * pSpell->m_flSpeedScale;
+
+	// Rocket hull is small; a 8-unit box matches the projectile body for wall clipping.
+	const Vector vecMins( -8.f, -8.f, -8.f );
+	const Vector vecMaxs( 8.f, 8.f, 8.f );
 
 	const float flGravity = 800.f;
 	const float flStep = 0.05f;
@@ -561,8 +595,11 @@ void DrawWitchSpellPreview( CTFPlayer *pWitch )
 		if ( !bRocket )
 			vel.z -= flGravity * flStep;
 		trace_t tr;
-		UTIL_TraceLine( pos, next, MASK_SOLID_BRUSHONLY, pWitch, COLLISION_GROUP_NONE, &tr );
-		if ( debugoverlay )
+		if ( bRocket )
+			UTIL_TraceHull( pos, next, vecMins, vecMaxs, MASK_SOLID_BRUSHONLY, pWitch, COLLISION_GROUP_NONE, &tr );
+		else
+			UTIL_TraceLine( pos, next, MASK_SOLID_BRUSHONLY, pWitch, COLLISION_GROUP_NONE, &tr );
+		if ( !bRocket && debugoverlay )
 			debugoverlay->AddLineOverlay( pos, tr.endpos, 255, 220, 80, false, 0.05f );
 		land = tr.endpos;
 		if ( tr.fraction < 1.f )
@@ -834,23 +871,13 @@ void CHudSpellMenu::UpdateSpellText( int iSpellIndex, int iChargeCount )
 			{
 				m_pKeyBinding->SetVisible( false );
 				vgui::Panel *pCount = FindChildByName( "CountText", true );
-				// Stealth drains the meter. The bar is the readout, not a cast count.
-				if ( IsWitchSpellStealth( pLocalPlayer->m_Shared.GetWitchSpell() ) )
-				{
-					SetDialogVariable( "counttext", "" );
-					if ( pCount )
-						pCount->SetVisible( false );
-				}
-				else
-				{
-					const int iCost = GetWitchSpellManaCostForPlayer( pLocalPlayer, pLocalPlayer->m_Shared.GetWitchSpell() );
-					int nCasts = 0;
-					if ( iCost > 0 )
-						nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
-					SetDialogVariable( "counttext", nCasts );
-					if ( pCount )
-						pCount->SetVisible( true );
-				}
+				const int iCost = GetWitchSpellManaCostForPlayer( pLocalPlayer, pLocalPlayer->m_Shared.GetWitchSpell() );
+				int nCasts = 0;
+				if ( iCost > 0 )
+					nCasts = (int)( pLocalPlayer->m_Shared.GetSpyCloakMeter() / (float)iCost );
+				SetDialogVariable( "counttext", nCasts );
+				if ( pCount )
+					pCount->SetVisible( true );
 			}
 			else
 			{
