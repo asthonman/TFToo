@@ -1204,6 +1204,10 @@ void CTFWeaponBase::StartHolsterAnim( void )
 //-----------------------------------------------------------------------------
 bool CTFWeaponBase::Holster( CBaseCombatWeapon *pSwitchingTo )
 {
+	CTFPlayer *pHolsterPlayer = GetTFPlayerOwner();
+	if ( pHolsterPlayer )
+		pHolsterPlayer->CancelWitchHeldCast();
+
 #ifndef CLIENT_DLL
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 
@@ -2405,6 +2409,9 @@ void CTFWeaponBase::ItemBusyFrame( void )
 		m_bInAttack2 = false;
 	}
 
+	if ( pOwner->IsPlayerClass( TF_CLASS_WITCH ) )
+		pOwner->UpdateWitchHeldCast();
+
 	// Interrupt a reload on reload singly weapons.
 	if ( ( pOwner->m_nButtons & IN_ATTACK ) && Clip1() > 0 )
 	{
@@ -2460,6 +2467,9 @@ void CTFWeaponBase::ItemPostFrame( void )
 
 	// Cloak blocks CanAttack, so the broom's secondary never runs and she
 	// cannot drop it. Catch the press here. Spy weapons are unchanged.
+	if ( pOwner->IsPlayerClass( TF_CLASS_WITCH ) )
+		pOwner->UpdateWitchHeldCast();
+
 	if ( ( pOwner->m_nButtons & IN_ATTACK2 ) && !m_bInAttack2
 		&& pOwner->IsPlayerClass( TF_CLASS_WITCH )
 		&& ( pOwner->m_Shared.InCond( TF_COND_STEALTHED ) || pOwner->m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) ) )
@@ -2468,40 +2478,6 @@ void CTFWeaponBase::ItemPostFrame( void )
 		m_bInAttack2 = true;
 		m_flNextSecondaryAttack = gpGlobals->curtime + 0.1f;
 		return;
-	}
-
-	// Preview spells cast on release so the arc or circle can show while held.
-	if ( pOwner->IsPlayerClass( TF_CLASS_WITCH ) && pOwner->m_Shared.IsWitchHoldingCast()
-		&& !( pOwner->m_nButtons & IN_ATTACK2 ) )
-	{
-		pOwner->m_Shared.SetWitchHoldingCast( false );
-		const int iSpell = pOwner->m_Shared.GetWitchSpell();
-		if ( iSpell >= 0 && iSpell < GetWitchSpellCount() && WitchSpellHasPreview( iSpell )
-			&& !pOwner->m_Shared.IsWitchManaExhausted()
-			&& !pOwner->m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF )
-			&& !( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( pOwner ) ) )
-		{
-			const float flCost = (float)GetWitchSpellManaCostForPlayer( pOwner, iSpell );
-			if ( pOwner->m_Shared.GetSpyCloakMeter() >= flCost )
-			{
-				pOwner->m_Shared.SetSpyCloakMeter( pOwner->m_Shared.GetSpyCloakMeter() - flCost );
-				if ( pOwner->m_Shared.GetSpyCloakMeter() <= 0.0f )
-				{
-					pOwner->m_Shared.SetSpyCloakMeter( 0.0f );
-					pOwner->m_Shared.SetWitchManaExhausted( true );
-				}
-				pOwner->m_Shared.SetNextStealthTime( gpGlobals->curtime + 0.5f );
-				CTFSpellBook::PlayWitchThrowViewmodel( pOwner );
-#ifdef GAME_DLL
-				if ( !pOwner->CastWitchSpell( iSpell ) )
-				{
-					pOwner->m_Shared.SetSpyCloakMeter( pOwner->m_Shared.GetSpyCloakMeter() + flCost );
-					if ( pOwner->m_Shared.GetSpyCloakMeter() > 0.0f )
-						pOwner->m_Shared.SetWitchManaExhausted( false );
-				}
-#endif
-			}
-		}
 	}
 
 	bool bNeedsReload = NeedsReloadForAmmo1( GetMaxClip1() ) || ( IsEnergyWeapon() && !Energy_FullyCharged() );

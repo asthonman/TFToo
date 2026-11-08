@@ -9896,6 +9896,7 @@ static void cc_tf_player_lastdisguise( const CCommand &args )
 	// The Witch's last-disguise key swaps her previous spell, unless the option says to cycle.
 	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
+		pPlayer->CancelWitchHeldCast();
 		if ( tf_witch_spell_cycle.GetBool() )
 		{
 			const int nSpells = GetWitchSpellCount();

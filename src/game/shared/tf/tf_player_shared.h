@@ -504,6 +504,9 @@ public:
 	// True while she is holding right-click on a spell that has a preview.
 	bool	IsWitchHoldingCast( void ) const	{ return m_bWitchHoldingCast; }
 	void	SetWitchHoldingCast( bool bHolding ) { m_bWitchHoldingCast = bHolding; }
+	// gpGlobals->curtime when a teleport charge started. 0 if she is not charging.
+	float	GetWitchChargeBegin( void ) const	{ return m_flWitchChargeBegin; }
+	void	SetWitchChargeBegin( float flBegin ) { m_flWitchChargeBegin = flBegin; }
 
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
@@ -1105,6 +1108,7 @@ private:
 	CNetworkVar( bool, m_bWitchManaExhausted );
 	// Holding right-click to aim a spell. Teammates draw the arc or circle.
 	CNetworkVar( bool, m_bWitchHoldingCast );
+	CNetworkVar( float, m_flWitchChargeBegin );
 
 	CNetworkVar( bool, m_bInUpgradeZone );
 

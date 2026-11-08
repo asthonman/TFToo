@@ -10,6 +10,7 @@
 #include "tf_gamerules.h"
 #include "tf_pumpkin_bomb.h"
 #include "attribute_manager.h"
+#include "tf_weapon_pipebomblauncher.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -346,6 +347,18 @@ int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot )
 	return iAdjusted > 0 ? iAdjusted : 1;
 }
 
+float WitchTeleportChargeFraction( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return 0.f;
+
+	const float flBegin = pPlayer->m_Shared.GetWitchChargeBegin();
+	if ( flBegin <= 0.f )
+		return 0.f;
+
+	return clamp( ( gpGlobals->curtime - flBegin ) / TF_PIPEBOMB_MAX_CHARGE_TIME, 0.f, 1.f );
+}
+
 float GetWitchSpellDurationScale( CTFPlayer *pPlayer )
 {
 	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
@@ -394,6 +407,15 @@ bool IsWitchSpellTeleport( int iSlot )
 {
 	const spell_data_t *pSpell = GetSpellData( GetWitchSpellGameIndex( iSlot ) );
 	return pSpell && pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spelltransposeteleport" );
+}
+
+float GetWitchTeleportManaCost( CTFPlayer *pPlayer, int iSlot )
+{
+	const float flBase = (float)GetWitchSpellManaCostForPlayer( pPlayer, iSlot );
+	if ( !IsWitchSpellTeleport( iSlot ) )
+		return flBase;
+
+	return flBase + WitchTeleportChargeFraction( pPlayer ) * 50.f;
 }
 
 // Stealth and athletic only affect her. Everything else gets a hold-to-aim preview.
@@ -612,6 +634,12 @@ void DrawWitchSpellPreview( CTFPlayer *pWitch )
 	Vector vecVel = ( ( vecForward * 1000.f ) + ( vecUp * 200.f ) ) * pSpell->m_flSpeedScale;
 	if ( bRocket )
 		vecVel = vecForward * 1000.f * pSpell->m_flSpeedScale;
+	else if ( IsWitchSpellTeleport( iSpell ) )
+	{
+		// Sticky curve: 900 at a tap, 2400 after the same 4 second charge.
+		const float flSpeed = RemapValClamped( WitchTeleportChargeFraction( pWitch ), 0.f, 1.f, TF_PIPEBOMB_MIN_CHARGE_VEL, TF_PIPEBOMB_MAX_CHARGE_VEL );
+		vecVel = vecForward * flSpeed + vecUp * 200.f;
+	}
 
 	// Rocket hull is small; a 8-unit box matches the projectile body for wall clipping.
 	const Vector vecMins( -8.f, -8.f, -8.f );
@@ -1549,6 +1577,11 @@ void CTFSpellBook::TossJarThink( void )
 	vecSrc = vecSrc + ( vecUp * -9.0f ) + ( vecRight * fRight ) + ( vecForward * 3.0f );
 
 	Vector vecVelocity = GetVelocityVector( vecForward, vecRight, vecUp ) * pSpellData->m_flSpeedScale;
+	if ( pSpellData->m_pSpellEntityName && !Q_stricmp( pSpellData->m_pSpellEntityName, "tf_projectile_spelltransposeteleport" ) )
+	{
+		const float flSpeed = RemapValClamped( WitchTeleportChargeFraction( pPlayer ), 0.f, 1.f, TF_PIPEBOMB_MIN_CHARGE_VEL, TF_PIPEBOMB_MAX_CHARGE_VEL );
+		vecVelocity = vecForward * flSpeed + vecUp * 200.f;
+	}
 	QAngle angForward = pPlayer->EyeAngles();
 
 	// Halloween Hack
@@ -3390,7 +3423,7 @@ public:
 		if ( pCaster && pCaster->IsPlayerClass( TF_CLASS_WITCH ) )
 		{
 			int iSlot = pCaster->m_Shared.GetWitchSpell();
-			m_flRefundMana = (float)GetWitchSpellManaCostForPlayer( pCaster, iSlot );
+			m_flRefundMana = GetWitchTeleportManaCost( pCaster, iSlot );
 		}
 		// Record the hand position this frame so the first sweep covers the cast, not the frame after.
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime, "RecordThink" );
@@ -3422,6 +3455,37 @@ public:
 			m_vecTeleportCheckPos = vecEnd;
 			m_bTeleportCheckHasPos = true;
 			return false;
+		}
+
+		// Enemy players along the flight. The world sweep below does not see them.
+		{
+			class CTraceFilterTeleportEnemy : public CTraceFilterSimple
+			{
+			public:
+				CTraceFilterTeleportEnemy( const IHandleEntity *passentity, int iTeam )
+					: CTraceFilterSimple( passentity, COLLISION_GROUP_NONE ), m_iTeam( iTeam ) {}
+
+				virtual bool ShouldHitEntity( IHandleEntity *pServerEntity, int contentsMask ) OVERRIDE
+				{
+					CBaseEntity *pEntity = EntityFromEntityHandle( pServerEntity );
+					if ( !pEntity || !pEntity->IsPlayer() || !pEntity->IsAlive() )
+						return false;
+					return pEntity->GetTeamNumber() != m_iTeam;
+				}
+
+				int m_iTeam;
+			};
+
+			CTraceFilterTeleportEnemy filterEnemy( this, GetTeamNumber() );
+			trace_t trPlayer;
+			const Vector vecMins( -8.f, -8.f, -8.f );
+			const Vector vecMaxs( 8.f, 8.f, 8.f );
+			UTIL_TraceHull( m_vecTeleportCheckPos, vecEnd, vecMins, vecMaxs, MASK_PLAYERSOLID, &filterEnemy, &trPlayer );
+			if ( trPlayer.m_pEnt && trPlayer.m_pEnt->IsPlayer() )
+			{
+				Explode( &trPlayer, GetDamageType() );
+				return true;
+			}
 		}
 
 		// 32 x 32 x 36. The bottom face sits on the projectile, which is also
@@ -3516,7 +3580,10 @@ public:
 		if ( m_bTeleportExploded )
 			return;
 
-		if ( HitWithinCastWindow() )
+		// A body in the way is a real cast. Only a wall inside the window fizzles.
+		CTFPlayer *pHit = ToTFPlayer( pTrace->m_pEnt );
+		const bool bEnemy = pHit && pHit->IsAlive() && pHit->GetTeamNumber() != GetTeamNumber();
+		if ( !bEnemy && HitWithinCastWindow() )
 		{
 			FizzleEarlyHit();
 			return;
@@ -3612,6 +3679,52 @@ public:
 
 		// Grant a small amount of health
 		pThrower->TakeHealth( 30, DMG_GENERIC );
+
+		CTFPlayer *pHit = ToTFPlayer( pTrace->m_pEnt );
+		if ( pHit && pHit->IsAlive() && pHit != pThrower && pHit->GetTeamNumber() != pThrower->GetTeamNumber() )
+		{
+			CTakeDamageInfo info;
+			info.SetAttacker( pThrower );
+			info.SetInflictor( this );
+			info.SetWeapon( GetLauncher() );
+			info.SetDamage( 50.f );
+			info.SetDamageCustom( GetCustomDamageType() );
+			info.SetDamagePosition( pHit->WorldSpaceCenter() );
+			info.SetDamageType( DMG_BLAST );
+			pHit->TakeDamage( info );
+
+			if ( pHit->IsAlive() )
+			{
+				const Vector vecWitch = pThrower->GetAbsOrigin();
+				const Vector vecEnemy = pHit->GetAbsOrigin();
+				const QAngle angWitch = pThrower->GetAbsAngles();
+				const QAngle angEnemy = pHit->GetAbsAngles();
+				const Vector velWitch = pThrower->GetAbsVelocity();
+				const Vector velEnemy = pHit->GetAbsVelocity();
+
+				CPVSFilter filterWitch( vecWitch );
+				TE_TFParticleEffect( filterWitch, 0.0, GetExplodeEffectParticle(), vecWitch, vec3_angle );
+				CPVSFilter filterEnemy( vecEnemy );
+				TE_TFParticleEffect( filterEnemy, 0.0, GetExplodeEffectParticle(), vecEnemy, vec3_angle );
+
+				pThrower->Teleport( &vecEnemy, &angWitch, &velEnemy );
+				pHit->Teleport( &vecWitch, &angEnemy, &velWitch );
+				pThrower->SetGroundEntity( NULL );
+				pHit->SetGroundEntity( NULL );
+
+				pThrower->SetFOV( pThrower, 0, 0.3f, 120 );
+				color32 fadeColor = {255,255,255,100};
+				UTIL_ScreenFade( pThrower, fadeColor, 0.25, 0.4, FFADE_IN );
+				UTIL_ScreenFade( pHit, fadeColor, 0.25, 0.4, FFADE_IN );
+
+				if ( TFGameRules() )
+				{
+					TFGameRules()->HaveAllPlayersSpeakConceptIfAllowed( MP_CONCEPT_PLAYER_SPELL_TELEPORT, ( pThrower->GetTeamNumber() == TF_TEAM_RED ) ? TF_TEAM_BLUE : TF_TEAM_RED );
+				}
+
+				return true;
+			}
+		}
 
 		Vector vecDest;
 		FindTeleportDestination( pThrower, pTrace, &vecDest );
@@ -3831,7 +3944,7 @@ public:
 			if ( !pTarget->IsAlive() )
 				continue;
 
-			if ( pOwner->InSameTeam( pTarget ) && pTarget != pOwner )
+			if ( pOwner->InSameTeam( pTarget ) )
 				continue;
 
 			if ( !FVisible( pTarget, MASK_OPAQUE ) )

@@ -411,6 +411,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropInt( RECVINFO( m_nWitchSpell ) ),
 	RecvPropBool( RECVINFO( m_bWitchManaExhausted ) ),
 	RecvPropBool( RECVINFO( m_bWitchHoldingCast ) ),
+	RecvPropFloat( RECVINFO( m_flWitchChargeBegin ) ),
 	RecvPropFloat( RECVINFO( m_flSpyTranqBuffDuration ) ),
 
 	// Local Data.
@@ -452,6 +453,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_nWitchSpell, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bWitchManaExhausted, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bWitchHoldingCast, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flWitchChargeBegin, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRageMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bRageDraining, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNextRageEarnTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -594,6 +596,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropInt( SENDINFO( m_nWitchSpell ), 4, SPROP_UNSIGNED ),
 	SendPropBool( SENDINFO( m_bWitchManaExhausted ) ),
 	SendPropBool( SENDINFO( m_bWitchHoldingCast ) ),
+	SendPropFloat( SENDINFO( m_flWitchChargeBegin ) ),
 	SendPropFloat( SENDINFO( m_flSpyTranqBuffDuration ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	
 	// Local Data.
@@ -837,6 +840,7 @@ CTFPlayerShared::CTFPlayerShared()
 	m_nWitchSpell = 0;
 	m_bWitchManaExhausted = false;
 	m_bWitchHoldingCast = false;
+	m_flWitchChargeBegin = 0.f;
 
 	m_iItemFindBonus = 0;
 
@@ -12516,6 +12520,11 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			if ( WitchSpellHasPreview( iSpell ) )
 			{
 				m_Shared.SetWitchHoldingCast( true );
+				// Teleport charges like a sticky. Other previews do not.
+				if ( IsWitchSpellTeleport( iSpell ) )
+					m_Shared.SetWitchChargeBegin( gpGlobals->curtime );
+				else
+					m_Shared.SetWitchChargeBegin( 0.f );
 				return true;
 			}
 
@@ -12552,6 +12561,98 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 	}
 
 	return bDoSkill;
+}
+
+//-----------------------------------------------------------------------------
+void CTFPlayer::CancelWitchHeldCast( void )
+{
+	m_Shared.SetWitchHoldingCast( false );
+	m_Shared.SetWitchChargeBegin( 0.f );
+}
+
+//-----------------------------------------------------------------------------
+// Release fires. Attack, a weapon swap, or a new spell drops it instead.
+//-----------------------------------------------------------------------------
+void CTFPlayer::UpdateWitchHeldCast( void )
+{
+	if ( !IsPlayerClass( TF_CLASS_WITCH ) || !m_Shared.IsWitchHoldingCast() )
+		return;
+
+	if ( m_nButtons & IN_ATTACK )
+	{
+		CancelWitchHeldCast();
+		return;
+	}
+
+	const int iSpell = m_Shared.GetWitchSpell();
+	const bool bCharged = IsWitchSpellTeleport( iSpell )
+		&& m_Shared.GetWitchChargeBegin() > 0.f
+		&& WitchTeleportChargeFraction( this ) >= 1.f;
+	if ( !bCharged && ( m_nButtons & IN_ATTACK2 ) )
+		return;
+
+	m_Shared.SetWitchHoldingCast( false );
+
+	if ( iSpell < 0 || iSpell >= GetWitchSpellCount() || !WitchSpellHasPreview( iSpell )
+		|| m_Shared.IsWitchManaExhausted()
+		|| m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF )
+		|| ( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( this ) ) )
+	{
+		m_Shared.SetWitchChargeBegin( 0.f );
+#ifdef CLIENT_DLL
+		if ( IsWitchSpellTeleport( iSpell ) && WitchTeleportSpawnBlocked( this ) )
+			EmitSound( "Player.DenyWeaponSelection" );
+#endif
+		return;
+	}
+
+	float flBase = (float)GetWitchSpellManaCostForPlayer( this, iSpell );
+	float flCost = flBase;
+	if ( IsWitchSpellTeleport( iSpell ) )
+	{
+		if ( m_Shared.GetSpyCloakMeter() < flBase )
+		{
+			m_Shared.SetWitchChargeBegin( 0.f );
+#ifdef CLIENT_DLL
+			EmitSound( "Player.DenyWeaponSelection" );
+#endif
+			return;
+		}
+
+		float flExtra = WitchTeleportChargeFraction( this ) * 50.f;
+		if ( flBase + flExtra > m_Shared.GetSpyCloakMeter() )
+		{
+			flExtra = m_Shared.GetSpyCloakMeter() - flBase;
+			// TossJarThink and the fizzle refund read this same clock.
+			m_Shared.SetWitchChargeBegin( gpGlobals->curtime - ( flExtra / 50.f ) * TF_PIPEBOMB_MAX_CHARGE_TIME );
+		}
+		flCost = flBase + flExtra;
+	}
+	else if ( m_Shared.GetSpyCloakMeter() < flCost )
+	{
+#ifdef CLIENT_DLL
+		EmitSound( "Player.DenyWeaponSelection" );
+#endif
+		return;
+	}
+
+	m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() - flCost );
+	if ( m_Shared.GetSpyCloakMeter() <= 0.0f )
+	{
+		m_Shared.SetSpyCloakMeter( 0.0f );
+		m_Shared.SetWitchManaExhausted( true );
+	}
+	m_Shared.SetNextStealthTime( gpGlobals->curtime + 0.5f );
+	CTFSpellBook::PlayWitchThrowViewmodel( this );
+#ifdef GAME_DLL
+	if ( !CastWitchSpell( iSpell ) )
+	{
+		m_Shared.SetSpyCloakMeter( m_Shared.GetSpyCloakMeter() + flCost );
+		if ( m_Shared.GetSpyCloakMeter() > 0.0f )
+			m_Shared.SetWitchManaExhausted( false );
+	}
+#endif
+	m_Shared.SetWitchChargeBegin( 0.f );
 }
 
 //-----------------------------------------------------------------------------

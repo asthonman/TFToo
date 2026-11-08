@@ -465,6 +465,10 @@ public:
 
 	bool DoClassSpecialSkill( void );
 	bool EndClassSpecialSkill( void );
+	// Drop a held spell without casting it.
+	void CancelWitchHeldCast( void );
+	// Fire or cancel the spell she is aiming. Called from the active weapon.
+	void UpdateWitchHeldCast( void );
 #ifdef GAME_DLL
 	bool CastWitchSpell( int iSlot );
 	void SelectWitchSpell( int iSlot );

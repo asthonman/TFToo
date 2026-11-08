@@ -1561,6 +1561,7 @@ void CTFPlayer::SelectWitchSpell( int iSlot )
 	if ( iSlot == iCur )
 		return;
 
+	CancelWitchHeldCast();
 	m_nLastWitchSpell = iCur;
 	m_Shared.SetWitchSpell( iSlot );
 }

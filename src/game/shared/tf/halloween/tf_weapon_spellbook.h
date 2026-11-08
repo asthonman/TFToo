@@ -146,6 +146,10 @@ int GetWitchSpellGameIndex( int iSlot );
 int GetWitchSpellManaCost( int iSlot );
 // L'Etranger's slower drain also cuts this, except Overheal and meteor storm.
 int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot );
+// 0 at the start of a teleport charge, 1 after the stickybomb charge time.
+float WitchTeleportChargeFraction( CTFPlayer *pPlayer );
+// Base teleport cost plus up to 50 more mana at a full charge.
+float GetWitchTeleportManaCost( CTFPlayer *pPlayer, int iSlot );
 // Same gun. 0.6 consume rate is +40% cloak, so these spells last 1.4x as long.
 // 1 for anyone who is not a Witch, or who is not holding that bonus.
 float GetWitchSpellDurationScale( CTFPlayer *pPlayer );

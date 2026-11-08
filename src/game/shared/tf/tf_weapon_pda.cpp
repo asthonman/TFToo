@@ -967,6 +967,10 @@ void CHudMenuSpellbook::ChooseSlot( int iSlot )
 	if ( iSlot < 0 || iSlot >= GetWitchSpellCount() )
 		return;
 
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( pLocal )
+		pLocal->CancelWitchHeldCast();
+
 	char szCmd[32];
 	Q_snprintf( szCmd, sizeof( szCmd ), "witch_spell %d", iSlot + 1 );
 	engine->ClientCmd( szCmd );

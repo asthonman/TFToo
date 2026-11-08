@@ -420,6 +420,8 @@ public:
 
 	bool	DoClassSpecialSkill( void );
 	bool	EndClassSpecialSkill( void );
+	void	CancelWitchHeldCast( void );
+	void	UpdateWitchHeldCast( void );
 	bool	CanGoInvisible( bool bAllowWhileCarryingFlag = false );
 	int		GetMaxAmmo( int iAmmoIndex, int iClassIndex = -1 );
 	// Local player reads predicted ammo. Everyone else reads m_iSharedAmmo.
