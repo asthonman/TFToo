@@ -277,10 +277,10 @@ static const int s_nWitchSpellIndex[] =
 
 static const int s_nWitchSpellManaCost[] =
 {
-	25,		// Stealth
+	50,		// Stealth
 	50,		// Teleport
 	75,		// Athletic
-	75,		// Pumpkin MIRV
+	25,		// Pumpkin MIRV
 	50,		// Fireball
 	50,		// Bat swarm
 	75,		// Ball o' Lightning
@@ -1023,6 +1023,7 @@ void CTFSpellBook::Precache()
 	PrecacheScriptSound( "Halloween.spell_stealth" );
 	PrecacheScriptSound( "Halloween.spell_teleport" );
 	PrecacheScriptSound( "Halloween.spell_overheal" );
+	PrecacheScriptSound( "Halloween.MerasmusAppears" );
 
 	// The MIRV is a cannonball. Its first impact otherwise force-loads a
 	// physics sound inside the projectile think and stalls that think.

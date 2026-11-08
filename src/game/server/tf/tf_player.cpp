@@ -1563,13 +1563,6 @@ void CTFPlayer::SelectWitchSpell( int iSlot )
 
 	m_nLastWitchSpell = iCur;
 	m_Shared.SetWitchSpell( iSlot );
-
-	// Leaving the stealth spell, or picking another one, drops the cloak.
-	if ( m_Shared.InCond( TF_COND_STEALTHED ) || m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
-	{
-		m_Shared.FadeInvis( 1.0f );
-		m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
-	}
 }
 
 void CTFPlayer::SwitchLastWitchSpell( void )

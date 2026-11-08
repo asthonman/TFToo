@@ -7009,7 +7009,11 @@ void CTFPlayerShared::OnAddStealthed( void )
 
 	if ( bSetInvisChangeTime )
 	{
-		if ( !InCond( TF_COND_FEIGN_DEATH ) && !InCond( TF_COND_STEALTHED_USER_BUFF ) )
+		// Halloween stealth on other classes is instant. The witch fades in
+		// on the same clock as the Spy's cloak.
+		const bool bInstant = InCond( TF_COND_FEIGN_DEATH )
+			|| ( InCond( TF_COND_STEALTHED_USER_BUFF ) && !m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) );
+		if ( !bInstant )
 		{
 			float flInvisTime = tf_spy_invis_time.GetFloat();
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_pOuter, flInvisTime, mult_cloak_rate );
@@ -7017,7 +7021,7 @@ void CTFPlayerShared::OnAddStealthed( void )
 		}
 		else
 		{
-			m_flInvisChangeCompleteTime = gpGlobals->curtime; // Stealth immediately if we are in feign death.
+			m_flInvisChangeCompleteTime = gpGlobals->curtime;
 		}
 	}
 
@@ -7075,17 +7079,21 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 
 		int iReducedCloak = 0;
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( m_pOuter, iReducedCloak, set_quiet_unstealth );
-		if ( iReducedCloak == 1 )
+		// Witch plays Halloween.MerasmusAppears from the server when this ends.
+		if ( !m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
 		{
-			m_pOuter->EmitSound( "Player.Spy_UnCloakReduced" );
-		}
-		else if ( pWpn && pWpn->HasFeignDeath() )
-		{
-			m_pOuter->EmitSound( "Player.Spy_UnCloakFeignDeath" );
-		}
-		else
-		{
-			m_pOuter->EmitSound( "Player.Spy_UnCloak" );
+			if ( iReducedCloak == 1 )
+			{
+				m_pOuter->EmitSound( "Player.Spy_UnCloakReduced" );
+			}
+			else if ( pWpn && pWpn->HasFeignDeath() )
+			{
+				m_pOuter->EmitSound( "Player.Spy_UnCloakFeignDeath" );
+			}
+			else
+			{
+				m_pOuter->EmitSound( "Player.Spy_UnCloak" );
+			}
 		}
 		UpdateCritBoostEffect( kCritBoost_ForceRefresh );
 
@@ -7104,6 +7112,12 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 		}
 	}
 #else
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		// Merasmus: PlayHighPrioritySound( "Halloween.MerasmusAppears" ).
+		m_pOuter->EmitSound( "Halloween.MerasmusAppears" );
+	}
+
 	if ( m_flCloakStartTime > 0 )
 	{
 		// Calc a time and report every minute
@@ -12456,12 +12470,13 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 		break;
 	case TF_CLASS_WITCH:
 		{
-			// Continuous cloak (legacy) drops on a second press. The timed
-			// stealth buff does not; it runs out and blocks other casts.
-			if ( m_Shared.InCond( TF_COND_STEALTHED ) )
+			// Timed stealth stays up if she presses again or picks another spell.
+			// It ends when the timer runs out, or when an attack breaks it.
+			if ( m_Shared.InCond( TF_COND_STEALTHED ) || m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
 			{
-				m_Shared.FadeInvis( 1.0f );
-				m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.1f;
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
 				return true;
 			}
 
@@ -12480,15 +12495,6 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			int iSpell = m_Shared.GetWitchSpell();
 			if ( iSpell < 0 || iSpell >= GetWitchSpellCount() )
 				iSpell = 0;
-
-			// Stealth is a fixed-cost timed buff. No other spell while it is up.
-			if ( m_Shared.InCond( TF_COND_STEALTHED_USER_BUFF ) )
-			{
-#ifdef CLIENT_DLL
-				EmitSound( "Player.DenyWeaponSelection" );
-#endif
-				return false;
-			}
 
 			if ( m_Shared.GetStealthNoAttackExpireTime() > gpGlobals->curtime )
 			{
