@@ -1100,7 +1100,7 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 					const int iBase = GetWitchSpellManaCost( i );
 					const int iCost = GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i );
 					char szCost[16];
-					Q_snprintf( szCost, sizeof( szCost ), "%d", iCost );
+					Q_snprintf( szCost, sizeof( szCost ), "%d%%", iCost );
 					pCosts[nSide]->SetText( szCost );
 					pCosts[nSide]->SetVisible( true );
 					// Same idea as the Eureka Effect's cheaper teleporter metal: show the price you actually pay.
