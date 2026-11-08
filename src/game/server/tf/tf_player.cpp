@@ -1511,29 +1511,52 @@ static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, bool bDucking
 }
 
 //-----------------------------------------------------------------------------
-// Athletic. The spell snaps her to half size. When it ends she grows back
-// to 1 over the same short window Brick uses. Each tick, if the hull she
-// wants is in a wall, step her out along that surface. If nothing within
-// 64 units is clear, hold the size until she walks into open space.
+// Athletic. Shrink and grow use the same short window as Brick. Voice pitch
+// and head scale follow the hull, so a pause holds those too. Growing back
+// steps her off a blocking surface, and holds if 64 units is not enough.
 //-----------------------------------------------------------------------------
-void CTFPlayer::BeginAthleticGrowBack( void )
+static void AthleticSyncLook( CTFPlayer *pPlayer, float flScale )
+{
+	// 0 at full size, 1 at half size. 1.3 pitch and 3x head are the tiny end.
+	const float t = clamp( ( 1.f - flScale ) / 0.5f, 0.f, 1.f );
+	if ( t <= 0.02f )
+	{
+		pPlayer->m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
+		pPlayer->m_Shared.RemoveAttributeFromPlayer( "head scale" );
+		return;
+	}
+
+	pPlayer->m_Shared.ApplyAttributeToPlayer( "voice pitch scale", Lerp( t, 1.f, 1.3f ) );
+	pPlayer->m_Shared.ApplyAttributeToPlayer( "head scale", Lerp( t, 1.f, 3.f ) );
+}
+
+static void AthleticSyncEyes( CTFPlayer *pPlayer )
+{
+	if ( pPlayer->GetFlags() & FL_DUCKING )
+		pPlayer->SetViewOffset( VEC_DUCK_VIEW_SCALED( pPlayer ) );
+	else
+		pPlayer->SetViewOffset( pPlayer->GetClassEyeHeight() );
+}
+
+void CTFPlayer::BeginAthleticResize( float flGoal )
 {
 	SetContextThink( NULL, 0, "UpdateModelScaleThink" );
 	if ( HasDataObjectType( MODELSCALE ) )
 		DestroyDataObject( MODELSCALE );
 
-	if ( m_flModelScale >= 0.99f )
+	flGoal = clamp( flGoal, 0.5f, 1.f );
+	if ( fabsf( m_flModelScale - flGoal ) < 0.01f )
 	{
-		m_flModelScale = 1.f;
+		m_flModelScale = flGoal;
 		RefreshCollisionBounds();
-		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
-		m_Shared.RemoveAttributeFromPlayer( "head scale" );
+		AthleticSyncLook( this, flGoal );
+		AthleticSyncEyes( this );
 		return;
 	}
 
 	ModelScale *mvs = (ModelScale *)CreateDataObject( MODELSCALE );
 	mvs->m_flModelScaleStart = m_flModelScale;
-	mvs->m_flModelScaleGoal = 1.f;
+	mvs->m_flModelScaleGoal = flGoal;
 	mvs->m_flModelScaleStartTime = gpGlobals->curtime;
 	mvs->m_flModelScaleFinishTime = gpGlobals->curtime + TF_BRICK_GROW_TIME;
 }
@@ -1553,10 +1576,15 @@ void CTFPlayer::ThinkAthleticGrow( void )
 	}
 
 	ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
-	// Brick owns a scale-up past 1. This only finishes a return to normal.
-	if ( !mvs || mvs->m_flModelScaleGoal > 1.01f || mvs->m_flModelScaleGoal < mvs->m_flModelScaleStart + 0.01f )
+	if ( !mvs || mvs->m_flModelScaleGoal > 1.01f || mvs->m_flModelScaleGoal < 0.49f )
 		return;
 
+	const bool bShrink = mvs->m_flModelScaleGoal < mvs->m_flModelScaleStart - 0.01f;
+	const bool bGrow = mvs->m_flModelScaleGoal > mvs->m_flModelScaleStart + 0.01f;
+	if ( !bShrink && !bGrow )
+		return;
+
+	// The generic think would ease straight through a wall.
 	SetContextThink( NULL, 0, "UpdateModelScaleThink" );
 
 	const float dt = mvs->m_flModelScaleFinishTime - mvs->m_flModelScaleStartTime;
@@ -1566,51 +1594,47 @@ void CTFPlayer::ThinkAthleticGrow( void )
 
 	const float flWant = Lerp( frac, mvs->m_flModelScaleStart, mvs->m_flModelScaleGoal );
 	const float flNow = m_flModelScale;
-	const bool bDucking = ( GetFlags() & FL_DUCKING ) != 0;
-	Vector vecFit = GetAbsOrigin();
-	float flBest = flWant;
-	bool bFullFit = BrickGrowPushToFit( this, flWant, bDucking, vecFit );
+	float flScale = flWant;
+	bool bFullFit = true;
 
-	if ( !bFullFit )
+	if ( bGrow )
 	{
-		float flLo = flNow;
-		float flHi = flWant;
-		flBest = flNow;
-		vecFit = GetAbsOrigin();
-		Vector vecTry;
-		if ( BrickGrowPushToFit( this, flNow, bDucking, vecTry ) )
+		const bool bDucking = ( GetFlags() & FL_DUCKING ) != 0;
+		Vector vecFit = GetAbsOrigin();
+		float flBest = flWant;
+		bFullFit = BrickGrowPushToFit( this, flWant, bDucking, vecFit );
+
+		if ( !bFullFit )
 		{
-			vecFit = vecTry;
-			for ( int i = 0; i < 8; ++i )
+			float flLo = flNow;
+			float flHi = flWant;
+			flBest = flNow;
+			vecFit = GetAbsOrigin();
+			Vector vecTry;
+			if ( BrickGrowPushToFit( this, flNow, bDucking, vecTry ) )
 			{
-				const float mid = ( flLo + flHi ) * 0.5f;
-				if ( BrickGrowPushToFit( this, mid, bDucking, vecTry ) )
+				vecFit = vecTry;
+				for ( int i = 0; i < 8; ++i )
 				{
-					flLo = mid;
-					flBest = mid;
-					vecFit = vecTry;
-				}
-				else
-				{
-					flHi = mid;
+					const float mid = ( flLo + flHi ) * 0.5f;
+					if ( BrickGrowPushToFit( this, mid, bDucking, vecTry ) )
+					{
+						flLo = mid;
+						flBest = mid;
+						vecFit = vecTry;
+					}
+					else
+					{
+						flHi = mid;
+					}
 				}
 			}
 		}
-	}
 
-	if ( vecFit != GetAbsOrigin() )
-		SetAbsOrigin( vecFit );
+		if ( vecFit != GetAbsOrigin() )
+			SetAbsOrigin( vecFit );
 
-	if ( bFullFit && frac >= 1.f )
-	{
-		m_flModelScale = 1.f;
-		DestroyDataObject( MODELSCALE );
-		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
-		m_Shared.RemoveAttributeFromPlayer( "head scale" );
-	}
-	else
-	{
-		m_flModelScale = bFullFit ? flWant : flBest;
+		flScale = bFullFit ? flWant : flBest;
 		if ( !bFullFit )
 		{
 			const float flFrame = gpGlobals->frametime;
@@ -1619,12 +1643,22 @@ void CTFPlayer::ThinkAthleticGrow( void )
 		}
 	}
 
+	const bool bDone = bFullFit && frac >= 1.f;
+	if ( bDone )
+	{
+		flScale = mvs->m_flModelScaleGoal;
+		DestroyDataObject( MODELSCALE );
+	}
+
+	const bool bScaleChanged = fabsf( flScale - flNow ) > 0.0001f;
+	m_flModelScale = flScale;
 	RefreshCollisionBounds();
 
-	if ( GetFlags() & FL_DUCKING )
-		SetViewOffset( VEC_DUCK_VIEW_SCALED( this ) );
-	else
-		SetViewOffset( GetClassEyeHeight() );
+	if ( bScaleChanged || bDone )
+	{
+		AthleticSyncLook( this, flScale );
+		AthleticSyncEyes( this );
+	}
 }
 
 //-----------------------------------------------------------------------------
