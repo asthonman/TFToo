@@ -1097,11 +1097,17 @@ void CHudMenuSpellbook::UpdateSpellItems( void )
 				}
 				else
 				{
+					const int iBase = GetWitchSpellManaCost( i );
+					const int iCost = GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i );
 					char szCost[16];
-					Q_snprintf( szCost, sizeof( szCost ), "%d", GetWitchSpellManaCostForPlayer( C_TFPlayer::GetLocalTFPlayer(), i ) );
+					Q_snprintf( szCost, sizeof( szCost ), "%d", iCost );
 					pCosts[nSide]->SetText( szCost );
 					pCosts[nSide]->SetVisible( true );
-					pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
+					// Same idea as the Eureka Effect's cheaper teleporter metal: show the price you actually pay.
+					if ( iCost < iBase )
+						pCosts[nSide]->SetFgColor( Color( 90, 200, 90, 255 ) );
+					else
+						pCosts[nSide]->SetFgColor( Color( 235, 226, 202, 255 ) );
 					pCosts[nSide]->MoveToFront();
 				}
 			}
@@ -1165,6 +1171,8 @@ void CHudMenuSpellbook::SetVisible( bool state )
 
 		m_iGroupSelection = -1;
 		ToggleSelectionIcons( false );
+		// Costs depend on the gun she is holding. Refresh when the menu opens.
+		UpdateSpellItems();
 	}
 	else
 	{

@@ -146,6 +146,9 @@ int GetWitchSpellGameIndex( int iSlot );
 int GetWitchSpellManaCost( int iSlot );
 // L'Etranger's slower drain also cuts this, except Overheal and meteor storm.
 int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot );
+// Same gun. 0.6 consume rate is +40% cloak, so these spells last 1.4x as long.
+// 1 for anyone who is not a Witch, or who is not holding that bonus.
+float GetWitchSpellDurationScale( CTFPlayer *pPlayer );
 const char *GetWitchSpellUiName( int iSlot );
 const char *GetWitchSpellIcon( int iSlot );
 // Stealth is a Spy cloak toggle. It drains the mana meter instead of spending a lump cost.

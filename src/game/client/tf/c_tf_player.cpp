@@ -9880,6 +9880,9 @@ void C_TFPlayer::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, f
 
 void SelectDisguise( int iClass, int iTeam );
 
+// Off: last disguise swaps her two most recent spells. On: it cycles the list.
+ConVar tf_witch_spell_cycle( "tf_witch_spell_cycle", "0", FCVAR_ARCHIVE, "Cycle Witch spells with the last disguise key." );
+
 static void cc_tf_player_lastdisguise( const CCommand &args )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
@@ -9887,10 +9890,24 @@ static void cc_tf_player_lastdisguise( const CCommand &args )
 	if ( pPlayer == NULL )
 		return;
 
-	// The Witch's last-disguise key swaps her previous spell.
+	// The Witch's last-disguise key swaps her previous spell, unless the option says to cycle.
 	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
-		engine->ClientCmd( "witch_lastspell" );
+		if ( tf_witch_spell_cycle.GetBool() )
+		{
+			const int nSpells = GetWitchSpellCount();
+			if ( nSpells > 0 )
+			{
+				const int iNext = ( pPlayer->m_Shared.GetWitchSpell() + 1 ) % nSpells;
+				char szCmd[32];
+				Q_snprintf( szCmd, sizeof( szCmd ), "witch_spell %d", iNext + 1 );
+				engine->ClientCmd( szCmd );
+			}
+		}
+		else
+		{
+			engine->ClientCmd( "witch_lastspell" );
+		}
 		return;
 	}
 

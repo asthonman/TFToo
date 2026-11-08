@@ -490,6 +490,8 @@ CHudItemEffectMeter::CHudItemEffectMeter( const char *pszElementName, C_TFPlayer
 	m_pPlayer		= pPlayer;
 	m_bEnabled		= true;
 	m_flOldProgress = 1.f;
+	m_flOldWitchMeter = -1.f;
+	m_bOldWitchManaExhausted = false;
 	m_nState		= -1;
 	m_bWitchMeterBgSaved = false;
 
@@ -843,6 +845,37 @@ void CHudItemEffectMeter::Update( C_TFPlayer* pPlayer )
 	}
 
 	float flProgress = GetProgress();
+
+	// Witch mana dings when it rises high enough to cast the spell she has selected.
+	// A lock (meter hit zero, which also blocks meteor and overheal) waits for a full bar.
+	// The stock full-bar beep stays off for her, so this is the only sound.
+	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) && pPlayer == C_TFPlayer::GetLocalTFPlayer() )
+	{
+		if ( !pPlayer->IsAlive() )
+		{
+			m_flOldWitchMeter = -1.f;
+			m_bOldWitchManaExhausted = false;
+		}
+		else
+		{
+			const float flMeter = pPlayer->m_Shared.GetSpyCloakMeter();
+			const bool bExhausted = pPlayer->m_Shared.IsWitchManaExhausted();
+			// The lock clears on the same frame the meter hits 100, so remember last frame too.
+			const bool bLocked = bExhausted || m_bOldWitchManaExhausted;
+			if ( m_flOldWitchMeter >= 0.f && flMeter > m_flOldWitchMeter )
+			{
+				const int iSlot = pPlayer->m_Shared.GetWitchSpell();
+				const bool bStealth = !bLocked && IsWitchSpellStealth( iSlot );
+				const float flNeed = bLocked ? 100.f : ( bStealth ? 8.f : (float)GetWitchSpellManaCostForPlayer( pPlayer, iSlot ) );
+				const bool bWasReady = bStealth ? ( m_flOldWitchMeter > flNeed ) : ( m_flOldWitchMeter >= flNeed );
+				const bool bNowReady = bStealth ? ( flMeter > flNeed ) : ( flMeter >= flNeed );
+				if ( !bWasReady && bNowReady )
+					pPlayer->EmitSound( "TFPlayer.ReCharged" );
+			}
+			m_flOldWitchMeter = flMeter;
+			m_bOldWitchManaExhausted = bExhausted;
+		}
+	}
 
 	// Play a sound if we are refreshed.
 	if ( C_TFPlayer::GetLocalTFPlayer() && flProgress >= 1.f && m_flOldProgress < 1.f &&

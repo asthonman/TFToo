@@ -105,6 +105,9 @@ protected:
 	vgui::Label *m_pLabel;
 	CUtlVector< vgui::ContinuousProgressBar* > m_vecProgressBars;
 	float				m_flOldProgress;
+	// Witch mana. -1 until the first living sample, so spawn does not ding.
+	float				m_flOldWitchMeter;
+	bool				m_bOldWitchManaExhausted;
 
 	CHandle<C_TFPlayer>	m_pPlayer;
 	bool				m_bEnabled;

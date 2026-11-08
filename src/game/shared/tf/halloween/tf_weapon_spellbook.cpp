@@ -310,6 +310,21 @@ int GetWitchSpellManaCost( int iSlot )
 	return s_nWitchSpellManaCost[ iSlot ];
 }
 
+// Raw attribute, then the same rewrite the cloak drain uses.
+// 0.6 becomes about 0.714, which is 40% more cloak from a full meter.
+static float WitchCloakConsumeFactor( CTFPlayer *pPlayer )
+{
+	float flFactor = 1.0f;
+	if ( !pPlayer )
+		return flFactor;
+
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flFactor, mult_cloak_meter_consume_rate );
+	if ( flFactor <= 0.0f || flFactor >= 1.0f )
+		return 1.0f;
+
+	return 1.0f / ( 2.0f - flFactor );
+}
+
 int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot )
 {
 	const int iCost = GetWitchSpellManaCost( iSlot );
@@ -322,15 +337,26 @@ int GetWitchSpellManaCostForPlayer( CTFPlayer *pPlayer, int iSlot )
 		|| ( pSpell->m_pSpellEntityName && !Q_stricmp( pSpell->m_pSpellEntityName, "tf_projectile_spellmeteorshower" ) ) ) )
 		return iCost;
 
-	float flFactor = 1.0f;
-	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flFactor, mult_cloak_meter_consume_rate );
-	if ( flFactor <= 0.0f || flFactor >= 1.0f )
+	const float flFactor = WitchCloakConsumeFactor( pPlayer );
+	if ( flFactor >= 1.0f )
 		return iCost;
 
-	// Same conversion the cloak drain uses, so the cost falls with the drain.
-	flFactor = 1.0f / ( 2.0f - flFactor );
 	const int iAdjusted = (int)( iCost * flFactor + 0.5f );
 	return iAdjusted > 0 ? iAdjusted : 1;
+}
+
+float GetWitchSpellDurationScale( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+		return 1.0f;
+
+	float flRaw = 1.0f;
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flRaw, mult_cloak_meter_consume_rate );
+	if ( flRaw <= 0.0f || flRaw >= 1.0f )
+		return 1.0f;
+
+	// Inverse of the consume rewrite. 0.6 -> 1.4, the +40% cloak duration.
+	return 2.0f - flRaw;
 }
 
 const char *GetWitchSpellUiName( int iSlot )
@@ -1781,8 +1807,9 @@ bool CTFSpellBook::CastSelfHeal( CTFPlayer *pPlayer )
 			
 			if ( pTarget )
 			{
-				pTarget->m_Shared.AddCond( TF_COND_INVULNERABLE_USER_BUFF, 1, pPlayer );
-				pTarget->m_Shared.AddCond( TF_COND_HALLOWEEN_QUICK_HEAL, 3, pPlayer );
+				const float flScale = GetWitchSpellDurationScale( pPlayer );
+				pTarget->m_Shared.AddCond( TF_COND_INVULNERABLE_USER_BUFF, 1.f * flScale, pPlayer );
+				pTarget->m_Shared.AddCond( TF_COND_HALLOWEEN_QUICK_HEAL, 3.f * flScale, pPlayer );
 			}
 		}
 		else // knockback enemies
@@ -1895,8 +1922,9 @@ bool CTFSpellBook::CastSelfSpeedBoost( CTFPlayer *pPlayer )
 	// Give a little health
 	pPlayer->TakeHealth( 100, DMG_GENERIC );
 
-	pPlayer->m_Shared.AddCond( TF_COND_HALLOWEEN_TINY, 20, pPlayer );
-	pPlayer->m_Shared.AddCond( TF_COND_HALLOWEEN_SPEED_BOOST, 20, pPlayer );
+	const float flDuration = 20.f * GetWitchSpellDurationScale( pPlayer );
+	pPlayer->m_Shared.AddCond( TF_COND_HALLOWEEN_TINY, flDuration, pPlayer );
+	pPlayer->m_Shared.AddCond( TF_COND_HALLOWEEN_SPEED_BOOST, flDuration, pPlayer );
 #endif
 	return true;
 }
@@ -2409,9 +2437,13 @@ public:
 			DispatchParticleEffect( pszEffectName, PATTACH_ABSORIGIN_FOLLOW, pTarget );
 
 			CTFSpellBook *pSpellBook = dynamic_cast< CTFSpellBook* >( pThrower->GetEntityForLoadoutSlot( LOADOUT_POSITION_ACTION ) );
-			if ( pSpellBook )
+			CTFWeaponBase *pBleedWeapon = pSpellBook;
+			// The Witch has no action-slot spellbook, so the swarm never bled. Use the gun she is holding.
+			if ( !pBleedWeapon && pThrower->IsPlayerClass( TF_CLASS_WITCH ) )
+				pBleedWeapon = pThrower->GetActiveTFWeapon();
+			if ( pBleedWeapon )
 			{
-				pTarget->m_Shared.MakeBleed( pThrower, pSpellBook, 3.0f );
+				pTarget->m_Shared.MakeBleed( pThrower, pBleedWeapon, 3.0f * GetWitchSpellDurationScale( pThrower ) );
 			}
 		}
 		else
@@ -2948,7 +2980,8 @@ public:
 
 	virtual void Spawn() OVERRIDE
 	{
-		m_flFinishTime = gpGlobals->curtime + 4.f;
+		CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+		m_flFinishTime = gpGlobals->curtime + 4.f * GetWitchSpellDurationScale( pOwner );
 		SetContextThink( &CTFSpell_MeteorShowerSpawner::MeteorShowerThink, gpGlobals->curtime, "MeteorShowerThink" );
 	}
 
@@ -3465,6 +3498,10 @@ public:
 
 	virtual void Spawn() OVERRIDE
 	{
+		// Owner is set before DispatchSpawn. Read it first in case the base spawn clears it.
+		CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+		const float flLife = 5.f * GetWitchSpellDurationScale( pOwner );
+
 		BaseClass::Spawn();
 
 		// We dont want to collide with anything but the world
@@ -3473,7 +3510,7 @@ public:
 		SetExplodeParticleName( GetTeamNumber() == TF_TEAM_BLUE ? "drg_cow_explosioncore_charged_blue" : "drg_cow_explosioncore_charged" );
 		SetContextThink( &CTFProjectile_SpellLightningOrb::ZapThink, gpGlobals->curtime + 0.25f, "ZapThink" );
 		SetContextThink( &CTFProjectile_SpellLightningOrb::VortexThink, gpGlobals->curtime + 0.2f, "VortexThink" );
-		SetContextThink( &CTFProjectile_SpellLightningOrb::ExplodeAndRemove, gpGlobals->curtime + 5.f, "ExplodeAndRemoveThink" );
+		SetContextThink( &CTFProjectile_SpellLightningOrb::ExplodeAndRemove, gpGlobals->curtime + flLife, "ExplodeAndRemoveThink" );
 		SetDamage( 20.f );
 	}
 

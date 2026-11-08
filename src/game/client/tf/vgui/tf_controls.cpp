@@ -670,6 +670,38 @@ CTFAdvancedOptionsDialog::CTFAdvancedOptionsDialog(vgui::Panel *parent) : BaseCl
 	m_pDescription = new CInfoDescription();
 	m_pDescription->InitFromFile( DEFAULT_OPTIONS_FILE );
 	m_pDescription->InitFromFile( OPTIONS_FILE, false );
+
+	// Stock user_default.scr is not in this mod. Insert the Witch toggle next to
+	// the concise disguise menu so it lands in the class-specific section.
+	{
+		CScriptObject *pWitchSpellCycle = new CScriptObject();
+		Q_strncpy( pWitchSpellCycle->cvarname, "tf_witch_spell_cycle", sizeof( pWitchSpellCycle->cvarname ) );
+		Q_strncpy( pWitchSpellCycle->prompt, "Cycle Witch spells with the last disguise key", sizeof( pWitchSpellCycle->prompt ) );
+		Q_strncpy( pWitchSpellCycle->tooltip, "On: the last disguise key cycles through her spells. Off: it swaps her two most recent spells.", sizeof( pWitchSpellCycle->tooltip ) );
+		pWitchSpellCycle->type = O_BOOL;
+		Q_strncpy( pWitchSpellCycle->defValue, "0", sizeof( pWitchSpellCycle->defValue ) );
+		pWitchSpellCycle->fdefValue = 0.f;
+		Q_strncpy( pWitchSpellCycle->curValue, "0", sizeof( pWitchSpellCycle->curValue ) );
+		pWitchSpellCycle->fcurValue = 0.f;
+		pWitchSpellCycle->fMin = 0.f;
+		pWitchSpellCycle->fMax = 1.f;
+
+		CScriptObject *pDisguise = m_pDescription->FindObject( "tf_simple_disguise_menu" );
+		if ( m_pDescription->FindObject( "tf_witch_spell_cycle" ) )
+		{
+			pWitchSpellCycle->MarkForDeletion();
+		}
+		else if ( pDisguise )
+		{
+			pWitchSpellCycle->pNext = pDisguise->pNext;
+			pDisguise->pNext = pWitchSpellCycle;
+		}
+		else
+		{
+			m_pDescription->AddObject( pWitchSpellCycle );
+		}
+	}
+
 	m_pDescription->TransferCurrentValues( NULL );
 
 // 	MoveToCenterOfScreen();
