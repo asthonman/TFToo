@@ -28,6 +28,7 @@
 #include "tf_weapon_minigun.h"
 #include "tf_weapon_medigun.h"
 #include "tf_weapon_throwable.h"
+#include "tf_weaponbase_melee.h"
 #include "tf_weapon_smg.h"
 #include "halloween/tf_weapon_spellbook.h"
 #include "tf_logic_halloween_2014.h"
@@ -105,8 +106,9 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Thrown packs. One chunk is one pack, and that chunk refills in 30 seconds,
-// the same as Heavy's sandvich. A full bar is both packs, 60 seconds.
+// Thrown packs. The chunk count follows the equipped lunchbox.
+// Stock is two. Mini packs are four, like the Vaccinator. Mega packs are
+// one bar, like Heavy's lunchbox.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_ResupplyThrow : public CHudItemEffectMeter
 {
@@ -114,8 +116,11 @@ public:
 	CHudItemEffectMeter_ResupplyThrow( const char *pszElementName, C_TFPlayer *pPlayer )
 		: CHudItemEffectMeter( pszElementName, pPlayer )
 	{
-		m_pSecondChunk = NULL;
+		for ( int i = 0; i < RESUPPLY_THROW_CHUNKS_MAX; ++i )
+			m_pChunks[i] = NULL;
+		m_nChunks = -1;
 		m_bRestPosSaved = false;
+		m_bBarSaved = false;
 		m_iRestX = 0;
 		m_iRestY = 0;
 	}
@@ -141,10 +146,22 @@ public:
 	}
 
 private:
-	vgui::ContinuousProgressBar *m_pSecondChunk;
-	bool m_bRestPosSaved;
-	int m_iRestX;
-	int m_iRestY;
+	enum { RESUPPLY_THROW_CHUNKS_MAX = 4 };
+
+	int		ThrowChunks( void ) const;
+	void	LayoutChunks( void );
+
+	vgui::ContinuousProgressBar *m_pChunks[RESUPPLY_THROW_CHUNKS_MAX];
+	Color	m_clrChunkFg;
+	int		m_nChunks;
+	bool	m_bRestPosSaved;
+	bool	m_bBarSaved;
+	int		m_iRestX;
+	int		m_iRestY;
+	int		m_iBarX;
+	int		m_iBarY;
+	int		m_iBarW;
+	int		m_iBarH;
 };
 
 //-----------------------------------------------------------------------------
@@ -216,10 +233,88 @@ private:
 };
 
 //-----------------------------------------------------------------------------
-// Two chunks with a gap, same idea as the Vaccinator's uber segments.
-// The left chunk filling is half a meter, which is one thrown pack.
-// This meter sits above the pulse meter so the two bars don't overlap.
+// Chunk count comes from the lunchbox she has equipped.
 //-----------------------------------------------------------------------------
+int CHudItemEffectMeter_ResupplyThrow::ThrowChunks( void ) const
+{
+	if ( !m_pPlayer )
+		return 2;
+
+	for ( int i = 0; i < MAX_WEAPONS; ++i )
+	{
+		CTFResupplyWeapon *pWeapon = dynamic_cast<CTFResupplyWeapon *>( m_pPlayer->GetWeapon( i ) );
+		if ( pWeapon )
+			return pWeapon->GetThrowChargeCount();
+	}
+
+	return 2;
+}
+
+void CHudItemEffectMeter_ResupplyThrow::LayoutChunks( void )
+{
+	if ( !m_bBarSaved || !m_pChunks[0] )
+		return;
+
+	int nChunks = ThrowChunks();
+	if ( nChunks < 1 )
+		nChunks = 1;
+	if ( nChunks > RESUPPLY_THROW_CHUNKS_MAX )
+		nChunks = RESUPPLY_THROW_CHUNKS_MAX;
+	if ( nChunks == m_nChunks )
+		return;
+
+	m_nChunks = nChunks;
+
+	const int x = m_iBarX;
+	const int y = m_iBarY;
+	const int w = m_iBarW;
+	const int h = m_iBarH;
+
+	if ( nChunks == 1 )
+	{
+		m_pChunks[0]->SetBounds( x, y, w, h );
+		m_pChunks[0]->SetVisible( true );
+		m_pChunks[0]->SetFgColor( m_clrChunkFg );
+		for ( int i = 1; i < RESUPPLY_THROW_CHUNKS_MAX; ++i )
+		{
+			if ( m_pChunks[i] )
+				m_pChunks[i]->SetVisible( false );
+		}
+		return;
+	}
+
+	int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 3 );
+	if ( iGap < 2 )
+		iGap = 2;
+	if ( iGap * ( nChunks - 1 ) >= w / 2 )
+		iGap = 2;
+
+	const int iChunkW = ( w - iGap * ( nChunks - 1 ) ) / nChunks;
+	for ( int i = 0; i < nChunks; ++i )
+	{
+		if ( i > 0 && !m_pChunks[i] )
+			m_pChunks[i] = new ContinuousProgressBar( this, CFmtStr( "ItemEffectMeter%d", i + 1 ) );
+
+		ContinuousProgressBar *pChunk = m_pChunks[i];
+		if ( !pChunk )
+			continue;
+
+		const int iWidth = ( i == nChunks - 1 ) ? ( w - i * ( iChunkW + iGap ) ) : iChunkW;
+		pChunk->SetBounds( x + i * ( iChunkW + iGap ), y, iWidth, h );
+		pChunk->SetZPos( m_pChunks[0]->GetZPos() );
+		pChunk->SetFgColor( m_clrChunkFg );
+		pChunk->SetBgColor( m_pChunks[0]->GetBgColor() );
+		pChunk->SetProgressDirection( m_pChunks[0]->GetProgressDirection() );
+		pChunk->SetVisible( true );
+	}
+
+	for ( int i = nChunks; i < RESUPPLY_THROW_CHUNKS_MAX; ++i )
+	{
+		if ( m_pChunks[i] )
+			m_pChunks[i]->SetVisible( false );
+	}
+}
+
 void CHudItemEffectMeter_ResupplyThrow::ApplySchemeSettings( vgui::IScheme *pScheme )
 {
 	// CHudItemEffectMeter::BaseClass is private, so the meter has to be named.
@@ -228,33 +323,27 @@ void CHudItemEffectMeter_ResupplyThrow::ApplySchemeSettings( vgui::IScheme *pSch
 	GetPos( m_iRestX, m_iRestY );
 	m_bRestPosSaved = true;
 
+	// Keep chunks created on an earlier scheme apply. Wiping the pointers
+	// would leave those bars on screen and make a second set.
+	vgui::ContinuousProgressBar *pKept[RESUPPLY_THROW_CHUNKS_MAX];
+	for ( int i = 0; i < RESUPPLY_THROW_CHUNKS_MAX; ++i )
+		pKept[i] = m_pChunks[i];
+
+	m_nChunks = -1;
+	m_bBarSaved = false;
+
 	ContinuousProgressBar *pFirst = m_vecProgressBars.Count() ? m_vecProgressBars[0] : NULL;
 	if ( !pFirst )
 		return;
 
-	int x, y, w, h;
-	pFirst->GetBounds( x, y, w, h );
-	if ( w < 8 )
-		return;
+	m_pChunks[0] = pFirst;
+	for ( int i = 1; i < RESUPPLY_THROW_CHUNKS_MAX; ++i )
+		m_pChunks[i] = pKept[i];
+	pFirst->GetBounds( m_iBarX, m_iBarY, m_iBarW, m_iBarH );
+	m_clrChunkFg = pFirst->GetFgColor();
+	m_bBarSaved = m_iBarW >= 8;
 
-	int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 3 );
-	if ( iGap < 2 )
-		iGap = 2;
-	if ( iGap > w / 3 )
-		iGap = 2;
-
-	int iHalf = ( w - iGap ) / 2;
-	pFirst->SetBounds( x, y, iHalf, h );
-
-	if ( !m_pSecondChunk )
-		m_pSecondChunk = new ContinuousProgressBar( this, "ItemEffectMeter2" );
-
-	m_pSecondChunk->SetBounds( x + iHalf + iGap, y, w - iHalf - iGap, h );
-	m_pSecondChunk->SetZPos( pFirst->GetZPos() );
-	m_pSecondChunk->SetFgColor( pFirst->GetFgColor() );
-	m_pSecondChunk->SetBgColor( pFirst->GetBgColor() );
-	m_pSecondChunk->SetProgressDirection( pFirst->GetProgressDirection() );
-	m_pSecondChunk->SetVisible( pFirst->IsVisible() );
+	LayoutChunks();
 }
 
 void CHudItemEffectMeter_ResupplyThrow::PerformLayout()
@@ -280,25 +369,38 @@ void CHudItemEffectMeter_ResupplyThrow::Update( C_TFPlayer *pPlayer )
 {
 	CHudItemEffectMeter::Update( pPlayer );
 
-	if ( !m_pSecondChunk || m_vecProgressBars.Count() < 1 )
+	LayoutChunks();
+
+	if ( m_nChunks < 1 || !m_pChunks[0] )
 		return;
 
-	float flProgress = GetProgress();
-	ContinuousProgressBar *pBars[2] = { m_vecProgressBars[0], m_pSecondChunk };
-	for ( int i = 0; i < 2; ++i )
+	// One bar, same as Heavy's lunchbox. The base meter already filled it.
+	if ( m_nChunks == 1 )
 	{
-		float flChunk = flProgress - ( 0.5f * i );
+		m_pChunks[0]->SetFgColor( m_clrChunkFg );
+		return;
+	}
+
+	const float flChunkSize = 1.f / m_nChunks;
+	const float flProgress = GetProgress();
+	for ( int i = 0; i < m_nChunks; ++i )
+	{
+		ContinuousProgressBar *pChunk = m_pChunks[i];
+		if ( !pChunk )
+			continue;
+
+		float flChunk = flProgress - ( flChunkSize * i );
 		if ( flChunk < 0.f )
 			flChunk = 0.f;
-		if ( flChunk > 0.5f )
-			flChunk = 0.5f;
+		if ( flChunk > flChunkSize )
+			flChunk = flChunkSize;
 
-		pBars[i]->SetProgress( flChunk / 0.5f );
+		pChunk->SetProgress( flChunk / flChunkSize );
 		// A full chunk is bright. A partial one stays dim, like the Vaccinator.
-		if ( flChunk >= 0.5f )
-			pBars[i]->SetFgColor( Color( 255, 255, 255, 255 ) );
+		if ( flChunk >= flChunkSize )
+			pChunk->SetFgColor( Color( 255, 255, 255, 255 ) );
 		else
-			pBars[i]->SetFgColor( Color( 190, 190, 190, 255 ) );
+			pChunk->SetFgColor( Color( 190, 190, 190, 255 ) );
 	}
 }
 

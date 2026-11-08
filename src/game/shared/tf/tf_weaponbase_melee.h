@@ -145,6 +145,10 @@ public:
 	// Animation only. The aura calls this after it resupplies someone else.
 	void			PlayPulseSwing( void );
 
+	// How many chunks the throw meter draws. Stock is two packs, mini is
+	// four, mega is one bar.
+	virtual int		GetThrowChargeCount( void ) const { return 2; }
+
 protected:
 	// 100 meter. Stock spends 50 (two throws). A throw comes back in 30 seconds.
 	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_COST; }
@@ -174,6 +178,8 @@ public:
 
 	CTFResupplyMiniWeapon() {}
 
+	virtual int		GetThrowChargeCount( void ) const { return 4; }
+
 protected:
 	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_MAX * 0.25f; }
 	virtual int		GetThrownPackSize( void ) const { return 0; }
@@ -191,6 +197,8 @@ public:
 	DECLARE_PREDICTABLE();
 
 	CTFResupplyMegaWeapon() {}
+
+	virtual int		GetThrowChargeCount( void ) const { return 1; }
 
 protected:
 	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_MAX; }
