@@ -196,9 +196,12 @@ public:
 	bool			Energy_FullyCharged( void ) const	{ return true; }
 	bool			Energy_HasEnergy( void )			{ return true; }
 
-	// First person cast. ACT_MP_THROW is a body gesture, and first person does not
-	// draw the player. The arms play it here, on the client during prediction and
-	// on the server, so the viewmodel is not snapped back to idle.
+	// First person cast. The spell toss is the spellbook action item's
+	// animation_replacement, and she does not have that item equipped.
+	// Begin/End turn that replacement on for the Witch anyway.
+	static void		BeginWitchSpellActivities();
+	static void		EndWitchSpellActivities();
+	static Activity	GetWitchSpellActivityOverride( int iTeam, Activity actBase );
 	static void		PlayWitchThrowViewmodel( CTFPlayer *pPlayer );
 
 #ifdef GAME_DLL

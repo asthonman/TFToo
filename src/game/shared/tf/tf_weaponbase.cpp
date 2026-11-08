@@ -18,6 +18,7 @@
 #include "tf_gcmessages.h"
 
 #include "tf_weapon_wrench.h"
+#include "halloween/tf_weapon_spellbook.h"
 
 #include "passtime_convars.h"
 
@@ -785,6 +786,15 @@ bool CTFWeaponBase::SendWeaponAnim( int iActivity )
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
 	if ( !pPlayer )
 		return BaseClass::SendWeaponAnim( iActivity );
+
+	// No spellbook in the action slot. While a Witch cast is in progress,
+	// that item's replacement still applies (primary attack -> spell fire).
+	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		Activity spellAct = CTFSpellBook::GetWitchSpellActivityOverride( pPlayer->GetTeamNumber(), (Activity)iActivity );
+		if ( spellAct != (Activity)iActivity )
+			iActivity = spellAct;
+	}
 
 	if ( m_nInspectStage != INSPECT_INVALID )
 	{
@@ -4524,6 +4534,16 @@ viewmodelacttable_t s_viewmodelacttable[] =
 // -----------------------------------------------------------------------------
 Activity CTFWeaponBase::TranslateViewmodelHandActivityInternal( Activity actBase )
 {
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		// The equipped-weapon check below only sees the gun. The toss lives
+		// on the spellbook action item, which she does not have equipped.
+		Activity spellAct = CTFSpellBook::GetWitchSpellActivityOverride( pOwner->GetTeamNumber(), actBase );
+		if ( spellAct != actBase )
+			return spellAct;
+	}
+
 	CEconItemView *pEconItemView = GetAttributeContainer()->GetItem();
 	if ( pEconItemView && pEconItemView->IsValid() && GetOwnerEntity() )
 	{

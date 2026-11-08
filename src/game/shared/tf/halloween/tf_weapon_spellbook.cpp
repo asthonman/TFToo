@@ -1210,55 +1210,115 @@ CBaseEntity *CTFSpellBook::FireJar( CTFPlayer *pPlayer )
 }
 
 //-----------------------------------------------------------------------------
-// The gun stays out, so the spellbook's activity replacement never runs.
-// ACT_MP_THROW is the body gesture (spy.mdl). The arms are c_spy_arms, and
-// the spellbook stores that same throw as ACT_SPELL_VM_FIRE. SendWeaponAnim
-// looks the activity up on the gun and fails, so play the sequence here.
+// The spellbook action item's animation_replacement is what plays the toss
+// (ACT_VM_PRIMARYATTACK -> ACT_SPELL_VM_FIRE, and the melee attack -> ACT_MP_THROW).
+// That item is not in her action slot, so the replacement never runs. These
+// are set only around the cast, or her gun's idle and draw would become the
+// spellbook's too.
+//-----------------------------------------------------------------------------
+static int s_nWitchSpellActivityDepth = 0;
+
+void CTFSpellBook::BeginWitchSpellActivities()
+{
+	s_nWitchSpellActivityDepth++;
+}
+
+void CTFSpellBook::EndWitchSpellActivities()
+{
+	if ( s_nWitchSpellActivityDepth > 0 )
+		s_nWitchSpellActivityDepth--;
+}
+
+Activity CTFSpellBook::GetWitchSpellActivityOverride( int iTeam, Activity actBase )
+{
+	if ( s_nWitchSpellActivityDepth <= 0 )
+		return actBase;
+
+	static CSchemaItemDefHandle hSpellbook( "TF_WEAPON_SPELLBOOK" );
+	const CEconItemDefinition *pDef = hSpellbook;
+	if ( pDef )
+	{
+		Activity translated = pDef->GetActivityOverride( iTeam, actBase );
+		if ( translated != actBase )
+			return translated;
+	}
+
+	// Schema row missing, or this activity is not one it replaces.
+	// The toss the equipped book plays for a primary attack is this.
+	if ( actBase == ACT_VM_PRIMARYATTACK )
+		return ACT_SPELL_VM_FIRE;
+
+	return actBase;
+}
+
+//-----------------------------------------------------------------------------
+// The gun stays out. Ask it for a primary attack while the spellbook
+// replacement is forced on, so the arms play ACT_SPELL_VM_FIRE the same way
+// they do when the book is the active weapon. Client and server both run
+// this from the predicted cast.
 //-----------------------------------------------------------------------------
 void CTFSpellBook::PlayWitchThrowViewmodel( CTFPlayer *pPlayer )
 {
-	if ( !pPlayer )
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 		return;
 
-	CBaseViewModel *pVM = pPlayer->GetViewModel( 0 );
-	if ( !pVM )
+	CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
+	if ( !pWeapon )
 		return;
 
-	MDLCACHE_CRITICAL_SECTION();
+	BeginWitchSpellActivities();
+	pWeapon->SendWeaponAnim( ACT_VM_PRIMARYATTACK );
+	EndWitchSpellActivities();
 
-	static const Activity s_acts[] =
+	// SendWeaponAnim looks the sequence up on the weapon. In first person that
+	// model is the arms, which is where spell_fire lives. If that missed, the
+	// gun's own fire is what just played. Put the toss on instead.
+	if ( pWeapon->GetActivity() != ACT_SPELL_VM_FIRE )
 	{
-		ACT_MP_THROW,
-		ACT_SPELL_VM_FIRE,
-		ACT_THROWABLE_VM_FIRE,
-	};
+		int iSeq = pWeapon->SelectWeightedSequence( ACT_SPELL_VM_FIRE );
+		if ( iSeq < 0 )
+			iSeq = pWeapon->LookupSequence( "spell_fire" );
 
-	int iSeq = -1;
-	for ( int i = 0; i < ARRAYSIZE( s_acts ); ++i )
-	{
-		iSeq = pVM->SelectWeightedSequence( s_acts[i] );
 		if ( iSeq >= 0 )
-			break;
+		{
+			pWeapon->SetActivity( ACT_SPELL_VM_FIRE );
+			pWeapon->SetSequence( iSeq );
+			pWeapon->SendViewModelAnim( iSeq );
+		}
+		else
+		{
+			CBaseViewModel *pFallback = pPlayer->GetViewModel( 0 );
+			if ( pFallback )
+			{
+				iSeq = pFallback->SelectWeightedSequence( ACT_SPELL_VM_FIRE );
+				if ( iSeq < 0 )
+					iSeq = pFallback->LookupSequence( "spell_fire" );
+				if ( iSeq >= 0 )
+					pFallback->SendViewModelMatchingSequence( iSeq );
+			}
+		}
 	}
-	if ( iSeq < 0 )
-		iSeq = pVM->LookupSequence( "spell_fire" );
-	if ( iSeq < 0 )
-		return;
-
-	pVM->SendViewModelMatchingSequence( iSeq );
 
 	// WeaponIdle calls SendWeaponAnim( ACT_VM_IDLE ) the moment this elapses
 	// and would wipe the throw. Client and server must store the same time.
-	CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
-	if ( pWeapon )
+	CBaseViewModel *pVM = pPlayer->GetViewModel( 0 );
+	float flDur = 0.8f;
+	if ( pVM )
 	{
-		float flDur = pVM->SequenceDuration( iSeq );
-		if ( flDur < 0.8f )
-			flDur = 0.8f;
-		float flHold = gpGlobals->curtime + flDur;
-		if ( pWeapon->GetWeaponIdleTime() < flHold )
-			pWeapon->SetWeaponIdleTime( flHold );
+		float flSeq = pVM->SequenceDuration();
+		if ( flSeq > flDur )
+			flDur = flSeq;
 	}
+	else
+	{
+		float flSeq = pWeapon->SequenceDuration();
+		if ( flSeq > flDur )
+			flDur = flSeq;
+	}
+
+	float flHold = gpGlobals->curtime + flDur;
+	if ( pWeapon->GetWeaponIdleTime() < flHold )
+		pWeapon->SetWeaponIdleTime( flHold );
 }
 
 #ifdef GAME_DLL
@@ -1639,9 +1699,9 @@ void CTFSpellBook::PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCast
 	else if ( pPlayer->LookupAttachment( "weapon_bone" ) > 0 )
 		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "weapon_bone" );
 
-	// The spellbook replaces its melee-allclass attack with ACT_MP_THROW.
-	// Ask for that. The gun is still out, so do not ask for the gun's attack.
-	// First person is PlayWitchThrowViewmodel, from the predicted cast.
+	// Body gesture. The spellbook item turns its melee-allclass attack into
+	// ACT_MP_THROW. First person never draws the player; the arms are
+	// PlayWitchThrowViewmodel, from the predicted cast.
 	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_THROW );
 }
 
