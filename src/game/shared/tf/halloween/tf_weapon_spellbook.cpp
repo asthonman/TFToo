@@ -2307,7 +2307,12 @@ public:
 				info.SetDamage( 10.f );
 				info.SetDamageCustom( GetCustomDamageType() );
 				info.SetDamagePosition( vecOrigin );
-				info.SetDamageType( DMG_BLAST );
+				// Meteor keeps a flat blast. Fireball uses the rocket splash
+				// curve: half damage at the edge, then the rocket distance mod.
+				int iBlastType = DMG_BLAST;
+				if ( !m_bIsMeteor )
+					iBlastType |= DMG_HALF_FALLOFF | DMG_USEDISTANCEMOD;
+				info.SetDamageType( iBlastType );
 
 				CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), pThrower );
 				TFGameRules()->RadiusDamage( radiusinfo );
@@ -2356,10 +2361,27 @@ public:
 		info.SetAttacker( pThrower );
 		info.SetInflictor( this ); 
 		info.SetWeapon( pInflictor );
-		info.SetDamage( 100.f );
+		float flDamage = 100.f;
+		int iDmgType = DMG_BURN;
+		// Same two steps as a rocket: splash falls to half at the edge, and
+		// OnTakeDamage applies the rocket distance modifier (512 units is
+		// full damage, close is +25%, far is -50%). Direct impact skips splash.
+		if ( !m_bIsMeteor )
+		{
+			iDmgType |= DMG_USEDISTANCEMOD;
+			const bool bDirect = ( pTrace->m_pEnt == pBaseTarget );
+			if ( !bDirect )
+			{
+				const float flToCenter = ( pBaseTarget->WorldSpaceCenter() - GetAbsOrigin() ).Length();
+				const float flToOrigin = ( pBaseTarget->GetAbsOrigin() - GetAbsOrigin() ).Length();
+				const float flDist = MIN( flToCenter, flToOrigin );
+				flDamage = RemapValClamped( flDist, 0.f, GetDamageRadius(), flDamage, flDamage * 0.5f );
+			}
+		}
+		info.SetDamage( flDamage );
 		info.SetDamageCustom( GetCustomDamageType() );
 		info.SetDamagePosition( GetAbsOrigin() );
-		info.SetDamageType( DMG_BURN );
+		info.SetDamageType( iDmgType );
 
 		// Hurt 'em.
 		Vector dir;

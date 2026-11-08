@@ -6738,6 +6738,12 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			}
 		}
 
+		// Witch fireball is not a rocket launcher, but it uses that distance curve.
+		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_SPELL_FIREBALL && flRandomRangeVal > 0.5f )
+		{
+			flRandomDamage *= 0.5f;
+		}
+
 		// Random damage variance.
 		flDmgVariance = SimpleSplineRemapValClamped( flRandomRangeVal, 0, 1, -flRandomDamage, flRandomDamage );
 		if ( ( bDoShortRangeDistanceIncrease && flDmgVariance > 0.f ) || bDoLongRangeDistanceDecrease )
