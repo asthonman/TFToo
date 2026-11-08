@@ -301,16 +301,28 @@ void CTFProjectile_EnergyRing::ProjectileTouch( CBaseEntity *pOther )
 	}
 
 	PlayImpactEffects( pTrace->endpos, false );
-	
-	// Remove by default.  Fixes this entity living forever on things like doors.
+
+	// Real geometry only. A bounding-box overlap is ignored above, so the beam
+	// keeps flying. Removing here is what keeps it from living inside a setup gate.
 	UTIL_Remove( this );
 }
 
 void CTFProjectile_EnergyRing::ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelocity )
 {
+	// Bounding box with no collision mesh in the way. Keep going.
+	if ( trace.m_pEnt && !ShouldTouchNonWorldSolid( trace.m_pEnt, &trace ) )
+	{
+		BaseClass::ResolveFlyCollisionCustom( trace, vecVelocity );
+		return;
+	}
+
+	if ( trace.surface.flags & SURF_SKY )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
 	PlayImpactEffects( trace.endpos, false );
-	
-	// Remove by default.  Fixes this entity living forever on things like doors.
 	UTIL_Remove( this );
 }
 

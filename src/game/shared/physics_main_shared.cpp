@@ -18,6 +18,7 @@
 #include "igamesystem.h"
 #include "utlmultilist.h"
 #include "tier1/callqueue.h"
+#include "baseprojectile.h"
 
 #ifdef PORTAL
 	#include "portal_util_shared.h"
@@ -1672,7 +1673,17 @@ void CBaseEntity::PhysicsToss( void )
 	PhysicsCheckVelocity();
 
 	if (trace.allsolid )
-	{	
+	{
+#if !defined( CLIENT_DLL )
+		// Stuck in a model's bounding box, not in its collision mesh. Don't park
+		// there (that's the setup-gate bug). Push out and keep our velocity.
+		CBaseProjectile *pProjectile = dynamic_cast< CBaseProjectile * >( this );
+		if ( pProjectile && trace.m_pEnt && !pProjectile->ShouldTouchNonWorldSolid( trace.m_pEnt, &trace ) )
+		{
+			pProjectile->FlyThroughBoundingBoxHit( trace, move );
+			return;
+		}
+#endif
 		// entity is trapped in another solid
 		// UNDONE: does this entity needs to be removed?
 		SetAbsVelocity(vec3_origin);
