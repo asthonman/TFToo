@@ -3087,11 +3087,17 @@ public:
 #ifdef GAME_DLL
 		m_bTeleportExploded = false;
 		m_bTeleportCheckHasPos = false;
-		m_bPendingGround = false;
-		m_nPhysBounceTick = -1;
-		// Long enough to bounce to a floor. Detonate fizzles instead of teleporting.
-		SetDetonateTimerLength( 8.0f );
-		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
+		m_flSpawnTime = gpGlobals->curtime;
+		// Owner is still set here. InitGrenade clears it and stores the thrower after Spawn.
+		CTFPlayer *pCaster = ToTFPlayer( GetOwnerEntity() );
+		m_flRefundMana = 0.f;
+		if ( pCaster && pCaster->IsPlayerClass( TF_CLASS_WITCH ) )
+		{
+			int iSlot = pCaster->m_Shared.GetWitchSpell();
+			m_flRefundMana = (float)GetWitchSpellManaCostForPlayer( pCaster, iSlot );
+		}
+		// Record the hand position this frame so the first sweep covers the cast, not the frame after.
+		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime, "RecordThink" );
 #endif
 	}
 
@@ -3105,75 +3111,6 @@ public:
 	{
 		return BaseClass::PhysicsSolidMaskForEntity() | CONTENTS_PLAYERCLIP;
 	}
-
-#ifdef GAME_DLL
-	virtual bool		ExplodesOnHit() OVERRIDE { return false; }
-
-	virtual void Detonate() OVERRIDE
-	{
-		// The fuse must not teleport her in the air. Only the ground does.
-		UTIL_Remove( this );
-	}
-
-	virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE
-	{
-		if ( m_bTeleportExploded || m_bPendingGround )
-			return;
-
-		int otherIndex = !index;
-		CBaseEntity *pHit = pEvent->pEntities[otherIndex];
-		if ( !pHit || !pHit->IsWorld() )
-			return;
-
-		surfacedata_t *pprops = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
-		if ( pprops && pprops->game.material == 'X' )
-		{
-			UTIL_Remove( this );
-			return;
-		}
-
-		// The impulse is along the surface normal, pointing back out of it.
-		Vector normal = pEvent->postVelocity[index] - pEvent->preVelocity[index];
-		if ( normal.LengthSqr() < 1.f )
-		{
-			pEvent->pInternalData->GetSurfaceNormal( normal );
-			if ( index == 0 )
-				normal.Negate();
-			VectorNormalize( normal );
-		}
-		else
-		{
-			VectorNormalize( normal );
-		}
-
-		if ( TeleportNormalIsGround( normal ) )
-		{
-			m_bPendingGround = true;
-			m_vecPendingGroundNormal = normal;
-			// Cannot explode inside the collision callback.
-			SetContextThink( &CTFProjectile_SpellTransposeTeleport::GroundTeleportThink, gpGlobals->curtime, "TeleportGroundThink" );
-			return;
-		}
-
-		// Wall or ceiling. Physics already reflected this hull. Do not
-		// let the check box treat the same contact as a landing.
-		m_vecTeleportCheckPos = GetAbsOrigin();
-		m_bTeleportCheckHasPos = true;
-		m_nPhysBounceTick = gpGlobals->tickcount;
-	}
-
-	void GroundTeleportThink( void )
-	{
-		if ( m_bTeleportExploded )
-			return;
-
-		trace_t tr;
-		memset( &tr, 0, sizeof( tr ) );
-		tr.endpos = GetAbsOrigin();
-		tr.plane.normal = m_vecPendingGroundNormal;
-		Explode( &tr, GetDamageType() );
-	}
-#endif
 
 #ifdef GAME_DLL
 	// The projectile itself keeps its normal flight. This box only asks
@@ -3214,48 +3151,80 @@ public:
 
 		if ( tr.surface.flags & SURF_SKY )
 		{
-			UTIL_Remove( this );
+			if ( HitWithinCastWindow() )
+				FizzleEarlyHit();
+			else
+				UTIL_Remove( this );
 			return true;
 		}
 
-		Vector normal = tr.plane.normal;
-		if ( tr.startsolid || normal.LengthSqr() < 0.01f )
+		if ( tr.startsolid )
 		{
+			tr.endpos = m_vecTeleportCheckPos;
+			tr.fraction = 0.f;
 			Vector vecDir = vecEnd - m_vecTeleportCheckPos;
-			if ( vecDir.LengthSqr() < 1.f )
-				vecDir = GetAbsVelocity();
 			VectorNormalize( vecDir );
-			normal = -vecDir;
+			tr.plane.normal = -vecDir;
 		}
 
-		// Floor. Walls and ceilings bounce instead.
-		if ( TeleportNormalIsGround( normal ) )
+		Explode( &tr, GetDamageType() );
+		return true;
+	}
+
+	bool HitWithinCastWindow( void ) const
+	{
+		return ( gpGlobals->curtime - m_flSpawnTime ) <= 0.104f;
+	}
+
+	// Too close. No teleport. Give back what the cast spent.
+	void FizzleEarlyHit( void )
+	{
+		if ( m_bTeleportExploded )
+			return;
+
+		m_bTeleportExploded = true;
+
+		CTFPlayer *pThrower = ToTFPlayer( GetThrower() );
+		if ( !pThrower )
+			pThrower = ToTFPlayer( GetOwnerEntity() );
+
+		if ( pThrower )
 		{
-			if ( tr.startsolid )
+			if ( pThrower->IsPlayerClass( TF_CLASS_WITCH ) )
 			{
-				tr.endpos = m_vecTeleportCheckPos;
-				tr.fraction = 0.f;
+				if ( m_flRefundMana > 0.f )
+				{
+					float flMeter = pThrower->m_Shared.GetSpyCloakMeter() + m_flRefundMana;
+					if ( flMeter > 100.f )
+						flMeter = 100.f;
+					pThrower->m_Shared.SetSpyCloakMeter( flMeter );
+					if ( flMeter > 0.f )
+						pThrower->m_Shared.SetWitchManaExhausted( false );
+				}
 			}
-			tr.plane.normal = normal;
-			Explode( &tr, GetDamageType() );
-			return true;
+			else
+			{
+				CTFSpellBook *pBook = dynamic_cast<CTFSpellBook *>( pThrower->Weapon_OwnsThisID( TF_WEAPON_SPELLBOOK ) );
+				if ( pBook )
+					pBook->m_iSpellCharges = pBook->m_iSpellCharges + 1;
+			}
+
+			pThrower->EmitSound( "Player.DenyWeaponSelection" );
 		}
 
-		// Physics already bounced this hull on this tick. Just follow it.
-		if ( m_nPhysBounceTick == gpGlobals->tickcount )
-		{
-			m_vecTeleportCheckPos = GetAbsOrigin();
-			return false;
-		}
-
-		BounceOffSurface( normal, tr.startsolid ? m_vecTeleportCheckPos : tr.endpos );
-		return false;
+		UTIL_Remove( this );
 	}
 
 	virtual void Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE
 	{
 		if ( m_bTeleportExploded )
 			return;
+
+		if ( HitWithinCastWindow() )
+		{
+			FizzleEarlyHit();
+			return;
+		}
 
 		m_bTeleportExploded = true;
 		BaseClass::Explode( pTrace, bitsDamageType );
@@ -3275,45 +3244,6 @@ public:
 		}
 
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
-	}
-
-	static bool TeleportNormalIsGround( const Vector &normal )
-	{
-		// Source walkable floor. Walls are near 0, ceilings are negative.
-		return normal.z > 0.7f;
-	}
-
-	void BounceOffSurface( const Vector &normal, const Vector &pos )
-	{
-		IPhysicsObject *pPhys = VPhysicsGetObject();
-		Vector vel = GetAbsVelocity();
-		AngularImpulse ang;
-		ang.Init();
-		if ( pPhys )
-		{
-			Vector physVel;
-			pPhys->GetVelocity( &physVel, &ang );
-			if ( physVel.LengthSqr() > 1.f )
-				vel = physVel;
-		}
-
-		float backoff = vel.Dot( normal );
-		if ( backoff < 0.f )
-			vel -= 2.f * backoff * normal;
-		vel *= 0.75f;
-
-		Vector origin = pos + normal * 2.f;
-		SetAbsOrigin( origin );
-		SetAbsVelocity( vel );
-		if ( pPhys )
-		{
-			pPhys->SetPosition( origin, GetAbsAngles(), true );
-			pPhys->SetVelocity( &vel, &ang );
-		}
-
-		m_vecTeleportCheckPos = origin;
-		m_bTeleportCheckHasPos = true;
-		m_nPhysBounceTick = gpGlobals->tickcount;
 	}
 
 	bool DuckHullFits( CTFPlayer *pPlayer, const Vector &vecOrigin, unsigned int nMask, ITraceFilter *pFilter )
@@ -3429,9 +3359,8 @@ private:
 	Vector m_vecTeleportCheckPos;
 	bool m_bTeleportCheckHasPos;
 	bool m_bTeleportExploded;
-	bool m_bPendingGround;
-	Vector m_vecPendingGroundNormal;
-	int m_nPhysBounceTick;
+	float m_flSpawnTime;
+	float m_flRefundMana;
 #endif
 };
 
