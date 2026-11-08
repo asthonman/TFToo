@@ -36,6 +36,11 @@ public:
 	void			Break( void );
 	virtual void	PumpkinTouch( CBaseEntity *pOther ) OVERRIDE;
 
+#ifdef GAME_DLL
+	virtual bool	IsDeflectable() OVERRIDE { return ( m_iTeam == TF_TEAM_RED || m_iTeam == TF_TEAM_BLUE ); }
+	virtual void	Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE;
+#endif
+
 	void			SetInitParams( float scale, float damage, float radius, int iTeam, float flLifeTime );
 
 	void			RemovePumpkin();

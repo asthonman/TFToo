@@ -120,6 +120,13 @@ void CTFPumpkinBomb::Spawn()
 	m_takedamage = DAMAGE_YES;
 	m_bDead = false;
 
+	// Team pumpkins are the spell MIRV bombs. Airblast finds FL_GRENADE.
+	if ( m_iTeam == TF_TEAM_RED || m_iTeam == TF_TEAM_BLUE )
+	{
+		ChangeTeam( m_iTeam );
+		AddFlag( FL_GRENADE );
+	}
+
 	SetTouch( &CTFPumpkinBombShim::Touch );
 #ifdef GAME_DLL
 	if ( m_flLifeTime > 0 )
@@ -227,6 +234,18 @@ int	CTFPumpkinBomb::OnTakeDamage( const CTakeDamageInfo &info )
 
 	return BaseClass::OnTakeDamage( info );
 }
+
+//-----------------------------------------------------------------------------
+// Airblast shoves a spell pumpkin the way it shoves a sticky. Team stays.
+//-----------------------------------------------------------------------------
+void CTFPumpkinBomb::Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir )
+{
+	Vector vecPush = vecDir * 900.f;
+	if ( vecPush.z < 250.f )
+		vecPush.z = 250.f;
+	SetAbsVelocity( vecPush );
+}
+
 //-----------------------------------------------------------------------------
 void CTFPumpkinBomb::Event_Killed( const CTakeDamageInfo &info )
 {

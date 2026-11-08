@@ -2314,7 +2314,7 @@ public:
 					iBlastType |= DMG_HALF_FALLOFF | DMG_USEDISTANCEMOD;
 				info.SetDamageType( iBlastType );
 
-				CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), pThrower );
+				CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), NULL );
 				TFGameRules()->RadiusDamage( radiusinfo );
 			}
 			else
@@ -2339,7 +2339,8 @@ public:
 	virtual bool		InitialExplodeEffects( CTFPlayer *pThrower, const trace_t *pTrace ) { return true; }
 	virtual void		ExplodeEffectOnTarget( CTFPlayer *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget )
 	{
-		if ( pBaseTarget->GetTeamNumber() == GetTeamNumber() )
+		// Teammates are skipped. She is not: splash hurts the caster.
+		if ( pBaseTarget != pThrower && pBaseTarget->GetTeamNumber() == GetTeamNumber() )
 			return;
 
 		if ( pTarget )
@@ -2552,7 +2553,7 @@ public:
 		info.SetDamagePosition( vecOrigin );
 		info.SetDamageType( DMG_BLAST );
 
-		CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), pThrower );
+		CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), NULL );
 		TFGameRules()->RadiusDamage( radiusinfo );
 	}
 
@@ -2569,7 +2570,8 @@ public:
 
 	virtual void ExplodeEffectOnTarget( CTFPlayer *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget )
 	{
-		if ( pBaseTarget->GetTeamNumber() == GetTeamNumber() )
+		// Teammates are skipped. She is not: splash hurts the caster.
+		if ( pBaseTarget != pThrower && pBaseTarget->GetTeamNumber() == GetTeamNumber() )
 			return;
 
 		if ( pTarget )
@@ -2870,6 +2872,12 @@ public:
 	virtual float		GetModelScale() const				{ return 0.75f; }
 	virtual int			GetCustomDamageType() const OVERRIDE	{ return TF_DMG_CUSTOM_SPELL_MIRV; }
 #ifdef GAME_DLL
+	virtual void Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE
+	{
+		// Airblast pushes it. It stays on the caster's team.
+		DeflectSpellKeepSummonTeam( this, pDeflectedBy, vecDir );
+	}
+
 	// ignore collisions early in its lifetime
 	virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) 
 	{
@@ -2939,6 +2947,11 @@ public:
 	virtual int			GetCustomDamageType() const OVERRIDE	{ return TF_DMG_CUSTOM_SPELL_MIRV; }
 
 #ifdef GAME_DLL
+	virtual void Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir ) OVERRIDE
+	{
+		DeflectSpellKeepSummonTeam( this, pDeflectedBy, vecDir );
+	}
+
 	//virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) { }
 	//virtual void PipebombTouch( CBaseEntity *pOther ) { }
 
@@ -3785,7 +3798,7 @@ public:
 			if ( !pTarget->IsAlive() )
 				continue;
 
-			if ( pOwner->InSameTeam( pTarget ) )
+			if ( pOwner->InSameTeam( pTarget ) && pTarget != pOwner )
 				continue;
 
 			if ( !FVisible( pTarget, MASK_OPAQUE ) )

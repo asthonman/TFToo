@@ -1,4 +1,4 @@
-// Witch. 125 health, 107% move speed (same 320 as Spy and Medic).
+// Witch. 150 health, 107% move speed (same 320 as Spy and Medic).
 // The body is the Spy until her own model exists. Icons use the witch name.
 // Primary is the stock shotgun (32 reserve), plus the Panic Attack, Family
 // Business, and Reserve Shooter. Secondary is the Spy revolver (and his
@@ -15,7 +15,7 @@
 	"model_hands"		"models/weapons/c_models/c_spy_arms.mdl"
 	"localize_name"		"#TF_Class_Name_Witch"
 	"speed_max"			"320"
-	"health_max"		"125"
+	"health_max"		"150"
 	"armor_max"			"0"
 	"weapon1"			"tf_weapon_none"
 	"weapon2"			"tf_weapon_none"
