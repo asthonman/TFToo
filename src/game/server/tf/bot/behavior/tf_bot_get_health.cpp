@@ -72,6 +72,11 @@ public:
 		if ( candidate->ClassMatches( "item_healthkit*" ) )
 			return true;
 
+		// Resupply's thrown health lunchbox. Either team can take it.
+		// Her own throw only refunds the meter, so she does not path to it.
+		if ( candidate->ClassMatches( "item_resupply_lunchbox" ) )
+			return candidate->GetOwnerEntity() != m_me;
+
 		if ( m_me->InSameTeam( candidate ) )
 		{
 			// friendly engineer's dispenser
@@ -83,6 +88,11 @@ public:
 					return true;
 				}
 			}
+
+			// friendly Resupply. Same reason a bot walks to a dispenser.
+			CTFPlayer *pResupply = ToTFPlayer( candidate );
+			if ( pResupply && pResupply != m_me && pResupply->IsAlive() && pResupply->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+				return true;
 		}
 
 		return false;
@@ -140,7 +150,23 @@ bool CTFBotGetHealth::IsPossible( CTFBot *me )
 	CUtlVector< CHandle< CBaseEntity > > healthVector;
 	CHealthFilter healthFilter( me );
 
-	me->SelectReachableObjects( TFGameRules()->GetHealthEntityVector(), &healthVector, healthFilter, me->GetLastKnownArea(), searchRange );
+	CUtlVector< CHandle< CBaseEntity > > candidates;
+	const CUtlVector< CHandle< CBaseEntity > > &mapHealth = TFGameRules()->GetHealthEntityVector();
+	FOR_EACH_VEC( mapHealth, i )
+		candidates.AddToTail( mapHealth[i] );
+
+	for ( int n = 1; n <= gpGlobals->maxClients; ++n )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( n ) );
+		if ( pPlayer && pPlayer->IsAlive() && pPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+			candidates.AddToTail( pPlayer );
+	}
+
+	CBaseEntity *pLunchbox = NULL;
+	while ( ( pLunchbox = gEntList.FindEntityByClassname( pLunchbox, "item_resupply_lunchbox" ) ) != NULL )
+		candidates.AddToTail( pLunchbox );
+
+	me->SelectReachableObjects( candidates, &healthVector, healthFilter, me->GetLastKnownArea(), searchRange );
 
 	if ( healthVector.Count() == 0 )
 	{
@@ -230,9 +256,28 @@ ActionResult< CTFBot >	CTFBotGetHealth::OnStart( CTFBot *me, Action< CTFBot > *p
 //---------------------------------------------------------------------------------------------
 ActionResult< CTFBot >	CTFBotGetHealth::Update( CTFBot *me, float interval )
 {
-	if ( m_healthKit == NULL || ( m_healthKit->IsEffectActive( EF_NODRAW ) && !FClassnameIs( m_healthKit, "func_regenerate" ) ) )
+	if ( m_healthKit == NULL || ( m_healthKit->IsEffectActive( EF_NODRAW ) && !FClassnameIs( m_healthKit, "func_regenerate" ) && !m_healthKit->IsPlayer() ) )
 	{
 		return Done( "Health kit I was going for has been taken" );
+	}
+
+	CTFPlayer *pResupply = ToTFPlayer( m_healthKit );
+	if ( pResupply && pResupply->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+	{
+		if ( !pResupply->IsAlive() || !me->InSameTeam( pResupply ) )
+			return Done( "Resupply is gone" );
+
+		// Her pulse reaches 80 units. Wait there instead of running into her.
+		if ( ( me->GetAbsOrigin() - pResupply->GetAbsOrigin() ).IsLengthLessThan( 80.f )
+			&& me->GetVisionInterface()->IsLineOfSightClearToEntity( pResupply ) )
+		{
+			if ( me->GetHealth() >= me->GetMaxHealth() )
+				return Done( "Filled up by the Resupply" );
+
+			const CKnownEntity *threat = me->GetVisionInterface()->GetPrimaryKnownThreat();
+			me->EquipBestWeaponForThreat( threat );
+			return Continue();
+		}
 	}
 
 	// if a medic is healing us, give up on getting a kit

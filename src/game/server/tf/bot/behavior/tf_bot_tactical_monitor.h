@@ -40,6 +40,8 @@ private:
 	CountdownTimer m_findTeleporterTimer;
 
 	void AvoidBumpingEnemies( CTFBot *me );
+
+	CountdownTimer m_brickCoverRetryTimer;
 };
 
 

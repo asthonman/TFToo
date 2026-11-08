@@ -79,8 +79,16 @@ public:
 		if ( candidate->ClassMatches( "item_ammopack*" ) )
 			return true;
 
+		// Resupply's thrown ammo lunchbox. Either team can take it.
+		if ( candidate->ClassMatches( "item_resupply_lunchbox_ammo" ) )
+			return candidate->GetOwnerEntity() != m_me;
+
 		if ( m_me->InSameTeam( candidate ) )
 		{
+			CTFPlayer *pResupply = ToTFPlayer( candidate );
+			if ( pResupply && pResupply != m_me && pResupply->IsAlive() && pResupply->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+				return true;
+
 			// friendly engineer's dispenser
 			if ( candidate->ClassMatches( "obj_dispenser*" ) )
 			{
@@ -178,6 +186,41 @@ bool CTFBotGetAmmo::IsPossible( CTFBot *me )
 		}
 	}
 
+	CBaseEntity *pLunchbox = NULL;
+	while ( ( pLunchbox = gEntList.FindEntityByClassname( pLunchbox, "item_resupply_lunchbox_ammo" ) ) != NULL )
+	{
+		if ( ammoFilter.IsSelected( pLunchbox ) )
+		{
+			if ( ammoFilter.m_ammoArea && ammoFilter.m_ammoArea->IsMarked() )
+			{
+				if ( ammoFilter.m_ammoArea->GetCostSoFar() < closestAmmoTravelDistance )
+				{
+					closestAmmo = pLunchbox;
+					closestAmmoTravelDistance = ammoFilter.m_ammoArea->GetCostSoFar();
+				}
+			}
+		}
+	}
+
+	for ( int n = 1; n <= gpGlobals->maxClients; ++n )
+	{
+		CTFPlayer *pResupply = ToTFPlayer( UTIL_PlayerByIndex( n ) );
+		if ( !pResupply )
+			continue;
+
+		if ( ammoFilter.IsSelected( pResupply ) )
+		{
+			if ( ammoFilter.m_ammoArea && ammoFilter.m_ammoArea->IsMarked() )
+			{
+				if ( ammoFilter.m_ammoArea->GetCostSoFar() < closestAmmoTravelDistance )
+				{
+					closestAmmo = pResupply;
+					closestAmmoTravelDistance = ammoFilter.m_ammoArea->GetCostSoFar();
+				}
+			}
+		}
+	}
+
 	if ( !closestAmmo )
 	{
 		if ( me->IsDebugging( NEXTBOT_BEHAVIOR ) )
@@ -213,6 +256,9 @@ ActionResult< CTFBot >	CTFBotGetAmmo::OnStart( CTFBot *me, Action< CTFBot > *pri
 
 	m_ammo = s_possibleAmmo;
 	m_isGoalDispenser = m_ammo->ClassMatches( "obj_dispenser*" );
+	CTFPlayer *pResupply = ToTFPlayer( m_ammo );
+	if ( pResupply && pResupply->IsPlayerClass( TF_CLASS_RESUPPLY ) )
+		m_isGoalDispenser = true;
 
 	CTFBotPathCost cost( me, FASTEST_ROUTE );
 	if ( !m_path.Compute( me, m_ammo->WorldSpaceCenter(), cost ) )
@@ -257,12 +303,22 @@ ActionResult< CTFBot >	CTFBotGetAmmo::Update( CTFBot *me, float interval )
 
 	if ( m_isGoalDispenser )
 	{
-		// we need to get near and wait, not try to run over
-		const float nearRange = 75.0f;
+		CTFPlayer *pResupplyGoal = ToTFPlayer( m_ammo );
+		if ( pResupplyGoal && ( !pResupplyGoal->IsAlive() || !me->InSameTeam( pResupplyGoal ) ) )
+			return Done( "Resupply is gone" );
+
+		// A dispenser is 75. Her pulse is 80.
+		const float nearRange = pResupplyGoal ? 80.0f : 75.0f;
 		if ( ( me->GetAbsOrigin() - m_ammo->GetAbsOrigin() ).IsLengthLessThan( nearRange ) )
 		{
 			if ( me->GetVisionInterface()->IsLineOfSightClearToEntity( m_ammo ) )
 			{
+				if ( pResupplyGoal )
+				{
+					const CKnownEntity *threat = me->GetVisionInterface()->GetPrimaryKnownThreat();
+					me->EquipBestWeaponForThreat( threat );
+				}
+
 				if ( me->IsAmmoFull() )
 				{
 					return Done( "Ammo refilled by the Dispenser" );

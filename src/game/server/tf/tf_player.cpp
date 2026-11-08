@@ -1251,11 +1251,11 @@ bool CTFPlayer::CanBeForcedToLaugh( void )
 }
 
 //-----------------------------------------------------------------------------
-// Resupply's locker. One 3 second pulse for her, not a per-target clock.
-// The meter on her HUD fills across TF_RESUPPLY_PULSE_INTERVAL and stays full
-// while nobody in range can take it. A target's own cabinet cooldown still
-// applies, so a locker and her pulse cannot stack inside that window. She is
-// not a target: her own health comes from the health_regen passive.
+// Resupply's locker. One 3 second pulse, spent on the teammate in range
+// with the lowest health. The meter stays full while nobody can take it.
+// A target's own cabinet cooldown still applies, so a locker and her pulse
+// cannot stack inside that window. She is not a target: her own health
+// comes from the health_regen passive.
 //-----------------------------------------------------------------------------
 void CTFPlayer::ResupplyAuraThink( void )
 {
@@ -1312,11 +1312,30 @@ void CTFPlayer::ResupplyAuraThink( void )
 	if ( vecTargets.Count() == 0 )
 		return;
 
+	// One teammate per pulse. The lowest health ratio gets the locker.
+	// A tie goes to whoever is closest.
+	CTFPlayer *pBest = NULL;
+	float flBestRatio = 0.f;
+	float flBestDistSqr = 0.f;
 	FOR_EACH_VEC( vecTargets, i )
 	{
-		vecTargets[i]->Regenerate();
-		vecTargets[i]->SetNextRegenTime( gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL );
+		CTFPlayer *pTarget = vecTargets[i];
+		const int nMax = Max( 1, pTarget->GetMaxHealth() );
+		const float flRatio = (float)pTarget->GetHealth() / (float)nMax;
+		const float flDistSqr = ( pTarget->WorldSpaceCenter() - WorldSpaceCenter() ).LengthSqr();
+		if ( !pBest || flRatio < flBestRatio || ( flRatio == flBestRatio && flDistSqr < flBestDistSqr ) )
+		{
+			pBest = pTarget;
+			flBestRatio = flRatio;
+			flBestDistSqr = flDistSqr;
+		}
 	}
+
+	if ( !pBest )
+		return;
+
+	pBest->Regenerate();
+	pBest->SetNextRegenTime( gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL );
 
 	m_flNextResupplyPulse = gpGlobals->curtime + TF_RESUPPLY_PULSE_INTERVAL;
 

@@ -35,6 +35,210 @@
 #include "tf_obj_sentrygun.h"
 #include "tf_item_system.h"
 
+//---------------------------------------------------------------------------------------------
+// An allied Brick is mobile cover. Under fire, stand on the far side of him
+// so his body is between the bot and the threat.
+//---------------------------------------------------------------------------------------------
+class CTFBotGetBehindBrick : public Action< CTFBot >
+{
+public:
+	static bool IsPossible( CTFBot *me );
+
+	virtual ActionResult< CTFBot > OnStart( CTFBot *me, Action< CTFBot > *priorAction );
+	virtual ActionResult< CTFBot > Update( CTFBot *me, float interval );
+
+	virtual EventDesiredResult< CTFBot > OnStuck( CTFBot *me );
+	virtual EventDesiredResult< CTFBot > OnMoveToFailure( CTFBot *me, const Path *path, MoveToFailureType reason );
+
+	virtual const char *GetName( void ) const { return "GetBehindBrick"; }
+
+private:
+	static bool BrickBlocksLine( const Vector &from, const Vector &brickPos, const Vector &threatPos, float flRadius );
+	static bool FindCoverSpot( CTFBot *me, CTFPlayer **pBrick, Vector *pGoal, Vector *pThreatPos );
+
+	CHandle< CTFPlayer > m_brick;
+	PathFollower m_path;
+	CountdownTimer m_repathTimer;
+	CountdownTimer m_giveUpTimer;
+};
+
+bool CTFBotGetBehindBrick::BrickBlocksLine( const Vector &from, const Vector &brickPos, const Vector &threatPos, float flRadius )
+{
+	Vector toThreat = threatPos - from;
+	toThreat.z = 0.f;
+	const float flLen = toThreat.Length();
+	if ( flLen < 1.f )
+		return false;
+
+	const Vector dir = toThreat / flLen;
+	Vector toBrick = brickPos - from;
+	toBrick.z = 0.f;
+	const float flAlong = toBrick.Dot( dir );
+	if ( flAlong < 16.f || flAlong > flLen )
+		return false;
+
+	const Vector closest = from + dir * flAlong;
+	Vector side = brickPos - closest;
+	side.z = 0.f;
+	return side.LengthSqr() <= flRadius * flRadius;
+}
+
+bool CTFBotGetBehindBrick::FindCoverSpot( CTFBot *me, CTFPlayer **pBrick, Vector *pGoal, Vector *pThreatPos )
+{
+	const CKnownEntity *threat = me->GetVisionInterface()->GetPrimaryKnownThreat();
+	if ( !threat || threat->IsObsolete() )
+		return false;
+
+	const bool bHurt = me->GetTimeSinceLastInjury( GetEnemyTeam( me->GetTeamNumber() ) ) < 1.5f;
+	CBaseEntity *pThreatEnt = threat->GetEntity();
+	const bool bAimed = pThreatEnt && threat->IsVisibleRecently() && me->IsThreatAimingTowardMe( pThreatEnt, 0.75f );
+	if ( !bHurt && !bAimed )
+		return false;
+
+	const Vector threatPos = threat->GetLastKnownPosition();
+	const float flSearchSqr = 800.f * 800.f;
+	CTFPlayer *pBest = NULL;
+	CTFPlayer *pBlocking = NULL;
+	float flBestSqr = flSearchSqr;
+	float flBlockSqr = flSearchSqr;
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer || pPlayer == me || !pPlayer->IsAlive() )
+			continue;
+		if ( !pPlayer->IsPlayerClass( TF_CLASS_BRICK ) || !me->InSameTeam( pPlayer ) )
+			continue;
+
+		const float flDistSqr = ( pPlayer->GetAbsOrigin() - me->GetAbsOrigin() ).LengthSqr();
+		if ( flDistSqr > flSearchSqr )
+			continue;
+
+		// Already between me and the threat. Stay with him instead of
+		// running off to some other corner.
+		const float flRadius = 24.f * Max( 1.f, pPlayer->GetModelScale() ) + 20.f;
+		if ( BrickBlocksLine( me->GetAbsOrigin(), pPlayer->GetAbsOrigin(), threatPos, flRadius ) )
+		{
+			if ( flDistSqr < flBlockSqr )
+			{
+				flBlockSqr = flDistSqr;
+				pBlocking = pPlayer;
+			}
+			continue;
+		}
+
+		if ( !me->GetVisionInterface()->IsLineOfSightClearToEntity( pPlayer ) )
+			continue;
+
+		if ( flDistSqr < flBestSqr )
+		{
+			flBestSqr = flDistSqr;
+			pBest = pPlayer;
+		}
+	}
+
+	if ( pBlocking )
+		pBest = pBlocking;
+
+	if ( !pBest )
+		return false;
+
+	Vector away = pBest->GetAbsOrigin() - threatPos;
+	away.z = 0.f;
+	if ( VectorNormalize( away ) < 0.1f )
+		return false;
+
+	const float flScale = Max( 1.f, pBest->GetModelScale() );
+	const Vector goal = pBest->GetAbsOrigin() + away * ( 24.f * flScale + 40.f );
+
+	*pBrick = pBest;
+	*pGoal = goal;
+	*pThreatPos = threatPos;
+	return true;
+}
+
+bool CTFBotGetBehindBrick::IsPossible( CTFBot *me )
+{
+	CTFPlayer *pBrick = NULL;
+	Vector goal, threatPos;
+	return FindCoverSpot( me, &pBrick, &goal, &threatPos );
+}
+
+ActionResult< CTFBot > CTFBotGetBehindBrick::OnStart( CTFBot *me, Action< CTFBot > *priorAction )
+{
+	m_path.SetMinLookAheadDistance( me->GetDesiredPathLookAheadRange() );
+	m_giveUpTimer.Start( 3.0f );
+	m_repathTimer.Start( 0.4f );
+
+	CTFPlayer *pBrick = NULL;
+	Vector goal, threatPos;
+	if ( !FindCoverSpot( me, &pBrick, &goal, &threatPos ) )
+		return Done( "No Brick to hide behind" );
+
+	m_brick = pBrick;
+	// Already on the safe side. Hold. Don't path into him.
+	if ( ( goal - me->GetAbsOrigin() ).IsLengthLessThan( 40.f ) )
+		return Continue();
+
+	CTFBotPathCost cost( me, SAFEST_ROUTE );
+	if ( !m_path.Compute( me, goal, cost ) )
+		return Done( "No path behind the Brick" );
+
+	return Continue();
+}
+
+ActionResult< CTFBot > CTFBotGetBehindBrick::Update( CTFBot *me, float interval )
+{
+	if ( me->GetIntentionInterface()->ShouldRetreat( me ) != ANSWER_YES )
+		return Done( "No longer need to retreat" );
+
+	CTFPlayer *pBrick = m_brick;
+	if ( !pBrick || !pBrick->IsAlive() || !me->InSameTeam( pBrick ) || !pBrick->IsPlayerClass( TF_CLASS_BRICK ) )
+		return Done( "Brick is gone" );
+
+	const CKnownEntity *threat = me->GetVisionInterface()->GetPrimaryKnownThreat();
+	me->EquipBestWeaponForThreat( threat );
+
+	CTFPlayer *pCover = NULL;
+	Vector goal, threatPos;
+	if ( !FindCoverSpot( me, &pCover, &goal, &threatPos ) )
+		return Done( "No longer need the Brick" );
+
+	m_brick = pCover;
+
+	// Stay on the far side while the fire lasts. Leaving would just
+	// hand us back to generic cover and walk us out from behind him.
+	if ( ( goal - me->GetAbsOrigin() ).IsLengthLessThan( 40.f ) )
+		return Continue();
+
+	if ( m_giveUpTimer.IsElapsed() )
+		return Done( "Gave up getting behind the Brick" );
+
+	if ( m_repathTimer.IsElapsed() )
+	{
+		m_repathTimer.Start( 0.4f );
+		CTFBotPathCost cost( me, SAFEST_ROUTE );
+		if ( !m_path.Compute( me, goal, cost ) )
+			return Done( "No path behind the Brick" );
+	}
+
+	if ( !m_path.IsValid() )
+		return Done( "No path behind the Brick" );
+
+	m_path.Update( me );
+	return Continue();
+}
+
+EventDesiredResult< CTFBot > CTFBotGetBehindBrick::OnStuck( CTFBot *me )
+{
+	return TryDone( RESULT_IMPORTANT, "Stuck getting behind the Brick" );
+}
+
+EventDesiredResult< CTFBot > CTFBotGetBehindBrick::OnMoveToFailure( CTFBot *me, const Path *path, MoveToFailureType reason )
+{
+	return TryDone( RESULT_IMPORTANT, "Couldn't reach the Brick" );
+}
+
 extern ConVar tf_bot_health_ok_ratio;
 extern ConVar tf_bot_health_critical_ratio;
 
@@ -261,6 +465,15 @@ ActionResult< CTFBot >	CTFBotTacticalMonitor::Update( CTFBot *me, float interval
 
 	if ( shouldRetreat == ANSWER_YES )
 	{
+		// Prefer an allied Brick over a random cover spot. The timer keeps
+		// the player scan off the per-frame path when nobody is around.
+		if ( m_brickCoverRetryTimer.IsElapsed() )
+		{
+			m_brickCoverRetryTimer.Start( 0.5f );
+			if ( CTFBotGetBehindBrick::IsPossible( me ) )
+				return SuspendFor( new CTFBotGetBehindBrick, "Putting the Brick between me and the fire" );
+		}
+
 		return SuspendFor( new CTFBotRetreatToCover, "Backing off" );
 	}
 	else if ( shouldRetreat != ANSWER_NO )
