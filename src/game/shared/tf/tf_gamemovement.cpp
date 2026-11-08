@@ -577,11 +577,12 @@ bool CTFGameMovement::ChargeMove()
 // Madcap velocity. Rollerskate friction on the ground. The bar is just
 // horizontal speed over his top speed. There is no separate fill or drain.
 //-----------------------------------------------------------------------------
-// sv_friction is 4, so 0.06 coasts for about four seconds from a full stop.
+// sv_friction is 4, so 0.06 coasts instead of stopping short.
 static const float tf_madcap_friction_scale = 0.06f;
-// Slowest build from class speed to top speed (wish opposite where he looks).
-// 2.5 * this stays above 1, so he can still reach and hold top speed.
+// Slower build when the wish is not the way he is facing.
 static const float tf_madcap_back_accel = 0.45f;
+// Passed to Accelerate while he is still short of top speed.
+static const float tf_madcap_build_accel = 4.1888f;
 
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
@@ -1842,13 +1843,24 @@ void CTFGameMovement::WalkMove( void )
 	float flWishSpeed = VectorNormalize( vecWishDirection );
 	flWishSpeed = clamp( flWishSpeed, 0.0f, mv->m_flMaxSpeed );
 
+	// A full key press is cl_forwardspeed (450), which is under his top speed.
+	// Lift that to the cap so the bar can actually fill. Partial input stays put.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP )
+		&& !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE )
+		&& flWishSpeed > 0.f )
+	{
+		const float flInput = sqrtf( ( flForwardMove * flForwardMove ) + ( flSideMove * flSideMove ) );
+		const float flFull = cl_forwardspeed.GetFloat();
+		if ( flFull > 0.f && flInput + 1.f >= flFull && flWishSpeed < mv->m_flMaxSpeed )
+			flWishSpeed = mv->m_flMaxSpeed;
+	}
+
 	// Accelerate in the x,y plane.
 	mv->m_vecVelocity.z = 0;
 
 	float flAccelerate = sv_accelerate.GetFloat();
-	// Madcap: class speed comes up like any other class. From there to top
-	// speed, facing sets the rate. Already being at top speed along the wish
-	// does not slow him down when he turns around and keeps that direction.
+	// Facing changes the build from class speed to top speed. At the cap, a
+	// turn that keeps his travel direction does not slow him down.
 	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && flWishSpeed > 0.f
 		&& !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE )
 		&& player->m_surfaceFriction > 0.f && player->m_surfaceFriction < 1.f )
@@ -1867,14 +1879,21 @@ void CTFGameMovement::WalkMove( void )
 		const float flFace = DotProduct( vecWishDirection, vecFace );
 		const float flFacingScale = RemapValClamped( flFace, -1.f, 1.f, tf_madcap_back_accel, 1.f );
 
-		// Accelerate() multiplies by surfaceFriction. Undo the skate scale
-		// except on the base-to-top ramp, which is supposed to be slow.
-		const float flUndoFriction = 1.f / tf_madcap_friction_scale;
 		const bool bAtCap = ( flAlong >= flWishSpeed * 0.98f );
-		if ( flSpeed <= flBase || bAtCap )
-			flAccelerate *= flUndoFriction;
+		if ( bAtCap )
+		{
+			flAccelerate *= ( 1.f / tf_madcap_friction_scale );
+		}
 		else
-			flAccelerate *= flFacingScale;
+		{
+			float flScale = 1.f;
+			if ( flSpeed > flBase )
+				flScale = flFacingScale;
+			flAccelerate = tf_madcap_build_accel * flScale;
+			// Stay at or above sv_friction so a wish still reaches the cap.
+			if ( flAccelerate < sv_friction.GetFloat() )
+				flAccelerate = sv_friction.GetFloat();
+		}
 	}
 	float flFriction = sv_friction.GetFloat() * player->m_surfaceFriction;
 
