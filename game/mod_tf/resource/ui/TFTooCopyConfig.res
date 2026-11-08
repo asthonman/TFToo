@@ -1,0 +1,26 @@
+"TFTooCopyConfig"
+{
+	"ControlName"		"CExplanationPopup"
+	"fieldName"			"TFTooCopyConfig"
+	"xpos"				"0"
+	"ypos"				"0"
+	"zpos"				"10000"
+	"wide"				"250"
+	"tall"				"160"
+	"visible"			"0"
+	"PaintBackgroundType"	"2"
+	"paintbackground"	"0"
+	"border"			"MainMenuHighlightBorder"
+
+	"force_close"		"0"
+	"end_x"				"c-320"
+	"end_y"				"70"
+	"end_wide"			"280"
+	"end_tall"			"140"
+	"callout_inparents_x"	"c120"
+	"callout_inparents_y"	"30"
+
+	"res_file_controls"	"1"
+	"explanation_title"	"#TFToo_CopyConfig_Title"
+	"explanation_body"	"#TFToo_CopyConfig_Body"
+}

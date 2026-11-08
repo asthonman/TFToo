@@ -64,17 +64,14 @@ void CTFClassTipsItemPanel::SetClassTip( const wchar_t *pwszText, const char *ps
 	// Set tf_english string and .res icon path
 	if ( m_pTipLabel && m_pTipIcon )
 	{
-		if ( pszIcon )
+		if ( pszIcon && pszIcon[0] )
 		{
+			m_pTipIcon->SetVisible( true );
 			m_pTipIcon->SetImage( pszIcon );
 		}
-		else
+		else if ( !pszIcon )
 		{
 			m_pTipIcon->SetVisible( false );
-// 			int iX, iY = 0;
-// 			m_pTipLabel->GetPos( iX, iY );
-// 			int nIconWidth = m_pTipIcon->GetWide();
-// 			m_pTipLabel->SetPos( ( iX - nIconWidth ), iY );
 		}
 		m_pTipLabel->SetText( pwszText );
 	}

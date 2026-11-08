@@ -21,6 +21,10 @@
 #include "gc_clientsystem.h"
 #include "tf_item_system.h"
 #include "tf_classmenu.h"
+#include "filesystem.h"
+#include "vgui_controls/RichText.h"
+#include "econ_controls.h"
+#include "ienginevgui.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
@@ -28,6 +32,102 @@
 
 DECLARE_BUILD_FACTORY( CImageButton );
 
+//-----------------------------------------------------------------------------
+// Scrollable class-changes note. The body is class_changes.txt in the mod folder.
+//-----------------------------------------------------------------------------
+class CClassChangesDialog : public vgui::EditablePanel
+{
+	DECLARE_CLASS_SIMPLE( CClassChangesDialog, vgui::EditablePanel );
+
+public:
+	CClassChangesDialog( vgui::Panel *pParent ) : BaseClass( pParent, "ClassChangesDialog" )
+	{
+		vgui::HScheme scheme = vgui::scheme()->LoadSchemeFromFileEx( enginevgui->GetPanel( PANEL_CLIENTDLL ), "resource/ClientScheme.res", "ClientScheme" );
+		SetScheme( scheme );
+		SetProportional( true );
+		SetPaintBackgroundEnabled( true );
+		SetBgColor( Color( 46, 43, 42, 255 ) );
+		SetSize( YRES( 460 ), YRES( 360 ) );
+
+		m_pTitle = new CExLabel( this, "Title", "#TFToo_ClassChanges_Title" );
+		m_pTitle->SetFgColor( Color( 235, 226, 202, 255 ) );
+		m_pText = new vgui::RichText( this, "ClassChangesText" );
+		m_pText->SetVerticalScrollbar( true );
+		m_pText->SetUnusedScrollbarInvisible( false );
+		m_pText->SetPaintBackgroundEnabled( true );
+		m_pText->SetBgColor( Color( 46, 43, 42, 255 ) );
+		m_pText->SetFgColor( Color( 235, 226, 202, 255 ) );
+		{
+			vgui::IScheme *pClientScheme = vgui::scheme()->GetIScheme( scheme );
+			if ( pClientScheme )
+				m_pText->SetFont( pClientScheme->GetFont( "HudFontSmall", true ) );
+		}
+		m_pClose = new CExButton( this, "CloseButton", "#GameUI_Close" );
+		m_pClose->SetCommand( "close" );
+
+		LoadBody();
+
+		SetVisible( true );
+		MakePopup();
+		MoveToFront();
+		SetKeyBoardInputEnabled( true );
+		SetMouseInputEnabled( true );
+		TFModalStack()->PushModal( this );
+
+		int nX, nY, nWide, nTall, nUsWide, nUsTall;
+		vgui::surface()->GetWorkspaceBounds( nX, nY, nWide, nTall );
+		GetSize( nUsWide, nUsTall );
+		SetPos( nX + ( ( nWide - nUsWide ) / 2 ), nY + ( ( nTall - nUsTall ) / 2 ) );
+	}
+
+	virtual void PerformLayout( void ) OVERRIDE
+	{
+		BaseClass::PerformLayout();
+		m_pTitle->SetBounds( YRES( 12 ), YRES( 8 ), GetWide() - YRES( 24 ), YRES( 22 ) );
+		m_pText->SetBounds( YRES( 12 ), YRES( 34 ), GetWide() - YRES( 24 ), GetTall() - YRES( 74 ) );
+		m_pClose->SetBounds( GetWide() - YRES( 100 ), GetTall() - YRES( 32 ), YRES( 84 ), YRES( 22 ) );
+	}
+
+	virtual void OnCommand( const char *command ) OVERRIDE
+	{
+		if ( FStrEq( command, "close" ) || FStrEq( command, "Close" ) )
+		{
+			TFModalStack()->PopModal( this );
+			MarkForDeletion();
+			return;
+		}
+		BaseClass::OnCommand( command );
+	}
+
+	virtual void OnKeyCodeTyped( KeyCode code ) OVERRIDE
+	{
+		if ( code == KEY_ESCAPE )
+		{
+			OnCommand( "close" );
+			return;
+		}
+		BaseClass::OnKeyCodeTyped( code );
+	}
+
+private:
+	void LoadBody( void )
+	{
+		CUtlBuffer buf( 0, 0, CUtlBuffer::TEXT_BUFFER );
+		if ( !g_pFullFileSystem->ReadFile( "class_changes.txt", "MOD", buf ) || buf.TellPut() <= 0 )
+		{
+			m_pText->SetText( "Could not read class_changes.txt from the game folder." );
+			return;
+		}
+
+		if ( buf.TellPut() == 0 || ((const char *)buf.Base())[ buf.TellPut() - 1 ] != '\0' )
+			buf.PutChar( 0 );
+		m_pText->SetText( (const char *)buf.Base() );
+	}
+
+	CExLabel *m_pTitle;
+	vgui::RichText *m_pText;
+	CExButton *m_pClose;
+};
 
 ConVar tf_explanations_charinfopanel( "tf_explanations_charinfopanel", "0", FCVAR_ARCHIVE, "Whether the user has seen explanations for this panel." );
 
@@ -546,7 +646,12 @@ void CCharInfoLoadoutSubPanel::OnArmoryClosed( void )
 //-----------------------------------------------------------------------------
 void CCharInfoLoadoutSubPanel::OnCommand( const char *command )
 {
-	if ( !Q_strnicmp( command, "loadout ", 8 ) )
+	if ( FStrEq( command, "class_changes" ) )
+	{
+		new CClassChangesDialog( this );
+		return;
+	}
+	else if ( !Q_strnicmp( command, "loadout ", 8 ) )
 	{
 		// Ignore selection while we don't have a steam connection
 		if ( !TFInventoryManager()->GetLocalTFInventory()->RetrievedInventoryFromSteam() )

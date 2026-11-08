@@ -1,0 +1,14 @@
+Changes to the original 9 classes
+Edit this file in the game folder. The Items screen Info button reads it as plain text.
+
+Demoman
+While you are in the air, your own explosions deal 60% damage. That is the same blast-jump resistance Soldier has. Gunboats still reduce it further. The Wrangler's shield uses Soldier's self-damage reduction when that number is lower. The lower number wins. They do not stack. The Detonator still deals 150% damage to you and does not get this resistance.
+
+Heavy
+Lunchbox items cannot be thrown to other players. That covers the Sandvich, Dalokohs Bar, Buffalo Steak Sandvich, Fishcake, Robo-Sandvich, and Second Banana. Scout's drinks are not lunchboxes, so they can still be thrown.
+
+Pyro
+Airblast shoves the Witch's Pumpkin MIRV, and the pumpkins it splits into. Those bombs stay on the team of the Witch who cast them.
+
+Weapons
+No original class lost a weapon. If a new class can use a weapon, the original owner can still equip it.

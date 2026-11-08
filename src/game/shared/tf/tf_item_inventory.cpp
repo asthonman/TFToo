@@ -953,10 +953,13 @@ void CTFPlayerInventory::LoadLocalLoadout()
 		{
 			const char* pszClassName = g_aPlayerClassNames_NonLocalized[iClass];
 			int activePreset = pActivePresetKV->GetInt(pszClassName);
+			if ( activePreset < 0 || activePreset >= CEconItemSchema::kMaxItemPresetCount )
+				activePreset = 0;
 			m_ActivePreset[iClass] = activePreset;
 		}
 	}
 
+	bool bHealedEmptyClass = false;
 	int numPresets = static_cast<int>(GetItemSchema()->GetNumAllowedItemPresets());
 	for (int iPreset = 0; iPreset < numPresets; ++iPreset)
 	{
@@ -969,13 +972,49 @@ void CTFPlayerInventory::LoadLocalLoadout()
 		FOR_EACH_TRUE_SUBKEY(pPresetKV, pClassKey)
 		{
 			const char *pszClassName = pClassKey->GetName();
-			const int iClass = GetClassIndexFromString(pszClassName, TF_CLASS_COUNT_ALL);
+			// TF_CLASS_COUNT_ALL is an empty name, and a length of 0 matches every string.
+			const int iClass = GetClassIndexFromString(pszClassName, TF_LAST_NORMAL_CLASS);
+			if ( iClass < TF_FIRST_NORMAL_CLASS || iClass >= TF_CLASS_COUNT )
+				continue;
 
+			itemid_t savedIds[CLASS_LOADOUT_POSITION_COUNT];
+			bool bSlotSaved[CLASS_LOADOUT_POSITION_COUNT];
+			memset( savedIds, 0, sizeof( savedIds ) );
+			memset( bSlotSaved, 0, sizeof( bSlotSaved ) );
+
+			bool bAnySavedItem = false;
+			bool bAnyLiveItem = false;
 			FOR_EACH_SUBKEY(pClassKey, pLoadoutEntry)
 			{
 				const int iSlot = V_atoi(pLoadoutEntry->GetName());
-				const itemid_t uItemId = pLoadoutEntry->GetUint64();
+				if ( iSlot < 0 || iSlot >= CLASS_LOADOUT_POSITION_COUNT )
+					continue;
 
+				savedIds[iSlot] = pLoadoutEntry->GetUint64();
+				bSlotSaved[iSlot] = true;
+				if ( savedIds[iSlot] != LOADOUT_SLOT_USE_BASE_ITEM )
+					bAnySavedItem = true;
+			}
+
+			for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+			{
+				if ( m_LoadoutItems[iClass][iSlot] != LOADOUT_SLOT_USE_BASE_ITEM )
+					bAnyLiveItem = true;
+			}
+
+			// A class row of nothing is the old save, which wrote 0 for every
+			// slot it had not just equipped. Do not replace a real TF2 loadout
+			// with that. Custom classes have no TF2 loadout, so this leaves them stock.
+			const bool bKeepLive = ( iPreset == m_ActivePreset[iClass] && !bAnySavedItem && bAnyLiveItem );
+			if ( bKeepLive )
+				bHealedEmptyClass = true;
+
+			for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+			{
+				if ( !bSlotSaved[iSlot] && !bKeepLive )
+					continue;
+
+				const itemid_t uItemId = bKeepLive ? m_LoadoutItems[iClass][iSlot] : savedIds[iSlot];
 				m_PresetItems[iPreset][iClass][iSlot] = uItemId;
 
 				if (iPreset == m_ActivePreset[iClass]) {
@@ -992,6 +1031,9 @@ void CTFPlayerInventory::LoadLocalLoadout()
 
 	pLoadoutKV->deleteThis();
 
+	if ( bHealedEmptyClass )
+		SaveLocalLoadout();
+
 	GTFGCClientSystem()->LocalInventoryChanged();
 }
 
@@ -1007,6 +1049,13 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 		return;
 	}
 
+	int numPresets = static_cast<int>(GetItemSchema()->GetNumAllowedItemPresets());
+	for (int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass)
+	{
+		if ( m_ActivePreset[iClass] < 0 || m_ActivePreset[iClass] >= numPresets )
+			m_ActivePreset[iClass] = 0;
+	}
+
 	KeyValues *pLoadoutKV = new KeyValues("local_loadout");
 
 	KeyValues *pActivePresetKV = new KeyValues("active_preset");
@@ -1017,7 +1066,6 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 	}
 	pLoadoutKV->AddSubKey(pActivePresetKV);
 
-	int numPresets = static_cast<int>(GetItemSchema()->GetNumAllowedItemPresets());
 	for (int iPreset = 0; iPreset < numPresets; ++iPreset)
 	{
 		char szPreset[256];
@@ -1038,9 +1086,15 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 				V_snprintf(szSlot, sizeof(szSlot), "%i", iSlot);
 
 				itemid_t uItemId = m_PresetItems[iPreset][iClass][iSlot];
-				//itemid_t uItemId = m_LoadoutItems[iClass][iSlot];
+				// The active preset is the live loadout. Saving the preset
+				// array instead wrote 0 for every slot a single equip had not
+				// touched, and the next launch put that class back on stock.
 				if (bReset) {
 					uItemId = ( bDefaultToGC && iPreset == 0 ) ? m_RealTFLoadoutItems[iClass][iSlot] : 0;
+				}
+				else if ( iPreset == m_ActivePreset[iClass] )
+				{
+					uItemId = m_LoadoutItems[iClass][iSlot];
 				}
 
 				pClassKV->SetUint64(szSlot, uItemId);
@@ -1059,12 +1113,17 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 //-----------------------------------------------------------------------------
 // Purpose: If we are in mod mode, we track loadout changes locally.
 //-----------------------------------------------------------------------------
-void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, equipped_slot_t unSlot)
+void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, equipped_slot_t unSlot, bool bMirrorPreset )
 {
 	// These interactions normally result from a round-trip with the GC.
 	// We will never get those messages, so we do everything locally.
 	if ( ulItemID == INVALID_ITEM_ID )
 		ulItemID = LOADOUT_SLOT_USE_BASE_ITEM;
+
+	if ( unClass < TF_FIRST_NORMAL_CLASS || unClass >= TF_CLASS_COUNT )
+		return;
+	if ( unSlot < 0 || unSlot >= CLASS_LOADOUT_POSITION_COUNT )
+		return;
 
 	// Unequip whatever was previously in the slot.
 	{
@@ -1085,10 +1144,27 @@ void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, e
 	m_LoadoutItems[unClass][unSlot] = ulItemID;
 
 #ifdef CLIENT_DLL
+	int nPresets = (int)GetItemSchema()->GetNumAllowedItemPresets();
 	int activePreset = m_ActivePreset[unClass];
-	m_PresetItems[activePreset][unClass][unSlot] = ulItemID;
+	if ( activePreset < 0 || activePreset >= nPresets )
+		activePreset = 0;
+	m_ActivePreset[unClass] = activePreset;
+
+	if ( bMirrorPreset )
+	{
+		// One equip used to store only that slot. The rest of the preset
+		// stayed 0, and the save put the rest of the class back on stock.
+		for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+			m_PresetItems[activePreset][unClass][iSlot] = m_LoadoutItems[unClass][iSlot];
+	}
+	else
+	{
+		m_PresetItems[activePreset][unClass][unSlot] = ulItemID;
+	}
 
 	GTFGCClientSystem()->LocalInventoryChanged();
+#else
+	(void)bMirrorPreset;
 #endif
 }
 
@@ -2149,7 +2225,8 @@ bool CTFPlayerInventory::EquipLocalPreset(equipped_class_t unClass, equipped_pre
 	for (int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot)
 	{
 		itemid_t uItemId = m_PresetItems[unPreset][unClass][iSlot];
-		EquipLocal(uItemId, unClass, iSlot);
+		// Do not mirror this row back onto the preset we are loading.
+		EquipLocal(uItemId, unClass, iSlot, false);
 	}
 
 	SaveLocalLoadout();

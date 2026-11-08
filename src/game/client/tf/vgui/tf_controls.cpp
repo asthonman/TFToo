@@ -30,6 +30,7 @@
 #include <../common/GameUI/cvarslider.h>
 #include "filesystem.h"
 #include "hud_controlpointicons.h"
+#include "confirm_dialog.h"
 
 using namespace vgui;
 
@@ -666,6 +667,7 @@ CTFAdvancedOptionsDialog::CTFAdvancedOptionsDialog(vgui::Panel *parent) : BaseCl
 	m_pToolTipEmbeddedPanel->SetMouseInputEnabled( false );
 	m_pToolTip->SetEmbeddedPanel( m_pToolTipEmbeddedPanel );
 	m_pToolTip->SetTooltipDelay( 0 );
+	m_pCopyConfigButton = NULL;
 
 	m_pDescription = new CInfoDescription();
 	m_pDescription->InitFromFile( DEFAULT_OPTIONS_FILE );
@@ -728,6 +730,33 @@ void CTFAdvancedOptionsDialog::ApplySchemeSettings( vgui::IScheme *pScheme )
 	m_pListPanel->SetFirstColumnWidth( 0 );
 
 	CreateControls();
+
+	if ( !m_pCopyConfigButton )
+	{
+		m_pCopyConfigButton = new CExButton( this, "CopyTF2ConfigButton", "#TFToo_CopyConfig_Button" );
+		m_pCopyConfigButton->SetCommand( "copy_tf2_config" );
+	}
+
+	int x = YRES( 20 );
+	int y = GetTall() - YRES( 64 );
+	int wide = YRES( 180 );
+	int tall = YRES( 25 );
+	Button *pOk = dynamic_cast< Button * >( FindChildByName( "OkButton", true ) );
+	if ( !pOk )
+		pOk = dynamic_cast< Button * >( FindChildByName( "OKButton", true ) );
+	if ( pOk )
+	{
+		int ox, oy, ow, ot;
+		pOk->GetPos( ox, oy );
+		pOk->GetSize( ow, ot );
+		wide = Max( ow, YRES( 160 ) );
+		tall = ot;
+		x = ox;
+		y = oy - tall - YRES( 4 );
+	}
+	m_pCopyConfigButton->SetBounds( x, y, wide, tall );
+	m_pCopyConfigButton->SetZPos( 20 );
+	m_pCopyConfigButton->SetVisible( true );
 }
 
 
@@ -751,12 +780,94 @@ void CTFAdvancedOptionsDialog::OnClose()
 }
 
 //-----------------------------------------------------------------------------
+// Team Fortress 2's config.cfg, next to this sourcemod under steamapps.
+//-----------------------------------------------------------------------------
+static bool TFToo_FindBaseTF2Config( char *pszOut, int nOut )
+{
+	char szMod[MAX_PATH];
+	if ( !g_pFullFileSystem->RelativePathToFullPath( "gameinfo.txt", "MOD", szMod, sizeof( szMod ) ) )
+		return false;
+
+	V_StripFilename( szMod );
+
+	char szWalk[MAX_PATH];
+	V_strncpy( szWalk, szMod, sizeof( szWalk ) );
+	for ( int i = 0; i < 8; ++i )
+	{
+		char szTry[MAX_PATH];
+		V_ComposeFileName( szWalk, "common/Team Fortress 2/tf/cfg/config.cfg", szTry, sizeof( szTry ) );
+		V_FixSlashes( szTry );
+
+		FileHandle_t hSrc = g_pFullFileSystem->Open( szTry, "rb" );
+		if ( hSrc )
+		{
+			g_pFullFileSystem->Close( hSrc );
+			V_strncpy( pszOut, szTry, nOut );
+			return true;
+		}
+
+		if ( !V_StripLastDir( szWalk, sizeof( szWalk ) ) )
+			break;
+	}
+
+	return false;
+}
+
+static void TFToo_ConfirmCopyConfig( bool bConfirmed, void * )
+{
+	if ( !bConfirmed )
+		return;
+
+	char szSrc[MAX_PATH];
+	if ( !TFToo_FindBaseTF2Config( szSrc, sizeof( szSrc ) ) )
+	{
+		ShowMessageBox( "#TFToo_CopyConfig_Title", "#TFToo_CopyConfig_Missing" );
+		return;
+	}
+
+	CUtlBuffer buf( 0, 0, 0 );
+	if ( !g_pFullFileSystem->ReadFile( szSrc, NULL, buf ) || buf.TellPut() <= 0 )
+	{
+		ShowMessageBox( "#TFToo_CopyConfig_Title", "#TFToo_CopyConfig_Missing" );
+		return;
+	}
+
+	g_pFullFileSystem->CreateDirHierarchy( "cfg", "MOD" );
+	FileHandle_t hOut = g_pFullFileSystem->Open( "cfg/config_tf2.cfg", "wb", "MOD" );
+	if ( hOut == FILESYSTEM_INVALID_HANDLE )
+	{
+		ShowMessageBox( "#TFToo_CopyConfig_Title", "#TFToo_CopyConfig_Missing" );
+		return;
+	}
+
+	g_pFullFileSystem->Write( buf.Base(), buf.TellPut(), hOut );
+	g_pFullFileSystem->Close( hOut );
+
+	// Applies now. Quitting writes the current settings into this game's config.cfg.
+	engine->ClientCmd_Unrestricted( "exec config_tf2" );
+	ShowMessageBox( "#TFToo_CopyConfig_Title", "#TFToo_CopyConfig_Done" );
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : *command - 
 //-----------------------------------------------------------------------------
 void CTFAdvancedOptionsDialog::OnCommand( const char *command )
 {
-	if ( !stricmp( command, "open_chat_filter_settings" ) )
+	if ( !stricmp( command, "copy_tf2_config" ) )
+	{
+		char szSrc[MAX_PATH];
+		if ( !TFToo_FindBaseTF2Config( szSrc, sizeof( szSrc ) ) )
+		{
+			ShowMessageBox( "#TFToo_CopyConfig_Title", "#TFToo_CopyConfig_Missing" );
+			return;
+		}
+
+		ShowConfirmDialog( "#TFToo_CopyConfig_Confirm_Title", "#TFToo_CopyConfig_Confirm_Text",
+			"#TFToo_CopyConfig_Button", "#cancel", &TFToo_ConfirmCopyConfig, this );
+		return;
+	}
+	else if ( !stricmp( command, "open_chat_filter_settings" ) )
 	{
 		if ( steamapicontext && steamapicontext->SteamFriends() )
 		{

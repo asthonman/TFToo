@@ -96,6 +96,7 @@ void cc_tf_mainmenu_match_panel_type( IConVar *pConVar, const char *pOldString, 
 
 ConVar tf_recent_achievements( "tf_recent_achievements", "0", FCVAR_ARCHIVE );
 ConVar tf_find_a_match_hint_viewed( "tf_find_a_match_hint_viewed", "0", FCVAR_ARCHIVE );
+ConVar tf_copy_config_hint_viewed( "tf_copy_config_hint_viewed", "0", FCVAR_ARCHIVE, "Whether the main menu has pointed at Advanced Options for the TF2 config copy." );
 ConVar tf_training_has_prompted_for_training( "tf_training_has_prompted_for_training", "0", FCVAR_ARCHIVE, "Whether the user has been prompted for training" );
 ConVar tf_training_has_prompted_for_offline_practice( "tf_training_has_prompted_for_offline_practice", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to try offline practice." );
 ConVar tf_training_has_prompted_for_forums( "tf_training_has_prompted_for_forums", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to view the new user forums." );
@@ -2126,7 +2127,29 @@ void CHudMainMenuOverride::CheckTrainingStatus( void )
 		}
 	}
 
-	if ( !tf_find_a_match_hint_viewed.GetBool() )
+	if ( !tf_copy_config_hint_viewed.GetBool() )
+	{
+		CExplanationPopup *pPopup = ShowDashboardExplanation( "TFTooCopyConfig" );
+		if ( pPopup )
+		{
+			tf_copy_config_hint_viewed.SetValue( true );
+
+			vgui::Panel *pOptions = FindChildByName( "TF2SettingsButton", true );
+			if ( !pOptions || !pOptions->IsVisible() )
+				pOptions = FindChildByName( "SettingsButton", true );
+			if ( pOptions && pPopup->GetParent() )
+			{
+				int nButtonX, nButtonY, nButtonWide, nButtonTall;
+				int nParentX, nParentY;
+				ipanel()->GetAbsPos( pOptions->GetVPanel(), nButtonX, nButtonY );
+				pOptions->GetSize( nButtonWide, nButtonTall );
+				ipanel()->GetAbsPos( pPopup->GetParent()->GetVPanel(), nParentX, nParentY );
+				pPopup->SetCalloutInParentsX( ( nButtonX - nParentX ) + ( nButtonWide / 2 ) );
+				pPopup->SetCalloutInParentsY( ( nButtonY - nParentY ) + ( nButtonTall / 2 ) );
+			}
+		}
+	}
+	else if ( !tf_find_a_match_hint_viewed.GetBool() )
 	{
 		tf_find_a_match_hint_viewed.SetValue( true );
 		ShowDashboardExplanation( "FindAMatch" );

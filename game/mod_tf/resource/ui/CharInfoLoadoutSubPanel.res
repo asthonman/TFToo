@@ -489,6 +489,31 @@
 		"visible"			"0"
 	}
 
+	"ClassChangesButton"
+	{
+		"ControlName"	"CExButton"
+		"fieldName"		"ClassChangesButton"
+		"xpos"			"c170"
+		"ypos"			"10"
+		"zpos"			"100"
+		"wide"			"90"
+		"tall"			"20"
+		"autoResize"	"0"
+		"pinCorner"		"0"
+		"visible"		"1"
+		"enabled"		"1"
+		"tabPosition"	"0"
+		"labelText"		"#TFToo_ClassChanges_Button"
+		"font"			"HudFontSmallBold"
+		"textAlignment"	"center"
+		"dulltext"		"0"
+		"brighttext"	"0"
+		"default"		"0"
+		"Command"		"class_changes"
+		"sound_depressed"	"UI/buttonclick.wav"
+		"sound_released"	"UI/buttonclickrelease.wav"
+	}
+
 	"ShowExplanationsButton"
 	{
 		"ControlName"	"CExButton"

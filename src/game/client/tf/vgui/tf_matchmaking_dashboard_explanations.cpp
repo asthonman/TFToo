@@ -10,6 +10,7 @@
 #include "tf_matchmaking_dashboard.h"
 #include "tf_matchmaking_dashboard_explanations.h"
 #include "clientmode_tf.h"
+#include "filesystem.h"
 
 using namespace vgui;
 using namespace GCSDK;
@@ -53,6 +54,21 @@ void CExplanationManager::ApplySchemeSettings( vgui::IScheme *pScheme )
 	
 	m_vecPopups.Purge();
 	LoadControlSettings( "resource/UI/GlobalExplanations.res" );
+
+	// Do not override GlobalExplanations.res. That file is the base game's,
+	// and a partial copy would delete the Find a Match callout.
+	KeyValues *pKV = new KeyValues( "TFTooCopyConfig" );
+	if ( pKV->LoadFromFile( g_pFullFileSystem, "resource/ui/TFTooCopyConfig.res", "MOD" ) )
+	{
+		CExplanationPopup *pPopup = new CExplanationPopup( this, "TFTooCopyConfig" );
+		pPopup->ApplySettings( pKV );
+		// Loading ExplanationPopup.res applies that file's settings, which
+		// clears explanation_title because the shared res does not have one.
+		pPopup->InvalidateLayout( true, true );
+		pPopup->ApplySettings( pKV );
+	}
+	pKV->deleteThis();
+
 	// We'll toggle mouse input enabled when we have something to actually show
 	SetMouseInputEnabled( false );
 }
