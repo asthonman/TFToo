@@ -2061,7 +2061,8 @@ bool CTFSpellBook::CastSelfStealth( CTFPlayer *pPlayer )
 #ifdef GAME_DLL
 	// Grant a small amount of health
 	pPlayer->TakeHealth( 40, DMG_GENERIC );
-	pPlayer->m_Shared.AddCond( TF_COND_STEALTHED_USER_BUFF, 8, pPlayer );
+	const float flDuration = 8.f * GetWitchSpellDurationScale( pPlayer );
+	pPlayer->m_Shared.AddCond( TF_COND_STEALTHED_USER_BUFF, flDuration, pPlayer );
 #endif
 	return true;
 }
