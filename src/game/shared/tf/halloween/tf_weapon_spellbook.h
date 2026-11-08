@@ -196,7 +196,10 @@ public:
 	bool			Energy_FullyCharged( void ) const	{ return true; }
 	bool			Energy_HasEnergy( void )			{ return true; }
 
-
+	// First person cast. ACT_MP_THROW is a body gesture, and first person does not
+	// draw the player. The arms play it here, on the client during prediction and
+	// on the server, so the viewmodel is not snapped back to idle.
+	static void		PlayWitchThrowViewmodel( CTFPlayer *pPlayer );
 
 #ifdef GAME_DLL
 	void			SaveLastWeapon( CBaseCombatWeapon *pWpn ) { m_pStoredLastWpn = pWpn; }

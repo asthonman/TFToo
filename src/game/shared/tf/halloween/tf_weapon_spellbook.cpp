@@ -1209,6 +1209,58 @@ CBaseEntity *CTFSpellBook::FireJar( CTFPlayer *pPlayer )
 	return NULL;
 }
 
+//-----------------------------------------------------------------------------
+// The gun stays out, so the spellbook's activity replacement never runs.
+// ACT_MP_THROW is the body gesture (spy.mdl). The arms are c_spy_arms, and
+// the spellbook stores that same throw as ACT_SPELL_VM_FIRE. SendWeaponAnim
+// looks the activity up on the gun and fails, so play the sequence here.
+//-----------------------------------------------------------------------------
+void CTFSpellBook::PlayWitchThrowViewmodel( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return;
+
+	CBaseViewModel *pVM = pPlayer->GetViewModel( 0 );
+	if ( !pVM )
+		return;
+
+	MDLCACHE_CRITICAL_SECTION();
+
+	static const Activity s_acts[] =
+	{
+		ACT_MP_THROW,
+		ACT_SPELL_VM_FIRE,
+		ACT_THROWABLE_VM_FIRE,
+	};
+
+	int iSeq = -1;
+	for ( int i = 0; i < ARRAYSIZE( s_acts ); ++i )
+	{
+		iSeq = pVM->SelectWeightedSequence( s_acts[i] );
+		if ( iSeq >= 0 )
+			break;
+	}
+	if ( iSeq < 0 )
+		iSeq = pVM->LookupSequence( "spell_fire" );
+	if ( iSeq < 0 )
+		return;
+
+	pVM->SendViewModelMatchingSequence( iSeq );
+
+	// WeaponIdle calls SendWeaponAnim( ACT_VM_IDLE ) the moment this elapses
+	// and would wipe the throw. Client and server must store the same time.
+	CBaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
+	if ( pWeapon )
+	{
+		float flDur = pVM->SequenceDuration( iSeq );
+		if ( flDur < 0.8f )
+			flDur = 0.8f;
+		float flHold = gpGlobals->curtime + flDur;
+		if ( pWeapon->GetWeaponIdleTime() < flHold )
+			pWeapon->SetWeaponIdleTime( flHold );
+	}
+}
+
 #ifdef GAME_DLL
 //-----------------------------------------------------------------------------
 void CTFSpellBook::TossJarThink( void )
@@ -1587,22 +1639,10 @@ void CTFSpellBook::PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCast
 	else if ( pPlayer->LookupAttachment( "weapon_bone" ) > 0 )
 		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "weapon_bone" );
 
-	// The spellbook is an item1. Its primary fire becomes this gesture.
-	// Her gun is still out, so ask for the item1 activity directly.
-	bool bInDuck = ( pPlayer->GetFlags() & FL_DUCKING ) != 0;
-	if ( bInDuck && pPlayer->SelectWeightedSequence( ACT_MP_CROUCHWALK ) < 0 )
-		bInDuck = false;
-
-	Activity act = ACT_MP_ATTACK_STAND_ITEM1;
-	if ( pPlayer->GetWaterLevel() >= WL_Waist )
-		act = ACT_MP_ATTACK_SWIM_ITEM1;
-	else if ( bInDuck )
-		act = ACT_MP_ATTACK_CROUCH_ITEM1;
-
-	if ( pPlayer->SelectWeightedSequence( act ) < 0 )
-		act = ACT_MP_ATTACK_STAND_ITEM1;
-
-	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, act );
+	// The spellbook replaces its melee-allclass attack with ACT_MP_THROW.
+	// Ask for that. The gun is still out, so do not ask for the gun's attack.
+	// First person is PlayWitchThrowViewmodel, from the predicted cast.
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_THROW );
 }
 
 bool CTFSpellBook::CastSpellIndex( int iSpellIndex )
@@ -3047,6 +3087,10 @@ public:
 #ifdef GAME_DLL
 		m_bTeleportExploded = false;
 		m_bTeleportCheckHasPos = false;
+		m_bPendingGround = false;
+		m_nPhysBounceTick = -1;
+		// Long enough to bounce to a floor. Detonate fizzles instead of teleporting.
+		SetDetonateTimerLength( 8.0f );
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
 #endif
 	}
@@ -3061,6 +3105,75 @@ public:
 	{
 		return BaseClass::PhysicsSolidMaskForEntity() | CONTENTS_PLAYERCLIP;
 	}
+
+#ifdef GAME_DLL
+	virtual bool		ExplodesOnHit() OVERRIDE { return false; }
+
+	virtual void Detonate() OVERRIDE
+	{
+		// The fuse must not teleport her in the air. Only the ground does.
+		UTIL_Remove( this );
+	}
+
+	virtual void VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE
+	{
+		if ( m_bTeleportExploded || m_bPendingGround )
+			return;
+
+		int otherIndex = !index;
+		CBaseEntity *pHit = pEvent->pEntities[otherIndex];
+		if ( !pHit || !pHit->IsWorld() )
+			return;
+
+		surfacedata_t *pprops = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
+		if ( pprops && pprops->game.material == 'X' )
+		{
+			UTIL_Remove( this );
+			return;
+		}
+
+		// The impulse is along the surface normal, pointing back out of it.
+		Vector normal = pEvent->postVelocity[index] - pEvent->preVelocity[index];
+		if ( normal.LengthSqr() < 1.f )
+		{
+			pEvent->pInternalData->GetSurfaceNormal( normal );
+			if ( index == 0 )
+				normal.Negate();
+			VectorNormalize( normal );
+		}
+		else
+		{
+			VectorNormalize( normal );
+		}
+
+		if ( TeleportNormalIsGround( normal ) )
+		{
+			m_bPendingGround = true;
+			m_vecPendingGroundNormal = normal;
+			// Cannot explode inside the collision callback.
+			SetContextThink( &CTFProjectile_SpellTransposeTeleport::GroundTeleportThink, gpGlobals->curtime, "TeleportGroundThink" );
+			return;
+		}
+
+		// Wall or ceiling. Physics already reflected this hull. Do not
+		// let the check box treat the same contact as a landing.
+		m_vecTeleportCheckPos = GetAbsOrigin();
+		m_bTeleportCheckHasPos = true;
+		m_nPhysBounceTick = gpGlobals->tickcount;
+	}
+
+	void GroundTeleportThink( void )
+	{
+		if ( m_bTeleportExploded )
+			return;
+
+		trace_t tr;
+		memset( &tr, 0, sizeof( tr ) );
+		tr.endpos = GetAbsOrigin();
+		tr.plane.normal = m_vecPendingGroundNormal;
+		Explode( &tr, GetDamageType() );
+	}
+#endif
 
 #ifdef GAME_DLL
 	// The projectile itself keeps its normal flight. This box only asks
@@ -3105,17 +3218,38 @@ public:
 			return true;
 		}
 
-		if ( tr.startsolid )
+		Vector normal = tr.plane.normal;
+		if ( tr.startsolid || normal.LengthSqr() < 0.01f )
 		{
-			tr.endpos = m_vecTeleportCheckPos;
-			tr.fraction = 0.f;
 			Vector vecDir = vecEnd - m_vecTeleportCheckPos;
+			if ( vecDir.LengthSqr() < 1.f )
+				vecDir = GetAbsVelocity();
 			VectorNormalize( vecDir );
-			tr.plane.normal = -vecDir;
+			normal = -vecDir;
 		}
 
-		Explode( &tr, GetDamageType() );
-		return true;
+		// Floor. Walls and ceilings bounce instead.
+		if ( TeleportNormalIsGround( normal ) )
+		{
+			if ( tr.startsolid )
+			{
+				tr.endpos = m_vecTeleportCheckPos;
+				tr.fraction = 0.f;
+			}
+			tr.plane.normal = normal;
+			Explode( &tr, GetDamageType() );
+			return true;
+		}
+
+		// Physics already bounced this hull on this tick. Just follow it.
+		if ( m_nPhysBounceTick == gpGlobals->tickcount )
+		{
+			m_vecTeleportCheckPos = GetAbsOrigin();
+			return false;
+		}
+
+		BounceOffSurface( normal, tr.startsolid ? m_vecTeleportCheckPos : tr.endpos );
+		return false;
 	}
 
 	virtual void Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE
@@ -3141,6 +3275,45 @@ public:
 		}
 
 		SetContextThink( &CTFProjectile_SpellTransposeTeleport::RecordPosThink, gpGlobals->curtime + 0.05f, "RecordThink" );
+	}
+
+	static bool TeleportNormalIsGround( const Vector &normal )
+	{
+		// Source walkable floor. Walls are near 0, ceilings are negative.
+		return normal.z > 0.7f;
+	}
+
+	void BounceOffSurface( const Vector &normal, const Vector &pos )
+	{
+		IPhysicsObject *pPhys = VPhysicsGetObject();
+		Vector vel = GetAbsVelocity();
+		AngularImpulse ang;
+		ang.Init();
+		if ( pPhys )
+		{
+			Vector physVel;
+			pPhys->GetVelocity( &physVel, &ang );
+			if ( physVel.LengthSqr() > 1.f )
+				vel = physVel;
+		}
+
+		float backoff = vel.Dot( normal );
+		if ( backoff < 0.f )
+			vel -= 2.f * backoff * normal;
+		vel *= 0.75f;
+
+		Vector origin = pos + normal * 2.f;
+		SetAbsOrigin( origin );
+		SetAbsVelocity( vel );
+		if ( pPhys )
+		{
+			pPhys->SetPosition( origin, GetAbsAngles(), true );
+			pPhys->SetVelocity( &vel, &ang );
+		}
+
+		m_vecTeleportCheckPos = origin;
+		m_bTeleportCheckHasPos = true;
+		m_nPhysBounceTick = gpGlobals->tickcount;
 	}
 
 	bool DuckHullFits( CTFPlayer *pPlayer, const Vector &vecOrigin, unsigned int nMask, ITraceFilter *pFilter )
@@ -3256,6 +3429,9 @@ private:
 	Vector m_vecTeleportCheckPos;
 	bool m_bTeleportCheckHasPos;
 	bool m_bTeleportExploded;
+	bool m_bPendingGround;
+	Vector m_vecPendingGroundNormal;
+	int m_nPhysBounceTick;
 #endif
 };
 

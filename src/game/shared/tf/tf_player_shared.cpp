@@ -12481,6 +12481,7 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				{
 					m_Shared.AddCond( TF_COND_STEALTHED, -1.f, this );
 					m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+					CTFSpellBook::PlayWitchThrowViewmodel( this );
 #ifdef GAME_DLL
 					CTFSpellBook::PlayWitchCastEffects( this, "Halloween.spell_stealth" );
 #endif
@@ -12527,6 +12528,7 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				m_Shared.SetWitchManaExhausted( true );
 			}
 			m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5f;
+			CTFSpellBook::PlayWitchThrowViewmodel( this );
 #ifdef GAME_DLL
 			if ( !CastWitchSpell( iSpell ) )
 			{
