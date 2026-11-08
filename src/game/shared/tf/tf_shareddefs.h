@@ -298,10 +298,11 @@ inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMA
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
 
 //-----------------------------------------------------------------------------
-// Madcap's velocity meter. 0 is stopped, 100 is top speed: +60% move speed
-// (the old Escape Plan cap) and 300% damage. It is not based on health.
+// Madcap's velocity meter. 0 is stopped, 100 is top speed. Top speed is 60%
+// above his class speed in every direction. Damage still scales to 300%.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f
+#define TF_MADCAP_TOP_SPEED_SCALE 1.6f
 
 inline float Madcap_PMeterRatio( float flMeter )
 {

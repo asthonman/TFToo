@@ -169,8 +169,6 @@ private:
 	bool		m_isPassingThroughEnemies;
 	// Airborne slam windup. Set in ProcessMovement, read while gravity is applied.
 	bool		m_bBrickSlamHang;
-	// Sharp turn. WalkMove lets him slide on the old velocity instead of snapping.
-	bool		m_bMadcapSkid;
 };
 
 
@@ -190,7 +188,6 @@ CTFGameMovement::CTFGameMovement()
 	m_pTFPlayer = NULL;
 	m_isPassingThroughEnemies = false;
 	m_bBrickSlamHang = false;
-	m_bMadcapSkid = false;
 
 }
 
@@ -356,10 +353,6 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// Handle grappling hook move
 	GrapplingHookMove();
 
-	// P-meter uses this command's wish against the velocity he already has.
-	// Speed for this tick includes the meter we just wrote.
-	UpdateMadcapPMeter();
-
 	// Brick's cap has to follow the grow scale on this command. SetSpeed is
 	// not called from the scale think, and m_flClientMaxSpeed was copied
 	// from the previous cap before ProcessMovement.
@@ -375,6 +368,8 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// Run the command.
 	PlayerMove();
 
+	// Meter is speed after this command, not a separate fill/drain.
+	UpdateMadcapPMeter();
 
 	FinishMove();
 
@@ -579,47 +574,32 @@ bool CTFGameMovement::ChargeMove()
 }
 
 //-----------------------------------------------------------------------------
-// Madcap velocity meter. He is on rollerskates: low friction, so he
-// accelerates gradually to a top speed that is the same in every direction.
-// Facing only changes how fast he accelerates, not the top speed he can hold.
-// The meter is his current speed as a percent of that top speed.
+// Madcap velocity. Rollerskate friction on the ground. The bar is just
+// horizontal speed over his top speed. There is no separate fill or drain.
 //-----------------------------------------------------------------------------
-static const float tf_madcap_friction_scale = 0.25f;	// rollerskate coast
-static const float tf_madcap_back_accel = 0.4f;		// slower build when not facing travel
+// sv_friction is 4, so 0.06 coasts for about four seconds from a full stop.
+static const float tf_madcap_friction_scale = 0.06f;
+// Slowest build from class speed to top speed (wish opposite where he looks).
+// 2.5 * this stays above 1, so he can still reach and hold top speed.
+static const float tf_madcap_back_accel = 0.45f;
 
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
-	m_bMadcapSkid = false;
-
 	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
 		return;
 
 	if ( !m_pTFPlayer->IsAlive() )
 	{
-		if ( m_pTFPlayer->GetPMeter() != 0.f )
-		{
-			m_pTFPlayer->SetPMeter( 0.f );
-			m_pTFPlayer->TeamFortress_SetSpeed();
-		}
+		m_pTFPlayer->SetPMeter( 0.f );
 		m_pTFPlayer->ClearMadcapCourse();
 		return;
 	}
 
-	// Absolute top speed. Facing does not change it.
-	const float flTop = Max( m_pTFPlayer->MaxSpeed(), 1.f );
-
 	Vector vecVel = mv->m_vecVelocity;
 	vecVel.z = 0.f;
-	const float flSpeed = vecVel.Length();
-	const float flRatio = clamp( flSpeed / flTop, 0.f, 1.f );
-	const float flMeter = flRatio * TF_MADCAP_PMETER_MAX;
-
-	if ( m_pTFPlayer->GetPMeter() != flMeter )
-	{
-		m_pTFPlayer->SetPMeter( flMeter );
-		m_pTFPlayer->TeamFortress_SetSpeed();
-	}
-
+	const float flTop = Max( mv->m_flMaxSpeed, 1.f );
+	const float flMeter = clamp( vecVel.Length() / flTop, 0.f, 1.f ) * TF_MADCAP_PMETER_MAX;
+	m_pTFPlayer->SetPMeter( flMeter );
 }
 
 //-----------------------------------------------------------------------------
@@ -1866,17 +1846,35 @@ void CTFGameMovement::WalkMove( void )
 	mv->m_vecVelocity.z = 0;
 
 	float flAccelerate = sv_accelerate.GetFloat();
-	// Madcap: facing changes how fast he builds to top speed, not the top itself.
-	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && flWishSpeed > 0.f )
+	// Madcap: class speed comes up like any other class. From there to top
+	// speed, facing sets the rate. Already being at top speed along the wish
+	// does not slow him down when he turns around and keeps that direction.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && flWishSpeed > 0.f
+		&& !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE )
+		&& player->m_surfaceFriction > 0.f && player->m_surfaceFriction < 1.f )
 	{
-		Vector vecForward;
-		AngleVectors( mv->m_vecViewAngles, &vecForward, NULL, NULL );
-		vecForward.z = 0.f;
-		VectorNormalize( vecForward );
-		const float flFace = DotProduct( vecWishDirection, vecForward );
-		// Full accel facing the wish; reduced when strafing or reversing.
-		const float flAccelScale = RemapValClamped( flFace, -1.f, 1.f, tf_madcap_back_accel, 1.f );
-		flAccelerate *= flAccelScale;
+		Vector vecVel = mv->m_vecVelocity;
+		vecVel.z = 0.f;
+		const float flSpeed = vecVel.Length();
+		const float flTop = Max( mv->m_flMaxSpeed, 1.f );
+		const float flBase = flTop / TF_MADCAP_TOP_SPEED_SCALE;
+		const float flAlong = DotProduct( mv->m_vecVelocity, vecWishDirection );
+
+		Vector vecFace;
+		AngleVectors( mv->m_vecViewAngles, &vecFace, NULL, NULL );
+		vecFace.z = 0.f;
+		VectorNormalize( vecFace );
+		const float flFace = DotProduct( vecWishDirection, vecFace );
+		const float flFacingScale = RemapValClamped( flFace, -1.f, 1.f, tf_madcap_back_accel, 1.f );
+
+		// Accelerate() multiplies by surfaceFriction. Undo the skate scale
+		// except on the base-to-top ramp, which is supposed to be slow.
+		const float flUndoFriction = 1.f / tf_madcap_friction_scale;
+		const bool bAtCap = ( flAlong >= flWishSpeed * 0.98f );
+		if ( flSpeed <= flBase || bAtCap )
+			flAccelerate *= flUndoFriction;
+		else
+			flAccelerate *= flFacingScale;
 	}
 	float flFriction = sv_friction.GetFloat() * player->m_surfaceFriction;
 
@@ -2782,8 +2780,8 @@ void CTFGameMovement::FullWalkMove()
 	if (player->GetGroundEntity() != NULL)
 	{
 		mv->m_vecVelocity[2] = 0.0;
-		// Rollerskates: low friction so he coasts and builds to top speed.
-		if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
+		// Rollerskates. A shield charge keeps normal friction so it still snaps up to speed.
+		if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
 			player->m_surfaceFriction *= tf_madcap_friction_scale;
 		Friction();
 		WalkMove();

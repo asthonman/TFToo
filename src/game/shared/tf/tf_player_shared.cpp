@@ -11022,7 +11022,7 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	// Top speed is fixed. Facing does not change it. The meter only tracks velocity.
 	if ( playerclass == TF_CLASS_MADCAP )
 	{
-		maxfbspeed *= 1.6f;
+		maxfbspeed *= TF_MADCAP_TOP_SPEED_SCALE;
 	}
 
 	// Eyelander heads, and the shield charge speed. Madcap can equip both.

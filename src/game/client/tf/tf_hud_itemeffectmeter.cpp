@@ -176,7 +176,7 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Madcap's sprint. Fills while he runs forward, drains on a hard turn.
+// Madcap's velocity. The bar is his current speed as a percent of top speed.
 // The shield charge bar uses the same slot, so this meter steps above it.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_Madcap : public CHudItemEffectMeter
