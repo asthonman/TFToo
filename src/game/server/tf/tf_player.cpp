@@ -1511,6 +1511,123 @@ static bool BrickGrowPushToFit( CTFPlayer *pPlayer, float flScale, bool bDucking
 }
 
 //-----------------------------------------------------------------------------
+// Athletic. The spell snaps her to half size. When it ends she grows back
+// to 1 over the same short window Brick uses. Each tick, if the hull she
+// wants is in a wall, step her out along that surface. If nothing within
+// 64 units is clear, hold the size until she walks into open space.
+//-----------------------------------------------------------------------------
+void CTFPlayer::BeginAthleticGrowBack( void )
+{
+	SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+	if ( HasDataObjectType( MODELSCALE ) )
+		DestroyDataObject( MODELSCALE );
+
+	if ( m_flModelScale >= 0.99f )
+	{
+		m_flModelScale = 1.f;
+		RefreshCollisionBounds();
+		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
+		m_Shared.RemoveAttributeFromPlayer( "head scale" );
+		return;
+	}
+
+	ModelScale *mvs = (ModelScale *)CreateDataObject( MODELSCALE );
+	mvs->m_flModelScaleStart = m_flModelScale;
+	mvs->m_flModelScaleGoal = 1.f;
+	mvs->m_flModelScaleStartTime = gpGlobals->curtime;
+	mvs->m_flModelScaleFinishTime = gpGlobals->curtime + TF_BRICK_GROW_TIME;
+}
+
+void CTFPlayer::ThinkAthleticGrow( void )
+{
+	if ( !IsPlayerClass( TF_CLASS_WITCH ) )
+		return;
+
+	if ( !IsAlive() )
+	{
+		if ( GetModelScale() != 1.f )
+			SetModelScale( 1.f );
+		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
+		m_Shared.RemoveAttributeFromPlayer( "head scale" );
+		return;
+	}
+
+	ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
+	// Brick owns a scale-up past 1. This only finishes a return to normal.
+	if ( !mvs || mvs->m_flModelScaleGoal > 1.01f || mvs->m_flModelScaleGoal < mvs->m_flModelScaleStart + 0.01f )
+		return;
+
+	SetContextThink( NULL, 0, "UpdateModelScaleThink" );
+
+	const float dt = mvs->m_flModelScaleFinishTime - mvs->m_flModelScaleStartTime;
+	float frac = 1.f;
+	if ( dt > 0.f )
+		frac = clamp( ( gpGlobals->curtime - mvs->m_flModelScaleStartTime ) / dt, 0.f, 1.f );
+
+	const float flWant = Lerp( frac, mvs->m_flModelScaleStart, mvs->m_flModelScaleGoal );
+	const float flNow = m_flModelScale;
+	const bool bDucking = ( GetFlags() & FL_DUCKING ) != 0;
+	Vector vecFit = GetAbsOrigin();
+	float flBest = flWant;
+	bool bFullFit = BrickGrowPushToFit( this, flWant, bDucking, vecFit );
+
+	if ( !bFullFit )
+	{
+		float flLo = flNow;
+		float flHi = flWant;
+		flBest = flNow;
+		vecFit = GetAbsOrigin();
+		Vector vecTry;
+		if ( BrickGrowPushToFit( this, flNow, bDucking, vecTry ) )
+		{
+			vecFit = vecTry;
+			for ( int i = 0; i < 8; ++i )
+			{
+				const float mid = ( flLo + flHi ) * 0.5f;
+				if ( BrickGrowPushToFit( this, mid, bDucking, vecTry ) )
+				{
+					flLo = mid;
+					flBest = mid;
+					vecFit = vecTry;
+				}
+				else
+				{
+					flHi = mid;
+				}
+			}
+		}
+	}
+
+	if ( vecFit != GetAbsOrigin() )
+		SetAbsOrigin( vecFit );
+
+	if ( bFullFit && frac >= 1.f )
+	{
+		m_flModelScale = 1.f;
+		DestroyDataObject( MODELSCALE );
+		m_Shared.RemoveAttributeFromPlayer( "voice pitch scale" );
+		m_Shared.RemoveAttributeFromPlayer( "head scale" );
+	}
+	else
+	{
+		m_flModelScale = bFullFit ? flWant : flBest;
+		if ( !bFullFit )
+		{
+			const float flFrame = gpGlobals->frametime;
+			mvs->m_flModelScaleStartTime += flFrame;
+			mvs->m_flModelScaleFinishTime += flFrame;
+		}
+	}
+
+	RefreshCollisionBounds();
+
+	if ( GetFlags() & FL_DUCKING )
+		SetViewOffset( VEC_DUCK_VIEW_SCALED( this ) );
+	else
+		SetViewOffset( GetClassEyeHeight() );
+}
+
+//-----------------------------------------------------------------------------
 // Hidden spellbook. Secondary fire spends mana and this fires the spell.
 //-----------------------------------------------------------------------------
 bool CTFPlayer::CastWitchSpell( int iSlot )
@@ -1811,6 +1928,7 @@ void CTFPlayer::TFPlayerThink()
 	ResupplyAuraThink();
 	RegenResupplyThrowMeter();
 	ThinkBrickGrow();
+	ThinkAthleticGrow();
 
 	for ( int iAmmo = 0; iAmmo < TF_AMMO_COUNT; ++iAmmo )
 	{

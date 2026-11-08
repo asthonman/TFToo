@@ -3590,9 +3590,15 @@ void CTFGameMovement::Duck( void )
 		float flOffsetDelta = player->GetViewOffset().z - GetPlayerViewOffset( false ).z;
 		if ( ( fabs( flOffsetDelta ) > 0.1 ) )
 		{
-			// we should rarely ever get here, so assert so a coder knows when it happens
-			AssertMsg2( 0, "Restoring player view height at %i %0.3f\n", gpGlobals->tickcount, gpGlobals->curtime );
-			DevMsg( 1, "Restoring player view height at %i %0.3f.  Delta: %f.\n", gpGlobals->tickcount, gpGlobals->curtime, flOffsetDelta );
+			// A scaled hull (Athletic) is supposed to move the eyes. Only the
+			// standing-at-ducked-height bug is unexpected.
+			const float flScale = m_pTFPlayer->GetModelScale();
+			if ( flScale > 0.99f && flScale < 1.01f )
+			{
+				// we should rarely ever get here, so assert so a coder knows when it happens
+				AssertMsg2( 0, "Restoring player view height at %i %0.3f\n", gpGlobals->tickcount, gpGlobals->curtime );
+				DevMsg( 1, "Restoring player view height at %i %0.3f.  Delta: %f.\n", gpGlobals->tickcount, gpGlobals->curtime, flOffsetDelta );
+			}
 
 			// set the eye height to the non-ducked height
 			SetDuckedEyeOffset(0.0f);

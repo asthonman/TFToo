@@ -5856,6 +5856,9 @@ void C_TFPlayer::HandleTaunting( void )
 	// This code is only for the local player.
 	Assert( pLocalPlayer == NULL || pLocalPlayer == this );
 
+	// Athletic stays first person. The eye height follows the hull instead.
+	const bool bTinyThirdPerson = m_Shared.InCond( TF_COND_HALLOWEEN_TINY ) && !IsPlayerClass( TF_CLASS_WITCH );
+
 	// Clear the taunt slot.
 	if (	!m_bWasTaunting &&
 			(	
@@ -5866,7 +5869,7 @@ void C_TFPlayer::HandleTaunting( void )
 				m_nForceTauntCam ||
 				m_Shared.InCond( TF_COND_HALLOWEEN_BOMB_HEAD ) ||
 				m_Shared.InCond( TF_COND_HALLOWEEN_GIANT ) ||
-				m_Shared.InCond( TF_COND_HALLOWEEN_TINY ) ||
+				bTinyThirdPerson ||
 				m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) ||
 				m_Shared.InCond( TF_COND_HALLOWEEN_KART ) ||
 				m_Shared.InCond( TF_COND_MELEE_ONLY ) ||
@@ -5891,7 +5894,7 @@ void C_TFPlayer::HandleTaunting( void )
 				!m_nForceTauntCam && !m_Shared.InCond( TF_COND_HALLOWEEN_BOMB_HEAD ) &&
 				!m_Shared.InCond( TF_COND_HALLOWEEN_THRILLER ) &&
 				!m_Shared.InCond( TF_COND_HALLOWEEN_GIANT ) &&
-				!m_Shared.InCond( TF_COND_HALLOWEEN_TINY ) &&
+				!bTinyThirdPerson &&
 				!m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) &&
 				!m_Shared.InCond( TF_COND_HALLOWEEN_KART ) &&
 				!m_Shared.InCond( TF_COND_MELEE_ONLY ) &&

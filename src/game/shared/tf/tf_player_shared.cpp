@@ -5310,6 +5310,15 @@ void CTFPlayerShared::OnAddHalloweenTiny( void )
 	m_pOuter->SetModelScale( 0.5f );
 	ApplyAttributeToPlayer( "voice pitch scale", 1.3f );
 	ApplyAttributeToPlayer( "head scale", 3.f );
+	// First person stays on. The eyes have to drop with the hull or she is
+	// looking out of the top of the smaller body.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		if ( m_pOuter->GetFlags() & FL_DUCKING )
+			m_pOuter->SetViewOffset( VEC_DUCK_VIEW_SCALED( m_pOuter ) );
+		else
+			m_pOuter->SetViewOffset( m_pOuter->GetClassEyeHeight() );
+	}
 #endif
 }
 
@@ -5417,6 +5426,14 @@ void CTFPlayerShared::OnRemoveHalloweenKartDash()
 void CTFPlayerShared::OnRemoveHalloweenTiny( void )
 {
 #ifdef GAME_DLL
+	// Athletic. Grow back instead of snapping to full size and dying if the
+	// full hull does not fit. The voice and head stay tiny until she does.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
+	{
+		m_pOuter->BeginAthleticGrowBack();
+		return;
+	}
+
 	m_pOuter->SetModelScale( 1.f );
 
 	RemoveAttributeFromPlayer( "voice pitch scale" );

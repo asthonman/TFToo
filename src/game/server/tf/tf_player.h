@@ -532,6 +532,10 @@ public:
 	bool					AddResupplyThrowMeter( float flGain );
 	void					ThinkBrickGrow( void );
 	void					HandleBrickGrowInput( void );
+	// Athletic wears off by growing from half size back to normal. Same
+	// push-and-pause as Brick, so a low ceiling does not kill her.
+	void					BeginAthleticGrowBack( void );
+	void					ThinkAthleticGrow( void );
 	bool					IsBrickGrown( void ) const { return m_bBrickGrown; }
 	bool					IsBrickGrowDucking( void ) const { return m_bBrickGrowDuck; }
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
