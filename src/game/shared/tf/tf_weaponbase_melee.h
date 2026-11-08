@@ -106,6 +106,8 @@ private:
 
 #ifdef CLIENT_DLL
 #define CTFResupplyWeapon C_TFResupplyWeapon
+#define CTFResupplyMiniWeapon C_TFResupplyMiniWeapon
+#define CTFResupplyMegaWeapon C_TFResupplyMegaWeapon
 #endif
 
 //=============================================================================
@@ -143,6 +145,12 @@ public:
 	// Animation only. The aura calls this after it resupplies someone else.
 	void			PlayPulseSwing( void );
 
+protected:
+	// 100 meter. Stock spends 50 (two throws). A throw comes back in 30 seconds.
+	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_COST; }
+	// powerupsize_t: 0 small, 1 medium, 2 full.
+	virtual int		GetThrownPackSize( void ) const { return 1; }
+
 private:
 	void			HideMesh( void );
 	void			ThrowPack( bool bAmmo, char chSwing );
@@ -154,6 +162,42 @@ private:
 	EHANDLE			m_hThrownAmmo;
 
 	CTFResupplyWeapon( const CTFResupplyWeapon & ) {}
+};
+
+// Four small lunchboxes. Same throw, quarter of the meter each.
+class CTFResupplyMiniWeapon : public CTFResupplyWeapon
+{
+public:
+	DECLARE_CLASS( CTFResupplyMiniWeapon, CTFResupplyWeapon );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFResupplyMiniWeapon() {}
+
+protected:
+	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_MAX * 0.25f; }
+	virtual int		GetThrownPackSize( void ) const { return 0; }
+
+private:
+	CTFResupplyMiniWeapon( const CTFResupplyMiniWeapon & ) {}
+};
+
+// One large lunchbox. The whole meter.
+class CTFResupplyMegaWeapon : public CTFResupplyWeapon
+{
+public:
+	DECLARE_CLASS( CTFResupplyMegaWeapon, CTFResupplyWeapon );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFResupplyMegaWeapon() {}
+
+protected:
+	virtual float	GetThrowCost( void ) const { return TF_RESUPPLY_THROW_MAX; }
+	virtual int		GetThrownPackSize( void ) const { return 2; }
+
+private:
+	CTFResupplyMegaWeapon( const CTFResupplyMegaWeapon & ) {}
 };
 
 #ifdef CLIENT_DLL

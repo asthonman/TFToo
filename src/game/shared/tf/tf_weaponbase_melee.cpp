@@ -1170,17 +1170,28 @@ class CResupplyThrownLunchbox : public CTFPowerup
 public:
 	DECLARE_CLASS( CResupplyThrownLunchbox, CTFPowerup );
 
+	CResupplyThrownLunchbox() : m_eSize( POWERUP_MEDIUM ), m_flRefund( TF_RESUPPLY_THROW_COST ) {}
+
 	virtual bool	IsAmmoLunchbox( void ) const { return false; }
 	virtual void	Precache( void );
 	virtual void	Spawn( void );
 	virtual bool	MyTouch( CBasePlayer *pPlayer );
 	virtual const char *GetDefaultPowerupModel( void );
-	virtual powerupsize_t GetPowerupSize( void ) { return POWERUP_MEDIUM; }
+	virtual powerupsize_t GetPowerupSize( void ) { return m_eSize; }
+
+	// Called after Create, which already spawned the medium model.
+	void	Configure( int iSize, float flRefund );
 
 private:
+	void	ApplyModel( void );
+	const char *GetPickupClass( void ) const;
+	const char *GetPickupName( void ) const;
 	bool	TouchAsHealth( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer );
 	bool	TouchAsAmmo( CTFPlayer *pTFPlayer, CBasePlayer *pPlayer );
 	void	NotifyPickup( CBasePlayer *pPlayer, const char *pszIconClass, const char *pszItemName );
+
+	powerupsize_t m_eSize;
+	float m_flRefund;
 };
 
 class CResupplyThrownLunchboxAmmo : public CResupplyThrownLunchbox
@@ -1198,41 +1209,136 @@ void CResupplyThrownLunchbox::Precache( void )
 {
 	PrecacheScriptSound( "HealthKit.Touch" );
 	PrecacheScriptSound( "AmmoPack.Touch" );
+	PrecacheModel( "models/items/medkit_small.mdl" );
 	PrecacheModel( "models/items/medkit_medium.mdl" );
+	PrecacheModel( "models/items/medkit_large.mdl" );
+	PrecacheModel( TF_MEDKIT_SMALL_BDAY );
 	PrecacheModel( TF_MEDKIT_MEDIUM_BDAY );
+	PrecacheModel( TF_MEDKIT_LARGE_BDAY );
+	PrecacheModel( TF_MEDKIT_SMALL_HALLOWEEN );
 	PrecacheModel( TF_MEDKIT_MEDIUM_HALLOWEEN );
+	PrecacheModel( TF_MEDKIT_LARGE_HALLOWEEN );
+	PrecacheModel( "models/items/ammopack_small.mdl" );
 	PrecacheModel( "models/items/ammopack_medium.mdl" );
+	PrecacheModel( "models/items/ammopack_large.mdl" );
+	PrecacheModel( TF_AMMOPACK_SMALL_BDAY );
 	PrecacheModel( TF_AMMOPACK_MEDIUM_BDAY );
+	PrecacheModel( TF_AMMOPACK_LARGE_BDAY );
 	BaseClass::Precache();
 }
 
 const char *CResupplyThrownLunchbox::GetDefaultPowerupModel( void )
 {
-	if ( TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday ) )
-		return TF_MEDKIT_MEDIUM_BDAY;
-	return "models/items/medkit_medium.mdl";
+	const bool bBirthday = TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday );
+	if ( m_eSize == POWERUP_SMALL )
+		return bBirthday ? TF_MEDKIT_SMALL_BDAY : "models/items/medkit_small.mdl";
+	if ( m_eSize == POWERUP_FULL )
+		return bBirthday ? TF_MEDKIT_LARGE_BDAY : "models/items/medkit_large.mdl";
+	return bBirthday ? TF_MEDKIT_MEDIUM_BDAY : "models/items/medkit_medium.mdl";
 }
 
 const char *CResupplyThrownLunchboxAmmo::GetDefaultPowerupModel( void )
 {
-	if ( TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday ) )
-		return TF_AMMOPACK_MEDIUM_BDAY;
-	return "models/items/ammopack_medium.mdl";
+	const bool bBirthday = TFGameRules() && TFGameRules()->IsHolidayActive( kHoliday_TFBirthday );
+	if ( GetPowerupSize() == POWERUP_SMALL )
+		return bBirthday ? TF_AMMOPACK_SMALL_BDAY : "models/items/ammopack_small.mdl";
+	if ( GetPowerupSize() == POWERUP_FULL )
+		return bBirthday ? TF_AMMOPACK_LARGE_BDAY : "models/items/ammopack_large.mdl";
+	return bBirthday ? TF_AMMOPACK_MEDIUM_BDAY : "models/items/ammopack_medium.mdl";
+}
+
+void CResupplyThrownLunchbox::ApplyModel( void )
+{
+	const char *pszWorld = GetDefaultPowerupModel();
+	SetModel( pszWorld );
+	if ( !modelinfo )
+		return;
+
+	const char *pszPyro = pszWorld;
+	const char *pszHalloween = pszWorld;
+	if ( !IsAmmoLunchbox() )
+	{
+		if ( m_eSize == POWERUP_SMALL )
+		{
+			pszPyro = TF_MEDKIT_SMALL_BDAY;
+			pszHalloween = TF_MEDKIT_SMALL_HALLOWEEN;
+		}
+		else if ( m_eSize == POWERUP_FULL )
+		{
+			pszPyro = TF_MEDKIT_LARGE_BDAY;
+			pszHalloween = TF_MEDKIT_LARGE_HALLOWEEN;
+		}
+		else
+		{
+			pszPyro = TF_MEDKIT_MEDIUM_BDAY;
+			pszHalloween = TF_MEDKIT_MEDIUM_HALLOWEEN;
+		}
+	}
+	else if ( m_eSize == POWERUP_SMALL )
+		pszPyro = TF_AMMOPACK_SMALL_BDAY;
+	else if ( m_eSize == POWERUP_FULL )
+		pszPyro = TF_AMMOPACK_LARGE_BDAY;
+	else
+		pszPyro = TF_AMMOPACK_MEDIUM_BDAY;
+
+	SetModelIndexOverride( VISION_MODE_NONE, modelinfo->GetModelIndex( pszWorld ) );
+	SetModelIndexOverride( VISION_MODE_PYRO, modelinfo->GetModelIndex( pszPyro ) );
+	SetModelIndexOverride( VISION_MODE_HALLOWEEN, modelinfo->GetModelIndex( pszHalloween ) );
+}
+
+void CResupplyThrownLunchbox::Configure( int iSize, float flRefund )
+{
+	if ( iSize <= POWERUP_SMALL )
+		m_eSize = POWERUP_SMALL;
+	else if ( iSize >= POWERUP_FULL )
+		m_eSize = POWERUP_FULL;
+	else
+		m_eSize = POWERUP_MEDIUM;
+
+	m_flRefund = flRefund > 0.f ? flRefund : TF_RESUPPLY_THROW_COST;
+	ApplyModel();
+}
+
+const char *CResupplyThrownLunchbox::GetPickupClass( void ) const
+{
+	if ( IsAmmoLunchbox() )
+	{
+		if ( m_eSize == POWERUP_SMALL )
+			return "item_ammopack_small";
+		if ( m_eSize == POWERUP_FULL )
+			return "item_ammopack_full";
+		return "item_ammopack_medium";
+	}
+
+	if ( m_eSize == POWERUP_SMALL )
+		return "item_healthkit_small";
+	if ( m_eSize == POWERUP_FULL )
+		return "item_healthkit_full";
+	return "item_healthkit_medium";
+}
+
+const char *CResupplyThrownLunchbox::GetPickupName( void ) const
+{
+	if ( IsAmmoLunchbox() )
+	{
+		if ( m_eSize == POWERUP_SMALL )
+			return "ammopack_small";
+		if ( m_eSize == POWERUP_FULL )
+			return "ammopack_large";
+		return "ammopack_medium";
+	}
+
+	if ( m_eSize == POWERUP_SMALL )
+		return "medkit_small";
+	if ( m_eSize == POWERUP_FULL )
+		return "medkit_large";
+	return "medkit_medium";
 }
 
 void CResupplyThrownLunchbox::Spawn( void )
 {
 	BaseClass::Spawn();
-
-	if ( !modelinfo )
-		return;
-
-	const char *pszWorld = GetPowerupModel();
-	const char *pszPyro = IsAmmoLunchbox() ? TF_AMMOPACK_MEDIUM_BDAY : TF_MEDKIT_MEDIUM_BDAY;
-	const char *pszHalloween = IsAmmoLunchbox() ? pszWorld : TF_MEDKIT_MEDIUM_HALLOWEEN;
-	SetModelIndexOverride( VISION_MODE_NONE, modelinfo->GetModelIndex( pszWorld ) );
-	SetModelIndexOverride( VISION_MODE_PYRO, modelinfo->GetModelIndex( pszPyro ) );
-	SetModelIndexOverride( VISION_MODE_HALLOWEEN, modelinfo->GetModelIndex( pszHalloween ) );
+	ApplyModel();
 }
 
 void CResupplyThrownLunchbox::NotifyPickup( CBasePlayer *pPlayer, const char *pszIconClass, const char *pszItemName )
@@ -1305,7 +1411,7 @@ bool CResupplyThrownLunchbox::TouchAsHealth( CTFPlayer *pTFPlayer, CBasePlayer *
 
 	pTFPlayer->m_Shared.HealthKitPickupEffects( nHealthGiven );
 	CTF_GameStats.Event_PlayerHealthkitPickup( pTFPlayer );
-	NotifyPickup( pPlayer, "item_healthkit_medium", "medkit_medium" );
+	NotifyPickup( pPlayer, GetPickupClass(), GetPickupName() );
 	return true;
 }
 
@@ -1360,7 +1466,7 @@ bool CResupplyThrownLunchbox::TouchAsAmmo( CTFPlayer *pTFPlayer, CBasePlayer *pP
 	CSingleUserRecipientFilter filter( pPlayer );
 	EmitSound( filter, entindex(), "AmmoPack.Touch" );
 	CTF_GameStats.Event_PlayerAmmokitPickup( pTFPlayer );
-	NotifyPickup( pPlayer, "item_ammopack_medium", "ammopack_medium" );
+	NotifyPickup( pPlayer, GetPickupClass(), GetPickupName() );
 	return true;
 }
 
@@ -1377,12 +1483,12 @@ bool CResupplyThrownLunchbox::MyTouch( CBasePlayer *pPlayer )
 	// on the ground so someone else can still take it.
 	if ( GetOwnerEntity() == pPlayer && pTFPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) )
 	{
-		if ( !pTFPlayer->AddResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
+		if ( !pTFPlayer->AddResupplyThrowMeter( m_flRefund ) )
 			return false;
 
 		CSingleUserRecipientFilter user( pPlayer );
 		EmitSound( user, entindex(), IsAmmoLunchbox() ? "AmmoPack.Touch" : "HealthKit.Touch" );
-		NotifyPickup( pPlayer, IsAmmoLunchbox() ? "item_ammopack_medium" : "item_healthkit_medium", IsAmmoLunchbox() ? "ammopack_medium" : "medkit_medium" );
+		NotifyPickup( pPlayer, GetPickupClass(), GetPickupName() );
 		return true;
 	}
 
@@ -1408,6 +1514,22 @@ END_PREDICTION_DATA()
 
 LINK_ENTITY_TO_CLASS( tf_weapon_resupply, CTFResupplyWeapon );
 PRECACHE_WEAPON_REGISTER( tf_weapon_resupply );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFResupplyMiniWeapon, DT_TFWeaponResupplyMini )
+BEGIN_NETWORK_TABLE( CTFResupplyMiniWeapon, DT_TFWeaponResupplyMini )
+END_NETWORK_TABLE()
+BEGIN_PREDICTION_DATA( CTFResupplyMiniWeapon )
+END_PREDICTION_DATA()
+LINK_ENTITY_TO_CLASS( tf_weapon_resupply_mini, CTFResupplyMiniWeapon );
+PRECACHE_WEAPON_REGISTER( tf_weapon_resupply_mini );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFResupplyMegaWeapon, DT_TFWeaponResupplyMega )
+BEGIN_NETWORK_TABLE( CTFResupplyMegaWeapon, DT_TFWeaponResupplyMega )
+END_NETWORK_TABLE()
+BEGIN_PREDICTION_DATA( CTFResupplyMegaWeapon )
+END_PREDICTION_DATA()
+LINK_ENTITY_TO_CLASS( tf_weapon_resupply_mega, CTFResupplyMegaWeapon );
+PRECACHE_WEAPON_REGISTER( tf_weapon_resupply_mega );
 
 static const char *s_pszResupplyHiddenModel = "models/weapons/w_models/w_bat.mdl";
 
@@ -1509,7 +1631,7 @@ void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 	if ( m_flNextPrimaryAttack > gpGlobals->curtime )
 		return;
 
-	if ( pPlayer->GetResupplyThrowMeter() + 0.001f < TF_RESUPPLY_THROW_COST )
+	if ( pPlayer->GetResupplyThrowMeter() + 0.001f < GetThrowCost() )
 		return;
 
 #ifndef CLIENT_DLL
@@ -1525,7 +1647,9 @@ void CTFResupplyWeapon::ThrowPack( bool bAmmo, char chSwing )
 		return;
 	}
 
-	if ( !pPlayer->SpendResupplyThrowMeter( TF_RESUPPLY_THROW_COST ) )
+	pLunch->Configure( GetThrownPackSize(), GetThrowCost() );
+
+	if ( !pPlayer->SpendResupplyThrowMeter( GetThrowCost() ) )
 	{
 		UTIL_Remove( pLunch );
 		return;

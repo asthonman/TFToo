@@ -481,5 +481,69 @@
 				"witch"			"1"
 			}
 		}
+		// Resupply unlocks. Same throw as b7. Mini is four small lunchboxes,
+		// mega is one large lunchbox.
+		"b13"
+		{
+			"name"				"b13"
+			"item_class"		"tf_weapon_resupply_mini"
+			"item_name"			"#TF_Weapon_ResupplyMini"
+			"item_type_name"	"#TF_Weapon_Resupply"
+			"item_logname"		"resupply_mini"
+			"item_iconname"	"resupply"
+			"item_slot"			"melee"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"0"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"resupply"		"1"
+			}
+			"attributes"
+			{
+				"no_attack"
+				{
+					"value"		"1"
+				}
+			}
+		}
+		"b14"
+		{
+			"name"				"b14"
+			"item_class"		"tf_weapon_resupply_mega"
+			"item_name"			"#TF_Weapon_ResupplyMega"
+			"item_type_name"	"#TF_Weapon_Resupply"
+			"item_logname"		"resupply_mega"
+			"item_iconname"	"resupply"
+			"item_slot"			"melee"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"0"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"resupply"		"1"
+			}
+			"attributes"
+			{
+				"no_attack"
+				{
+					"value"		"1"
+				}
+			}
+		}
 	}
 }
