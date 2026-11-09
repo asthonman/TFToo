@@ -12,6 +12,7 @@
 #include "tf_paint_atlas.h"
 #include "engine/IEngineTrace.h"
 #include "igamesystem.h"
+#include "movevars_shared.h"
 
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
@@ -99,7 +100,7 @@ public:
 		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
 		if ( pEnt && pEnt->IsPlayer() )
 			return false;
-		return BaseClass::ShouldHitEntity( pHandle, contentsMask );
+		return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
 	}
 };
 
@@ -123,6 +124,12 @@ public:
 	virtual void ClientThink( void );
 	virtual void OnDataChanged( DataUpdateType_t updateType );
 	virtual RenderGroup_t GetRenderGroup( void ) { return RENDER_GROUP_TRANSLUCENT_ENTITY; }
+	// This SDK has no SetRenderBounds. The coat has to draw anywhere on the map.
+	virtual void GetRenderBounds( Vector &mins, Vector &maxs )
+	{
+		mins.Init( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT );
+		maxs.Init( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT );
+	}
 #else
 	virtual void Think( void );
 	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius );
@@ -272,8 +279,6 @@ void CTFPaintMap::Spawn( void )
 	SetNextThink( gpGlobals->curtime + 0.05f );
 #else
 	m_nAppliedCursor = 0;
-	SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
-		Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
 #endif
 
@@ -358,8 +363,6 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 void CTFPaintMap::ClientThink( void )
 {
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
-	SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
-		Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 	UpdateVisibility();
 	ApplyNetworkStamps();
 
@@ -391,8 +394,6 @@ void CTFPaintMap::OnDataChanged( DataUpdateType_t updateType )
 	{
 		m_nAppliedCursor = 0;
 		m_Atlas.Clear();
-		SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
-			Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 		SetNextClientThink( CLIENT_THINK_ALWAYS );
 	}
 }

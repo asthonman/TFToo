@@ -3786,7 +3786,7 @@ void CTFGameMovement::ApplyPaintBounce( float flMin )
 	else
 		VectorNormalize( n );
 
-	float incoming = Max( player->m_Local.m_flFallVelocity, -mv->m_vecVelocity.z );
+	float incoming = Max( (float)player->m_Local.m_flFallVelocity, -mv->m_vecVelocity.z );
 	float bounce = Max( flMin, incoming );
 	Vector vel = mv->m_vecVelocity;
 	vel -= n * DotProduct( vel, n );

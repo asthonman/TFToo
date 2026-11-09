@@ -1179,9 +1179,8 @@ static void ForwardClassStatDialogVariables( Panel *pPanel, KeyValues *pDialogVa
 		if ( !pChild )
 			continue;
 
-		Label *pLabel = dynamic_cast< Label * >( pChild );
-		if ( pLabel )
-			pLabel->OnDialogVariablesChanged( pDialogVariables );
+		// OnDialogVariablesChanged is protected. The message map is what calls it.
+		ipanel()->SendMessage( pChild->GetVPanel(), pDialogVariables, pPanel->GetVPanel() );
 
 		ForwardClassStatDialogVariables( pChild, pDialogVariables );
 	}
@@ -1388,7 +1387,8 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 				Label *pNew = new Label( pChild, szName, "" );
 				pNew->SetBounds( x, yRow, w, h );
 				pNew->SetFont( pSrc->GetFont() );
-				pNew->SetContentAlignment( pSrc->GetContentAlignment() );
+				// Every stock row is west-aligned. There is no getter for it.
+				pNew->SetContentAlignment( Label::a_west );
 				pNew->SetZPos( pSrc->GetZPos() );
 				pNew->SetMouseInputEnabled( false );
 				SetClassStatLabelVar( pNew, kControls[iCtl].pszVar, iRow );
