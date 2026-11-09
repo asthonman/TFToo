@@ -2048,6 +2048,10 @@ void CResponseSystem::ParseOneResponse( const char *responseGroupName, ResponseG
 	ParseToken();
 	newResponse.value = CopyString( token );
 
+	float flSkip = 0.0f;
+	float flCutoff = 0.0f;
+	bool bTiming = false;
+
 	while ( TokenWaiting() )
 	{
 		ParseToken();
@@ -2155,7 +2159,33 @@ void CResponseSystem::ParseOneResponse( const char *responseGroupName, ResponseG
 			continue;
 		}
 
+		// Per-line, so they are packed into the response value. Group predelay
+		// cannot differ per line. "#tftoo,skip,cutoff" is stripped at playback.
+		if ( !Q_stricmp( token, "skip" ) )
+		{
+			ParseToken();
+			flSkip = (float)atof( token );
+			bTiming = true;
+			continue;
+		}
+
+		if ( !Q_stricmp( token, "cutoff" ) )
+		{
+			ParseToken();
+			flCutoff = (float)atof( token );
+			bTiming = true;
+			continue;
+		}
+
 		ResponseWarning( "response entry '%s' with unknown command '%s'\n", responseGroupName, token );
+	}
+
+	if ( bTiming && newResponse.value )
+	{
+		char buf[ 128 ];
+		Q_snprintf( buf, sizeof( buf ), "%s#tftoo,%.3f,%.3f", newResponse.value, flSkip, flCutoff );
+		delete[] newResponse.value;
+		newResponse.value = CopyString( buf );
 	}
 
 	group.group.AddToTail( newResponse );
@@ -3306,6 +3336,8 @@ bool CDefaultResponseSystem::Init()
 	LoadRuleSet( basescript );
 	// Mobster lines live in the mod. Missing file is ignored.
 	LoadRuleSet( "scripts/talker/mobster_response_rules.txt" );
+	// Original classes dominating a Witch. Missing file is ignored.
+	LoadRuleSet( "scripts/talker/witch_domination_response_rules.txt" );
 
 	return true;
 }

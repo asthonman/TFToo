@@ -1,0 +1,149 @@
+// Original classes dominating a Witch.
+// IsVictimWitch is weight 0, same as the stock victim criteria, so these rules
+// tie the generic domination rule instead of replacing it.
+// Scout's generic rule still carries 30PercentChance, so it still wins outright
+// on that roll and these lines only play the rest of the time.
+// Pyro has no Witch lines; the generic pool is unchanged.
+//
+// skip <seconds> starts that far into the sound (parenthetical marks).
+// cutoff <seconds> stops the sound at that time (bracket marks).
+// predelay 2.5 matches stock domination scenes so the death scream finishes.
+
+criterion "IsVictimWitch" "victimclass" "Witch" "required" weight 0
+
+response "WitchScoutDominate" predelay "2.5"
+{
+	speak "Scout.Domination20"
+	speak "Scout.Misc02"
+	speak "scout_sf12_seeking12"
+	speak "scout_sf12_badmagic06"
+	speak "scout_item_unicorn_domination06"
+}
+Rule WitchScoutDominate
+{
+	criteria ConceptKilledPlayer IsScout IsDominated IsVictimWitch
+	ApplyContext "ScoutKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchScoutDominate
+}
+
+response "WitchSoldierDominate" predelay "2.5"
+{
+	speak "Soldier.Taunts17"
+	speak "Soldier.DominationPyro02"
+	speak "Soldier.DominationPyro03"
+	speak "Soldier.DominationPyro04"
+	speak "Soldier.DominationPyro07"
+	speak "Soldier.DominationDemoman03"
+	speak "Soldier.DominationEngineer05"
+	speak "Soldier.DominationSniper12"
+	speak "Soldier.DominationSniper13"
+	speak "soldier_sf12_taunts03" skip 0.907
+	speak "soldier_sf12_taunts04" skip 0.882
+	speak "soldier_sf12_taunts05" skip 0.798
+	speak "soldier_sf12_taunts09"
+}
+Rule WitchSoldierDominate
+{
+	criteria ConceptKilledPlayer IsSoldier IsDominated IsVictimWitch
+	ApplyContext "SoldierKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchSoldierDominate
+}
+
+response "WitchDemomanDominate" predelay "2.5"
+{
+	speak "Demoman.dominationscout08"
+	speak "Demoman.dominationpyro02"
+	speak "Demoman.dominationpyro03"
+	speak "Demoman.dominationspy03"
+	speak "demoman_sf12_badmagic05"
+	speak "demoman_sf12_badmagic06" cutoff 3.340
+	speak "demoman_sf12_goodmagic03" cutoff 1.727
+}
+Rule WitchDemomanDominate
+{
+	criteria ConceptKilledPlayer IsDemoman IsDominated IsVictimWitch
+	ApplyContext "DemomanKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchDemomanDominate
+}
+
+// Heavy's generic domination rule has no victim split, so it would tie this
+// 50/50. 30PercentChance makes the extra line win on that roll only (~30%)
+// and leaves the generic pool untouched the rest of the time.
+response "WitchHeavyDominate" predelay "2.5"
+{
+	speak "heavy_sf12_badmagic10"
+}
+Rule WitchHeavyDominate
+{
+	criteria ConceptKilledPlayer IsHeavy IsDominated IsVictimWitch 30PercentChance
+	ApplyContext "HeavyKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchHeavyDominate
+}
+
+response "WitchEngineerDominate" predelay "2.5"
+{
+	speak "engineer_dominationsoldier08"
+	speak "engineer_dominationpyro02"
+	speak "engineer_dominationspy10"
+	speak "engineer_item_unicorn_revenge02"
+}
+Rule WitchEngineerDominate
+{
+	criteria ConceptKilledPlayer IsEngineer IsDominated IsVictimWitch
+	ApplyContext "EngineerKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchEngineerDominate
+}
+
+// Same 30% gate as Heavy. One of the six lines on that roll, generic otherwise.
+response "WitchMedicDominate" predelay "2.5"
+{
+	speak "medic_sf12_badmagic02"
+	speak "medic_sf12_badmagic05"
+	speak "medic_sf12_taunts02"
+	speak "medic_sf12_taunts03"
+	speak "medic_sf13_magic_reac03"
+	speak "Medic.Taunts07"
+}
+Rule WitchMedicDominate
+{
+	criteria ConceptKilledPlayer IsMedic IsDominated IsVictimWitch 30PercentChance
+	ApplyContext "MedicKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchMedicDominate
+}
+
+// Sniper's stock generic rule only matches while zoomed, and then only half
+// the time, so a normal victim rule would almost always beat it. Referencing
+// that response group keeps the generic lines in the pool. Weight 8 vs 1 puts
+// them at 80% of this rule; a zoomed generic match still outscores this rule.
+response "WitchSniperDominate" predelay "2.5"
+{
+	response "KilledPlayerDominatingSniper" weight 8
+	speak "Sniper.DominationMedic04"
+	speak "Sniper.DominationMedic05"
+}
+Rule WitchSniperDominate
+{
+	criteria ConceptKilledPlayer IsSniper IsDominated IsVictimWitch
+	ApplyContext "SniperKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchSniperDominate
+}
+
+response "WitchSpyDominate" predelay "2.5"
+{
+	speak "Spy.DominationSoldier01"
+	speak "Spy.DominationPyro02"
+}
+Rule WitchSpyDominate
+{
+	criteria ConceptKilledPlayer IsSpy IsDominated IsVictimWitch
+	ApplyContext "SpyKillSpeech:1:10"
+	ApplyContext "IsDominating:1:10"
+	Response WitchSpyDominate
+}
