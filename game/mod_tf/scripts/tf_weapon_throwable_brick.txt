@@ -1,4 +1,5 @@
-// The Mason's Missile. Madcap's stock secondary. An unlock for the Brick class.
+// The Mason's Missile. Unlock for Madcap and Brick. Yellow name.
+// Madcap's stock secondary is the Grease Gun.
 // Charge time and recharge come from the item attributes.
 "WeaponData"
 {

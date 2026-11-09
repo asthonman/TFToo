@@ -14,6 +14,7 @@
 
 #ifdef CLIENT_DLL
 #define CTFWeaponPaintgun C_TFWeaponPaintgun
+#define CTFWeaponGreasegun C_TFWeaponGreasegun
 #endif
 
 class CTFWeaponPaintgun : public CTFWeaponBase
@@ -45,6 +46,30 @@ private:
 
 	CNetworkVar( int, m_nPaintType );
 	float m_flNextFireSound;
+	float m_flNextPaintAnim;
+};
+
+//-----------------------------------------------------------------------------
+// Madcap stock secondary. Propulsion gel only. Ammo is TF_AMMO_METAL so it
+// does not share the Mason's Missile charge, which is TF_AMMO_SECONDARY.
+//-----------------------------------------------------------------------------
+class CTFWeaponGreasegun : public CTFWeaponBase
+{
+	DECLARE_CLASS( CTFWeaponGreasegun, CTFWeaponBase );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+#ifdef GAME_DLL
+	DECLARE_DATADESC();
+#endif
+
+public:
+	CTFWeaponGreasegun();
+
+	virtual int GetWeaponID( void ) const { return TF_WEAPON_NONE; }
+	virtual void PrimaryAttack( void );
+
+private:
 	float m_flNextPaintAnim;
 };
 

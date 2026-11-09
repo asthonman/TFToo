@@ -1,0 +1,37 @@
+// Madcap stock secondary. One blob of propulsion gel per ammo.
+// Ammo is metal so the Mason's Missile can keep the single secondary charge.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Greasegun"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.1"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"TF_AMMO_METAL"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"100"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/c_models/c_smg/c_smg.mdl"
+	"playermodel"		"models/weapons/c_models/c_smg/c_smg.mdl"
+	"anim_prefix"		"smg"
+
+	"WeaponSound"
+	{
+		"single_shot"	"Paintgun.Fire"
+		"empty"			"Weapon_Pistol.ClipEmpty"
+	}
+}

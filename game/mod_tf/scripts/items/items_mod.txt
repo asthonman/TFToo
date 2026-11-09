@@ -47,7 +47,8 @@
 				"madcap"		"1"
 			}
 		}
-		// Madcap stock secondary. Same arms as Mad Milk. Scout's item1 set is the hold and the throw.
+		// Madcap unlock. Unique quality is the yellow name. The stock secondary
+		// is the Grease Gun (b15).
 		"b2"
 		{
 			"name"				"b2"
@@ -58,8 +59,8 @@
 			"item_iconname"	"brick"
 			"item_slot"			"secondary"
 			"anim_slot"			"ITEM1"
-			"item_quality"		"normal"
-			"baseitem"			"1"
+			"item_quality"		"unique"
+			"baseitem"			"0"
 			"enabled"			"1"
 			"hidden"			"0"
 			"propername"		"0"
@@ -304,7 +305,7 @@
 				}
 			}
 		}
-		// Brick's Mason's Missile. Unlock. Shove (b10) is the stock secondary.
+		// Brick's Mason's Missile. Unlock, yellow name. Shove (b10) is the stock secondary.
 		// brick_mann has no ITEM1 sequences; the body falls back to melee.
 		"b8"
 		{
@@ -316,7 +317,7 @@
 			"item_iconname"	"brick"
 			"item_slot"			"secondary"
 			"anim_slot"			"ITEM1"
-			"item_quality"		"normal"
+			"item_quality"		"unique"
 			"baseitem"			"0"
 			"enabled"			"1"
 			"hidden"			"0"
@@ -556,6 +557,34 @@
 				{
 					"value"		"1"
 				}
+			}
+		}
+		// Madcap stock secondary. Propulsion gel, 100 ammo (metal, so the
+		// missile unlock keeps its one charge on TF_AMMO_SECONDARY).
+		"b15"
+		{
+			"name"				"b15"
+			"item_class"		"tf_weapon_greasegun"
+			"item_name"			"#TF_Weapon_Greasegun"
+			"item_type_name"	"#TF_Weapon_Greasegun"
+			"item_logname"		"greasegun"
+			"item_iconname"	"smg"
+			"item_slot"			"secondary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"model_world"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"used_by_classes"
+			{
+				"madcap"		"1"
 			}
 		}
 	}

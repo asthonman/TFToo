@@ -109,10 +109,9 @@ void CTFWeaponPaintgun::CyclePaint( void )
 #endif
 }
 
-void CTFWeaponPaintgun::FireBlob( bool bErase )
-{
 #ifdef GAME_DLL
-	CTFPlayer *pOwner = GetTFPlayerOwner();
+static void FirePaintBlob( CTFPlayer *pOwner, int type )
+{
 	if ( !pOwner )
 		return;
 
@@ -123,8 +122,6 @@ void CTFWeaponPaintgun::FireBlob( bool bErase )
 	eye += right * tf_paintgun_offset_x.GetFloat();
 	eye += up * tf_paintgun_offset_z.GetFloat();
 
-	int type = bErase ? NO_POWER : m_nPaintType.Get();
-
 	if ( !tf_paintgun_fire_blobs.GetBool() )
 	{
 		trace_t tr;
@@ -133,7 +130,7 @@ void CTFWeaponPaintgun::FireBlob( bool bErase )
 		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
 		{
 			float rad = tf_paintgun_rad.GetFloat();
-			if ( bErase )
+			if ( type == NO_POWER )
 				TFPaint_EraseSphere( tr.endpos, rad );
 			else
 				TFPaint_PaintSphere( tr.endpos, tr.plane.normal, type, rad );
@@ -149,6 +146,18 @@ void CTFWeaponPaintgun::FireBlob( bool bErase )
 
 	float speed = RandomFloat( tf_paintgun_min_speed.GetFloat(), tf_paintgun_max_speed.GetFloat() );
 	TFPaint_AddBlob( eye, dir * speed, type );
+}
+#endif
+
+void CTFWeaponPaintgun::FireBlob( bool bErase )
+{
+#ifdef GAME_DLL
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+	int type = bErase ? NO_POWER : m_nPaintType.Get();
+	FirePaintBlob( pOwner, type );
 
 	if ( gpGlobals->curtime >= m_flNextFireSound )
 	{
@@ -232,3 +241,61 @@ static void CC_GivePaintgun( const CCommand &args )
 }
 ConCommand tf_give_paintgun( "tf_give_paintgun", CC_GivePaintgun, "Equip the gel gun. Attack paints, attack2 erases, reload cycles gels." );
 #endif
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponGreasegun, DT_WeaponGreasegun )
+
+BEGIN_NETWORK_TABLE( CTFWeaponGreasegun, DT_WeaponGreasegun )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFWeaponGreasegun )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_greasegun, CTFWeaponGreasegun );
+PRECACHE_WEAPON_REGISTER( tf_weapon_greasegun );
+
+#ifdef GAME_DLL
+BEGIN_DATADESC( CTFWeaponGreasegun )
+END_DATADESC()
+#endif
+
+CTFWeaponGreasegun::CTFWeaponGreasegun()
+{
+	m_flNextPaintAnim = 0.f;
+}
+
+void CTFWeaponGreasegun::PrimaryAttack( void )
+{
+	if ( !CanAttack() )
+		return;
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+	if ( m_iPrimaryAmmoType < 0 || pOwner->GetAmmoCount( m_iPrimaryAmmoType ) < 1 )
+	{
+		WeaponSound( EMPTY );
+		m_flNextPrimaryAttack = gpGlobals->curtime + 0.2f;
+		return;
+	}
+
+	pOwner->RemoveAmmo( 1, m_iPrimaryAmmoType );
+
+	float flDelay = GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flTimeFireDelay;
+	if ( flDelay < 0.05f )
+		flDelay = 0.05f;
+	m_flNextPrimaryAttack = gpGlobals->curtime + flDelay;
+	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
+
+#ifdef GAME_DLL
+	FirePaintBlob( pOwner, SPEED_POWER );
+#endif
+	WeaponSound( SINGLE );
+
+	if ( gpGlobals->curtime >= m_flNextPaintAnim )
+	{
+		SendWeaponAnim( ACT_VM_PRIMARYATTACK );
+		pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY );
+		m_flNextPaintAnim = gpGlobals->curtime + 0.15f;
+	}
+}
