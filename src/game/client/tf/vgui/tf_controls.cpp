@@ -749,7 +749,7 @@ void CTFAdvancedOptionsDialog::ApplySchemeSettings( vgui::IScheme *pScheme )
 		int ox, oy, ow, ot;
 		pOk->GetPos( ox, oy );
 		pOk->GetSize( ow, ot );
-		wide = Max( ow, YRES( 160 ) );
+		wide = Max( ow, (int)YRES( 160 ) );
 		tall = ot;
 		x = ox;
 		y = oy - tall - YRES( 4 );
