@@ -1,0 +1,91 @@
+// Gel movement and gun. Waves are stock TF2 sounds, stand-ins for Emulsion's
+// Player.Enter*Paint scripts (those Portal 2 waves are not shipped).
+
+"Player.EnterBouncePaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.7"
+	"soundlevel"	"SNDLVL_75dB"
+	"pitch"			"110"
+	"wave"			"weapons/wrench_hit_world.wav"
+}
+
+"Player.ExitBouncePaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.45"
+	"soundlevel"	"SNDLVL_70dB"
+	"pitch"			"90"
+	"wave"			"weapons/wrench_hit_world.wav"
+}
+
+"Player.EnterSpeedPaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.65"
+	"soundlevel"	"SNDLVL_75dB"
+	"pitch"			"120"
+	"wave"			"weapons/rocket_shoot.wav"
+}
+
+"Player.ExitSpeedPaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.4"
+	"soundlevel"	"SNDLVL_70dB"
+	"pitch"			"80"
+	"wave"			"weapons/rocket_shoot.wav"
+}
+
+"Player.EnterStickPaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.7"
+	"soundlevel"	"SNDLVL_75dB"
+	"pitch"			"95"
+	"wave"			"weapons/stickybomblauncher_det.wav"
+}
+
+"Player.ExitStickPaint"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.45"
+	"soundlevel"	"SNDLVL_70dB"
+	"pitch"			"80"
+	"wave"			"weapons/stickybomblauncher_det.wav"
+}
+
+"Player.JumpPowerUse"
+{
+	"channel"		"CHAN_BODY"
+	"volume"		"0.8"
+	"soundlevel"	"SNDLVL_80dB"
+	"pitch"			"PITCH_NORM"
+	"wave"			"player/pl_impact_airblast1.wav"
+}
+
+"Paintgun.Fire"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"0.55"
+	"soundlevel"	"SNDLVL_75dB"
+	"pitch"			"140"
+	"rndwave"
+	{
+		"wave"		"weapons/syringegun_shoot.wav"
+		"wave"		"weapons/syringegun_shoot.wav"
+	}
+}
+
+"Paint.Splat"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"0.55"
+	"soundlevel"	"SNDLVL_70dB"
+	"pitch"			"PITCH_NORM"
+	"rndwave"
+	{
+		"wave"		"weapons/wrench_hit_world.wav"
+		"wave"		"player/pl_impact_airblast1.wav"
+	}
+}

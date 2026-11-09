@@ -23,6 +23,7 @@
 #include "halloween/tf_weapon_spellbook.h"
 #include "tf_logic_player_destruction.h"
 #include "tf_weaponbase_melee.h"
+#include "tf_paint.h"
 
 #ifdef CLIENT_DLL
 	#include "c_tf_player.h"
@@ -137,6 +138,11 @@ public:
 
 	virtual void HandleDuckingSpeedCrop( void );
 	void		UpdateMadcapPMeter( void );
+	void		UpdatePaintContact( void );
+	void		ApplyPaintBounce( float flMin );
+	void		PaintWallBounce( void );
+	void		PaintStickMove( void );
+	bool		PaintStickTrace( void );
 protected:
 
 	virtual void CheckWaterJump( void );
@@ -169,6 +175,15 @@ private:
 	bool		m_isPassingThroughEnemies;
 	// Airborne slam windup. Set in ProcessMovement, read while gravity is applied.
 	bool		m_bBrickSlamHang;
+	int			m_nPaintPower;
+	int			m_nPrevPaintPower;
+	Vector		m_vecPaintNormal;
+	bool		m_bPainted;
+	bool		m_bPaintLaunch;
+	bool		m_bPaintBounced;
+	float		m_flNextPaintBounce;
+	float		m_flPaintStickLockout;
+	float		m_flSuppressPaintExit;
 };
 
 
@@ -188,7 +203,15 @@ CTFGameMovement::CTFGameMovement()
 	m_pTFPlayer = NULL;
 	m_isPassingThroughEnemies = false;
 	m_bBrickSlamHang = false;
-
+	m_nPaintPower = NO_POWER;
+	m_nPrevPaintPower = NO_POWER;
+	m_vecPaintNormal.Init( 0.f, 0.f, 1.f );
+	m_bPainted = false;
+	m_bPaintLaunch = false;
+	m_bPaintBounced = false;
+	m_flNextPaintBounce = 0.f;
+	m_flPaintStickLockout = 0.f;
+	m_flSuppressPaintExit = 0.f;
 }
 
 //----------------------------------------------------------------------------------------
@@ -200,6 +223,21 @@ void CTFGameMovement::PlayerMove()
 	// you can stumble at faster than run speed)
 	if ( m_pTFPlayer->m_Shared.InCond( TF_COND_LOST_FOOTING ) )
 		{ mv->m_flClientMaxSpeed = mv->m_flMaxSpeed; }
+
+	UpdatePaintContact();
+	if ( tf_paint_enabled.GetBool() && player->GetGroundEntity() != NULL )
+	{
+		if ( m_nPaintPower == SPEED_POWER )
+		{
+			mv->m_flMaxSpeed = tf_paint_speed.GetFloat();
+			mv->m_flClientMaxSpeed = tf_paint_speed.GetFloat();
+		}
+		else if ( m_nPaintPower == PORTAL_POWER )
+		{
+			mv->m_flMaxSpeed = tf_paint_stick_speed.GetFloat();
+			mv->m_flClientMaxSpeed = tf_paint_stick_speed.GetFloat();
+		}
+	}
 
 	// call base class to do movement
 	BaseClass::PlayerMove();
@@ -311,6 +349,8 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	m_pTFPlayer = ToTFPlayer( pBasePlayer );
 	player = m_pTFPlayer;
 	mv = pMove;
+
+	m_bPaintBounced = false;
 
 	// The max speed is currently set to the scout - if this changes we need to change this!
 	mv->m_flMaxSpeed = TF_MAX_SPEED;
@@ -1331,6 +1371,16 @@ bool CTFGameMovement::CheckJumpButton()
 		return true;
 	}
 
+	if ( bOnGround && m_nPaintPower == BOUNCE_POWER && !( mv->m_nButtons & IN_DUCK ) && tf_paint_enabled.GetBool() )
+	{
+		m_bPaintLaunch = false;
+		ApplyPaintBounce( tf_paint_bounce_min.GetFloat() );
+		m_pTFPlayer->DoAnimationEvent( PLAYERANIMEVENT_JUMP );
+		m_pTFPlayer->m_Shared.SetJumping( true );
+		mv->m_nOldButtons |= IN_JUMP;
+		return true;
+	}
+
 	PreventBunnyJumping();
 
 	// Start jump animation and player sound (specific TF animation and flags).
@@ -1895,6 +1945,14 @@ void CTFGameMovement::WalkMove( void )
 				flAccelerate = sv_friction.GetFloat();
 		}
 	}
+	if ( m_nPaintPower == SPEED_POWER && flWishSpeed > 0.f )
+	{
+		flAccelerate = tf_paint_speed_accel.GetFloat();
+		const float flInput = sqrtf( ( flForwardMove * flForwardMove ) + ( flSideMove * flSideMove ) );
+		const float flFull = cl_forwardspeed.GetFloat();
+		if ( flFull > 0.f && flInput + 1.f >= flFull && flWishSpeed < mv->m_flMaxSpeed )
+			flWishSpeed = mv->m_flMaxSpeed;
+	}
 	float flFriction = sv_friction.GetFloat() * player->m_surfaceFriction;
 
 	float flWishSpeedThreshold = 100.0f * flFriction / sv_accelerate.GetFloat();
@@ -2316,6 +2374,8 @@ void CTFGameMovement::AirMove( void )
 
 	// Now pull the base velocity back out.   Base velocity is set if you are on a moving object, like a conveyor (or maybe another monster?)
 	VectorSubtract( mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );
+
+	PaintWallBounce();
 }
 
 extern void TracePlayerBBoxForGround( const Vector& start, const Vector& end, const Vector& minsSrc,
@@ -2676,6 +2736,9 @@ void CTFGameMovement::CheckWaterJump( void )
 //-----------------------------------------------------------------------------
 void CTFGameMovement::CheckFalling( void )
 {
+	if ( m_bPaintBounced )
+		player->m_Local.m_flFallVelocity = 0.f;
+
 	// if we landed on the ground
 	if ( player->GetGroundEntity() != NULL && !IsDead() )
 	{
@@ -2742,6 +2805,8 @@ void CTFGameMovement::FullWalkMoveUnderwater()
 //-----------------------------------------------------------------------------
 void CTFGameMovement::FullWalkMove()
 {
+	UpdatePaintContact();
+
 	if ( !InWater() ) 
 	{
 		if ( m_pTFPlayer->m_Shared.InCond( TF_COND_PARACHUTE_ACTIVE ) && mv->m_vecVelocity[2] < 0 )
@@ -2784,6 +2849,15 @@ void CTFGameMovement::FullWalkMove()
 		return;
 	}
 
+	if ( !InWater() && tf_paint_enabled.GetBool() && m_nPaintPower == PORTAL_POWER
+		&& m_vecPaintNormal.z < 0.7f && gpGlobals->curtime >= m_flPaintStickLockout && PaintStickTrace() )
+	{
+		float ent_gravity = player->GetGravity() ? player->GetGravity() : 1.0f;
+		mv->m_vecVelocity[2] += ent_gravity * GetCurrentGravity() * 0.5f * gpGlobals->frametime;
+		PaintStickMove();
+		return;
+	}
+
 	if (mv->m_nButtons & IN_JUMP)
 	{
 		CheckJumpButton();
@@ -2798,12 +2872,27 @@ void CTFGameMovement::FullWalkMove()
 
 	if (player->GetGroundEntity() != NULL)
 	{
-		mv->m_vecVelocity[2] = 0.0;
-		// Rollerskates. A shield charge keeps normal friction so it still snaps up to speed.
-		if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
-			player->m_surfaceFriction *= tf_madcap_friction_scale;
-		Friction();
-		WalkMove();
+		bool bGelBounce = tf_paint_enabled.GetBool() && m_nPaintPower == BOUNCE_POWER
+			&& !( mv->m_nButtons & IN_DUCK ) && gpGlobals->curtime >= m_flNextPaintBounce
+			&& ( m_bPaintLaunch || player->m_Local.m_flFallVelocity > 200.f );
+		if ( bGelBounce )
+		{
+			m_bPaintLaunch = false;
+			ApplyPaintBounce( tf_paint_bounce_min.GetFloat() );
+			AirMove();
+		}
+		else
+		{
+			m_bPaintLaunch = false;
+			mv->m_vecVelocity[2] = 0.0;
+			// Rollerskates. A shield charge keeps normal friction so it still snaps up to speed.
+			if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+				player->m_surfaceFriction *= tf_madcap_friction_scale;
+			if ( m_nPaintPower == SPEED_POWER )
+				player->m_surfaceFriction *= tf_paint_speed_friction.GetFloat();
+			Friction();
+			WalkMove();
+		}
 	}
 	else
 	{
@@ -2822,7 +2911,8 @@ void CTFGameMovement::FullWalkMove()
 	}
 
 	// If we are on ground, no downward velocity.
-	if ( player->GetGroundEntity() != NULL )
+	// A repulsion bounce has to keep its upward speed even if we're still touching the floor.
+	if ( player->GetGroundEntity() != NULL && !m_bPaintBounced )
 	{
 		mv->m_vecVelocity[2] = 0;
 	}
@@ -3630,4 +3720,194 @@ void CTFGameMovement::Duck( void )
 #endif
 	}
 }
+
+//-----------------------------------------------------------------------------
+// Gels. Bounce > speed > adhesion. Duck skips repulsion. Adhesion walks on
+// walls without replacing TF2's whole movement class.
+//-----------------------------------------------------------------------------
+void CTFGameMovement::UpdatePaintContact( void )
+{
+	int prev = m_nPaintPower;
+	m_bPainted = false;
+	m_nPaintPower = NO_POWER;
+	m_vecPaintNormal.Init( 0.f, 0.f, 1.f );
+
+	if ( !tf_paint_enabled.GetBool() || !m_pTFPlayer || IsDead() )
+	{
+		m_nPrevPaintPower = NO_POWER;
+		return;
+	}
+
+	TFPaintContact_t contact = TFPaint_Query( mv->GetAbsOrigin(), tf_paint_trace_radius.GetFloat() );
+	// Also sample a short step below the feet so floor gel is found while standing.
+	if ( !contact.painted )
+	{
+		TFPaintContact_t under = TFPaint_Query( mv->GetAbsOrigin() + Vector( 0, 0, -8 ), tf_paint_trace_radius.GetFloat() );
+		if ( under.painted )
+			contact = under;
+	}
+
+	if ( contact.painted )
+	{
+		m_bPainted = true;
+		m_nPaintPower = contact.type;
+		m_vecPaintNormal = contact.normal;
+		VectorNormalize( m_vecPaintNormal );
+	}
+
+	if ( prev == SPEED_POWER && m_nPaintPower == BOUNCE_POWER )
+		m_bPaintLaunch = true;
+
+	if ( prev != m_nPaintPower && gpGlobals->curtime >= m_flSuppressPaintExit )
+	{
+		if ( prev == BOUNCE_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitBouncePaint" );
+		else if ( prev == SPEED_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitSpeedPaint" );
+		else if ( prev == PORTAL_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitStickPaint" );
+
+		if ( m_nPaintPower == BOUNCE_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterBouncePaint" );
+		else if ( m_nPaintPower == SPEED_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterSpeedPaint" );
+		else if ( m_nPaintPower == PORTAL_POWER )
+			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterStickPaint" );
+	}
+
+	m_nPrevPaintPower = m_nPaintPower;
+}
+
+void CTFGameMovement::ApplyPaintBounce( float flMin )
+{
+	Vector n = m_vecPaintNormal;
+	if ( n.z < 0.15f )
+		n.Init( 0.f, 0.f, 1.f );
+	else
+		VectorNormalize( n );
+
+	float incoming = Max( player->m_Local.m_flFallVelocity, -mv->m_vecVelocity.z );
+	float bounce = Max( flMin, incoming );
+	Vector vel = mv->m_vecVelocity;
+	vel -= n * DotProduct( vel, n );
+	vel += n * bounce;
+	mv->m_vecVelocity = vel;
+
+	SetGroundEntity( NULL );
+	player->m_Local.m_flFallVelocity = 0.f;
+	m_flNextPaintBounce = gpGlobals->curtime + 0.12f;
+	m_bPaintBounced = true;
+	m_flSuppressPaintExit = gpGlobals->curtime + 0.25f;
+	TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );
+}
+
+void CTFGameMovement::PaintWallBounce( void )
+{
+	if ( !tf_paint_enabled.GetBool() )
+		return;
+	if ( gpGlobals->curtime < m_flNextPaintBounce )
+		return;
+	if ( mv->m_nButtons & IN_DUCK )
+		return;
+
+	Vector vel = mv->m_vecVelocity;
+	if ( vel.LengthSqr() < 150.f * 150.f )
+		return;
+
+	Vector dir = vel;
+	VectorNormalize( dir );
+	trace_t tr;
+	TracePlayerBBox( mv->GetAbsOrigin(), mv->GetAbsOrigin() + dir * 12.f, PlayerSolidMask(), COLLISION_GROUP_PLAYER_MOVEMENT, tr );
+	if ( tr.fraction >= 1.f || tr.startsolid )
+		return;
+	if ( tr.plane.normal.z > 0.7f )
+		return;
+
+	TFPaintContact_t hit = TFPaint_Query( tr.endpos, tf_paint_trace_radius.GetFloat() );
+	if ( hit.type != BOUNCE_POWER )
+		return;
+
+	float into = -DotProduct( vel, tr.plane.normal );
+	if ( into < 80.f )
+		return;
+
+	float bounce = Max( into, tf_paint_bounce_wall.GetFloat() );
+	Vector out = vel - tr.plane.normal * DotProduct( vel, tr.plane.normal );
+	out += tr.plane.normal * bounce;
+	mv->m_vecVelocity = out;
+	m_flNextPaintBounce = gpGlobals->curtime + 0.12f;
+	m_bPaintBounced = true;
+	m_flSuppressPaintExit = gpGlobals->curtime + 0.25f;
+	player->m_Local.m_flFallVelocity = 0.f;
+	TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );
+}
+
+bool CTFGameMovement::PaintStickTrace( void )
+{
+	if ( m_vecPaintNormal.LengthSqr() < 0.1f )
+		return false;
+
+	Vector end = mv->GetAbsOrigin() - m_vecPaintNormal * 40.f;
+	trace_t tr;
+	TracePlayerBBox( mv->GetAbsOrigin(), end, PlayerSolidMask(), COLLISION_GROUP_PLAYER_MOVEMENT, tr );
+	if ( tr.startsolid )
+		return true;
+	return tr.fraction < 1.0f;
+}
+
+void CTFGameMovement::PaintStickMove( void )
+{
+	Vector n = m_vecPaintNormal;
+	VectorNormalize( n );
+
+	float into = DotProduct( mv->m_vecVelocity, n );
+	mv->m_vecVelocity -= n * into;
+	player->m_Local.m_flFallVelocity = 0.f;
+
+	Vector forward, right;
+	AngleVectors( mv->m_vecViewAngles, &forward, &right, NULL );
+	forward -= n * DotProduct( forward, n );
+	right -= n * DotProduct( right, n );
+	if ( forward.LengthSqr() > 0.001f )
+		VectorNormalize( forward );
+	if ( right.LengthSqr() > 0.001f )
+		VectorNormalize( right );
+
+	Vector wishvel = forward * mv->m_flForwardMove + right * mv->m_flSideMove;
+	wishvel -= n * DotProduct( wishvel, n );
+	Vector wishdir = wishvel;
+	float wishspeed = VectorNormalize( wishdir );
+	float flMax = tf_paint_stick_speed.GetFloat();
+	if ( wishspeed > flMax )
+		wishspeed = flMax;
+
+	float speed = mv->m_vecVelocity.Length();
+	if ( speed > 0.1f )
+	{
+		float drop = speed * sv_friction.GetFloat() * gpGlobals->frametime;
+		float newspeed = Max( 0.f, speed - drop );
+		mv->m_vecVelocity *= newspeed / speed;
+	}
+
+	Accelerate( wishdir, wishspeed, sv_accelerate.GetFloat() );
+
+	if ( ( mv->m_nButtons & IN_JUMP ) && !( mv->m_nOldButtons & IN_JUMP ) )
+	{
+		mv->m_vecVelocity += n * 300.f;
+		m_flPaintStickLockout = gpGlobals->curtime + 0.35f;
+		mv->m_nOldButtons |= IN_JUMP;
+		TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );
+	}
+	else
+	{
+		mv->m_vecVelocity -= n * 180.f;
+		if ( !( mv->m_nButtons & IN_JUMP ) )
+			mv->m_nOldButtons &= ~IN_JUMP;
+	}
+
+	TryPlayerMove();
+	CategorizePosition();
+	CheckVelocity();
+}
+
 

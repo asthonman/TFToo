@@ -309,6 +309,11 @@ public:
 		{
 			soundemitterbase->AddSoundOverrides( "scripts/game_sounds_mobster.txt", true );
 		}
+
+		if ( filesystem->FileExists( "scripts/game_sounds_paint.txt", "GAME" ) )
+		{
+			soundemitterbase->AddSoundOverrides( "scripts/game_sounds_paint.txt", true );
+		}
 #else
 		Q_StripExtension( pszCleanMapName, scriptfile, sizeof( scriptfile ) );
 		Q_strncat( scriptfile, "_level_sounds.txt", sizeof( scriptfile ), COPY_ALL_CHARACTERS );

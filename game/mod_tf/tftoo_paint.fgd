@@ -1,0 +1,40 @@
+// TFToo mobility gels. Paint types match emulsion-sdk's PaintPowerType:
+// 0 bounce, 1 reflect (unused), 2 speed, 3 adhesion, 4 erase, 5 fifth.
+
+@PointClass base(Targetname, Angles) = env_paint_sprayer : "Sprays mobility gel blobs."
+[
+	paint_type(choices) : "Gel" : 0 =
+	[
+		0 : "Bounce (blue)"
+		2 : "Speed (orange)"
+		3 : "Adhesion (green)"
+		5 : "Fifth (yellow)"
+		4 : "Erase"
+	]
+	blobs_per_second(float) : "Blobs per second" : "8"
+	speed(float) : "Blob speed" : "700"
+	radius(float) : "Splat radius" : "48"
+	start_on(choices) : "Start on" : 1 =
+	[
+		0 : "No"
+		1 : "Yes"
+	]
+
+	input TurnOn(void) : "Start spraying."
+	input TurnOff(void) : "Stop spraying."
+]
+
+@PointClass base(Targetname) = paint_sphere : "Paints gel on whatever this sphere touches."
+[
+	paint_type(choices) : "Gel" : 0 =
+	[
+		0 : "Bounce (blue)"
+		2 : "Speed (orange)"
+		3 : "Adhesion (green)"
+		5 : "Fifth (yellow)"
+		4 : "Erase"
+	]
+	radius(float) : "Radius" : "128"
+
+	input Paint(void) : "Paint again."
+]

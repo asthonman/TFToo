@@ -1,0 +1,32 @@
+// Gel gun. Not an economy item: tf_give_paintgun equips it.
+// Attack paints, attack2 erases, reload cycles the gel.
+"WeaponData"
+{
+	"printname"			"Gel Gun"
+	"BuiltRightHanded"	"0"
+	"weight"			"1"
+	"WeaponType"		"primary"
+	"MeleeWeapon"		"0"
+	"DontDrop"			"1"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.025"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"5"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"0"
+	"HasTeamSkins_Worldmodel"	"0"
+
+	"viewmodel"			"models/weapons/w_models/w_bat.mdl"
+	"playermodel"		"models/weapons/w_models/w_bat.mdl"
+	"anim_prefix"		"bat"
+}
