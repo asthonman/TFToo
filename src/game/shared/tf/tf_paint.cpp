@@ -1,13 +1,15 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Game-side replacement for Emulsion's engine paintmap and blob stream.
-// Stamps and blobs are networked. The client draws them with tftoo/paint
-// materials (soft discs). Portal 2's lightmappedpaint shader and the
-// materialsystem.dll color patch are not used; TF2 cannot link them.
+// Stamps are a networked log (80 events). The coat itself is a luxel atlas,
+// one chart per plane, shaded with the Grimes GDC 2011 surface shader into
+// vertex colors on tftoo/paint/gel. Portal 2's lightmappedpaint shader is
+// not used; TF2 cannot link it. Blobs and pops still use the soft discs.
 //
 //=============================================================================
 #include "cbase.h"
 #include "tf_paint.h"
+#include "tf_paint_atlas.h"
 #include "engine/IEngineTrace.h"
 #include "igamesystem.h"
 
@@ -85,18 +87,6 @@ void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound )
 #endif
 }
 
-static int PaintRank( int type )
-{
-	switch ( type )
-	{
-	case BOUNCE_POWER:	return 4;
-	case SPEED_POWER:	return 3;
-	case PORTAL_POWER:	return 2;
-	case FIFTH_POWER:	return 1;
-	default:			return 0;
-	}
-}
-
 //-----------------------------------------------------------------------------
 class CTraceFilterNoPlayers : public CTraceFilterSimple
 {
@@ -140,7 +130,7 @@ public:
 	void AddBlob( const Vector &pos, const Vector &vel, int type );
 #endif
 
-	TFPaintContact_t Query( const Vector &origin, float extra ) const;
+	TFPaintContact_t Query( const Vector &origin, float extra );
 
 	static CTFPaintMap *Get() { return s_pMap; }
 
@@ -151,22 +141,23 @@ private:
 	CNetworkArray( Vector, m_vecStampNormal, TF_PAINT_STAMP_MAX );
 	CNetworkArray( int, m_nStampType, TF_PAINT_STAMP_MAX );
 	CNetworkArray( float, m_flStampRadius, TF_PAINT_STAMP_MAX );
+	CNetworkVar( int, m_nStampCursor );
 
 	CNetworkArray( Vector, m_vecBlobPos, TF_PAINT_BLOB_MAX );
 	CNetworkArray( int, m_nBlobType, TF_PAINT_BLOB_MAX );
 
+	CTFPaintAtlas m_Atlas;
+
 #ifndef CLIENT_DLL
 	Vector	m_vecBlobVel[TF_PAINT_BLOB_MAX];
 	float	m_flBlobDie[TF_PAINT_BLOB_MAX];
-	int		m_iStampCursor;
 	int		m_iBlobCursor;
 	float	m_flNextSplatSound;
+	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius );
 #endif
 
 #ifdef CLIENT_DLL
-	Vector	m_vecSeenPos[TF_PAINT_STAMP_MAX];
-	int		m_nSeenType[TF_PAINT_STAMP_MAX];
-	float	m_flPopTime[TF_PAINT_STAMP_MAX];
+	int		m_nAppliedCursor;
 	Vector	m_vecBlobSeen[TF_PAINT_BLOB_MAX];
 	int		m_nBlobSeen[TF_PAINT_BLOB_MAX];
 	struct Pop_t
@@ -179,6 +170,7 @@ private:
 	Pop_t	m_Pops[16];
 	int		m_iPop;
 	bool	m_bHaveSeen;
+	void	ApplyNetworkStamps( void );
 	void	NotePop( const Vector &pos, const Vector &normal, int type );
 	void	DrawDisc( const Vector &pos, const Vector &normal, float radius, int type, int alpha, bool additive );
 #endif
@@ -194,6 +186,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampNormal[0] ) ), m_vecStampNormal ),
 	RecvPropArray( RecvPropInt( RECVINFO( m_nStampType[0] ) ), m_nStampType ),
 	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampRadius[0] ) ), m_flStampRadius ),
+	RecvPropInt( RECVINFO( m_nStampCursor ) ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecBlobPos[0] ) ), m_vecBlobPos ),
 	RecvPropArray( RecvPropInt( RECVINFO( m_nBlobType[0] ) ), m_nBlobType ),
 #else
@@ -201,6 +194,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampNormal ), -1, SPROP_NOSCALE ), m_vecStampNormal ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nStampType ), SendPropInt( SENDINFO_ARRAY( m_nStampType ), 4, SPROP_UNSIGNED ) ),
 	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampRadius ), 10, SPROP_ROUNDDOWN, 0.0f, 256.0f ), m_flStampRadius ),
+	SendPropInt( SENDINFO( m_nStampCursor ), 32, SPROP_UNSIGNED ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecBlobPos ), -1, SPROP_COORD ), m_vecBlobPos ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nBlobType ), SendPropInt( SENDINFO_ARRAY( m_nBlobType ), 4, SPROP_UNSIGNED ) ),
 #endif
@@ -214,12 +208,7 @@ CTFPaintMap::CTFPaintMap()
 #ifdef CLIENT_DLL
 	m_iPop = 0;
 	m_bHaveSeen = false;
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		m_nSeenType[i] = 0;
-		m_flPopTime[i] = 0.f;
-		m_vecSeenPos[i].Init();
-	}
+	m_nAppliedCursor = 0;
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
 		m_nBlobSeen[i] = 0;
@@ -231,7 +220,6 @@ CTFPaintMap::CTFPaintMap()
 		m_Pops[i].time = 0.f;
 	}
 #else
-	m_iStampCursor = 0;
 	m_iBlobCursor = 0;
 	m_flNextSplatSound = 0.f;
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
@@ -265,8 +253,10 @@ void CTFPaintMap::Spawn( void )
 	SetRenderMode( kRenderTransAlpha );
 	SetRenderColor( 255, 255, 255, 255 );
 	SetAbsOrigin( vec3_origin );
+	m_Atlas.Clear();
 
 #ifndef CLIENT_DLL
+	m_nStampCursor = 0;
 	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
 	{
 		m_vecStampPos.Set( i, vec3_origin );
@@ -281,6 +271,7 @@ void CTFPaintMap::Spawn( void )
 	}
 	SetNextThink( gpGlobals->curtime + 0.05f );
 #else
+	m_nAppliedCursor = 0;
 	SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
 		Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
@@ -296,45 +287,18 @@ int CTFPaintMap::UpdateTransmitState( void )
 }
 #endif
 
-TFPaintContact_t CTFPaintMap::Query( const Vector &origin, float extra ) const
+TFPaintContact_t CTFPaintMap::Query( const Vector &origin, float extra )
 {
-	TFPaintContact_t best;
 	if ( !tf_paint_enabled.GetBool() )
-		return best;
+		return TFPaintContact_t();
 
-	int bestRank = 0;
-	float bestDist = 1.0e12f;
-
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		int stored = m_nStampType[i];
-		if ( stored <= 0 )
-			continue;
-		float radius = m_flStampRadius[i];
-		if ( radius <= 1.f )
-			continue;
-
-		Vector delta = origin - m_vecStampPos[i];
-		float dist = delta.Length();
-		if ( dist > radius + extra )
-			continue;
-
-		int type = stored - 1;
-		int rank = PaintRank( type );
-		if ( rank > bestRank || ( rank == bestRank && dist < bestDist ) )
-		{
-			bestRank = rank;
-			bestDist = dist;
-			best.type = type;
-			best.pos = m_vecStampPos[i];
-			best.normal = m_vecStampNormal[i];
-			best.painted = true;
-			if ( best.normal.LengthSqr() < 0.01f )
-				best.normal.Init( 0.f, 0.f, 1.f );
-		}
-	}
-
-	return best;
+#ifdef CLIENT_DLL
+	// Prediction asks before the render think. Catch the log up first so
+	// movement and the coat read the same charts. Pops are recorded once,
+	// on the apply that consumes the cursor.
+	ApplyNetworkStamps();
+#endif
+	return m_Atlas.Query( origin, extra );
 }
 
 #ifdef CLIENT_DLL
@@ -349,20 +313,58 @@ void CTFPaintMap::NotePop( const Vector &pos, const Vector &normal, int type )
 	++m_iPop;
 }
 
+void CTFPaintMap::ApplyNetworkStamps( void )
+{
+	int cur = m_nStampCursor;
+	int applied = m_nAppliedCursor;
+	if ( cur < applied )
+	{
+		m_Atlas.Clear();
+		applied = 0;
+	}
+
+	int behind = cur - applied;
+	bool bEffects = ( behind >= 1 && behind <= 3 );
+	if ( behind > TF_PAINT_STAMP_MAX )
+	{
+		// Late join, or a gap bigger than the log. Older gel is gone.
+		m_Atlas.Clear();
+		applied = cur - TF_PAINT_STAMP_MAX;
+		bEffects = false;
+	}
+
+	for ( int s = applied; s < cur; ++s )
+	{
+		int slot = s % TF_PAINT_STAMP_MAX;
+		int stored = m_nStampType[slot];
+		if ( stored <= 0 )
+			continue;
+		int type = stored - 1;
+		float radius = m_flStampRadius[slot];
+		Vector pos = m_vecStampPos[slot];
+		Vector n = m_vecStampNormal[slot];
+		if ( type == NO_POWER || n.LengthSqr() < 0.01f )
+		{
+			m_Atlas.Erase( pos, radius );
+			continue;
+		}
+		m_Atlas.Stamp( pos, n, type, radius );
+		if ( bEffects )
+			NotePop( pos, n, type );
+	}
+	m_nAppliedCursor = cur;
+}
+
 void CTFPaintMap::ClientThink( void )
 {
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
 	SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
 		Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 	UpdateVisibility();
+	ApplyNetworkStamps();
 
 	if ( !m_bHaveSeen )
 	{
-		for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-		{
-			m_nSeenType[i] = m_nStampType[i];
-			m_vecSeenPos[i] = m_vecStampPos[i];
-		}
 		for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 		{
 			m_nBlobSeen[i] = m_nBlobType[i];
@@ -370,17 +372,6 @@ void CTFPaintMap::ClientThink( void )
 		}
 		m_bHaveSeen = true;
 		return;
-	}
-
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		if ( m_nStampType[i] > 0 && ( m_nStampType[i] != m_nSeenType[i] || m_vecStampPos[i].DistToSqr( m_vecSeenPos[i] ) > 16.f ) )
-		{
-			m_flPopTime[i] = gpGlobals->curtime;
-			NotePop( m_vecStampPos[i], m_vecStampNormal[i], m_nStampType[i] - 1 );
-		}
-		m_nSeenType[i] = m_nStampType[i];
-		m_vecSeenPos[i] = m_vecStampPos[i];
 	}
 
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
@@ -398,6 +389,8 @@ void CTFPaintMap::OnDataChanged( DataUpdateType_t updateType )
 	s_pMap = this;
 	if ( updateType == DATA_UPDATE_CREATED )
 	{
+		m_nAppliedCursor = 0;
+		m_Atlas.Clear();
 		SetRenderBounds( Vector( -MAX_COORD_FLOAT, -MAX_COORD_FLOAT, -MAX_COORD_FLOAT ),
 			Vector( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT ) );
 		SetNextClientThink( CLIENT_THINK_ALWAYS );
@@ -480,28 +473,17 @@ int CTFPaintMap::DrawModel( int flags )
 	if ( !tf_paint_enabled.GetBool() )
 		return 0;
 
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		if ( m_nStampType[i] <= 0 || m_flStampRadius[i] <= 1.f )
-			continue;
-		float age = gpGlobals->curtime - m_flPopTime[i];
-		float scale = 1.f;
-		int alpha = 210;
-		if ( age >= 0.f && age < 0.28f )
-		{
-			float u = 1.f - ( age / 0.28f );
-			scale = 1.f + u * 0.65f;
-			alpha = 230;
-		}
-		DrawDisc( m_vecStampPos[i], m_vecStampNormal[i], m_flStampRadius[i] * scale, m_nStampType[i] - 1, alpha, false );
-	}
-
 	C_BasePlayer *pLocal = C_BasePlayer::GetLocalPlayer();
+	Vector eye = GetAbsOrigin();
 	Vector camRight( 1, 0, 0 ), camUp( 0, 0, 1 );
 	if ( pLocal )
 	{
+		eye = pLocal->EyePosition();
 		AngleVectors( pLocal->EyeAngles(), NULL, &camRight, &camUp );
 	}
+
+	ApplyNetworkStamps();
+	m_Atlas.Draw( eye );
 
 	static IMaterial *s_pBlob = NULL;
 	if ( !s_pBlob )
@@ -573,50 +555,30 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
+	m_Atlas.Stamp( pos, n, type, radius );
+	PushStamp( pos, n, type, radius );
+}
+
+void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, float radius )
+{
+	int cursor = m_nStampCursor;
+	int slot = cursor % TF_PAINT_STAMP_MAX;
 	int stored = type + 1;
-	int slot = -1;
-	float keep = radius * 0.55f;
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		if ( m_nStampType[i] != stored )
-			continue;
-		if ( m_vecStampPos[i].DistTo( pos ) <= keep )
-		{
-			slot = i;
-			break;
-		}
-	}
+	if ( stored < 1 )
+		stored = 1;
+	if ( stored > 15 )
+		stored = 15;
+	float r = radius;
+	if ( r < 0.f )
+		r = 0.f;
+	if ( r > 250.f )
+		r = 250.f;
 
-	if ( slot < 0 )
-	{
-		for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-		{
-			if ( m_nStampType[i] <= 0 )
-			{
-				slot = i;
-				break;
-			}
-		}
-	}
-
-	if ( slot < 0 )
-	{
-		slot = m_iStampCursor % TF_PAINT_STAMP_MAX;
-		++m_iStampCursor;
-	}
-
-	Vector blended = pos;
-	if ( m_nStampType[slot] == stored )
-		blended = ( m_vecStampPos[slot] + pos ) * 0.5f;
-
-	float useRadius = radius;
-	if ( m_flStampRadius[slot] > useRadius && m_nStampType[slot] == stored )
-		useRadius = m_flStampRadius[slot];
-
-	m_vecStampPos.Set( slot, blended );
-	m_vecStampNormal.Set( slot, n );
+	m_vecStampPos.Set( slot, pos );
+	m_vecStampNormal.Set( slot, normal );
 	m_nStampType.Set( slot, stored );
-	m_flStampRadius.Set( slot, useRadius );
+	m_flStampRadius.Set( slot, r );
+	m_nStampCursor = cursor + 1;
 }
 
 void CTFPaintMap::EraseSphere( const Vector &pos, float radius )
@@ -624,17 +586,12 @@ void CTFPaintMap::EraseSphere( const Vector &pos, float radius )
 	float r2 = radius;
 	if ( r2 < 8.f )
 		r2 = 8.f;
-	for ( int i = 0; i < TF_PAINT_STAMP_MAX; ++i )
-	{
-		if ( m_nStampType[i] <= 0 )
-			continue;
-		float reach = r2 + m_flStampRadius[i] * 0.35f;
-		if ( m_vecStampPos[i].DistTo( pos ) <= reach )
-		{
-			m_nStampType.Set( i, 0 );
-			m_flStampRadius.Set( i, 0.f );
-		}
-	}
+	if ( r2 > 250.f )
+		r2 = 250.f;
+	// An erase is an event. Zeroing an old slot would delete it from the log
+	// and the client would replay the gel that was supposed to be gone.
+	m_Atlas.Erase( pos, r2 );
+	PushStamp( pos, vec3_origin, NO_POWER, r2 );
 }
 
 void CTFPaintMap::AddBlob( const Vector &pos, const Vector &vel, int type )

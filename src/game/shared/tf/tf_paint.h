@@ -1,8 +1,8 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Mobility gels (Emulsion / Portal 2 paint), stored in the game DLL.
-// TF2's engine has no SpherePaintSurface / SphereTracePaintSurface, so the
-// paint map, blobs, and movement queries live here instead.
+// TF2 has no paintmap sampler, so the stamps are a network log and the coat
+// itself lives in a lightmap-scale atlas (see tf_paint_atlas).
 //
 //=============================================================================
 #ifndef TF_PAINT_H

@@ -1,0 +1,13 @@
+// Gel coat. The pixel work is TFPaintShader_Eval in tf_paint_atlas.cpp
+// (Grimes GDC 2011: layout islands, camera-facing bubbles, two layers,
+// grazing fade, early alpha clip). Stock LightmappedGeneric has no paint
+// sampler, so the shader writes vertex color and this material shows it.
+"UnlitGeneric"
+{
+	"$basetexture"	"vgui/white"
+	"$vertexcolor"	"1"
+	"$vertexalpha"	"1"
+	"$translucent"	"1"
+	"$nocull"		"1"
+	"$nofog"		"1"
+}
