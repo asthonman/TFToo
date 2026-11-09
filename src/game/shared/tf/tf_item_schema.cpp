@@ -990,6 +990,19 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 			KeyValues *pKVAllClassKey = new KeyValues( "all_class", "all_class", "1" );
 			pClasses->AddSubKey( pKVAllClassKey );
 		}
+
+		// All-class taunts only list the original nine. Madcap through Witch
+		// then have no loadout slot for them, so an equipped gesture fails the
+		// slot check and +taunt never opens the menu. Weapons stay off this
+		// set on purpose (see CanBeUsedByAllClasses).
+		if ( CanBeUsedByAllClasses() && m_iDefaultLoadoutSlot == LOADOUT_POSITION_TAUNT )
+		{
+			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_WITCH; ++iClass )
+			{
+				m_vbClassUsability.Set( iClass );
+				m_iLoadoutSlots[iClass] = LOADOUT_POSITION_TAUNT;
+			}
+		}
 	}
 
 	// Verify that no items are set up to be equipped in a wearable slot for some classes and a

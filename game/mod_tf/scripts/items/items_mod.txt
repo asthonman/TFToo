@@ -452,7 +452,8 @@
 				"witch"			"1"
 			}
 		}
-		// Witch spellbook. Disguise-kit model and PDA, witch only, so the Spy kit name stays.
+		// Witch spellbook. Hands play the stock spellbook sequences. Witch only,
+		// so the Spy disguise kit stays its own item.
 		"b12"
 		{
 			"name"				"b12"
@@ -462,7 +463,7 @@
 			"item_logname"		"spellbook"
 			"item_iconname"	"spellbook"
 			"item_slot"			"pda"
-			"anim_slot"			"PDA"
+			"anim_slot"			"MELEE_ALLCLASS"
 			"item_quality"		"normal"
 			"baseitem"			"1"
 			"enabled"			"1"
@@ -472,13 +473,23 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"1"
-			"model_player"		"models/weapons/w_models/w_cigarette_case.mdl"
+			"model_player"		""
 			"image_inventory"	"backpack/weapons/w_models/w_cigarette_case"
 			"image_inventory_size_w"	"128"
 			"image_inventory_size_h"	"82"
 			"used_by_classes"
 			{
 				"witch"			"1"
+			}
+			"visuals"
+			{
+				"animation_replacement"
+				{
+					"ACT_MP_ATTACK_STAND_MELEE_ALLCLASS"	"ACT_MP_THROW"
+					"ACT_VM_DRAW"							"ACT_SPELL_VM_DRAW"
+					"ACT_VM_IDLE"							"ACT_SPELL_VM_IDLE"
+					"ACT_VM_PRIMARYATTACK"					"ACT_SPELL_VM_FIRE"
+				}
 			}
 		}
 		// Resupply unlocks. Same throw as b7. Mini is four small lunchboxes,

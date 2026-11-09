@@ -1,4 +1,6 @@
-// Witch spellbook. Disguise-kit viewmodel, its own PDA so it can be switched to.
+// Witch spellbook. attach_to_hands uses c_spy_arms, and the item's
+// animation_replacement plays ACT_SPELL_VM_* on those arms. This viewmodel
+// is only a fallback if the item is not attached to the hands.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_WitchSpellbook"

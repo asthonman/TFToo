@@ -6911,16 +6911,17 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 		flDamage += flCritDamage;
 	}
 
-	if ( pTFAttacker && ( pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) || pTFAttacker->IsPlayerClass( TF_CLASS_WITCH ) ) )
+	// L'Etranger's add_cloak_on_hit lives on the revolver. A Witch casts with
+	// that gun still out, and the spell's damage weapon is the book or the
+	// projectile. Refund cloak or mana only from the weapon that dealt the
+	// hit, so spell damage does not fill the meter.
+	if ( pWeapon && pTFAttacker && ( pTFAttacker->IsPlayerClass( TF_CLASS_SPY ) || pTFAttacker->IsPlayerClass( TF_CLASS_WITCH ) ) )
 	{
-		if ( pTFAttacker->GetActiveWeapon() )
+		int iAddCloakOnHit = 0;
+		CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iAddCloakOnHit, add_cloak_on_hit );
+		if ( iAddCloakOnHit > 0 )
 		{
-			int iAddCloakOnHit = 0;
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pTFAttacker->GetActiveWeapon(), iAddCloakOnHit, add_cloak_on_hit );
-			if ( iAddCloakOnHit > 0 )
-			{
-				pTFAttacker->m_Shared.AddToSpyCloakMeter( iAddCloakOnHit, true );
-			}
+			pTFAttacker->m_Shared.AddToSpyCloakMeter( iAddCloakOnHit, true );
 		}
 	}
 
