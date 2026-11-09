@@ -452,9 +452,10 @@
 				"witch"			"1"
 			}
 		}
-		// Witch spellbook. Same PDA animations as the Spy disguise kit
-		// (pda_draw / pda_idle / pda_fire on c_spy_arms, ACT_MP_ATTACK_STAND_PDA
-		// on the Spy body). Witch only, so the Spy kit stays its own item.
+		// Witch spellbook. Draw, idle, and holster match the Spy disguise kit.
+		// Casting a spell does not: that stays the spell throw (spell_fire,
+		// ACT_MP_THROW) and is not this replacement. Witch only, so the Spy
+		// kit stays its own item.
 		"b12"
 		{
 			"name"				"b12"

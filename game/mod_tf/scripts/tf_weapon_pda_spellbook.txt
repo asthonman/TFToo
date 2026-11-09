@@ -1,7 +1,7 @@
 // Witch spellbook. attach_to_hands uses c_spy_arms. The item's
-// animation_replacement plays the Spy disguise kit's ACT_PDA_VM_* sequences
-// on those arms. This viewmodel is only a fallback if the item is not
-// attached to the hands.
+// animation_replacement plays the Spy disguise kit's draw, idle, and holster
+// on those arms. A cast is still spell_fire, not pda_fire. This viewmodel is
+// only a fallback if the item is not attached to the hands.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_WitchSpellbook"

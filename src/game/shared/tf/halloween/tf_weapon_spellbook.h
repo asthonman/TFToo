@@ -212,9 +212,9 @@ public:
 	bool			Energy_FullyCharged( void ) const	{ return true; }
 	bool			Energy_HasEnergy( void )			{ return true; }
 
-	// First person cast. The spell toss is the spellbook action item's
-	// animation_replacement, and she does not have that item equipped.
-	// Begin/End turn that replacement on for the Witch anyway.
+	// First person cast. She casts with the gun out, so the spell throw is
+	// forced on for that attack only. The book's own draw and idle stay the
+	// disguise kit and are not used here.
 	static void		BeginWitchSpellActivities();
 	static void		EndWitchSpellActivities();
 	static Activity	GetWitchSpellActivityOverride( int iTeam, Activity actBase );
