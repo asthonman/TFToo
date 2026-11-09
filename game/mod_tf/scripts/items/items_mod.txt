@@ -452,8 +452,9 @@
 				"witch"			"1"
 			}
 		}
-		// Witch spellbook. Hands play the stock spellbook sequences. Witch only,
-		// so the Spy disguise kit stays its own item.
+		// Witch spellbook. Same PDA animations as the Spy disguise kit
+		// (pda_draw / pda_idle / pda_fire on c_spy_arms, ACT_MP_ATTACK_STAND_PDA
+		// on the Spy body). Witch only, so the Spy kit stays its own item.
 		"b12"
 		{
 			"name"				"b12"
@@ -463,7 +464,7 @@
 			"item_logname"		"spellbook"
 			"item_iconname"	"spellbook"
 			"item_slot"			"pda"
-			"anim_slot"			"MELEE_ALLCLASS"
+			"anim_slot"			"PDA"
 			"item_quality"		"normal"
 			"baseitem"			"1"
 			"enabled"			"1"
@@ -473,7 +474,7 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"1"
-			"model_player"		""
+			"model_player"		"models/weapons/c_models/c_pda_spy/c_pda_spy.mdl"
 			"image_inventory"	"backpack/weapons/w_models/w_cigarette_case"
 			"image_inventory_size_w"	"128"
 			"image_inventory_size_h"	"82"
@@ -485,10 +486,10 @@
 			{
 				"animation_replacement"
 				{
-					"ACT_MP_ATTACK_STAND_MELEE_ALLCLASS"	"ACT_MP_THROW"
-					"ACT_VM_DRAW"							"ACT_SPELL_VM_DRAW"
-					"ACT_VM_IDLE"							"ACT_SPELL_VM_IDLE"
-					"ACT_VM_PRIMARYATTACK"					"ACT_SPELL_VM_FIRE"
+					"ACT_VM_DRAW"			"ACT_PDA_VM_DRAW"
+					"ACT_VM_HOLSTER"		"ACT_PDA_VM_HOLSTER"
+					"ACT_VM_IDLE"			"ACT_PDA_VM_IDLE"
+					"ACT_VM_PRIMARYATTACK"	"ACT_PDA_VM_PRIMARYATTACK"
 				}
 			}
 		}

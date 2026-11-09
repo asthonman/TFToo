@@ -1431,11 +1431,11 @@ CBaseEntity *CTFSpellBook::FireJar( CTFPlayer *pPlayer )
 }
 
 //-----------------------------------------------------------------------------
-// The spellbook action item's animation_replacement is what plays the toss
-// (ACT_VM_PRIMARYATTACK -> ACT_SPELL_VM_FIRE, and the melee attack -> ACT_MP_THROW).
-// That item is not in her action slot, so the replacement never runs. These
-// are set only around the cast, or her gun's idle and draw would become the
-// spellbook's too.
+// The spellbook uses the Spy disguise kit's animations. The item's
+// animation_replacement maps the viewmodel activities onto ACT_PDA_VM_*,
+// and anim_slot PDA supplies the third-person kit stance. She casts with
+// another weapon out, so that replacement is forced on only around the cast.
+// Otherwise her gun's idle and draw would become the kit's too.
 //-----------------------------------------------------------------------------
 static int s_nWitchSpellActivityDepth = 0;
 
@@ -1455,7 +1455,7 @@ Activity CTFSpellBook::GetWitchSpellActivityOverride( int iTeam, Activity actBas
 	if ( s_nWitchSpellActivityDepth <= 0 )
 		return actBase;
 
-	static CSchemaItemDefHandle hSpellbook( "TF_WEAPON_SPELLBOOK" );
+	static CSchemaItemDefHandle hSpellbook( "b12" );
 	const CEconItemDefinition *pDef = hSpellbook;
 	if ( pDef )
 	{
@@ -1465,17 +1465,23 @@ Activity CTFSpellBook::GetWitchSpellActivityOverride( int iTeam, Activity actBas
 	}
 
 	// Schema row missing, or this activity is not one it replaces.
-	// The toss the equipped book plays for a primary attack is this.
+	// Same viewmodel activities the disguise kit plays.
 	if ( actBase == ACT_VM_PRIMARYATTACK )
-		return ACT_SPELL_VM_FIRE;
+		return ACT_PDA_VM_PRIMARYATTACK;
+	if ( actBase == ACT_VM_DRAW )
+		return ACT_PDA_VM_DRAW;
+	if ( actBase == ACT_VM_IDLE )
+		return ACT_PDA_VM_IDLE;
+	if ( actBase == ACT_VM_HOLSTER )
+		return ACT_PDA_VM_HOLSTER;
 
 	return actBase;
 }
 
 //-----------------------------------------------------------------------------
-// The gun stays out. Ask it for a primary attack while the spellbook
-// replacement is forced on, so the arms play ACT_SPELL_VM_FIRE the same way
-// they do when the book is the active weapon. Client and server both run
+// The gun stays out. Ask it for a primary attack while the kit replacement
+// is forced on, so the arms play ACT_PDA_VM_PRIMARYATTACK the same way they
+// do when the disguise kit is the active weapon. Client and server both run
 // this from the predicted cast.
 //-----------------------------------------------------------------------------
 void CTFSpellBook::PlayWitchThrowViewmodel( CTFPlayer *pPlayer )
@@ -1492,17 +1498,17 @@ void CTFSpellBook::PlayWitchThrowViewmodel( CTFPlayer *pPlayer )
 	EndWitchSpellActivities();
 
 	// SendWeaponAnim looks the sequence up on the weapon. In first person that
-	// model is the arms, which is where spell_fire lives. If that missed, the
-	// gun's own fire is what just played. Put the toss on instead.
-	if ( pWeapon->GetActivity() != ACT_SPELL_VM_FIRE )
+	// model is c_spy_arms, which is where pda_fire lives. If that missed, the
+	// gun's own fire is what just played. Put the kit click on instead.
+	if ( pWeapon->GetActivity() != ACT_PDA_VM_PRIMARYATTACK )
 	{
-		int iSeq = pWeapon->SelectWeightedSequence( ACT_SPELL_VM_FIRE );
+		int iSeq = pWeapon->SelectWeightedSequence( ACT_PDA_VM_PRIMARYATTACK );
 		if ( iSeq < 0 )
-			iSeq = pWeapon->LookupSequence( "spell_fire" );
+			iSeq = pWeapon->LookupSequence( "pda_fire" );
 
 		if ( iSeq >= 0 )
 		{
-			pWeapon->SetActivity( ACT_SPELL_VM_FIRE );
+			pWeapon->SetActivity( ACT_PDA_VM_PRIMARYATTACK );
 			pWeapon->SetSequence( iSeq );
 			pWeapon->SendViewModelAnim( iSeq );
 		}
@@ -1511,9 +1517,9 @@ void CTFSpellBook::PlayWitchThrowViewmodel( CTFPlayer *pPlayer )
 			CBaseViewModel *pFallback = pPlayer->GetViewModel( 0 );
 			if ( pFallback )
 			{
-				iSeq = pFallback->SelectWeightedSequence( ACT_SPELL_VM_FIRE );
+				iSeq = pFallback->SelectWeightedSequence( ACT_PDA_VM_PRIMARYATTACK );
 				if ( iSeq < 0 )
-					iSeq = pFallback->LookupSequence( "spell_fire" );
+					iSeq = pFallback->LookupSequence( "pda_fire" );
 				if ( iSeq >= 0 )
 					pFallback->SendViewModelMatchingSequence( iSeq );
 			}
@@ -1925,10 +1931,10 @@ void CTFSpellBook::PlayWitchCastEffects( CTFPlayer *pPlayer, const char *pszCast
 	else if ( pPlayer->LookupAttachment( "weapon_bone" ) > 0 )
 		DispatchParticleEffect( "spellbook_minor_fire", PATTACH_POINT_FOLLOW, pPlayer, "weapon_bone" );
 
-	// Body gesture. The spellbook item turns its melee-allclass attack into
-	// ACT_MP_THROW. First person never draws the player; the arms are
+	// Body gesture. Same click the Spy plays with the disguise kit out.
+	// First person never draws the player; the arms are
 	// PlayWitchThrowViewmodel, from the predicted cast.
-	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_THROW );
+	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_MP_ATTACK_STAND_PDA );
 }
 
 bool CTFSpellBook::CastSpellIndex( int iSpellIndex )

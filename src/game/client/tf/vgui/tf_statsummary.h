@@ -73,6 +73,8 @@ private:
 	void ShowMapInfo( bool bShowMapInfo, bool bIsMVM = false, bool bBackgroundOverride = false );
 	void UpdateLeaderboard();
 	void InitBarChartComboBox( vgui::ComboBox *pComboBox );
+	void ReleaseClassStatScroll();
+	void SetupClassStatScroll();
 	void SetValueAsClass( const char *pDialogVariable, int iValue, int iPlayerClass );
 	void DisplayBarValue( int iChart, int iClass, ClassStats_t &stats, TFStatType_t statType, StatDisplay_t flags, float flMaxValue );	
 	static float GetDisplayValue( ClassStats_t &stats, TFStatType_t statType, StatDisplay_t statDisplay );

@@ -14,6 +14,7 @@
 #include <vgui_controls/RichText.h>
 #include <vgui_controls/Frame.h>
 #include <vgui_controls/QueryBox.h>
+#include <vgui_controls/ScrollableEditablePanel.h>
 #include <vgui/IScheme.h>
 #include <vgui/ILocalize.h>
 #include <vgui/ISurface.h>
@@ -392,6 +393,12 @@ void CTFStatsSummaryPanel::ApplySchemeSettings(vgui::IScheme *pScheme)
 
 	SetProportional( true );
 
+	// A previous pass moved the class rows under a scroller. Delete that
+	// before the res file runs, so those rows are created again as children
+	// of StatData. MarkForDeletion is too late: the build group would still
+	// find the doomed panels and then not replace them.
+	ReleaseClassStatScroll();
+
 	if ( m_bEmbedded )
 	{
 		LoadControlSettings( "Resource/UI/StatSummary_Embedded.res" );
@@ -427,6 +434,10 @@ void CTFStatsSummaryPanel::ApplySchemeSettings(vgui::IScheme *pScheme)
 		pLHBar->GetBounds( m_xStartLHBar, y, m_iBarMaxWidth, m_iBarHeight );
 		pRHBar->GetBounds( m_xStartRHBar, y, m_iBarMaxWidth, m_iBarHeight );
 	}
+
+	// The stock list has one row per original class. Extra classes need rows,
+	// and those rows do not fit, so the time and score list scrolls.
+	SetupClassStatScroll();
 
 	// fill the combo box selections appropriately
 	InitBarChartComboBox( m_pBarChartComboBoxA );
@@ -1154,6 +1165,277 @@ void CTFStatsSummaryPanel::UpdateControls()
 }
 
 //-----------------------------------------------------------------------------
+// The time/score rows are reparented under a scroller. Dialog variables are
+// only pushed to StatData's direct children, so forward them down to the labels.
+//-----------------------------------------------------------------------------
+static void ForwardClassStatDialogVariables( Panel *pPanel, KeyValues *pDialogVariables )
+{
+	if ( !pPanel || !pDialogVariables )
+		return;
+
+	for ( int i = 0; i < pPanel->GetChildCount(); i++ )
+	{
+		Panel *pChild = pPanel->GetChild( i );
+		if ( !pChild )
+			continue;
+
+		Label *pLabel = dynamic_cast< Label * >( pChild );
+		if ( pLabel )
+			pLabel->OnDialogVariablesChanged( pDialogVariables );
+
+		ForwardClassStatDialogVariables( pChild, pDialogVariables );
+	}
+}
+
+class CTFClassStatScroll : public vgui::ScrollableEditablePanel
+{
+	DECLARE_CLASS_SIMPLE( CTFClassStatScroll, vgui::ScrollableEditablePanel );
+
+public:
+	CTFClassStatScroll( Panel *pParent, EditablePanel *pChild, const char *pszName )
+		: BaseClass( pParent, pChild, pszName )
+	{
+	}
+
+	MESSAGE_FUNC_PARAMS( OnDialogVariablesChanged, "DialogVariables", dialogVariables );
+};
+
+void CTFClassStatScroll::OnDialogVariablesChanged( KeyValues *dialogVariables )
+{
+	ForwardClassStatDialogVariables( this, dialogVariables );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Drop the scroller created by SetupClassStatScroll.
+//-----------------------------------------------------------------------------
+void CTFStatsSummaryPanel::ReleaseClassStatScroll()
+{
+	if ( !m_pPlayerData )
+		return;
+
+	Panel *pScroll = m_pPlayerData->FindChildByName( "ClassStatScroll", false );
+	if ( !pScroll )
+		return;
+
+	pScroll->SetParent( (Panel *)NULL );
+	delete pScroll;
+}
+
+//-----------------------------------------------------------------------------
+// "%class10%" has to be registered the same way Label::ApplySettings does,
+// or SetDialogVariable never substitutes it.
+//-----------------------------------------------------------------------------
+static void SetClassStatLabelVar( Label *pLabel, const char *pszVarFmt, int iRow )
+{
+	char szVar[64];
+	V_snprintf( szVar, sizeof( szVar ), pszVarFmt, iRow );
+
+	char szToken[96];
+	V_snprintf( szToken, sizeof( szToken ), "%%%s%%", szVar );
+
+	wchar_t unicodeVar[128];
+	g_pVGuiLocalize->ConvertANSIToUnicode( szToken, unicodeVar, sizeof( unicodeVar ) );
+
+	char szLocalized[128];
+	V_snprintf( szLocalized, sizeof( szLocalized ), "#var_%s", szToken );
+	g_pVGuiLocalize->AddString( szLocalized + 1, unicodeVar, "" );
+	pLabel->SetText( szLocalized );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The loading-screen time and score list is built for nine classes.
+//		Extra classes get cloned rows inside a scrollbar that keeps the
+//		original list height, so the tip and the records stay put.
+//-----------------------------------------------------------------------------
+void CTFStatsSummaryPanel::SetupClassStatScroll()
+{
+	if ( !m_pPlayerData )
+		return;
+
+	Label *pLabel1 = dynamic_cast< Label * >( m_pPlayerData->FindChildByName( "ClassLabel1", false ) );
+	Label *pLabel2 = dynamic_cast< Label * >( m_pPlayerData->FindChildByName( "ClassLabel2", false ) );
+	if ( !pLabel1 )
+		return;
+
+	int nExisting = 0;
+	for ( int i = 1; i < 64; i++ )
+	{
+		if ( !m_pPlayerData->FindChildByName( CFmtStr( "ClassLabel%d", i ), false ) )
+			break;
+		nExisting = i;
+	}
+	if ( nExisting < 1 )
+		return;
+
+	int nNeeded = 0;
+	for ( int iClass = TF_FIRST_NORMAL_CLASS; iClass <= TF_LAST_NORMAL_CLASS; iClass++ )
+	{
+		if ( iClass == TF_CLASS_CIVILIAN )
+			continue;
+		nNeeded++;
+	}
+	if ( nNeeded <= nExisting )
+		return;
+
+	int y0 = pLabel1->GetYPos();
+	int pitch = pLabel1->GetTall();
+	if ( pLabel2 )
+		pitch = pLabel2->GetYPos() - y0;
+	if ( pitch < 1 )
+		pitch = pLabel1->GetTall();
+
+	Label *pLabelLast = dynamic_cast< Label * >( m_pPlayerData->FindChildByName( CFmtStr( "ClassLabel%d", nExisting ), false ) );
+	int viewH = ( pLabelLast ? ( pLabelLast->GetYPos() - y0 ) : ( nExisting - 1 ) * pitch ) + pLabel1->GetTall();
+	int contentH = ( nNeeded - 1 ) * pitch + pLabel1->GetTall();
+
+	Panel *pLeft = m_pPlayerData->FindChildByName( "ClassBarBG1A", false );
+	if ( !pLeft )
+		pLeft = m_pPlayerData->FindChildByName( "ClassBar1A", false );
+	if ( !pLeft )
+		return;
+
+	const int nScrollbarWide = 16;
+	int parentW = m_pPlayerData->GetWide();
+	int scrollX = pLeft->GetXPos();
+	// Class labels are 300px so long names do not clip, which would run the
+	// scrollbar through the records column. Stop at that column when it is showing.
+	int scrollRight = pLabel1->GetXPos() + 120 + nScrollbarWide;
+	Panel *pRecords = m_pPlayerData->FindChildByName( "RecordsBG", false );
+	if ( pRecords && pRecords->IsVisible() && pRecords->GetXPos() > pLabel1->GetXPos() + 48 )
+		scrollRight = pRecords->GetXPos() - 2;
+	int scrollW = scrollRight - scrollX;
+	if ( scrollX < 0 )
+		scrollX = 0;
+	if ( scrollX + scrollW > parentW )
+		scrollW = parentW - scrollX;
+	if ( scrollW < nScrollbarWide + 32 || viewH < 1 )
+		return;
+
+	EditablePanel *pChild = new EditablePanel( NULL, "ClassStatList" );
+	pChild->SetPaintBackgroundEnabled( false );
+	pChild->SetMouseInputEnabled( false );
+	pChild->SetBounds( 0, 0, scrollW - nScrollbarWide, contentH );
+
+	CTFClassStatScroll *pScroll = new CTFClassStatScroll( m_pPlayerData, pChild, "ClassStatScroll" );
+	pScroll->SetBounds( scrollX, y0, scrollW, viewH );
+	pScroll->SetPaintBackgroundEnabled( false );
+	pScroll->SetFgColor( Color( 210, 190, 150, 255 ) );
+	pScroll->SetZPos( 8 );
+
+	struct ClassStatControl_t
+	{
+		const char *pszPattern;
+		bool bLabel;
+		const char *pszVar;
+	};
+	static const ClassStatControl_t kControls[] =
+	{
+		{ "ClassBarBG%dA",		false,	NULL },
+		{ "ClassBarBG%dB",		false,	NULL },
+		{ "ClassBar%dA",		false,	NULL },
+		{ "ClassBar%dB",		false,	NULL },
+		{ "ClassBarLabel%dA",	true,	"classbarlabel%dA" },
+		{ "ClassBarLabel%dB",	true,	"classbarlabel%dB" },
+		{ "ClassLabel%d",		true,	"class%d" },
+	};
+
+	for ( int iRow = 1; iRow <= nExisting; iRow++ )
+	{
+		for ( int iCtl = 0; iCtl < ARRAYSIZE( kControls ); iCtl++ )
+		{
+			char szName[64];
+			V_snprintf( szName, sizeof( szName ), kControls[iCtl].pszPattern, iRow );
+			Panel *pPanel = m_pPlayerData->FindChildByName( szName, false );
+			if ( !pPanel )
+				continue;
+			int x, y;
+			pPanel->GetPos( x, y );
+			pPanel->SetParent( pChild );
+			pPanel->SetPos( x - scrollX, y - y0 );
+			pPanel->SetMouseInputEnabled( false );
+		}
+	}
+
+	for ( int iRow = nExisting + 1; iRow <= nNeeded; iRow++ )
+	{
+		const int iColorRow = ( ( iRow - 1 ) % nExisting ) + 1;
+		for ( int iCtl = 0; iCtl < ARRAYSIZE( kControls ); iCtl++ )
+		{
+			char szTemplate[64];
+			char szName[64];
+			V_snprintf( szTemplate, sizeof( szTemplate ), kControls[iCtl].pszPattern, 1 );
+			V_snprintf( szName, sizeof( szName ), kControls[iCtl].pszPattern, iRow );
+
+			Panel *pTemplate = pChild->FindChildByName( szTemplate, false );
+			if ( !pTemplate )
+				continue;
+
+			char szColorName[64];
+			V_snprintf( szColorName, sizeof( szColorName ), kControls[iCtl].pszPattern, iColorRow );
+			Panel *pColorSrc = pChild->FindChildByName( szColorName, false );
+			if ( !pColorSrc )
+				pColorSrc = pTemplate;
+
+			int x, y, w, h;
+			pTemplate->GetBounds( x, y, w, h );
+			const int yRow = y + ( iRow - 1 ) * pitch;
+
+			if ( kControls[iCtl].bLabel )
+			{
+				Label *pSrc = dynamic_cast< Label * >( pTemplate );
+				if ( !pSrc || !kControls[iCtl].pszVar )
+					continue;
+				Label *pNew = new Label( pChild, szName, "" );
+				pNew->SetBounds( x, yRow, w, h );
+				pNew->SetFont( pSrc->GetFont() );
+				pNew->SetContentAlignment( pSrc->GetContentAlignment() );
+				pNew->SetZPos( pSrc->GetZPos() );
+				pNew->SetMouseInputEnabled( false );
+				SetClassStatLabelVar( pNew, kControls[iCtl].pszVar, iRow );
+			}
+			else
+			{
+				ImagePanel *pSrc = dynamic_cast< ImagePanel * >( pColorSrc );
+				if ( !pSrc )
+					pSrc = dynamic_cast< ImagePanel * >( pTemplate );
+				if ( !pSrc )
+					continue;
+				ImagePanel *pNew = new ImagePanel( pChild, szName );
+				pNew->SetBounds( x, yRow, w, h );
+				pNew->SetFillColor( pSrc->GetFillColor() );
+				pNew->SetZPos( pSrc->GetZPos() );
+				pNew->SetMouseInputEnabled( false );
+			}
+		}
+	}
+
+	int nLabelRoom = ( scrollW - nScrollbarWide ) - 2;
+	for ( int iRow = 1; iRow <= nNeeded; iRow++ )
+	{
+		char szName[64];
+		V_snprintf( szName, sizeof( szName ), "ClassLabel%d", iRow );
+		Label *pName = dynamic_cast< Label * >( pChild->FindChildByName( szName, false ) );
+		if ( !pName )
+			continue;
+		int x, y, w, h;
+		pName->GetBounds( x, y, w, h );
+		if ( x + w > nLabelRoom && nLabelRoom > x )
+			pName->SetWide( nLabelRoom - x );
+	}
+
+	pScroll->InvalidateLayout( true, true );
+
+	Panel *pLHBar = pChild->FindChildByName( "ClassBar1A", false );
+	Panel *pRHBar = pChild->FindChildByName( "ClassBar1B", false );
+	if ( pLHBar && pRHBar )
+	{
+		int y;
+		pLHBar->GetBounds( m_xStartLHBar, y, m_iBarMaxWidth, m_iBarHeight );
+		pRHBar->GetBounds( m_xStartRHBar, y, m_iBarMaxWidth, m_iBarHeight );
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Initializes a bar chart combo box
 //-----------------------------------------------------------------------------
 void CTFStatsSummaryPanel::InitBarChartComboBox( ComboBox *pComboBox )
@@ -1224,8 +1506,9 @@ void CTFStatsSummaryPanel::SetValueAsClass( const char *pDialogVariable, int iVa
 void CTFStatsSummaryPanel::DisplayBarValue( int iChart, int iBar, ClassStats_t &stats, TFStatType_t statType, StatDisplay_t statDisplay, float flMaxValue )
 {
 	const char *szControlSuffix = ( 0 == iChart ? "A" : "B" );
-	Panel *pBar = m_pPlayerData->FindChildByName( CFmtStr( "ClassBar%d%s", iBar+1, szControlSuffix  ) );
-	Label *pLabel = dynamic_cast<Label*>( m_pPlayerData->FindChildByName( CFmtStr( "classbarlabel%d%s", iBar+1, szControlSuffix ) ) );
+	// Rows live under the class-stat scroller, not as direct children.
+	Panel *pBar = m_pPlayerData->FindChildByName( CFmtStr( "ClassBar%d%s", iBar+1, szControlSuffix ), true );
+	Label *pLabel = dynamic_cast<Label*>( m_pPlayerData->FindChildByName( CFmtStr( "classbarlabel%d%s", iBar+1, szControlSuffix ), true ) );
 	if ( !pBar || !pLabel )
 		return;
 

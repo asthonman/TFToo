@@ -788,7 +788,7 @@ bool CTFWeaponBase::SendWeaponAnim( int iActivity )
 		return BaseClass::SendWeaponAnim( iActivity );
 
 	// No spellbook in the action slot. While a Witch cast is in progress,
-	// that item's replacement still applies (primary attack -> spell fire).
+	// that item's replacement still applies (primary attack -> disguise-kit click).
 	if ( pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
 		Activity spellAct = CTFSpellBook::GetWitchSpellActivityOverride( pPlayer->GetTeamNumber(), (Activity)iActivity );
@@ -4547,8 +4547,8 @@ Activity CTFWeaponBase::TranslateViewmodelHandActivityInternal( Activity actBase
 	CTFPlayer *pOwner = GetTFPlayerOwner();
 	if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
-		// The equipped-weapon check below only sees the gun. The toss lives
-		// on the spellbook action item, which she does not have equipped.
+		// The equipped-weapon check below only sees the gun. The click lives
+		// on the spellbook, which she does not have equipped.
 		Activity spellAct = CTFSpellBook::GetWitchSpellActivityOverride( pOwner->GetTeamNumber(), actBase );
 		if ( spellAct != actBase )
 			return spellAct;
