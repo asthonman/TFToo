@@ -13,7 +13,7 @@
 	"model_hands"		"models/weapons/c_models/c_sniper_arms.mdl"
 	"localize_name"		"#TF_Class_Name_GuardDog"
 	"speed_max"			"400"
-	"health_max"		"115"
+	"health_max"			"115"
 	"armor_max"			"0"
 	"weapon1"			"tf_weapon_none"
 	"weapon2"			"tf_weapon_none"
