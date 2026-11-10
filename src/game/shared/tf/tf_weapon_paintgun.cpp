@@ -112,7 +112,7 @@ void CTFWeaponPaintgun::CyclePaint( void )
 }
 
 #ifdef GAME_DLL
-static void FirePaintBlob( CTFPlayer *pOwner, int type )
+static void FirePaintBlob( CTFPlayer *pOwner, int type, float flCoatLife = 0.f )
 {
 	if ( !pOwner )
 		return;
@@ -135,7 +135,7 @@ static void FirePaintBlob( CTFPlayer *pOwner, int type )
 			if ( type == NO_POWER )
 				TFPaint_EraseSphere( tr.endpos, rad );
 			else
-				TFPaint_PaintSphere( tr.endpos, tr.plane.normal, type, rad );
+				TFPaint_PaintSphere( tr.endpos, tr.plane.normal, type, rad, flCoatLife );
 		}
 		return;
 	}
@@ -147,7 +147,7 @@ static void FirePaintBlob( CTFPlayer *pOwner, int type )
 	VectorNormalize( dir );
 
 	float speed = RandomFloat( tf_paintgun_min_speed.GetFloat(), tf_paintgun_max_speed.GetFloat() );
-	TFPaint_AddBlob( eye, dir * speed, type );
+	TFPaint_AddBlob( eye, dir * speed, type, pOwner, flCoatLife );
 }
 #endif
 
@@ -290,7 +290,7 @@ void CTFWeaponGreasegun::PrimaryAttack( void )
 	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
 
 #ifdef GAME_DLL
-	FirePaintBlob( pOwner, SPEED_POWER );
+	FirePaintBlob( pOwner, SPEED_POWER, tf_paint_grease_lifetime.GetFloat() );
 #endif
 	WeaponSound( SINGLE );
 

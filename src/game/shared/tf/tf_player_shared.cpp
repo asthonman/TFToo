@@ -444,6 +444,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropInt( RECVINFO( m_nPlayerCondEx4 ) ),
 
 	RecvPropFloat( RECVINFO( m_flHolsterAnimTime ) ),
+	RecvPropFloat( RECVINFO( m_flIceUntil ) ),
 	RecvPropEHandle( RECVINFO( m_hSwitchTo ) ),
 END_RECV_TABLE()
 
@@ -486,6 +487,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_bIsTargetedForPasstimePass, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ), // does this belong here?
 	DEFINE_PRED_FIELD( m_askForBallTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flHolsterAnimTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flIceUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_ARRAY( m_flItemChargeMeter, FIELD_FLOAT, LAST_LOADOUT_SLOT_WITH_CHARGE_METER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_iStunIndex, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bScattergunJump, FIELD_BOOLEAN, 0 ),
@@ -630,6 +632,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropInt( SENDINFO( m_nPlayerCondEx4 ), -1, SPROP_VARINT | SPROP_UNSIGNED ),
 	
 	SendPropFloat( SENDINFO( m_flHolsterAnimTime ) ),
+	SendPropFloat( SENDINFO( m_flIceUntil ) ),
 	SendPropEHandle( SENDINFO( m_hSwitchTo ) ),
 END_SEND_TABLE()
 
@@ -939,12 +942,27 @@ CTFPlayerShared::CTFPlayerShared()
 	m_askForBallTime = 0.0f;
 
 	m_flHolsterAnimTime = 0.f;
+	m_flIceUntil = 0.f;
 	m_hSwitchTo = NULL;
 
 	m_iCYOAPDAAnimState = CYOA_PDA_ANIM_NONE;
 
 	// make sure we have all conditions in the list
 	m_ConditionData.EnsureCount( TF_COND_LAST );
+}
+
+void CTFPlayerShared::AddIcePhysics( float flSeconds )
+{
+	if ( flSeconds <= 0.f )
+		return;
+	float flUntil = gpGlobals->curtime + flSeconds;
+	if ( flUntil > m_flIceUntil )
+		m_flIceUntil = flUntil;
+}
+
+bool CTFPlayerShared::InIcePhysics( void ) const
+{
+	return m_flIceUntil > gpGlobals->curtime;
 }
 
 //-----------------------------------------------------------------------------

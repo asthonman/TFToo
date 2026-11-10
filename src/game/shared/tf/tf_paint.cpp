@@ -20,12 +20,17 @@
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/imesh.h"
 #include "materialsystem/imaterial.h"
+#include "texture_group_names.h"
 #define CTFPaintMap C_TFPaintMap
 #else
 #include "tf_player.h"
 #include "recipientfilter.h"
+#include "materialsystem/imaterialsystem.h"
+#include "materialsystem/imaterial.h"
+#include "texture_group_names.h"
 #endif
 
+#include "materialsystem/imaterialvar.h"
 #include "tier0/memdbgon.h"
 
 ConVar tf_paint_enabled( "tf_paint_enabled", "1", FCVAR_REPLICATED, "Mobility gels affect movement and can be fired." );
@@ -37,6 +42,10 @@ ConVar tf_paint_stick_speed( "tf_paint_stick_speed", "150", FCVAR_REPLICATED, "M
 ConVar tf_paint_bounce_min( "tf_paint_bounce_min", "500", FCVAR_REPLICATED, "Minimum launch speed off repulsion gel." );
 ConVar tf_paint_bounce_wall( "tf_paint_bounce_wall", "150", FCVAR_REPLICATED, "Minimum launch speed off a repulsion-gel wall." );
 ConVar tf_paint_splat_radius( "tf_paint_splat_radius", "48", FCVAR_REPLICATED, "Radius of a blob splat. Emulsion uses 48." );
+ConVar tf_paint_grease_lifetime( "tf_paint_grease_lifetime", "10", FCVAR_REPLICATED, "Seconds a grease-gun splat stays before it is removed." );
+ConVar tf_paint_ice_time( "tf_paint_ice_time", "3", FCVAR_REPLICATED, "Seconds of ice physics after a grease blob hits an enemy." );
+ConVar tf_paint_ice_friction( "tf_paint_ice_friction", "0.05", FCVAR_REPLICATED, "Ground friction scale while iced." );
+ConVar tf_paint_ice_accel( "tf_paint_ice_accel", "0.2", FCVAR_REPLICATED, "Ground acceleration scale while iced." );
 
 static const char *const s_pszPaintSounds[] =
 {
@@ -88,6 +97,33 @@ void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound )
 #endif
 }
 
+bool TFPaint_SurfaceBlocksPaint( const trace_t &tr )
+{
+	if ( tr.surface.flags & SURF_NODECALS )
+		return true;
+
+	if ( !materials )
+		return false;
+
+	const char *pszName = tr.surface.name;
+	if ( !pszName || !pszName[0] )
+		return false;
+
+	IMaterial *pMat = materials->FindMaterial( pszName, TEXTURE_GROUP_OTHER, false );
+	if ( !pMat || pMat->IsErrorMaterial() )
+		return false;
+
+	if ( pMat->GetMaterialVarFlag( MATERIAL_VAR_SUPPRESS_DECALS ) )
+		return true;
+
+	bool bFound = false;
+	IMaterialVar *pVar = pMat->FindVar( "$nodecal", &bFound, false );
+	if ( bFound && pVar && pVar->GetIntValue() != 0 )
+		return true;
+
+	return false;
+}
+
 //-----------------------------------------------------------------------------
 class CTraceFilterNoPlayers : public CTraceFilterSimple
 {
@@ -132,9 +168,10 @@ public:
 	}
 #else
 	virtual void Think( void );
-	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius );
+	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife );
 	void EraseSphere( const Vector &pos, float radius );
-	void AddBlob( const Vector &pos, const Vector &vel, int type );
+	void AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife );
+	void ReplayStamps( void );
 #endif
 
 	TFPaintContact_t Query( const Vector &origin, float extra );
@@ -148,6 +185,8 @@ private:
 	CNetworkArray( Vector, m_vecStampNormal, TF_PAINT_STAMP_MAX );
 	CNetworkArray( int, m_nStampType, TF_PAINT_STAMP_MAX );
 	CNetworkArray( float, m_flStampRadius, TF_PAINT_STAMP_MAX );
+	// 0 means the splat lasts until erased. Grease gun stamps store an absolute time.
+	CNetworkArray( float, m_flStampDie, TF_PAINT_STAMP_MAX );
 	CNetworkVar( int, m_nStampCursor );
 
 	CNetworkArray( Vector, m_vecBlobPos, TF_PAINT_BLOB_MAX );
@@ -158,9 +197,13 @@ private:
 #ifndef CLIENT_DLL
 	Vector	m_vecBlobVel[TF_PAINT_BLOB_MAX];
 	float	m_flBlobDie[TF_PAINT_BLOB_MAX];
+	float	m_flBlobCoatLife[TF_PAINT_BLOB_MAX];
+	EHANDLE	m_hBlobOwner[TF_PAINT_BLOB_MAX];
 	int		m_iBlobCursor;
 	float	m_flNextSplatSound;
-	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius );
+	float	m_flNextCoatExpire;
+	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife );
+	void	PlaySplatSound( const Vector &pos );
 #endif
 
 #ifdef CLIENT_DLL
@@ -193,6 +236,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampNormal[0] ) ), m_vecStampNormal ),
 	RecvPropArray3( RECVINFO_ARRAY( m_nStampType ), RecvPropInt( RECVINFO( m_nStampType[0] ) ) ),
 	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampRadius[0] ) ), m_flStampRadius ),
+	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampDie[0] ) ), m_flStampDie ),
 	RecvPropInt( RECVINFO( m_nStampCursor ) ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecBlobPos[0] ) ), m_vecBlobPos ),
 	RecvPropArray3( RECVINFO_ARRAY( m_nBlobType ), RecvPropInt( RECVINFO( m_nBlobType[0] ) ) ),
@@ -201,6 +245,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampNormal ), -1, SPROP_NOSCALE ), m_vecStampNormal ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nStampType ), SendPropInt( SENDINFO_ARRAY( m_nStampType ), 4, SPROP_UNSIGNED ) ),
 	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampRadius ), 10, SPROP_ROUNDDOWN, 0.0f, 256.0f ), m_flStampRadius ),
+	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampDie ) ), m_flStampDie ),
 	SendPropInt( SENDINFO( m_nStampCursor ), 32, SPROP_UNSIGNED ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecBlobPos ), -1, SPROP_COORD ), m_vecBlobPos ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nBlobType ), SendPropInt( SENDINFO_ARRAY( m_nBlobType ), 4, SPROP_UNSIGNED ) ),
@@ -229,10 +274,13 @@ CTFPaintMap::CTFPaintMap()
 #else
 	m_iBlobCursor = 0;
 	m_flNextSplatSound = 0.f;
+	m_flNextCoatExpire = 0.f;
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
 		m_vecBlobVel[i].Init();
 		m_flBlobDie[i] = 0.f;
+		m_flBlobCoatLife[i] = 0.f;
+		m_hBlobOwner[i] = NULL;
 	}
 #endif
 }
@@ -270,6 +318,7 @@ void CTFPaintMap::Spawn( void )
 		m_vecStampNormal.Set( i, Vector( 0, 0, 1 ) );
 		m_nStampType.Set( i, 0 );
 		m_flStampRadius.Set( i, 0.f );
+		m_flStampDie.Set( i, 0.f );
 	}
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
@@ -321,28 +370,45 @@ void CTFPaintMap::NotePop( const Vector &pos, const Vector &normal, int type )
 void CTFPaintMap::ApplyNetworkStamps( void )
 {
 	int cur = m_nStampCursor;
-	int applied = m_nAppliedCursor;
-	if ( cur < applied )
+	int prevApplied = m_nAppliedCursor;
+	int windowStart = ( cur > TF_PAINT_STAMP_MAX ) ? ( cur - TF_PAINT_STAMP_MAX ) : 0;
+
+	bool bExpired = false;
+	for ( int s = windowStart; s < cur; ++s )
 	{
-		m_Atlas.Clear();
-		applied = 0;
+		int slot = s % TF_PAINT_STAMP_MAX;
+		float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die && m_nStampType[slot] > 0 )
+		{
+			bExpired = true;
+			break;
+		}
 	}
 
-	int behind = cur - applied;
-	bool bEffects = ( behind >= 1 && behind <= 3 );
-	if ( behind > TF_PAINT_STAMP_MAX )
+	bool bRewound = ( cur < prevApplied );
+	bool bGap = ( !bRewound && ( cur - prevApplied ) > TF_PAINT_STAMP_MAX );
+	int applied = prevApplied;
+	if ( bExpired || bRewound || bGap )
 	{
-		// Late join, or a gap bigger than the log. Older gel is gone.
 		m_Atlas.Clear();
-		applied = cur - TF_PAINT_STAMP_MAX;
-		bEffects = false;
+		applied = windowStart;
+		// A rewind or a gap bigger than the log is a late join. Don't pop the backlog.
+		// An expiry rebuild still pops only stamps past the cursor we had already drawn.
+		if ( bRewound || bGap )
+			prevApplied = applied;
 	}
+
+	int behind = cur - prevApplied;
+	bool bEffects = ( behind >= 1 && behind <= 3 );
 
 	for ( int s = applied; s < cur; ++s )
 	{
 		int slot = s % TF_PAINT_STAMP_MAX;
 		int stored = m_nStampType[slot];
 		if ( stored <= 0 )
+			continue;
+		float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die )
 			continue;
 		int type = stored - 1;
 		float radius = m_flStampRadius[slot];
@@ -354,7 +420,7 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 			continue;
 		}
 		m_Atlas.Stamp( pos, n, type, radius );
-		if ( bEffects )
+		if ( bEffects && s >= prevApplied )
 			NotePop( pos, n, type );
 	}
 	m_nAppliedCursor = cur;
@@ -537,7 +603,48 @@ int CTFPaintMap::DrawModel( int flags )
 
 #else // GAME_DLL
 
-void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius )
+// Grease blobs hit enemies. Teammates and the shooter are skipped so the blob
+// can still paint the wall behind them.
+class CTraceFilterPaintBlob : public CTraceFilterSimple
+{
+public:
+	CTraceFilterPaintBlob( const IHandleEntity *pass, CBaseEntity *pOwner )
+		: CTraceFilterSimple( pass, COLLISION_GROUP_NONE ), m_pOwner( pOwner ) {}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask )
+	{
+		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
+		if ( pEnt && pEnt->IsPlayer() )
+		{
+			if ( !m_pOwner || pEnt == m_pOwner )
+				return false;
+			if ( pEnt->GetTeamNumber() == m_pOwner->GetTeamNumber() )
+				return false;
+			return true;
+		}
+		return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
+	}
+
+private:
+	CBaseEntity *m_pOwner;
+};
+
+static bool TFPaint_SpotBlocksPaint( const Vector &pos, const Vector &normal )
+{
+	Vector n = normal;
+	if ( n.LengthSqr() < 0.01f )
+		n.Init( 0, 0, 1 );
+	VectorNormalize( n );
+
+	trace_t tr;
+	CTraceFilterNoPlayers filter( NULL );
+	UTIL_TraceLine( pos + n * 2.f, pos - n * 8.f, MASK_SOLID, &filter, &tr );
+	if ( tr.fraction >= 1.f && !tr.startsolid )
+		return false;
+	return TFPaint_SurfaceBlocksPaint( tr );
+}
+
+void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
 {
 	if ( !tf_paint_enabled.GetBool() )
 		return;
@@ -556,11 +663,14 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
-	m_Atlas.Stamp( pos, n, type, radius );
-	PushStamp( pos, n, type, radius );
+	if ( TFPaint_SpotBlocksPaint( pos, n ) )
+		return;
+
+	PushStamp( pos, n, type, radius, flCoatLife );
+	ReplayStamps();
 }
 
-void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, float radius )
+void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
 {
 	int cursor = m_nStampCursor;
 	int slot = cursor % TF_PAINT_STAMP_MAX;
@@ -575,10 +685,15 @@ void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, 
 	if ( r > 250.f )
 		r = 250.f;
 
+	float die = 0.f;
+	if ( flCoatLife > 0.f )
+		die = gpGlobals->curtime + flCoatLife;
+
 	m_vecStampPos.Set( slot, pos );
 	m_vecStampNormal.Set( slot, normal );
 	m_nStampType.Set( slot, stored );
 	m_flStampRadius.Set( slot, r );
+	m_flStampDie.Set( slot, die );
 	m_nStampCursor = cursor + 1;
 }
 
@@ -591,11 +706,49 @@ void CTFPaintMap::EraseSphere( const Vector &pos, float radius )
 		r2 = 250.f;
 	// An erase is an event. Zeroing an old slot would delete it from the log
 	// and the client would replay the gel that was supposed to be gone.
-	m_Atlas.Erase( pos, r2 );
-	PushStamp( pos, vec3_origin, NO_POWER, r2 );
+	PushStamp( pos, vec3_origin, NO_POWER, r2, 0.f );
+	ReplayStamps();
 }
 
-void CTFPaintMap::AddBlob( const Vector &pos, const Vector &vel, int type )
+void CTFPaintMap::ReplayStamps( void )
+{
+	m_Atlas.Clear();
+
+	int cur = m_nStampCursor;
+	int start = 0;
+	if ( cur > TF_PAINT_STAMP_MAX )
+		start = cur - TF_PAINT_STAMP_MAX;
+
+	float flNext = 0.f;
+	for ( int s = start; s < cur; ++s )
+	{
+		int slot = s % TF_PAINT_STAMP_MAX;
+		int stored = m_nStampType[slot];
+		if ( stored <= 0 )
+			continue;
+
+		float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die )
+			continue;
+		if ( die > 0.f && ( flNext <= 0.f || die < flNext ) )
+			flNext = die;
+
+		int type = stored - 1;
+		float radius = m_flStampRadius[slot];
+		Vector pos = m_vecStampPos[slot];
+		Vector n = m_vecStampNormal[slot];
+		if ( type == NO_POWER || n.LengthSqr() < 0.01f )
+		{
+			m_Atlas.Erase( pos, radius );
+			continue;
+		}
+		m_Atlas.Stamp( pos, n, type, radius );
+	}
+
+	m_flNextCoatExpire = flNext;
+}
+
+void CTFPaintMap::AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife )
 {
 	if ( !tf_paint_enabled.GetBool() )
 		return;
@@ -619,11 +772,31 @@ void CTFPaintMap::AddBlob( const Vector &pos, const Vector &vel, int type )
 	m_vecBlobVel[slot] = vel;
 	m_nBlobType.Set( slot, type + 1 );
 	m_flBlobDie[slot] = gpGlobals->curtime + 8.0f;
+	m_flBlobCoatLife[slot] = flCoatLife;
+	m_hBlobOwner[slot] = pOwner;
+}
+
+void CTFPaintMap::PlaySplatSound( const Vector &pos )
+{
+	if ( gpGlobals->curtime < m_flNextSplatSound )
+		return;
+
+	CPASAttenuationFilter sndFilter( pos, SNDLVL_70dB );
+	EmitSound_t ep;
+	ep.m_pSoundName = "Paint.Splat";
+	ep.m_flVolume = 0.55f;
+	ep.m_SoundLevel = SNDLVL_70dB;
+	ep.m_pOrigin = &pos;
+	EmitSound( sndFilter, entindex(), ep );
+	m_flNextSplatSound = gpGlobals->curtime + 0.07f;
 }
 
 void CTFPaintMap::Think( void )
 {
 	SetNextThink( gpGlobals->curtime );
+
+	if ( m_flNextCoatExpire > 0.f && gpGlobals->curtime >= m_flNextCoatExpire )
+		ReplayStamps();
 
 	const float dt = Clamp( gpGlobals->frametime, 0.f, 0.05f );
 	if ( dt <= 0.f )
@@ -644,37 +817,61 @@ void CTFPaintMap::Think( void )
 		if ( gpGlobals->curtime > m_flBlobDie[i] || m_vecBlobPos[i].z < -2048.f )
 		{
 			m_nBlobType.Set( i, 0 );
+			m_flBlobCoatLife[i] = 0.f;
+			m_hBlobOwner[i] = NULL;
 			continue;
 		}
 
 		m_vecBlobVel[i].z -= gravity * dt;
 		Vector next = m_vecBlobPos[i] + m_vecBlobVel[i] * dt;
 
-		CTraceFilterNoPlayers filter( this );
+		const bool bGrease = ( m_flBlobCoatLife[i] > 0.f );
 		trace_t tr;
-		UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SOLID, &filter, &tr );
+		if ( bGrease )
+		{
+			CTraceFilterPaintBlob filter( this, m_hBlobOwner[i].Get() );
+			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SOLID | CONTENTS_HITBOX, &filter, &tr );
+		}
+		else
+		{
+			CTraceFilterNoPlayers filter( this );
+			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SOLID, &filter, &tr );
+		}
 
 		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
 		{
+			CTFPlayer *pVictim = ToTFPlayer( tr.m_pEnt );
+			if ( bGrease && pVictim )
+			{
+				if ( pVictim->IsAlive() )
+				{
+					pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
+					PlaySplatSound( tr.endpos );
+				}
+				m_nBlobType.Set( i, 0 );
+				m_flBlobCoatLife[i] = 0.f;
+				m_hBlobOwner[i] = NULL;
+				continue;
+			}
+
+			if ( TFPaint_SurfaceBlocksPaint( tr ) )
+			{
+				m_nBlobType.Set( i, 0 );
+				m_flBlobCoatLife[i] = 0.f;
+				m_hBlobOwner[i] = NULL;
+				continue;
+			}
+
 			int type = stored - 1;
 			if ( type == NO_POWER )
 				EraseSphere( tr.endpos, splatR );
 			else
-				PaintSphere( tr.endpos, tr.plane.normal, type, splatR );
+				PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i] );
 
-			if ( gpGlobals->curtime >= m_flNextSplatSound )
-			{
-				CPASAttenuationFilter sndFilter( tr.endpos, SNDLVL_70dB );
-				EmitSound_t ep;
-				ep.m_pSoundName = "Paint.Splat";
-				ep.m_flVolume = 0.55f;
-				ep.m_SoundLevel = SNDLVL_70dB;
-				ep.m_pOrigin = &tr.endpos;
-				EmitSound( sndFilter, entindex(), ep );
-				m_flNextSplatSound = gpGlobals->curtime + 0.07f;
-			}
-
+			PlaySplatSound( tr.endpos );
 			m_nBlobType.Set( i, 0 );
+			m_flBlobCoatLife[i] = 0.f;
+			m_hBlobOwner[i] = NULL;
 			continue;
 		}
 
@@ -712,25 +909,25 @@ TFPaintContact_t TFPaint_Query( const Vector &origin, float extra )
 	return pMap->Query( origin, extra );
 }
 
-void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type )
+void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife )
 {
 #ifdef GAME_DLL
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )
-		pMap->AddBlob( pos, vel, type );
+		pMap->AddBlob( pos, vel, type, pOwner, flCoatLife );
 #else
-	(void)pos; (void)vel; (void)type;
+	(void)pos; (void)vel; (void)type; (void)pOwner; (void)flCoatLife;
 #endif
 }
 
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius )
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
 {
 #ifdef GAME_DLL
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )
-		pMap->PaintSphere( pos, normal, type, radius );
+		pMap->PaintSphere( pos, normal, type, radius, flCoatLife );
 #else
-	(void)pos; (void)normal; (void)type; (void)radius;
+	(void)pos; (void)normal; (void)type; (void)radius; (void)flCoatLife;
 #endif
 }
 

@@ -508,6 +508,10 @@ public:
 	float	GetWitchChargeBegin( void ) const	{ return m_flWitchChargeBegin; }
 	void	SetWitchChargeBegin( float flBegin ) { m_flWitchChargeBegin = flBegin; }
 
+	// Grease-gun ice. Absolute gpGlobals->curtime. Ground friction and accel only.
+	void	AddIcePhysics( float flSeconds );
+	bool	InIcePhysics( void ) const;
+
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
 	float	GetRageMeter() const		{ return m_flRageMeter; }
@@ -1299,6 +1303,7 @@ private:
 	CNetworkVar( float, m_askForBallTime );
 
 	CNetworkVar( float, m_flHolsterAnimTime );
+	CNetworkVar( float, m_flIceUntil );
 	CNetworkHandle( CBaseCombatWeapon, m_hSwitchTo );
 };
 

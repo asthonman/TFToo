@@ -2057,8 +2057,9 @@ void CTFGameMovement::WalkMove( void )
 	// Reverse the basic friction calculation to find our required acceleration
 	if ( flWishSpeed > 0 && flWishSpeed < flWishSpeedThreshold )
 	{
-		// Lost footing should not have the ability to gain bonus traction
-		if ( !m_pTFPlayer->m_Shared.InCond( TF_COND_LOST_FOOTING ) )
+		// Lost footing should not have the ability to gain bonus traction.
+		// Ice neither: that boost exists to stick the feet to the ground.
+		if ( !m_pTFPlayer->m_Shared.InCond( TF_COND_LOST_FOOTING ) && !m_pTFPlayer->m_Shared.InIcePhysics() )
 		{
 			// accelspeed = accel * gpGlobals->frametime * wishspeed * player->m_surfaceFriction;
 			// accelspeed > drop;
@@ -2071,6 +2072,9 @@ void CTFGameMovement::WalkMove( void )
 			flAccelerate = (flControl * flFriction) / flWishSpeed + 1;
 		}
 	}
+
+	if ( m_pTFPlayer->m_Shared.InIcePhysics() )
+		flAccelerate *= tf_paint_ice_accel.GetFloat();
 
 	Accelerate( vecWishDirection, flWishSpeed, flAccelerate );
 	Assert( mv->m_vecVelocity.z == 0.0f );
@@ -2729,6 +2733,9 @@ void CTFGameMovement::CategorizePosition( void )
 			}
 		}
 	}
+
+	if ( !bInAir && m_pTFPlayer->m_Shared.InIcePhysics() )
+		flGroundFrictionMult *= tf_paint_ice_friction.GetFloat();
 
 	SetGroundEntity( bInAir ? NULL : &trace );
 	player->m_surfaceFriction *= bInAir ? flAirFrictionMult : flGroundFrictionMult;

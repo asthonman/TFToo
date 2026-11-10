@@ -44,6 +44,9 @@ struct TFPaintContact_t
 	}
 };
 
+class CBaseEntity;
+struct trace_t;
+
 extern ConVar tf_paint_enabled;
 extern ConVar tf_paint_trace_radius;
 extern ConVar tf_paint_speed;
@@ -53,15 +56,25 @@ extern ConVar tf_paint_stick_speed;
 extern ConVar tf_paint_bounce_min;
 extern ConVar tf_paint_bounce_wall;
 extern ConVar tf_paint_splat_radius;
+extern ConVar tf_paint_grease_lifetime;
+extern ConVar tf_paint_ice_time;
+extern ConVar tf_paint_ice_friction;
+extern ConVar tf_paint_ice_accel;
 
 void TFPaint_GetColor( int type, int &r, int &g, int &b );
 const char *TFPaint_Name( int type );
 
 TFPaintContact_t TFPaint_Query( const Vector &origin, float extra );
 
-void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type );
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius );
+// flCoatLife is how long the splat stays. 0 lasts until something erases it.
+// Grease gun passes tf_paint_grease_lifetime. pOwner is who fired the blob.
+void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner = NULL, float flCoatLife = 0.f );
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f );
 void TFPaint_EraseSphere( const Vector &pos, float radius );
 void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
+
+struct trace_t;
+// $nodecal (MATERIAL_VAR_SUPPRESS_DECALS) and SURF_NODECALS.
+bool TFPaint_SurfaceBlocksPaint( const trace_t &tr );
 
 #endif // TF_PAINT_H
