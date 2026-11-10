@@ -191,11 +191,11 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 #ifdef CLIENT_DLL
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampPos[0] ) ), m_vecStampPos ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampNormal[0] ) ), m_vecStampNormal ),
-	RecvPropArray( RecvPropInt( RECVINFO( m_nStampType[0] ) ), m_nStampType ),
+	RecvPropArray3( RECVINFO_ARRAY( m_nStampType ), RecvPropInt( RECVINFO( m_nStampType[0] ) ) ),
 	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampRadius[0] ) ), m_flStampRadius ),
 	RecvPropInt( RECVINFO( m_nStampCursor ) ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecBlobPos[0] ) ), m_vecBlobPos ),
-	RecvPropArray( RecvPropInt( RECVINFO( m_nBlobType[0] ) ), m_nBlobType ),
+	RecvPropArray3( RECVINFO_ARRAY( m_nBlobType ), RecvPropInt( RECVINFO( m_nBlobType[0] ) ) ),
 #else
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampPos ), -1, SPROP_COORD ), m_vecStampPos ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampNormal ), -1, SPROP_NOSCALE ), m_vecStampNormal ),
