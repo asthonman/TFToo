@@ -712,7 +712,7 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"",										// TF_CLASS_RESUPPLY,
 	"",										// TF_CLASS_BRICK,
 	"",										// TF_CLASS_WITCH,
-	"tf_weapon_smg",						// TF_CLASS_GUARDDOG,
+	"tf_weapon_helper",					// TF_CLASS_GUARDDOG,
 };
 
 int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =

@@ -587,8 +587,7 @@
 				"madcap"		"1"
 			}
 		}
-		// Guard Dog stock primary. Sniper's SMG is a secondary, so this is a
-		// new definition on the primary slot.
+		// Guard Dog stock secondary. Sniper's SMG, on the secondary slot.
 		"b16"
 		{
 			"name"				"b16"
@@ -597,8 +596,8 @@
 			"item_type_name"	"#TF_Weapon_SMG"
 			"item_logname"		"smg"
 			"item_iconname"		"smg"
-			"item_slot"			"primary"
-			"anim_slot"			"PRIMARY"
+			"item_slot"			"secondary"
+			"anim_slot"			"SECONDARY"
 			"item_quality"		"normal"
 			"baseitem"			"1"
 			"enabled"			"1"
@@ -615,7 +614,7 @@
 				"guarddog"		"1"
 			}
 		}
-		// Guard Dog stock secondary. Grapples one pickup, then throws it.
+		// Guard Dog stock primary. Grapples one pickup, then throws it.
 		"b17"
 		{
 			"name"				"b17"
@@ -624,8 +623,8 @@
 			"item_type_name"	"#TF_Weapon_Helper"
 			"item_logname"		"helper"
 			"item_iconname"		"smg"
-			"item_slot"			"secondary"
-			"anim_slot"			"SECONDARY"
+			"item_slot"			"primary"
+			"anim_slot"			"PRIMARY"
 			"item_quality"		"unique"
 			"baseitem"			"1"
 			"enabled"			"1"

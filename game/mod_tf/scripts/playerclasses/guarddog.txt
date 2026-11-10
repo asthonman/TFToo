@@ -2,8 +2,8 @@
 // The body is models/props_agentsaxxy/guard_dog_v2.mdl. That prop only
 // has idle-style sequences, so the player model will not run or crouch.
 // Hands are the Sniper's so the SMG viewmodel has arms. Class-script
-// weapons stay empty so schema base items fill the loadout: SMG (b16),
-// The Helper (b17), The Hater (Charge'n Targe, item 131).
+// weapons stay empty so schema base items fill the loadout: The Helper
+// (b17, primary), SMG (b16, secondary), The Hater (Charge'n Targe, item 131).
 "PlayerClassData"
 {
 	"name"				"guarddog"
