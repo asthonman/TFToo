@@ -1,15 +1,15 @@
 <!-- dmx encoding keyvalues2 1 format dmx 1 -->
 "PlayerStats"
 {
-	"id" "elementid" "9ebda898-3eee-430c-b8aa-002ac6d34794"
+	"id" "elementid" "492c212a-986b-4faf-97c6-c12cce6fe9e2"
 	"aClassStats" "element_array" 
 	[
 		"ClassStats_t"
 		{
-			"id" "elementid" "9d50df6b-5bed-43ae-854b-86d4af98cc60"
+			"id" "elementid" "0fb10a1b-13c2-4e56-b5fe-534023447a51"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "92f51fb2-f8e5-4c57-9efc-5164f038013b"
+				"id" "elementid" "a914a6c6-c2a1-43b4-95bd-a7492e51641e"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -38,7 +38,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "a246410e-bc18-41ae-b79a-3d903b6d3964"
+				"id" "elementid" "357e0475-50e5-40bd-baef-5f2e1a556665"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -70,7 +70,7 @@
 			"iPlayerClass" "int" "1"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "8fbaaf09-036f-498b-9f60-c8984292f866"
+				"id" "elementid" "283a0a48-7390-4a6c-879d-03a4ac3a827b"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -99,7 +99,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "05d2032a-0386-4975-8f8e-59ecb168be3b"
+				"id" "elementid" "7db4e9bc-94ea-4ec2-a784-b1c649e17e93"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -129,10 +129,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "840ca0e9-7023-4804-a458-308905b7bafe"
+			"id" "elementid" "8ea4d9f2-4f09-45cf-9224-12b1cf462b25"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "8014529f-0077-4400-b5ec-b364d2c8eba5"
+				"id" "elementid" "15f9c0d8-b5ac-48e9-8add-68ad673749c6"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -161,7 +161,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "35f897cc-9927-440e-931e-8b9e7724b095"
+				"id" "elementid" "1dcea65c-6d4b-4ea3-9fe8-d41ab686b71a"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -193,7 +193,7 @@
 			"iPlayerClass" "int" "2"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "79227112-550c-4c84-b093-a3415ae78f86"
+				"id" "elementid" "e735b7b9-a5a2-4268-81a2-4abb4c01e6ec"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -222,7 +222,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "942ef76f-1ad2-4800-add0-cb5e9cafec1d"
+				"id" "elementid" "0e933dc9-6438-4243-a4b7-34b64b6fe7b7"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -252,10 +252,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "50e009c4-5f3e-4d15-bc7a-b2a7c9e1e393"
+			"id" "elementid" "5f4d23d9-1e4a-49b6-9d58-88afe539ba1a"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "eb637f95-dc16-41ed-bc60-1ab1d41e56ff"
+				"id" "elementid" "f3372669-80d3-4d93-bb76-8c722a7e3971"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -284,7 +284,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "d46ed14f-cded-4302-bd71-62522d699e0c"
+				"id" "elementid" "88a9737b-853a-4e19-a964-388ad17fe057"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -316,7 +316,7 @@
 			"iPlayerClass" "int" "3"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "4503cacd-a6e5-4bd7-bf06-97c97ec1c8b2"
+				"id" "elementid" "df50431c-1aa3-4350-bc87-a2a71462c082"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -345,7 +345,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "d671d043-26f4-4e3e-958b-dec10b78f08a"
+				"id" "elementid" "5e0dfaad-c479-40a6-8976-d272ba61c0d4"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -375,10 +375,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "26b5d55a-9346-44a7-81c8-a93fec3a473b"
+			"id" "elementid" "77d8c729-9a5e-4ad6-a1bb-3b0512b18b85"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "3923e254-5488-46e0-a8dd-ca49599ce803"
+				"id" "elementid" "618d41e4-5d04-411e-b899-ba94190523f2"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -407,7 +407,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "d7f02bac-a610-49c2-8fd4-05b4e91f065a"
+				"id" "elementid" "478cb154-4d73-4e25-8018-365f9fdab31d"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -439,7 +439,7 @@
 			"iPlayerClass" "int" "4"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "aa95634b-7a23-4982-9c94-07e27dc42206"
+				"id" "elementid" "19d9cb02-0780-4aa2-996b-e9240ec71e98"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -468,7 +468,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "b1764ee8-96ac-49c2-adde-e51334561980"
+				"id" "elementid" "51eb05cc-71ec-4c56-bd4c-c68a946ea9a3"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -498,10 +498,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "b28f91b4-1112-4917-8423-1c68e27d2d12"
+			"id" "elementid" "52cec5b0-68a7-4d4e-b9a9-765fc6728d47"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "56c3acf7-5158-4a6f-b78a-6f5f04790dea"
+				"id" "elementid" "d8efef21-736d-4e21-be06-075be8ebf455"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -530,7 +530,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "72229c08-ec42-420d-aa38-8fefc719f198"
+				"id" "elementid" "e31435a7-8ffe-48ab-a4d9-4fc6a259419e"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -562,7 +562,7 @@
 			"iPlayerClass" "int" "5"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "394d4e47-d529-49df-b025-17dd7dbc983f"
+				"id" "elementid" "c7538435-b4e0-4317-87db-89d2c056ef87"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -591,7 +591,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "709dab31-e93e-479c-b463-4eb68bd592b0"
+				"id" "elementid" "73847a30-5d4e-493e-8cce-16a4486c261d"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -621,10 +621,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "c7ffb29d-f93f-4916-9b16-c49f666b06ae"
+			"id" "elementid" "425fbee8-ec95-46b4-b300-2496ac2373ef"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "21d74442-2202-482d-807b-5f8092b5d9f9"
+				"id" "elementid" "aa8bd286-33b9-4ab5-81af-adebfd71ad20"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -653,7 +653,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "a0c2d675-3573-41fb-ab84-7ff8fabe453f"
+				"id" "elementid" "d5eb334c-d205-42e5-90ea-c0ee48e713c5"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -685,7 +685,7 @@
 			"iPlayerClass" "int" "6"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "d6057810-22a2-4413-84b1-4a369bdf3d46"
+				"id" "elementid" "9f2d4b23-acbc-4394-abf4-4f1a2c2762d4"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -714,7 +714,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "47d7f15d-3175-4b66-b80a-769a34541921"
+				"id" "elementid" "aa24c102-b800-4870-9bea-65b777702fb7"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -744,10 +744,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "f6f799a5-6170-4cdf-b033-c2032e20d559"
+			"id" "elementid" "4982d218-acd0-4ccf-af61-fbf3a2242e78"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "2cb42556-8826-4173-997a-d1e9870c798e"
+				"id" "elementid" "0501af56-4800-4126-9faf-9534305a9991"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -776,7 +776,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "8cf84ec4-7a96-4e95-b130-e9b54f8f17f2"
+				"id" "elementid" "ede7d1de-8bfc-4e4c-9d7d-b3ca3ed60ed9"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -808,7 +808,7 @@
 			"iPlayerClass" "int" "7"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "8f28a000-1cc4-46fe-b183-9c7b6d51f995"
+				"id" "elementid" "080e2472-8d04-4ac3-b1cb-321a513ffa72"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -837,7 +837,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "f4f0e4b2-7cc2-40b2-ba92-3765818368b4"
+				"id" "elementid" "1a59eaa4-cbe1-444e-8672-c05636d942aa"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -867,10 +867,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "16da8f89-d86d-4b6f-9ca2-803d91f389b8"
+			"id" "elementid" "11d0568b-289b-4ca9-a1e3-a564db43a19a"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "1a5f9a41-5a0e-4838-9b34-ca4c6bb84fba"
+				"id" "elementid" "94c40059-0fb7-47c2-a971-b0b80bf68815"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -899,7 +899,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "bb9ea95b-3bf1-424f-ad8c-9ae73563ddda"
+				"id" "elementid" "553075c4-4c58-4838-bffe-3d326e36a61f"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -931,7 +931,7 @@
 			"iPlayerClass" "int" "8"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "87a2b853-42f4-4a71-be7c-13380b2aa4a6"
+				"id" "elementid" "d71a6a9a-1c1f-4380-bf3b-b1d0594b4421"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -960,7 +960,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "15796120-9594-40b8-9a9e-5c8ca57ba55e"
+				"id" "elementid" "1fd0ac75-56c2-425d-9789-0ae45f8f5682"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -990,10 +990,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "1a387d29-956a-4990-ae54-b9ef7e88d193"
+			"id" "elementid" "9bf4f6cb-7c0d-4cfc-955f-07275f152be2"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "6042c687-b13f-4beb-853b-057e8eb66ae0"
+				"id" "elementid" "669fe2b1-36c6-4ebf-b2fd-468ad4886029"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1022,7 +1022,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "da58dae5-ed8c-4b8e-9e2d-da65fd401395"
+				"id" "elementid" "5e5d9ff2-62f6-4609-ab64-4e5cefcae594"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1054,7 +1054,7 @@
 			"iPlayerClass" "int" "9"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "f7a91edc-6f6f-42a1-8440-ef802aaa1909"
+				"id" "elementid" "edf72cef-f26a-4104-a9f3-0bfbf97e236a"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1083,7 +1083,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "8b2290aa-5b51-43d3-a7a2-41d0093ce8fd"
+				"id" "elementid" "5c0074aa-d4e4-4f0c-b9ce-c00fd2ce0f9c"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1113,10 +1113,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "91075311-f170-4343-92c4-343efe727810"
+			"id" "elementid" "d3d91500-11e5-4ff8-9e13-956667578359"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "eba6ba7f-8654-4af3-ae51-ce4ae5ca1711"
+				"id" "elementid" "dbb89577-2d46-4609-a640-40d22222378e"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "140"
 				"iBonusPoints" "int" "0"
@@ -1145,7 +1145,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "7a7550cb-3014-48df-8233-d6933c0d592a"
+				"id" "elementid" "3c91cb39-7d41-48da-95bf-b318df993594"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1177,7 +1177,7 @@
 			"iPlayerClass" "int" "10"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "6e203956-676d-4b10-8d10-22584679f0b3"
+				"id" "elementid" "8076ea7b-360d-43d8-bb5f-4ff3ff11700e"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1206,7 +1206,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "e893ad23-eb96-4b20-9544-4b948b562f9b"
+				"id" "elementid" "64533a82-5abb-4e94-ba7b-9b91b51e699a"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1236,10 +1236,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "5d6e8951-44b9-4e5d-875f-7533a6ea6359"
+			"id" "elementid" "a1d4c9e1-41e1-47ea-a471-921c98e87b9b"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "ac4e6ae5-aea5-4e08-b277-776db072689f"
+				"id" "elementid" "19bef4fd-d1c4-4b5c-8dce-fd95dc4dac8c"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1268,7 +1268,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "a10bced3-b579-495a-bf72-7135d0c269b1"
+				"id" "elementid" "97946a94-e021-4d20-ba98-1e5d8ca6b873"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1300,7 +1300,7 @@
 			"iPlayerClass" "int" "11"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "50aa9ad9-310f-40da-86fc-aa4bc657b2af"
+				"id" "elementid" "e2c52a31-3841-4dc5-84b0-f8389b7bf8de"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1329,7 +1329,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "3027e205-26e0-4557-a8cb-3aeb4bb7e74c"
+				"id" "elementid" "c7a28860-cd4e-45bb-a059-70cead79eaf1"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1359,10 +1359,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "41c013cc-7782-40d2-939b-4a9225ddcaa4"
+			"id" "elementid" "d02cac7c-5cbd-4238-aeb7-aa9fbdcea1d4"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "47960e06-c0aa-4adf-bea5-4d72cfe4b1ca"
+				"id" "elementid" "11d897af-2005-4d59-b6a2-f7616b8246ca"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "20"
@@ -1391,7 +1391,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "7677f29d-fa04-497b-a856-2faefe7fa77e"
+				"id" "elementid" "f2379a6e-6b25-430b-82c1-20d908811d62"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1423,7 +1423,7 @@
 			"iPlayerClass" "int" "12"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "fad22b61-ec75-4054-9908-7c7ce9ac341a"
+				"id" "elementid" "8818a5d5-e7b9-4638-88e5-c9ef725fcbb7"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1452,7 +1452,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "cd2b65e5-0d50-40ec-a39a-fc8b8b394d78"
+				"id" "elementid" "c18be3d1-dd8b-40e2-99c8-65772a21255a"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1482,10 +1482,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "ffd49143-7a82-418a-a400-167209ecc26f"
+			"id" "elementid" "f1b85a4b-4a4c-4549-aad4-ed71e26fe20e"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "b7fc56d1-7304-49ee-917e-e316e42c62a5"
+				"id" "elementid" "aa92227f-0250-43b3-8da3-cf78f3107da4"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1514,7 +1514,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "0134814b-a0b3-413a-862d-bf3623551899"
+				"id" "elementid" "739b0a44-aa8e-4675-9e31-b1cab310b083"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1546,7 +1546,7 @@
 			"iPlayerClass" "int" "13"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "aed8f766-7854-4e62-8fc8-a67831f06173"
+				"id" "elementid" "2ab68aa3-6f64-4cd9-9454-32a389000f21"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1575,7 +1575,7 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "156975d7-87ac-4594-965e-4f74d733734b"
+				"id" "elementid" "80407d9a-9b57-4152-8ea7-141a5f2be451"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1605,10 +1605,10 @@
 		},
 		"ClassStats_t"
 		{
-			"id" "elementid" "6cb41149-7ea9-45f5-9eef-1215edc42a67"
+			"id" "elementid" "ea23e1cd-19e2-472e-aca8-02d33bc5eff9"
 			"accumulated" "RoundStats_t"
 			{
-				"id" "elementid" "4cbd9256-44da-4761-bd43-5660550aafd2"
+				"id" "elementid" "8ae2d2a1-c965-4bad-a854-ebe6f690fc3d"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "435"
 				"iBonusPoints" "int" "20"
@@ -1637,7 +1637,7 @@
 			
 			"accumulatedmvm" "RoundStats_t"
 			{
-				"id" "elementid" "de299783-9fe4-41f5-8eda-7bf26aa1d186"
+				"id" "elementid" "2a5e4553-4037-40a8-971b-953d0dce5e6c"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1669,7 +1669,7 @@
 			"iPlayerClass" "int" "14"
 			"max" "RoundStats_t"
 			{
-				"id" "elementid" "4ea48293-258e-4103-823e-bc0da4d99b12"
+				"id" "elementid" "1ecd2673-cbfe-4cb5-af28-2bc1d6ca0d99"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1698,7 +1698,130 @@
 			
 			"maxmvm" "RoundStats_t"
 			{
-				"id" "elementid" "c1fea813-7391-4518-a061-f07b7d43ce5a"
+				"id" "elementid" "79b06f7a-fa95-4914-96ee-c4b8a5509d3e"
+				"iBackstabs" "int" "0"
+				"iBlastDamage" "int" "0"
+				"iBonusPoints" "int" "0"
+				"iBuildingsBuilt" "int" "0"
+				"iBuildingsDestroyed" "int" "0"
+				"iDamageDealt" "int" "0"
+				"iDominations" "int" "0"
+				"iFireDamage" "int" "0"
+				"iHeadshots" "int" "0"
+				"iHealthPointsHealed" "int" "0"
+				"iHealthPointsLeached" "int" "0"
+				"iKillAssists" "int" "0"
+				"iNumberOfKills" "int" "0"
+				"iNumDeaths" "int" "0"
+				"iNumInvulnerable" "int" "0"
+				"iNumShotsFired" "int" "0"
+				"iNumShotsHit" "int" "0"
+				"iNumTeleports" "int" "0"
+				"iPlayTime" "int" "0"
+				"iPointCaptures" "int" "0"
+				"iPointDefenses" "int" "0"
+				"iPointsScored" "int" "0"
+				"iRevenge" "int" "0"
+				"iSentryKills" "int" "0"
+			}
+			
+		},
+		"ClassStats_t"
+		{
+			"id" "elementid" "0f608369-0052-4e1a-a194-74815d0eb638"
+			"accumulated" "RoundStats_t"
+			{
+				"id" "elementid" "d2e378a7-70a4-4f8a-a6b8-7cca5e652462"
+				"iBackstabs" "int" "0"
+				"iBlastDamage" "int" "0"
+				"iBonusPoints" "int" "0"
+				"iBuildingsBuilt" "int" "0"
+				"iBuildingsDestroyed" "int" "0"
+				"iDamageDealt" "int" "0"
+				"iDominations" "int" "0"
+				"iFireDamage" "int" "0"
+				"iHeadshots" "int" "0"
+				"iHealthPointsHealed" "int" "0"
+				"iHealthPointsLeached" "int" "0"
+				"iKillAssists" "int" "0"
+				"iNumberOfKills" "int" "0"
+				"iNumDeaths" "int" "1"
+				"iNumInvulnerable" "int" "0"
+				"iNumShotsFired" "int" "0"
+				"iNumShotsHit" "int" "0"
+				"iNumTeleports" "int" "0"
+				"iPlayTime" "int" "29"
+				"iPointCaptures" "int" "0"
+				"iPointDefenses" "int" "0"
+				"iPointsScored" "int" "0"
+				"iRevenge" "int" "0"
+				"iSentryKills" "int" "0"
+			}
+			
+			"accumulatedmvm" "RoundStats_t"
+			{
+				"id" "elementid" "67ca48e5-92a9-41b6-8563-55efd8335bb8"
+				"iBackstabs" "int" "0"
+				"iBlastDamage" "int" "0"
+				"iBonusPoints" "int" "0"
+				"iBuildingsBuilt" "int" "0"
+				"iBuildingsDestroyed" "int" "0"
+				"iDamageDealt" "int" "0"
+				"iDominations" "int" "0"
+				"iFireDamage" "int" "0"
+				"iHeadshots" "int" "0"
+				"iHealthPointsHealed" "int" "0"
+				"iHealthPointsLeached" "int" "0"
+				"iKillAssists" "int" "0"
+				"iNumberOfKills" "int" "0"
+				"iNumDeaths" "int" "0"
+				"iNumInvulnerable" "int" "0"
+				"iNumShotsFired" "int" "0"
+				"iNumShotsHit" "int" "0"
+				"iNumTeleports" "int" "0"
+				"iPlayTime" "int" "0"
+				"iPointCaptures" "int" "0"
+				"iPointDefenses" "int" "0"
+				"iPointsScored" "int" "0"
+				"iRevenge" "int" "0"
+				"iSentryKills" "int" "0"
+			}
+			
+			"comment: classname" "string" "Guard Dog"
+			"iNumberOfRounds" "int" "2"
+			"iPlayerClass" "int" "15"
+			"max" "RoundStats_t"
+			{
+				"id" "elementid" "461a7e53-54e3-41c3-b4bf-6b61198de5b6"
+				"iBackstabs" "int" "0"
+				"iBlastDamage" "int" "0"
+				"iBonusPoints" "int" "0"
+				"iBuildingsBuilt" "int" "0"
+				"iBuildingsDestroyed" "int" "0"
+				"iDamageDealt" "int" "0"
+				"iDominations" "int" "0"
+				"iFireDamage" "int" "0"
+				"iHeadshots" "int" "0"
+				"iHealthPointsHealed" "int" "0"
+				"iHealthPointsLeached" "int" "0"
+				"iKillAssists" "int" "0"
+				"iNumberOfKills" "int" "0"
+				"iNumDeaths" "int" "0"
+				"iNumInvulnerable" "int" "0"
+				"iNumShotsFired" "int" "0"
+				"iNumShotsHit" "int" "0"
+				"iNumTeleports" "int" "0"
+				"iPlayTime" "int" "29"
+				"iPointCaptures" "int" "0"
+				"iPointDefenses" "int" "0"
+				"iPointsScored" "int" "0"
+				"iRevenge" "int" "0"
+				"iSentryKills" "int" "0"
+			}
+			
+			"maxmvm" "RoundStats_t"
+			{
+				"id" "elementid" "181792a4-10e7-4073-b00c-d2227ecc135a"
 				"iBackstabs" "int" "0"
 				"iBlastDamage" "int" "0"
 				"iBonusPoints" "int" "0"
@@ -1729,2604 +1852,8 @@
 	]
 	"aMapStats" "element_array" 
 	[
-		"MapStats_t"
-		{
-			"id" "elementid" "620d9260-dc83-496f-8f0a-58941884b0b0"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "821aac6a-85be-48eb-b432-efe846b83210"
-				"iPlayTime" "int" "698"
-			}
-			
-			"comment: mapname" "string" "ctf_2fort"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "304d4ca8-bcec-41fb-aa2e-608eb30a1fe8"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "21bc81c0-be95-4e48-921e-4b0dfdf157c1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "Missing"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "358dd004-1dff-4b9a-b0c5-c8834617dde6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bf2de57a-e156-40f1-a715-56f2a19ec695"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_gorge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "14089d7a-2ac6-420c-b17c-208f830735ef"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7c20c981-65ac-441c-98bf-902fb8d7bbae"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_badlands"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "be14ed74-e376-4bfb-b987-39afa4d1c608"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b4ac285b-9e35-4437-846d-b7e6662b1a76"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_vanguard"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "16f600f5-9c3f-4dc4-a939-aeff8f34a820"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e9c0cfb0-1881-4a2a-8e25-53088cb7ce9c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_granary"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "35e89ffc-1d1f-4cb3-a18d-808da6c5e27d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "1a3821e4-a16e-40e9-adf7-6dd5f4c34e26"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_foundry"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "47202d8a-c2f1-42ad-a295-8b838d109693"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cb7941db-f37d-401b-a502-128fc12ef1aa"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_gullywash_final1"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4132d1d4-f947-4c1a-9de3-16bda9e8a2cd"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b790b05d-d388-4fa0-87ed-c8aa42324c64"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_snakewater_final1"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "1fa5a05a-51a1-4e98-aaf0-53fef57eb07c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "65d6d350-9c86-4f8b-881d-b69a4353f36c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_viaduct"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "40f215a3-833d-48a5-9cc2-46665a4a4816"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8a346798-9936-4b6a-a818-6a353a4d1366"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_gravelpit"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "dbc42024-2751-41d1-9647-ce45f237ec1d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e9d4823e-933d-41e6-9ded-abbed3e7f5d4"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_dustbowl"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a8c4a1cb-5c5b-4236-a54e-19adf70fae13"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "efaab255-74e7-4968-8101-8449a31cf37a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_well"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5dde3c9c-167d-4856-9ea6-704d459dadfe"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7d465bbd-3c9e-44a9-9d85-43a47c947575"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "tc_hydro"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "7e90ecd5-9f89-4ea1-b245-32136e478cf8"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bda79e9d-90a9-4222-a146-dce213645563"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_well"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f1616983-46a6-45ea-a7da-b4d2210b1d47"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "fc1b367e-807b-404e-ba60-753793da14b0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_goldrush"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "892cb3bd-3581-4dd8-a291-8b0093eafeba"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a5beb9eb-a759-48af-b002-5d729a3917b2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_fastlane"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3649d5c5-a32b-4894-bda4-3ba737c4e2a4"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7812eba3-2ac6-4e68-b35e-2b51141cf625"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_turbine"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c16585b3-978f-4332-be56-e76796009051"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "98d497a3-42a8-458f-90b1-6f32b618c38c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_badwater"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "79fe23a8-3dd7-4641-9366-5e1c1a5179e8"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "1053066a-403b-4d09-b32a-26ad46a1ce6d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_steel"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a808f7c8-25e1-4ce3-b1d8-19e128a0a8da"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6943d43f-af9c-4ea8-957d-3bf0b8509cff"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_egypt_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fae84768-3039-498c-93f5-2db2c3e04049"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "346f01de-46f5-476f-9cd4-48dcd9d3fd75"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_junction_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "79a66d5f-2ecb-4e46-8d16-329b2acb6c77"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "483f0435-9b13-4aa5-ad2f-62d54aa9536b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_pipeline"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d3e64ef9-97c6-46f4-85a6-8629538d90a9"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b05e002e-2796-4a9b-adf7-33b87260532a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_hoodoo_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "dd64dd5d-c717-45de-8ba4-9a95d4206e91"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7c9ec5c2-bf23-40d2-a58b-45fe7de63712"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_sawmill"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "633e01aa-41a5-4ee6-a5da-0201983c04ec"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "187195f3-cad5-4062-856b-023549d8af8e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_nucleus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2b0ff975-a59a-4fe7-9754-dd58cc31eabd"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8eac845a-0d09-4017-8924-5ab53497d760"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_sawmill"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "cb439376-3906-41eb-b723-b9bc00675291"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bd645b84-2b97-41ce-ab69-523acca7cf04"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_yukon_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3b6ecebd-8dfc-4040-8a28-4cf1a9465ffb"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "95019831-e803-4a12-b246-d580759e0c0e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_harvest_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "81b3b59a-de18-49f5-9b8e-84280d81307a"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "021842fe-12f4-4ce8-b976-c1c9b8508211"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_doublecross"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "1f575dc1-3c8e-416b-8cf5-b2cc9d5caaac"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "1fd5ad95-84b9-4bf8-bf81-35b3eb638af1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_freight_final1"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "58ad2177-f167-4865-8d42-fda0300fe901"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "fff03c58-d9f6-418c-8116-04b194b2b083"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_upward"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5970b9fc-b1c5-4926-a214-55063ee6974c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3efe9ef5-724a-4825-ba11-f041185ad107"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_hightower"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "85abd068-f410-4b1e-b39c-a973e653d9e7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3ba350e5-2029-4795-bf20-c855536c4153"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_thundermountain"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4a2e8971-8fb7-4fc6-8275-7db1e142b3ec"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5fa31694-7bbe-4c9d-98c7-d512183c8c34"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_coldfront"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c4c393bc-6f07-40d4-9f26-9921979e936a"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "0ab1fb37-d4fb-4fe8-8d06-18585b9876c9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_mountainlab"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ec7eae35-9600-4c74-9142-5d6be57559a6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "54aaf13d-beda-4be0-b74c-66787540bca1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_degrootkeep"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "106d35c0-9b68-4c06-a797-c044c8776e59"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "31417904-6eed-4449-a10d-ae73bf855d87"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_5gorge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "745f4d28-777e-4ecc-a12f-ddfb63005b6d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cd7a6a0a-5cea-4e04-86dd-a65619b78da9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_frontier_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5719d118-3cac-482d-830a-8f3e4be7a5ff"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "04be5638-e084-4afc-ad0b-86cfc835a413"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_nightfall_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "779c010a-eb9a-4f5c-bf86-b187ea75e5cc"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "02b8347c-9195-422b-907f-1ce9469ffa4d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_lakeside_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "67e46474-7037-450c-8d35-3d487c6a6546"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c02f7f95-b248-4d1c-88d7-0ae0af3d44ef"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_badlands"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f315ce57-5344-4b23-bcfb-697b96e0ab4e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "459b7fab-aaac-4d13-927c-4405613cdaf6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_barnblitz"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "58bbde17-0990-4335-974f-ae1101b67aad"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "27d99134-7c82-48cc-b227-d11bea94b9d0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "sd_doomsday"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "14de4ee3-56b6-498b-b7d7-7d5351072e4e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f1875bd3-f0d2-4f61-93aa-916f0e63d037"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_king"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fbd6d02b-8618-4efe-a9a7-05f2a0627f2f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a56aaede-af34-4d59-a0b5-c0237c6e8b3f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_standin_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b32d0ea4-96a0-4fd1-b3a8-8357d222a79c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "ff8e2024-4202-4e4d-9273-eb3093b878ab"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_process_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "67b764c0-ad58-420c-8c96-325c30ad931b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c9166f98-c4c8-4ac8-9c1f-747250606215"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_sunshine"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b90d90dc-cb9f-484a-9e06-fd522bc1bf7c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f4e10f49-5545-4528-b22b-4ca3645b2eb7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_metalworks"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a11256ee-0d90-460c-a4a1-3cb5e4f89d76"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5e638dbc-77fa-40a3-9177-bc97dc4ab4f1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_swiftwater_final1"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b1418a84-d8d1-4abf-ac95-a3a06a770763"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f06db165-b44b-4123-bf3e-26bdc5c590ee"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pass_brickyard"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d157a621-9476-4527-bfbb-7d7b6e6fb716"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c9690400-8a2d-49e4-b60e-1ce4b2c16139"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pass_timbertown"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3e054e5a-48de-4208-a18c-475f076dedb1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cfb3cecc-1da3-4930-988d-ae9fb8454bc7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pass_district"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2a65f151-810e-4600-a192-fab4c46ad191"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "22cad9dc-b749-473e-904c-b6abc22c764d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_landfall"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "08206651-e294-4419-afed-24574f674c25"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "243b2b9d-9c29-42a0-b505-ddce00194468"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_snowplow"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "9197cf51-7fbe-4026-a478-73a4e14504be"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b16d3930-d6ae-49bc-b5b6-9ef3a0ab740e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_2fort_invasion"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f09f6a3d-20ba-4da4-8c41-802834fe2e5c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5fdd5f78-b998-4efb-901a-eee99df7bfe5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_powerhouse"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f77a7c7c-afe0-4d8e-974b-d32034556c90"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "01d17759-f225-4465-9fb4-a919a2e64d5c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_suijin"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b3e2e0fd-f608-44e1-a176-6314ec1ca0c5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "fcca95e4-21d4-436b-8732-56597e0b69e1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_probed"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "84666fe4-b21a-476b-bcc2-797185cc59fd"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d9346042-9fa8-462f-90b8-0c8b2d2dbe3d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_highpass"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c161b294-eb63-4428-bb5d-36905af9145f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9b85d96a-dc57-4c0f-b2c0-e660128a4e1a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_cactuscanyon"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "310f872f-184d-4666-9651-697641747e15"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "91b75a18-6f07-49ea-98f7-acc040422e42"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_borneo"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8913df3b-ae3c-4e91-8d57-e2a0b080338c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6b235b7b-ac72-4c81-978e-c589a47a5561"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_snowycoast"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "345394db-2cfc-43d2-bc26-289f38dedecc"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "aedea3d7-177a-4281-b1bc-60cbba3466dc"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_watergate"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "286c3d57-68fd-4c28-bdab-70b0aef44f69"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d06381c5-f1c8-4050-9016-93391f92011b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_watchtower"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b48a7df0-5d44-4fdd-b136-14beb7def205"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8a4f4ff1-e54a-4c52-970f-798a4a7ba575"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_offblast_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f1c360c4-a638-432e-9c4e-3184dd3f8c81"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9e589693-743c-4328-a90d-cba17df2cbf2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_badlands"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "49d9a156-94b5-4a96-a0d7-1a6e4e0c2877"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "19b0b447-857c-42c0-bf42-c91c50b7c507"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_granary"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "37280be5-65a5-4ed3-acc8-0eb4b936ffc2"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "06d5fbb2-7902-49d2-b2d1-d087c0d74517"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_lumberyard"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5e5b3fd8-7fbd-4c8d-b409-5cb1f3869952"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "1f921960-c90a-4704-a7c6-58a7d9affbf4"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_nucleus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "25389a22-c4a0-4e40-8098-cc30b39e031d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "135ce12b-c93a-4473-95de-92e434dd6b21"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_ravine"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d3ae3e4d-f8e3-4a28-aac8-ba1eec48942c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e6aa6719-a95f-483a-bbd5-b187f9017adc"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_sawmill"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "9fc65aff-409b-432c-b37d-419141dbcfa4"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a38349cf-25e6-4e9f-ae15-6c8b81250b3a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_well"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "57a45046-aeb8-4899-9f7d-900a07656957"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "38e7dacb-667c-409f-889d-d3fc4c037dfb"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_byre"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fd2a7f43-2c7d-417b-916c-1d36e2364bc1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5f3e3941-44d2-4fde-98b3-7f5129747e6e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_gorge_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "15a52590-c113-4828-929f-f14cd5896ced"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "38bd51e8-df72-4e7f-8482-29e62e94b7a5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_sunshine_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c6ec2a4f-dbcf-4d5f-b680-8cf85bc8c641"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b3cd7a2e-af93-465a-8401-a129f7ccff34"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_moonshine_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "bb1ac803-7df5-4770-be9c-177a56c6625c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3859aee6-b34a-4f55-a5f9-bc4a8f4f5adf"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_millstone_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4dae3169-a354-485b-a5fc-88426be40f53"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8ac6d433-026a-4735-b32c-004c1cd89ac8"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_viaduct_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a0906b0a-67ec-4c0c-985f-f5349b3d25f1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b6af5313-89ca-464c-adfe-7b0bcae10db8"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_manor_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f1c1d76e-e110-4875-9fdb-cb430676e9b7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "14b1052d-4093-4847-94e3-d6473a63b35a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_harvest_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d0391fa2-da04-40ee-9c8a-e9712383301c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "87b7ca88-b8b3-4650-80a0-733ce8eb4f6f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_lakeside_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "46b207be-40f5-475f-b31a-6b0c3a7efbb1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cc7e088f-db47-4c9c-be5e-1cfcf6aeab0e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_hightower_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2dea6192-f0ed-497a-8b0c-bd3f1cbd973c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bd865267-adbf-4d57-8568-60de546ad79f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "sd_doomsday_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "7c13a3aa-e98d-4bc7-8d71-c34d758d35e0"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "945289dc-6023-4f6c-bbe8-73e20423e9bf"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "rd_asteroid"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a4fb5d00-d0d9-4c5b-8ef0-4ca8d6c25a9b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bd7efc3b-586f-408b-82cc-dd7fb78394f5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_foundry"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "208229d2-5177-43f9-8b1f-c6e309143ddf"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b4f3149a-8bd0-4fb9-9a0a-29b5b08e757f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_gorge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5e66518f-acef-4171-954e-7d68e20f5e35"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c1042ede-9e09-4982-8ff5-bc9c99f43716"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_thundermountain"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3d3e6f31-1087-465c-99de-d9c1b1725c1f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "545777b0-c6f5-4f6e-8a64-78f5636bc44c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_hellfire"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "73541f24-c2ed-45b4-820e-d0c6f951f0ca"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c7a9f788-a937-432f-924e-e4830e6d90ad"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_ghost_town"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "21f56304-2b1c-4450-b5b9-a7ded02c1dc2"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "69c2624a-709e-4eea-81b8-d42a0f52f570"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_mannhattan"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "51f778c5-8110-4439-902c-d9888f471bdc"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b843ca0c-ac53-41d3-be72-170d10b62701"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_rottenburg"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d184cf62-35ab-476d-b491-905cc56f45bc"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "fff3b281-0092-4faa-9d63-5d211a592901"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_bigrock"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "e2e27e5f-892b-4b69-85d0-3c426a73ae3e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d292add4-dda0-46ce-8039-248c43d3769d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_decoy"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d7c7ba01-2c56-4f0e-b329-92dad979e462"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "694faa6c-8283-4819-8b74-5549e0930d43"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_coaltown"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "23307981-ec31-46bf-98de-6264ce917485"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "26d6d7ca-55f5-4fc8-8437-092295476ce2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "mvm_mannworks"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6b791e59-de83-46d5-b85d-825c67be1a7e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "14dde830-b8ca-4835-9f6d-76fc391820d8"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "tr_dustbowl"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b1487f45-7d4a-440b-a76f-9193b770e763"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2035ca25-ed15-42fb-bcf9-f9704b90e140"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "tr_target"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "055ce64a-7ea4-40e7-89a0-feb55364b03c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e0935492-a423-456a-a792-9e15c78fe4bc"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_maple_ridge_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4179f6d9-0fee-4550-8a80-d036c390e4ed"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "53397dc3-26a3-4440-965a-2c0bb95728d9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_fifthcurve_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f8521937-c669-4d84-8f38-7e9013e40ff3"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6b6c9d33-6552-4d02-9424-66ba01a2ce9a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_pit_of_death_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "0ee6163e-8f1c-436d-b3e0-621b9d7b8f96"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c966b17e-e74b-4225-9120-fea356eb017c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_mercenarypark"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "e49cfbb9-5164-42cf-9f07-ba16de75ec84"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7d1168c0-582b-4ae9-bf04-c562b57b3618"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_mossrock"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "32ca84f6-b16a-4501-a772-f340c6add4a1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e32b1886-01b7-43c5-b831-6db1caef4600"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_lazarus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "7fcf3572-2257-4671-b6d4-0ec34f9352fb"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "482eb81d-0052-454b-b0be-0c6e426ef6fa"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_bananabay"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "e023b193-cd4b-46a9-b804-2a9776063434"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "75fbbda0-71f4-49e0-811e-7d773ca796f4"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_enclosure_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "7c166ac4-00ef-40de-b9e7-ed8c7dcd7b7d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "99216a5d-0c91-455a-8476-01687f37650f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_brazil"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "18691c77-6b26-4d25-8256-a713309df614"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3bf24c1c-f46c-44cb-a077-636176bc9a6a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_bagel_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6da84dde-4b25-43e2-9879-8c6651964bec"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "ebe1d343-d038-499f-a54e-0e0d0889fb9c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_rumble_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "455ad9ac-b209-41a6-8d96-e8770dd1d671"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "0ce96f8a-fcc2-420c-871b-87f336be2291"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_monster_bash"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "cca8a7a4-6c80-46b8-8b38-350424eb7979"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d815fa37-59c7-4820-bf38-6d8ea94941c4"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_slasher"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "000e2a40-df14-419f-9857-ef0d340d3d32"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2e55cb96-3e69-43cf-8aed-9b04881d77fb"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_cursed_cove_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "66226bb8-194d-46b6-a1af-280f1376d826"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "91ffe0ba-8085-4e3c-be59-ca1d62a8fc14"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_slaughter_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "78880622-aa1f-46dc-b397-3cd73c7fc51c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5120fdb3-81eb-4513-826c-1920e00c60a1"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_precipice_event_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "dcd45aee-499e-4896-99ce-85383a853016"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "bb48f5c8-199a-421f-aeb7-e05198c1239d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_megalo"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d88db3a6-42ad-4e88-acd2-c9f02d3b5562"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "03dfe968-bf97-4383-b524-769a5d26a391"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_hasslecastle"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4b854411-8d22-459d-8b4e-5a5e80ca8cf8"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d0d52c5c-4784-4238-b6b9-f39590dfb1b7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_bloodwater"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a70c0260-2a1d-48c9-9206-625962124de5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c9fbf93f-2a75-4bed-82e4-32f13598eca0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_undergrove_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d7aae7fc-c83a-4393-a128-a26adf895aeb"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "e74b335f-9547-436f-a76c-a0022654925a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_pier"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "02c4077a-b7ff-4faa-9b71-bce80b443924"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f9b0bbc8-5f7c-4677-bc17-357de3be392a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_snowville_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f23d8d1a-7069-4753-bf4b-3ef27f1b6e97"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9b31e588-5422-45bd-9c60-b0e82751d44d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_snowfall_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2694672b-58dc-42c3-b558-a1b5d15e65ce"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8fb7e870-f6da-4f60-bc28-c603522cfdaa"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_wutville_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ce016fc3-f1d6-47a0-9db8-8d05339a154a"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cf504259-bc29-4bf1-9407-af7f969ea7e2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_farmageddon"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b068e9d3-eedd-4e30-a574-4aae8ecbd60f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "432774e2-9a4a-4755-8046-f98eb11d6df8"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_los_muertos"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b09b621f-f08e-4bce-a73c-f0e8b6797824"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8dfa7b34-95b6-4edc-aacd-d08cefe795ea"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_ambush_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fec03ca8-d8bc-4bb8-8aaf-f383ce22b804"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7c5307d3-7fab-4cea-9e7b-97847acd6ccf"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_terror_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "7d5f24c2-3236-4b8e-af4b-a66d1238982b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "34cefc0a-8713-4f96-b2a4-468e159e6e8c"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_lumberyard_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d2cb7215-cab0-4baf-824b-d8658cd60ba5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b3a673f8-9f33-4f68-bc75-c9cad3d7e473"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_synthetic_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "00740bfb-3ffa-4029-901e-72cb1d2df7b9"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "661cbbb0-258e-47dd-8ebf-6787af161953"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_coal_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8c0d9738-659d-4ca6-8eba-ccb848826e2f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "683b447d-f378-4fa1-89de-d20381cc5612"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_breadspace"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5f507b21-7220-4f22-8bcd-b2a462f40f66"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "1887281e-55d4-4745-af3e-1cf42b895896"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_chilly"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4b92da94-0455-4e70-9c82-fedb54d517a9"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3d04e481-7a6a-45cc-8c31-e5523c0db74e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_cascade"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d3f9ac36-0c65-4370-b20d-14a6ce45ae7b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "441a0a7b-914f-40f9-b73a-4ff2a0616c46"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_altitude"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2f60e6e0-3ee7-42fb-b720-2ccedfa160a2"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d0fdceae-4b1e-45e2-91ed-a86cc2513df5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_doublecross_snowy"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "592118e5-86bc-4b76-934d-9c0cabfa2ede"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "80c70058-11a1-460c-a66f-ab77d06d7aea"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_sawmill_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "55781d4c-94f1-4e02-9515-b934ecc9d1f5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3a90138d-a3cd-49ad-b604-8a421ef2c2b6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_helltrain_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "01a76171-4f6d-4962-8251-60eccfdcd380"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "17f40278-f4c1-4cf3-837b-f659fe9a6eb9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_hacksaw_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b16df755-98dd-4e32-93d2-f361084e818c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9baa53ef-f4f2-4cba-8915-071f363deef5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_crasher"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c1ac3bf8-539e-4bab-8f79-8f6e5836e4d1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6b513e44-83b4-4b59-a8c4-392015bcafea"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_sludgepit_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "1d2a15e9-d795-4126-899e-f56f63a3fb3f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a9b553ad-3dc5-4d6b-98a1-20f705adb49e"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_spookeyridge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4ccdc0d9-5edc-404f-9c56-61af192b8474"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "82a2e202-37e8-4b93-9748-062fb54cd6cc"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_frostwatch"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "03bc082e-2edd-4829-9cc5-621c49ff1afa"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b39890d5-dd7a-4fd0-bdcc-88ec0c7fd831"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_frostcliff"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8608e43e-af58-43b9-adce-d342f710bf47"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8f23c77e-83d3-4a18-bf29-5e1c365b8c23"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_rumford_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d48b8ace-e0ad-46fc-80a7-7a4edab50ad6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "ab7bf2c4-0e93-4703-841d-21ce920d699d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_frosty"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4e1934bf-3ab5-41da-ba9a-1331d2f323fa"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f0e74e47-d50d-429e-b519-4a342444639b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_gravelpit_snowy"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "15a47e2f-e3e0-4898-b55c-7085e0dae9a2"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "90b7d2a5-23d1-4b97-8d0f-69f731dae6cf"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_sharkbay"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "49454dd3-d289-42b6-bf44-4ea18d3fadff"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "08ee7b94-b3be-4b4e-94c1-b319912ee915"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_rotunda"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3f9b7ebd-dcc3-45c6-b82d-17dfd27a16fb"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6a1a089b-7dd1-4fe4-b45d-18555c1792d9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_phoenix"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a5a6a2c3-acf5-4876-a62e-f479ecb96472"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "78a7f294-d163-40d2-a480-fc6cbc8a8da0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_cashworks"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c816f72a-d2cd-4137-a558-1e2680c7dcae"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c2c93fff-b62b-4d39-9337-58129d72e066"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_venice"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b56d4bd7-fc86-4321-9480-6abf26bd16e1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "01a2df51-030b-47b8-9f18-886c35af3fb2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_reckoner"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "64559d93-bf41-4492-9ab8-be95109ea7b3"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "125b2673-c3db-490f-8b99-5408a7a540d6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_sulfur"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ed799b70-9aa9-40b5-a6ec-ea32a4996d83"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f997f427-4692-4fd0-9861-7e1022d0aa45"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_hardwood_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b1165bd7-524e-4369-a014-caa94a4f72ca"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2c42e4e1-1e50-46b3-9c02-43146b43fff2"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_pelican_peak"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c47936b4-9100-4964-8b1e-81106671f316"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2411a04d-4c5b-40c6-941d-658857051cfe"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_selbyen"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "42a4d1af-d2a8-426a-8744-8cb0539346df"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c4d597a0-188c-4273-9966-e06d69de4616"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_tinyrock"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "0bf89e53-84df-4619-814e-8bd5d4a9ec8f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c3333a52-78b5-4aaa-9c59-f6204d9afea7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_distillery"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b9ede0ca-0b8a-4265-83a7-d3834eede174"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c9d6b149-3695-4f9b-b466-4984c2a93c81"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_skirmish"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "9f7a49c1-f491-451f-a42c-d5fd23f4786f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "db60a4da-84c6-47f0-9311-b588457279be"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_nucleus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "929b37ba-1317-4ef0-8413-ad96d89c52b2"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9b80a7f0-ac53-4a8f-8715-9ffb28aee96f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_perks"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "de967d7d-03c2-482c-97d8-067d8806f9b7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2c2d78ed-c969-4b33-abc6-1aa5c5bfeddb"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_slime"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a63355fe-cb30-486b-a82a-e6d1e3d07b46"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "39e841a7-4773-496b-a056-e1433d36ba53"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_lavapit_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6de87d88-8068-493d-970d-ca8ab46f682c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c4382eaf-608a-48ae-b1ba-6980af5fe88d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_mannsylvania"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "bc8fa500-85a9-433d-8c8f-0f7d869df4f6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "4062271e-4194-4fe7-a33f-a37cb35141dc"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_degrootkeep_rats"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ffe80394-6df6-4c23-9903-18dbf32b9524"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "94a928d9-3ebc-4674-abdc-c1d82d13cbf3"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_spineyard"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "1cf0bdec-8d5c-4178-8bb4-d23aea779978"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "72166a2e-c483-4230-9f8e-6bdafaa1f083"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_corruption"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "36ebaa6c-c7d5-418e-a9b9-5d23ad2007bc"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c256ec35-19c8-40fd-8175-0657b1c502cd"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_murky"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "78e35ce0-842a-4a2c-b7de-ff0bad065542"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b55d777c-e179-46c2-a032-563a35f6cfc6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_atoll"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ffb20716-14ba-4c40-bf44-4cba44f3ef65"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "33f6b43a-41ec-4392-aafa-5d0576ecfe6b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_woods"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b49aca31-f39c-4534-8b3c-597c0614ec1f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "4725b969-e431-493e-9a2d-5942087d89b3"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_sanitarium"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2475129a-4835-4144-bd15-c011e430f3ed"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6e07d02b-4ded-4a65-8740-6a23f7513fe0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_devastation_final1"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f8927d5f-5f8c-4017-9abb-316eb0c68bd6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c16ac8cf-f2a8-45ec-98d0-793d646bf07d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_snowtower"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "67cd7ec4-70b0-44f0-86a6-f153cd2c6d67"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3c454a2d-95f5-44d9-92bd-be648d163949"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_krampus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "634c1f8a-14ac-40e0-994c-ba8ac76042c7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "63f2abd1-ee4b-49a8-b71d-e7ea70894d05"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_haarp"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f7a04d6f-fad9-4b5c-9831-1d7efbf5c175"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "458bb3b8-9e5f-4de4-8299-69cbd263f310"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_brew"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b0e7e863-f61a-4fe6-b324-40c7186f7be9"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "26c6715f-8e8b-478e-8cef-5ab31a57905d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_hacksaw"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "30d532c7-9304-445f-be7a-ff8cfc465914"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "21417d2c-86c1-4830-be6b-ce377ad0a593"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_turbine_winter"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d142c26d-96a6-47fc-bb2d-ab8f0f20f176"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "eeec2508-da92-4c03-8007-3bbc31fb68e5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_carrier"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "e896a7c7-37cc-4969-b3a6-5fefca4444ad"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "09fe0319-68f2-44fe-872d-c2875a9fddd9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_galleria"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "9f4e1791-c075-491a-97eb-4c83129b1104"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d7391648-bd70-41f7-a754-d2d128472cff"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_emerge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2f214407-80bd-4672-8156-905aed982c8f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8ed72306-33a9-4fad-9bbc-f10814f751f9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_camber"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a3f6ee5b-5760-4fb4-b8da-443c48207fa8"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "6c3a477d-4d93-454b-abc4-4e1fb5c88116"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_embargo"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "05724231-02b0-4488-b7c4-8159b7a69619"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8235eede-e889-42f5-bc98-442e5a4ae51a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_odyssey"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c97779a6-2c8c-416d-9756-7c4104706263"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "79bdd999-1656-4406-adf3-69993c13003b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_megaton"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d3fa1f43-82aa-44e0-bc92-621f9222134e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "4a1fe38f-a794-433d-af49-6aad8c9196ef"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_cachoeira"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2774264b-6de8-4be3-a12e-3a3277e56a5b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a7a76c18-1618-4f06-aee0-02e0695dd7a3"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_overgrown"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "29a273a7-51d3-458c-930b-f49a3bad00df"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "7fd73031-7e04-468b-a303-58a31f9e451d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_hadal"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "14c485e5-0492-4c87-84ec-853f016e8f6d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "2daac322-4cb2-4e70-aefa-c2a3eb4de837"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_applejack"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "59653891-5c10-4910-a89b-458b154f253c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9ae00e66-e12e-4902-bf31-26fc63cb0113"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_atom_smash"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6439adc3-c9f1-4dc6-90e0-4dba7a032c92"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "85915899-9354-484e-bf98-f59eedad46de"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_canaveral_5cp"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5644219d-a698-4171-b650-2e7910dbb041"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "87acaf23-2485-42f1-b719-095c8be5efc5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_burghausen"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f26d059f-7862-4da9-8b30-17f0b0f2a479"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "aa115aa7-ff42-488f-8ff3-e9f19d65c764"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_toxic"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c639b059-d90c-4e5c-8214-30fcff42af6c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9e663a5a-659c-4d0f-986a-9423eb9f3784"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_darkmarsh"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "1408d2ff-6fa4-47b8-bebf-b46e32b8c900"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "efdec957-e5f0-438b-a7a2-0cb0fc21192d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_freaky_fair"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8157777b-93cf-4779-aa7b-ff0e9d2eee64"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "14d31379-dc36-4d11-be15-01b2608b324b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "tow_dynamite"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a0d8f8e9-e0a6-449d-9fa2-3948ee3a2161"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d4c38c58-65f1-48ce-b16e-20d3c49edba9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_circus"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a7829a6a-6367-4008-8e02-84cbb01ec744"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "24575204-943c-4c8d-a4e9-0ded97c20b35"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_outburst"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "02f4b03e-613e-4d5d-906d-a87ba75f203e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b3f02e4f-c51c-4d65-82ce-30c86cff6ab0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "zi_blazehattan"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ea13d0b9-913a-4337-a25e-c15d649f00f7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "3ef1f62d-293f-48bb-b9f5-a063a972d9a7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_overcast_final"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "71ebe972-310a-4727-a973-e700f947999d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a08b5ce2-7cb1-4bc5-a7b1-abb76d0e99e0"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_fortezza"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "64912e7b-8515-4125-a11f-50af6dc86938"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f91c9a46-05b5-4220-8666-c538116ddcdb"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_penguin_peak"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ae9cfea2-fe12-4c12-a856-92e1f600b71e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "cbcc7612-4de5-41f0-9fcb-110172b9df72"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_patagonia"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "094b929a-7d92-4fbe-9f74-f9d39492935f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "518e51f6-b91c-4673-ad70-6411c843f210"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_cutter"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "ebbfcff3-24cc-4363-99d1-2c09bb45cd94"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "763b1330-ea1f-48c9-a114-c1dca356b94b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "vsh_maul"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "98be3b03-b3dc-4249-8a6a-22dc662e36b5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "19b0b221-6359-4466-b409-4dfd819e9b67"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_citadel"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b9137970-df67-4c73-84f0-3cc4add9fd4a"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "13ee6dc5-9cfe-4c6b-a2b4-dba018577cf6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_aquarius"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5f7d3a70-03e1-4c67-b12b-84fd163c8332"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a908c146-dba7-4cc1-b28a-196471b637df"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_fulgur"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "0882da1d-c3ac-4bc3-bcc4-c4d98388e762"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d0a7d83d-5a7c-4449-aad5-4c57bdf7f627"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_cargo"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8d1a65f0-5011-4d7a-b081-344d2a30fa8e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "47e2dc89-919d-4340-8c5b-8efe0d1ffbe8"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_conifer"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "5accf2cb-c694-479c-b805-b3c04e4e57b1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "56bbe41c-34cb-40c6-8090-3340cf66cc81"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_boardwalk"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "29e51a54-942b-4b79-862c-d11e77fdc04b"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f91d0beb-2529-43ae-a3c3-018d8d5a62c6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_blowout"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "81d926f2-2ac2-4b56-a64a-ea1a544ca29f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "88acdb39-ca5c-4038-85d7-2e5c68414462"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_mannhole"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fc34b674-c30c-4e67-a3c2-3cb4e49ab3ea"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b7c5a8f2-f6bf-4de9-8617-ba378733cce6"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_demolition"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "33f48851-6f7c-4e1c-a8cd-42933e47b134"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d07d4567-51ae-482a-aeeb-5d12061339d7"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_pressure"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "06dc9c2c-3380-4215-8876-11a9f08cd173"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "88f17e9c-5569-423f-a80b-f523e7661be9"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_cowerhouse"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "124b481f-c835-422a-b065-e8f55637adfe"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b30432d4-9a16-407c-b020-c269b2ba3596"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_dusker"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "9e60aa58-6857-4ff7-a59b-60edcc65c0f1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "9d683e12-2e6d-40c0-a4b4-d6cc2e3599d3"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "arena_afterlife"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3c861e3f-d4bf-44a8-b1f1-4203a1eb0cf6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "8bab117b-0e71-453f-a14d-2937058b51b3"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_doublecross_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "fdd8235e-6996-4777-ae37-4512f87b853e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a548aa66-3311-4705-a630-e11f87fd300f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "htf_marshlands"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "4d102d5f-612c-4535-ac97-b28d04503101"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5c77eb21-05a9-4e50-bb0c-eb45aae8359a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pd_nutcracker"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f6eefe8e-2db4-4816-a68e-24a754665dfa"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "c26526c5-709b-4439-80ae-09938eb92b7f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cppl_gavle"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "f11da78c-ceed-4d92-a41f-0d84a3980a36"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "88a7404d-80b0-4f6c-9819-0f8b904063df"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_sidewinder"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8949f71b-897c-4112-9621-76a6bfd8f924"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d7e46a12-01da-4bf6-95f1-f191c144668d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "2koth_abbey"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "3dda1cba-23f3-475b-89c8-3c822442ecc5"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "166457bd-6266-4ab7-b694-7a6eaaddbe82"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_winter_ridge"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "a77bb601-0158-4039-9d4d-5c06c0c0cef7"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b3106a3b-fedc-4211-9ca3-26e2c3c62536"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "plr_matterhorn"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "b236830a-8971-47c3-9e0b-c35c01c882a0"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5d5ab2ae-6ecd-43a9-8f81-8a342d0966fe"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_dryfield"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "311e2681-7051-4276-adf6-416df37a95e1"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "d0d79b69-dcac-4740-b1a1-c983aa53a3e5"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_camp_saxton"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6bc03413-f5f8-4316-b3f8-a453826824d6"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f9be330c-55c2-4c82-a32e-6b63c765edff"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_shorelight"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "8be87478-d8a0-4d47-8874-7fd74b13a74d"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "a6178d7a-5f3d-4817-9fd9-308e37240f6b"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_redwood"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "c7adc1a6-5a26-47b8-addf-73078842996f"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f7e4af95-fe01-417f-b12b-76d774ef5e8a"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_premuda"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "d5effb4b-082c-4fab-9732-528b1389ca1e"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "b724509f-0d04-4099-a14a-09e42505da6f"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_mojave"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "2943165c-071c-4bef-9061-0b4674e51442"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "5dddcfec-f943-41eb-b3a7-b6bf8110468d"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_holyhell"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "e6bfccd4-fc00-47b2-9229-9a514a2e9d18"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "91fa2a03-7a4d-498b-ac87-016a1284c0a4"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "pl_aridpass_event"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "64d0e4ec-d622-40eb-abcd-2394b4880672"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f1acca49-d073-4390-ad39-8cddc8250595"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "koth_trainsawlaser"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "6071fd00-5f04-4061-916b-ce57f3bff456"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "dda7dc93-016f-4436-9aca-ff5fdd203910"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "ctf_medi_evil"
-		},
-		"MapStats_t"
-		{
-			"id" "elementid" "eff52a02-9977-4227-b107-42225499033c"
-			"accumulated" "RoundMapStats_t"
-			{
-				"id" "elementid" "f06a7ad8-4c2a-4c8a-963e-08097a7a8177"
-				"iPlayTime" "int" "0"
-			}
-			
-			"comment: mapname" "string" "cp_wildcat_event"
-		}
 	]
-	"iTimestamp" "int" "573978537"
+	"iTimestamp" "int" "925827749"
 	"iVersion" "int" "0"
 	"SteamID" "int" "387145940"
 }
