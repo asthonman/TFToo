@@ -1,0 +1,31 @@
+// Guard Dog secondary. No ammo. The SMG mesh is a stand-in so the arms
+// have a viewmodel. The projectile is the grappling hook.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Helper"
+	"BuiltRightHanded"	"0"
+	"weight"			"2"
+	"WeaponType"		"secondary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"0"
+	"Range"				"0"
+	"TimeFireDelay"		"0.5"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+
+	"primary_ammo"		"None"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"1"
+	"bucket_position"	"0"
+
+	"HasTeamSkins_Viewmodel"	"1"
+	"HasTeamSkins_Worldmodel"	"1"
+
+	"viewmodel"			"models/weapons/c_models/c_smg/c_smg.mdl"
+	"playermodel"		"models/weapons/c_models/c_smg/c_smg.mdl"
+	"anim_prefix"		"smg"
+}

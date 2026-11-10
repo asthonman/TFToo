@@ -167,4 +167,44 @@ private:
 	CSoundPatch *m_pImpactFleshSoundLoop;
 };
 
+class CTFWeaponHelper;
+class CTFPowerup;
+
+//-----------------------------------------------------------------------------
+// Helper hook. Same model and client rope as the grappling hook. It does not
+// pull the owner. It flies to flamethrower range, then comes back. A pickup
+// it touches comes back with it.
+//-----------------------------------------------------------------------------
+class CTFProjectile_HelperHook : public CTFProjectile_GrapplingHook
+{
+public:
+	DECLARE_CLASS( CTFProjectile_HelperHook, CTFProjectile_GrapplingHook );
+	DECLARE_NETWORKCLASS();
+	DECLARE_DATADESC();
+
+	CTFProjectile_HelperHook();
+
+	static CTFProjectile_HelperHook *Create( CTFPlayer *pOwner, CTFWeaponHelper *pHelper, const Vector &vecOrigin, const Vector &vecDir );
+
+	virtual void	Spawn() OVERRIDE;
+	virtual void	UpdateOnRemove() OVERRIDE;
+	virtual float	GetDamage() OVERRIDE { return 0.f; }
+
+private:
+	void	FlyThink();
+	void	BeginRetract( bool bHit );
+	void	Deliver();
+	void	Grab( CTFPowerup *pPower );
+	void	DropCarried( const Vector &vecVelocity );
+	CTFPowerup *FindPowerup( const Vector &vecCenter, float flRadius ) const;
+
+	EHANDLE	m_hHelper;
+	EHANDLE	m_hCarried;
+	Vector	m_vecDir;
+	Vector	m_vecStart;
+	bool	m_bRetracting;
+
+	CTFProjectile_HelperHook( const CTFProjectile_HelperHook & ) {}
+};
+
 #endif	//TF_PROJECTILE_ARROW_H

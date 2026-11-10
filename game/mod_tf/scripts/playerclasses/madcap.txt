@@ -3,7 +3,7 @@
 // Primary: Nailgun. Secondary: Grease Gun. Melee: Boston Basher.
 // The Mason's Missile is the secondary unlock.
 // Boot unlocks are primaries (Sole Saviors, Teufort Tooth Kicker).
-// Shields are secondaries. Eyelander, Shiv, Zatoichi, Wrap Assassin,
+// Shields moved to the Guard Dog. Eyelander, Shiv, Zatoichi, Wrap Assassin,
 // and Warrior's Spirit are shared melees. Persian Persuader and
 // Claidheamh Mòr are Madcap melees only. Equalizer and Escape Plan
 // are shared melees with Soldier. Cleaver and

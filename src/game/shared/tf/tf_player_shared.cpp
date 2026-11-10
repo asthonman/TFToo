@@ -102,6 +102,7 @@
 #endif
 
 #include "tf_wearable_weapons.h"
+#include "tf_weaponbase_melee.h"
 #include "tf_weapon_bonesaw.h"
 
 static ConVar tf_demoman_charge_frametime_scaling( "tf_demoman_charge_frametime_scaling", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "When enabled, scale yaw limiting based on client performance (frametime)." );
@@ -636,16 +637,31 @@ END_SEND_TABLE()
 
 extern void HandleRageGain( CTFPlayer *pPlayer, unsigned int iRequiredBuffFlags, float flDamage, float fInverseRageGainScale );
 
-CTFWearableDemoShield* GetEquippedDemoShield( CTFPlayer * pPlayer )
+static CTFWearableDemoShield *GetEquippedDemoShieldWearable( CTFPlayer *pPlayer )
 {
-	// Loop through our wearables in search of a shield
-	for ( int i=0; i<pPlayer->GetNumWearables(); ++i )
+	if ( !pPlayer )
+		return NULL;
+
+	for ( int i = 0; i < pPlayer->GetNumWearables(); ++i )
 	{
-		CTFWearableDemoShield *pWearableShield = dynamic_cast<CTFWearableDemoShield*>( pPlayer->GetWearable( i ) );
+		CTFWearableDemoShield *pWearableShield = dynamic_cast< CTFWearableDemoShield * >( pPlayer->GetWearable( i ) );
 		if ( pWearableShield )
-		{
 			return pWearableShield;
-		}
+	}
+
+	return NULL;
+}
+
+CTFWeaponDemoShield *GetEquippedDemoShield( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return NULL;
+
+	for ( int i = 0; i < pPlayer->WeaponCount(); ++i )
+	{
+		CTFWeaponDemoShield *pShield = dynamic_cast< CTFWeaponDemoShield * >( pPlayer->GetWeapon( i ) );
+		if ( pShield )
+			return pShield;
 	}
 
 	return NULL;
@@ -5991,9 +6007,9 @@ void CTFPlayerShared::OnRemoveCompetitiveLoser( void )
 void CTFPlayerShared::UpdateChargeMeter( void )
 {
 	const bool bDemo = m_pOuter->IsPlayerClass( TF_CLASS_DEMOMAN );
-	// Madcap only carries a meter while a shield is actually equipped.
-	const bool bMadcapShield = m_pOuter->IsPlayerClass( TF_CLASS_MADCAP ) && HasDemoShieldEquipped();
-	if ( !bDemo && !bMadcapShield )
+	// Guard Dog carries the meter while a shield melee is in the loadout.
+	const bool bGuardDogShield = m_pOuter->IsPlayerClass( TF_CLASS_GUARDDOG ) && HasDemoShieldEquipped();
+	if ( !bDemo && !bGuardDogShield )
 		return;
 
 	if ( InCond( TF_COND_SHIELD_CHARGE ) )
@@ -6055,10 +6071,16 @@ void CTFPlayerShared::EndCharge()
 		// Impacts drain the charge meter completely.
 		float flMeterAtImpact = m_flChargeMeter;
 
-		CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( m_pOuter );
-		if ( pWearableShield )
+		CTFWeaponDemoShield *pShield = GetEquippedDemoShield( m_pOuter );
+		if ( pShield )
 		{
-			pWearableShield->ShieldBash( m_pOuter, flMeterAtImpact );
+			pShield->ShieldBash( m_pOuter, flMeterAtImpact );
+		}
+		else
+		{
+			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShieldWearable( m_pOuter );
+			if ( pWearableShield )
+				pWearableShield->ShieldBash( m_pOuter, flMeterAtImpact );
 		}
 
 		CalcChargeCrit();
@@ -6093,7 +6115,7 @@ float CTFPlayerShared::CalculateChargeCap( void ) const
 
 bool CTFPlayerShared::HasDemoShieldEquipped() const
 {
-	return GetEquippedDemoShield( m_pOuter ) != NULL;
+	return GetEquippedDemoShield( m_pOuter ) != NULL || GetEquippedDemoShieldWearable( m_pOuter ) != NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -6668,10 +6690,18 @@ void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon, float 
 	if ( !bAfterburnImmunity && IsShieldEquipped() )
 	{
 		int nAfterburnImmunity = 0;
-		CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( m_pOuter );
-		if ( pWearableShield && !pWearableShield->IsDisguiseWearable() )
+		CTFWeaponDemoShield *pShield = GetEquippedDemoShield( m_pOuter );
+		if ( pShield )
 		{
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pWearableShield, nAfterburnImmunity, afterburn_immunity );
+			CALL_ATTRIB_HOOK_INT_ON_OTHER( pShield, nAfterburnImmunity, afterburn_immunity );
+		}
+		else
+		{
+			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShieldWearable( m_pOuter );
+			if ( pWearableShield && !pWearableShield->IsDisguiseWearable() )
+			{
+				CALL_ATTRIB_HOOK_INT_ON_OTHER( pWearableShield, nAfterburnImmunity, afterburn_immunity );
+			}
 		}
 
 		bAfterburnImmunity |= nAfterburnImmunity != 0;
@@ -11016,7 +11046,7 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed *= Madcap_SpeedModFromPMeter( GetPMeter() );
 	}
 
-	// Eyelander heads, and the shield charge speed. Madcap can equip both.
+	// Eyelander heads. Demoman charge replaces his run speed. Madcap does not charge.
 	if ( playerclass == TF_CLASS_DEMOMAN || playerclass == TF_CLASS_MADCAP )
 	{
 		CTFSword *pSword = dynamic_cast<CTFSword*>(Weapon_OwnsThisID( TF_WEAPON_SWORD ));
@@ -11025,10 +11055,16 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 			maxfbspeed *= pSword->GetSwordSpeedMod();
 		}
 
-		if ( !bIgnoreSpecialAbility && m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+		if ( playerclass == TF_CLASS_DEMOMAN && !bIgnoreSpecialAbility && m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
 		{
 			maxfbspeed = tf_max_charge_speed.GetFloat();
 		}
+	}
+
+	// The dog already runs at 1200. A demoman charge is 750, which would slow him.
+	if ( playerclass == TF_CLASS_GUARDDOG && !bIgnoreSpecialAbility && m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+	{
+		maxfbspeed = Max( maxfbspeed, tf_max_charge_speed.GetFloat() );
 	}
 
 	bool bCarryPenalty = true;
@@ -12418,7 +12454,7 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			}
 			else
 			{
-				CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
+				CTFWearableDemoShield *pWearableShield = GetEquippedDemoShieldWearable( this );
 				if ( pWearableShield )
 				{
 					pWearableShield->DoSpecialAction( this );
@@ -12428,13 +12464,13 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 		}
 		bDoSkill = true;
 		break;
-	case TF_CLASS_MADCAP:
+	case TF_CLASS_GUARDDOG:
 		if ( !m_Shared.HasPasstimeBall() )
 		{
-			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
-			if ( pWearableShield )
+			CTFWeaponDemoShield *pShield = dynamic_cast< CTFWeaponDemoShield * >( GetActiveWeapon() );
+			if ( pShield )
 			{
-				pWearableShield->DoSpecialAction( this );
+				pShield->DoSpecialAction( this );
 				bDoSkill = true;
 			}
 		}
@@ -12643,7 +12679,7 @@ bool CTFPlayer::EndClassSpecialSkill( void )
 			CTFPipebombLauncher *pPipebombLauncher = static_cast<CTFPipebombLauncher*>( Weapon_OwnsThisID( TF_WEAPON_PIPEBOMBLAUNCHER ) );
 			if ( !pPipebombLauncher )
 			{
-				CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
+				CTFWearableDemoShield *pWearableShield = GetEquippedDemoShieldWearable( this );
 				if ( pWearableShield )
 				{
 					pWearableShield->EndSpecialAction( this );
@@ -12652,13 +12688,11 @@ bool CTFPlayer::EndClassSpecialSkill( void )
 			}
 		}
 		break;
-	case TF_CLASS_MADCAP:
+	case TF_CLASS_GUARDDOG:
 		{
-			CTFWearableDemoShield *pWearableShield = GetEquippedDemoShield( this );
-			if ( pWearableShield )
-			{
-				pWearableShield->EndSpecialAction( this );
-			}
+			CTFWeaponDemoShield *pShield = dynamic_cast< CTFWeaponDemoShield * >( GetActiveWeapon() );
+			if ( pShield )
+				pShield->EndSpecialAction( this );
 		}
 		break;
 
@@ -12999,6 +13033,33 @@ Vector CTFPlayer::GetClassEyeHeight( void )
 		return VEC_VIEW_SCALED( this );
 
 	return g_TFClassViewVectors[pClass->GetClassIndex()] * GetModelScale();
+}
+
+//-----------------------------------------------------------------------------
+// Guard Dog's entity hull. Movement traces use CTFGameMovement. Bullets and
+// other players use this. PostThink also writes it, because CBasePlayer
+// forces the global 82/62 box every frame.
+//-----------------------------------------------------------------------------
+const Vector CTFPlayer::GetPlayerMins( void ) const
+{
+	if ( IsObserver() )
+		return BaseClass::GetPlayerMins();
+
+	if ( IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return GuardDog_HullMins( GetModelScale() );
+
+	return BaseClass::GetPlayerMins();
+}
+
+const Vector CTFPlayer::GetPlayerMaxs( void ) const
+{
+	if ( IsObserver() )
+		return BaseClass::GetPlayerMaxs();
+
+	if ( IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return GuardDog_HullMaxs( ( GetFlags() & FL_DUCKING ) != 0, GetModelScale() );
+
+	return BaseClass::GetPlayerMaxs();
 }
 
 

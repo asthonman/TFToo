@@ -86,4 +86,15 @@ private:
 	CHandle< C_RopeKeyframe > m_hRope;
 };
 
+//-----------------------------------------------------------------------------
+// Same rope as the grappling hook. Empty table so this classname still
+// inherits C_TFProjectile_GrapplingHook::OnDataChanged.
+//-----------------------------------------------------------------------------
+class C_TFProjectile_HelperHook : public C_TFProjectile_GrapplingHook
+{
+	DECLARE_CLASS( C_TFProjectile_HelperHook, C_TFProjectile_GrapplingHook );
+public:
+	DECLARE_NETWORKCLASS();
+};
+
 #endif // C_TF_PROJECTILE_ARROW_H

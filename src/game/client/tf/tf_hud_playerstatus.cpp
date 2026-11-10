@@ -61,6 +61,7 @@ static const char *g_szBlueClassImages[] =
 	"../hud/class_sniperblue",	// Resupply
 	"../hud/class_heavyblue",	// Brick
 	"../hud/class_witchblue",	// Witch
+	"../hud/class_scoutblue",	// Guard Dog
 	"",							// Civilian
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_szBlueClassImages ) == TF_CLASS_COUNT_ALL );
@@ -82,6 +83,7 @@ static const char *g_szRedClassImages[] =
 	"../hud/class_sniperred",	// Resupply
 	"../hud/class_heavyred",	// Brick
 	"../hud/class_witchred",	// Witch
+	"../hud/class_scoutred",	// Guard Dog
 	"",							// Civilian
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_szRedClassImages ) == TF_CLASS_COUNT_ALL );

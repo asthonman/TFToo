@@ -88,6 +88,7 @@ StatMap_t* g_SteamStats_Class[] = {
 	NULL,					// Resupply
 	NULL,					// Brick
 	NULL,					// Witch
+	NULL,					// Guard Dog
 	NULL,					// Civilian
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_SteamStats_Class ) == TF_LAST_NORMAL_CLASS + 1 );

@@ -130,6 +130,13 @@ public:
 	virtual float	GetAirSpeedCap( void );
 
 	virtual void	TracePlayerBBox( const Vector& start, const Vector& end, unsigned int fMask, int collisionGroup, trace_t& pm );
+	virtual Vector	GetPlayerMins( bool ducked ) const;
+	virtual Vector	GetPlayerMaxs( bool ducked ) const;
+	virtual Vector	GetPlayerMins( void ) const;
+	virtual Vector	GetPlayerMaxs( void ) const;
+	virtual void	FinishDuck( void );
+	virtual void	FinishUnDuck( void );
+	virtual bool	CanUnduck();
 	virtual CBaseHandle	TestPlayerPosition( const Vector& pos, int collisionGroup, trace_t& pm );
 	virtual void	StepMove( Vector &vecDestination, trace_t &trace );
 	virtual bool	GameHasLadders() const;
@@ -293,7 +300,134 @@ void CTFGameMovement::PlayerMove()
 //-----------------------------------------------------------------------------
 Vector CTFGameMovement::GetPlayerViewOffset( bool ducked ) const
 {
+	if ( m_pTFPlayer && m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && !m_pTFPlayer->IsObserver() )
+	{
+		float flScale = m_pTFPlayer->GetModelScale();
+		if ( flScale <= 0.f )
+			flScale = 1.f;
+		return Vector( 0.f, 0.f, ( ducked ? TF_GUARDDOG_VIEW_DUCK : TF_GUARDDOG_VIEW_STAND ) * flScale );
+	}
+
 	return ( ( ducked ) ? ( VEC_DUCK_VIEW_SCALED( m_pTFPlayer ) ) : ( m_pTFPlayer->GetClassEyeHeight() ) );
+}
+
+//-----------------------------------------------------------------------------
+// Guard Dog is 50 tall standing and 35 crouched. Movement traces use these,
+// not the global 82/62 hull.
+//-----------------------------------------------------------------------------
+Vector CTFGameMovement::GetPlayerMins( bool ducked ) const
+{
+	if ( m_pTFPlayer && m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && !m_pTFPlayer->IsObserver() )
+		return GuardDog_HullMins( m_pTFPlayer->GetModelScale() );
+
+	return BaseClass::GetPlayerMins( ducked );
+}
+
+Vector CTFGameMovement::GetPlayerMaxs( bool ducked ) const
+{
+	if ( m_pTFPlayer && m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && !m_pTFPlayer->IsObserver() )
+		return GuardDog_HullMaxs( ducked, m_pTFPlayer->GetModelScale() );
+
+	return BaseClass::GetPlayerMaxs( ducked );
+}
+
+Vector CTFGameMovement::GetPlayerMins( void ) const
+{
+	if ( player && player->IsObserver() )
+		return BaseClass::GetPlayerMins();
+
+	const bool bDucked = player && player->m_Local.m_bDucked;
+	return GetPlayerMins( bDucked );
+}
+
+Vector CTFGameMovement::GetPlayerMaxs( void ) const
+{
+	if ( player && player->IsObserver() )
+		return BaseClass::GetPlayerMaxs();
+
+	const bool bDucked = player && player->m_Local.m_bDucked;
+	return GetPlayerMaxs( bDucked );
+}
+
+//-----------------------------------------------------------------------------
+// Air crouch shifts the origin by the hull-height difference. The global
+// hulls differ by 20. The dog's differ by 15. On the ground both mins are
+// zero, so the stock shift is already correct.
+//-----------------------------------------------------------------------------
+bool CTFGameMovement::CanUnduck()
+{
+	if ( !m_pTFPlayer || !m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) || player->GetGroundEntity() != NULL )
+		return BaseClass::CanUnduck();
+
+	float flScale = m_pTFPlayer->GetModelScale();
+	if ( flScale <= 0.f )
+		flScale = 1.f;
+
+	Vector newOrigin = mv->GetAbsOrigin();
+	newOrigin.z += ( TF_GUARDDOG_HULL_DUCK - TF_GUARDDOG_HULL_STAND ) * flScale;
+
+	const bool bSaved = player->m_Local.m_bDucked;
+	player->m_Local.m_bDucked = false;
+	trace_t trace;
+	TracePlayerBBox( mv->GetAbsOrigin(), newOrigin, PlayerSolidMask(), COLLISION_GROUP_PLAYER_MOVEMENT, trace );
+	player->m_Local.m_bDucked = bSaved;
+	return !( trace.startsolid || trace.fraction != 1.0f );
+}
+
+void CTFGameMovement::FinishUnDuck( void )
+{
+	if ( !m_pTFPlayer || !m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) || player->GetGroundEntity() != NULL )
+	{
+		BaseClass::FinishUnDuck();
+		return;
+	}
+
+	float flScale = m_pTFPlayer->GetModelScale();
+	if ( flScale <= 0.f )
+		flScale = 1.f;
+
+	Vector newOrigin = mv->GetAbsOrigin();
+	newOrigin.z += ( TF_GUARDDOG_HULL_DUCK - TF_GUARDDOG_HULL_STAND ) * flScale;
+
+	player->m_Local.m_bDucked = false;
+	player->RemoveFlag( FL_DUCKING );
+	player->m_Local.m_bDucking = false;
+	player->m_Local.m_bInDuckJump = false;
+	player->SetViewOffset( GetPlayerViewOffset( false ) );
+	player->m_Local.m_flDucktime = 0;
+
+	mv->SetAbsOrigin( newOrigin );
+	ResetDuckLatched();
+	CategorizePosition();
+}
+
+void CTFGameMovement::FinishDuck( void )
+{
+	if ( !m_pTFPlayer || !m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) || player->GetGroundEntity() != NULL )
+	{
+		BaseClass::FinishDuck();
+		return;
+	}
+
+	if ( player->GetFlags() & FL_DUCKING )
+		return;
+
+	player->AddFlag( FL_DUCKING );
+	player->m_Local.m_bDucked = true;
+	player->m_Local.m_bDucking = false;
+	player->SetViewOffset( GetPlayerViewOffset( true ) );
+
+	float flScale = m_pTFPlayer->GetModelScale();
+	if ( flScale <= 0.f )
+		flScale = 1.f;
+
+	Vector org = mv->GetAbsOrigin();
+	org.z += ( TF_GUARDDOG_HULL_STAND - TF_GUARDDOG_HULL_DUCK ) * flScale;
+	mv->SetAbsOrigin( org );
+
+	ResetDuckLatched();
+	FixPlayerCrouchStuck( true );
+	CategorizePosition();
 }
 
 //-----------------------------------------------------------------------------
@@ -409,6 +543,15 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	{
 		m_pTFPlayer->TeamFortress_SetSpeed();
 		mv->m_flClientMaxSpeed = m_pTFPlayer->MaxSpeed();
+	}
+
+	// 1200 is past the 520 scout cap this function writes above. A charge
+	// dash already set its own cap.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+	{
+		m_pTFPlayer->TeamFortress_SetSpeed();
+		mv->m_flMaxSpeed = m_pTFPlayer->MaxSpeed();
+		mv->m_flClientMaxSpeed = mv->m_flMaxSpeed;
 	}
 
 	// Handle scouts that can move really fast with buffs
@@ -593,12 +736,17 @@ bool CTFGameMovement::ChargeMove()
 			return false;
 	}
 
-	mv->m_flMaxSpeed = tf_max_charge_speed.GetFloat();
+	float flChargeSpeed = tf_max_charge_speed.GetFloat();
+	// The dog already runs faster than a demoman charge. Don't slow the dash.
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && TF_GUARDDOG_SPEED > flChargeSpeed )
+		flChargeSpeed = TF_GUARDDOG_SPEED;
+
+	mv->m_flMaxSpeed = flChargeSpeed;
 
 	int oldbuttons = mv->m_nButtons;
 
 	// Handle demoman shield charge.
-	mv->m_flForwardMove = tf_max_charge_speed.GetFloat();
+	mv->m_flForwardMove = flChargeSpeed;
 	mv->m_flSideMove = 0.0f;
 	mv->m_flUpMove = 0.0f;
 	if ( mv->m_nButtons & IN_ATTACK2 )

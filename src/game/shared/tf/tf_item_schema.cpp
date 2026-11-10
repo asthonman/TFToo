@@ -991,13 +991,13 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 			pClasses->AddSubKey( pKVAllClassKey );
 		}
 
-		// All-class taunts only list the original nine. Madcap through Witch
+		// All-class taunts only list the original nine. Madcap through Guard Dog
 		// then have no loadout slot for them, so an equipped gesture fails the
 		// slot check and +taunt never opens the menu. Weapons stay off this
 		// set on purpose (see CanBeUsedByAllClasses).
 		if ( CanBeUsedByAllClasses() && m_iDefaultLoadoutSlot == LOADOUT_POSITION_TAUNT )
 		{
-			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_WITCH; ++iClass )
+			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
 			{
 				m_vbClassUsability.Set( iClass );
 				m_iLoadoutSlots[iClass] = LOADOUT_POSITION_TAUNT;
@@ -1754,7 +1754,7 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 
 	// Shipped items_game.txt sets last_valid_class to Brick. This still
 	// covers a vanilla file, whose range ends at Engineer. Account stays above it.
-	ExtendLastValidClass( TF_CLASS_WITCH );
+	ExtendLastValidClass( TF_CLASS_GUARDDOG );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );

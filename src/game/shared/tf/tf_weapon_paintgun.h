@@ -73,4 +73,52 @@ private:
 	float m_flNextPaintAnim;
 };
 
+#ifdef CLIENT_DLL
+#define CTFWeaponHelper C_TFWeaponHelper
+#endif
+
+//-----------------------------------------------------------------------------
+// Guard Dog secondary. Mouse1 fires a short hook. If it brings a pickup back,
+// mouse1 throws that pickup and weapon switches stay locked until it is gone.
+//-----------------------------------------------------------------------------
+class CTFWeaponHelper : public CTFWeaponBase
+{
+public:
+	DECLARE_CLASS( CTFWeaponHelper, CTFWeaponBase );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFWeaponHelper();
+
+	virtual int		GetWeaponID( void ) const { return TF_WEAPON_NONE; }
+	virtual void	Precache( void );
+	virtual void	ItemPostFrame( void );
+	virtual void	PrimaryAttack( void );
+	virtual void	SecondaryAttack( void ) {}
+	virtual bool	CanHolster( void ) const;
+	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
+	virtual void	UpdateOnRemove( void );
+
+	bool	IsCarryingPickup( void ) const { return m_bCarrying; }
+
+#ifdef GAME_DLL
+	void	ReceivePickup( CBaseEntity *pPickup );
+	void	ClearHook( CBaseEntity *pHook );
+#endif
+
+private:
+#ifdef GAME_DLL
+	void	FireHook( void );
+	void	ThrowCarried( void );
+	void	DropCarried( const Vector &vecVelocity );
+
+	EHANDLE	m_hHook;
+	EHANDLE	m_hCarried;
+#endif
+
+	CNetworkVar( bool, m_bCarrying );
+
+	CTFWeaponHelper( const CTFWeaponHelper & ) {}
+};
+
 #endif

@@ -29,6 +29,8 @@
 #include "tf_weapon_medigun.h"
 #include "soundenvelope.h"
 #include "tf_obj_sentrygun.h"
+#include "tf_powerup.h"
+#include "tf_weapon_paintgun.h"
 
 
 //=============================================================================
@@ -1491,4 +1493,298 @@ void CTFProjectile_GrapplingHook::StopImpactFleshSoundLoop()
 		controller.SoundDestroy( m_pImpactFleshSoundLoop );
 		m_pImpactFleshSoundLoop = NULL;
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Helper hook. Noclip plus our own trace, so the arrow touch never sticks
+// or pulls the dog the way a real grappling hook does.
+//-----------------------------------------------------------------------------
+class CTraceFilterHelperHook : public CTraceFilterSimple
+{
+public:
+	CTraceFilterHelperHook( CBaseEntity *pOwner, CBaseEntity *pHook )
+		: CTraceFilterSimple( pOwner, COLLISION_GROUP_NONE )
+		, m_pOwner( pOwner )
+		, m_pHook( pHook )
+	{
+	}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask ) OVERRIDE
+	{
+		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
+		if ( !pEnt || pEnt == m_pHook || pEnt == m_pOwner )
+			return false;
+
+		if ( m_pOwner && pEnt->GetOwnerEntity() == m_pOwner )
+			return false;
+
+		return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
+	}
+
+	CBaseEntity *m_pOwner;
+	CBaseEntity *m_pHook;
+};
+
+LINK_ENTITY_TO_CLASS( tf_projectile_helperhook, CTFProjectile_HelperHook );
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_HelperHook, DT_TFProjectile_HelperHook )
+
+BEGIN_NETWORK_TABLE( CTFProjectile_HelperHook, DT_TFProjectile_HelperHook )
+END_NETWORK_TABLE()
+
+BEGIN_DATADESC( CTFProjectile_HelperHook )
+END_DATADESC()
+
+CTFProjectile_HelperHook::CTFProjectile_HelperHook()
+{
+	m_bRetracting = false;
+	m_vecDir = vec3_origin;
+	m_vecStart = vec3_origin;
+}
+
+CTFProjectile_HelperHook *CTFProjectile_HelperHook::Create( CTFPlayer *pOwner, CTFWeaponHelper *pHelper, const Vector &vecOrigin, const Vector &vecDir )
+{
+	CTFProjectile_HelperHook *pHook = static_cast< CTFProjectile_HelperHook * >( CreateEntityByName( "tf_projectile_helperhook" ) );
+	if ( !pHook )
+		return NULL;
+
+	Vector vecAim = vecDir;
+	if ( vecAim.LengthSqr() < 0.01f )
+		vecAim = Vector( 1.f, 0.f, 0.f );
+	VectorNormalize( vecAim );
+
+	pHook->SetOwnerEntity( pOwner );
+	if ( pOwner )
+		pHook->ChangeTeam( pOwner->GetTeamNumber() );
+	pHook->SetAbsOrigin( vecOrigin );
+	pHook->m_vecStart = vecOrigin;
+	pHook->m_vecDir = vecAim;
+	pHook->m_hHelper = pHelper;
+
+	DispatchSpawn( pHook );
+
+	pHook->SetAbsVelocity( vecAim * TF_HELPER_HOOK_SPEED );
+	QAngle angAim;
+	VectorAngles( vecAim, angAim );
+	pHook->SetAbsAngles( angAim );
+	return pHook;
+}
+
+void CTFProjectile_HelperHook::Spawn()
+{
+	m_iProjectileType = TF_PROJECTILE_GRAPPLINGHOOK;
+	BaseClass::Spawn();
+
+	SetTouch( NULL );
+	SetSolid( SOLID_NONE );
+	SetMoveType( MOVETYPE_NOCLIP );
+	SetGravity( 0.f );
+	m_bCritical = false;
+
+	SetThink( &CTFProjectile_HelperHook::FlyThink );
+	SetNextThink( gpGlobals->curtime );
+}
+
+void CTFProjectile_HelperHook::UpdateOnRemove()
+{
+	CTFWeaponHelper *pHelper = dynamic_cast< CTFWeaponHelper * >( m_hHelper.Get() );
+	if ( pHelper )
+		pHelper->ClearHook( this );
+	m_hHelper = NULL;
+
+	if ( m_hCarried.Get() )
+	{
+		Vector vecVel = GetAbsVelocity();
+		if ( vecVel.LengthSqr() < 100.f )
+			vecVel = Vector( 0.f, 0.f, 80.f );
+		DropCarried( vecVel );
+	}
+
+	BaseClass::UpdateOnRemove();
+}
+
+void CTFProjectile_HelperHook::FlyThink()
+{
+	SetNextThink( gpGlobals->curtime );
+
+	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+	if ( !pOwner || !pOwner->IsAlive() )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	if ( m_bRetracting )
+	{
+		Vector vecTarget = pOwner->EyePosition();
+		Vector vecDelta = vecTarget - GetAbsOrigin();
+		float flDist = vecDelta.Length();
+		if ( flDist <= 48.f )
+		{
+			Deliver();
+			UTIL_Remove( this );
+			return;
+		}
+
+		Vector vecDir = vecDelta / flDist;
+		SetAbsVelocity( vecDir * TF_HELPER_HOOK_SPEED );
+		QAngle angAim;
+		VectorAngles( vecDir, angAim );
+		SetAbsAngles( angAim );
+		return;
+	}
+
+	const float flStep = TF_HELPER_HOOK_SPEED * gpGlobals->frametime;
+	const float flTraveled = ( GetAbsOrigin() - m_vecStart ).Length();
+	if ( flTraveled >= TF_HELPER_HOOK_RANGE )
+	{
+		BeginRetract( false );
+		return;
+	}
+
+	Vector vecNext = GetAbsOrigin() + m_vecDir * MIN( flStep, TF_HELPER_HOOK_RANGE - flTraveled );
+	CTraceFilterHelperHook filter( pOwner, this );
+	trace_t tr;
+	UTIL_TraceHull( GetAbsOrigin(), vecNext, Vector( -6.f, -6.f, -6.f ), Vector( 6.f, 6.f, 6.f ), MASK_SOLID, &filter, &tr );
+
+	CTFPowerup *pPower = FindPowerup( GetAbsOrigin(), 48.f );
+	if ( !pPower )
+		pPower = FindPowerup( vecNext, 48.f );
+	if ( !pPower && tr.m_pEnt )
+		pPower = dynamic_cast< CTFPowerup * >( tr.m_pEnt );
+
+	if ( pPower || tr.startsolid || tr.fraction < 1.f || ( vecNext - m_vecStart ).Length() >= TF_HELPER_HOOK_RANGE - 1.f )
+	{
+		if ( !tr.startsolid && tr.fraction < 1.f )
+			SetAbsOrigin( tr.endpos );
+		else if ( !tr.startsolid )
+			SetAbsOrigin( vecNext );
+
+		if ( pPower )
+			Grab( pPower );
+
+		BeginRetract( pPower != NULL || tr.fraction < 1.f );
+		return;
+	}
+
+	SetAbsVelocity( m_vecDir * TF_HELPER_HOOK_SPEED );
+}
+
+void CTFProjectile_HelperHook::BeginRetract( bool bHit )
+{
+	m_bRetracting = true;
+	SetAbsVelocity( vec3_origin );
+
+	if ( bHit )
+		EmitSound( "WeaponGrapplingHook.ImpactDefault" );
+
+	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+	if ( !pOwner )
+		return;
+
+	Vector vecDir = pOwner->EyePosition() - GetAbsOrigin();
+	if ( vecDir.NormalizeInPlace() > 0.f )
+		SetAbsVelocity( vecDir * TF_HELPER_HOOK_SPEED );
+}
+
+CTFPowerup *CTFProjectile_HelperHook::FindPowerup( const Vector &vecCenter, float flRadius ) const
+{
+	const int nMax = 32;
+	CBaseEntity *pList[ nMax ];
+	const int nCount = UTIL_EntitiesInSphere( pList, nMax, vecCenter, flRadius, 0 );
+
+	CTFPowerup *pBest = NULL;
+	float flBest = flRadius * flRadius;
+	for ( int i = 0; i < nCount; ++i )
+	{
+		CTFPowerup *pPower = dynamic_cast< CTFPowerup * >( pList[ i ] );
+		if ( !pPower || pPower->IsDisabled() || pPower->GetMoveParent() )
+			continue;
+		if ( pPower->IsEffectActive( EF_NODRAW ) )
+			continue;
+		if ( pPower == m_hCarried.Get() )
+			continue;
+
+		const float flDist = ( pPower->WorldSpaceCenter() - vecCenter ).LengthSqr();
+		if ( flDist < flBest )
+		{
+			flBest = flDist;
+			pBest = pPower;
+		}
+	}
+
+	return pBest;
+}
+
+void CTFProjectile_HelperHook::Grab( CTFPowerup *pPower )
+{
+	if ( !pPower || m_hCarried.Get() )
+		return;
+
+	CTFPowerup *pTake = pPower;
+	if ( g_pGameRules && g_pGameRules->ItemShouldRespawn( pPower ) == GR_ITEM_RESPAWN_YES )
+	{
+		const char *pszClass = pPower->GetClassname();
+		const Vector org = pPower->GetAbsOrigin();
+		const QAngle ang = pPower->GetAbsAngles();
+		const int nSkin = pPower->m_nSkin;
+		const int iTeam = pPower->GetTeamNumber();
+		const string_t iszModel = pPower->GetModelName();
+
+		pPower->Respawn();
+
+		pTake = dynamic_cast< CTFPowerup * >( CreateEntityByName( pszClass ) );
+		if ( !pTake )
+			return;
+
+		pTake->SetAbsOrigin( org );
+		pTake->SetAbsAngles( ang );
+		pTake->ChangeTeam( iTeam );
+		pTake->AddSpawnFlags( SF_NORESPAWN );
+		DispatchSpawn( pTake );
+		if ( iszModel != NULL_STRING )
+			pTake->SetModel( STRING( iszModel ) );
+		pTake->m_nSkin = nSkin;
+	}
+
+	pTake->SetThink( NULL );
+	pTake->SetContextThink( NULL, gpGlobals->curtime, "PowerupRemoveThink" );
+	pTake->SetParent( this );
+	pTake->SetLocalOrigin( vec3_origin );
+	pTake->SetLocalAngles( vec3_angle );
+	pTake->SetSolid( SOLID_NONE );
+	pTake->SetMoveType( MOVETYPE_NONE );
+	pTake->SetAbsVelocity( vec3_origin );
+	m_hCarried = pTake;
+}
+
+void CTFProjectile_HelperHook::Deliver()
+{
+	CTFPowerup *pPower = dynamic_cast< CTFPowerup * >( m_hCarried.Get() );
+	m_hCarried = NULL;
+
+	CTFWeaponHelper *pHelper = dynamic_cast< CTFWeaponHelper * >( m_hHelper.Get() );
+	if ( pPower && pHelper )
+	{
+		pHelper->ReceivePickup( pPower );
+		return;
+	}
+
+	if ( pPower )
+	{
+		m_hCarried = pPower;
+		DropCarried( Vector( 0.f, 0.f, 80.f ) );
+	}
+}
+
+void CTFProjectile_HelperHook::DropCarried( const Vector &vecVelocity )
+{
+	CTFPowerup *pPower = dynamic_cast< CTFPowerup * >( m_hCarried.Get() );
+	m_hCarried = NULL;
+	if ( !pPower )
+		return;
+
+	pPower->SetParent( NULL );
+	pPower->SetThink( NULL );
+	Vector vecVel = vecVelocity;
+	pPower->DropSingleInstance( vecVel, ToTFPlayer( GetOwnerEntity() ), 0.3f );
 }

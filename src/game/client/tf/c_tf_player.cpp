@@ -12165,3 +12165,18 @@ int TF_GetItemDescriptionClass( void )
 {
 	return s_nItemDescriptionClass;
 }
+
+//-----------------------------------------------------------------------------
+// Prediction copies the server hull. C_BasePlayer::PostThink would put the
+// global 82/62 box back.
+//-----------------------------------------------------------------------------
+void C_TFPlayer::PostThink( void )
+{
+	BaseClass::PostThink();
+
+	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		const bool bDucked = ( GetFlags() & FL_DUCKING ) != 0;
+		SetCollisionBounds( GuardDog_HullMins( GetModelScale() ), GuardDog_HullMaxs( bDucked, GetModelScale() ) );
+	}
+}

@@ -1501,6 +1501,7 @@ int ClassZoomZ[] =
 	20, // TF_CLASS_RESUPPLY,
 	20, // TF_CLASS_BRICK,
 	27, // TF_CLASS_WITCH,
+	20, // TF_CLASS_GUARDDOG,
 };
 
 //-----------------------------------------------------------------------------

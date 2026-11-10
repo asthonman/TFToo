@@ -6,6 +6,8 @@
 
 #ifdef GAME_DLL
 #include "tf_player.h"
+#include "tf_projectile_arrow.h"
+#include "tf_powerup.h"
 #else
 #include "c_tf_player.h"
 #include "c_baseviewmodel.h"
@@ -299,3 +301,217 @@ void CTFWeaponGreasegun::PrimaryAttack( void )
 		m_flNextPaintAnim = gpGlobals->curtime + 0.15f;
 	}
 }
+
+//=============================================================================
+// The Helper. One carried pickup. The hook is the grappling-hook model.
+//=============================================================================
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponHelper, DT_WeaponHelper )
+
+BEGIN_NETWORK_TABLE( CTFWeaponHelper, DT_WeaponHelper )
+#ifdef CLIENT_DLL
+	RecvPropBool( RECVINFO( m_bCarrying ) ),
+#else
+	SendPropBool( SENDINFO( m_bCarrying ) ),
+#endif
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFWeaponHelper )
+#ifdef CLIENT_DLL
+	DEFINE_PRED_FIELD( m_bCarrying, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+#endif
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_helper, CTFWeaponHelper );
+PRECACHE_WEAPON_REGISTER( tf_weapon_helper );
+
+#ifdef GAME_DLL
+BEGIN_DATADESC( CTFWeaponHelper )
+END_DATADESC()
+#endif
+
+static const Vector s_vecHelperCarryOffset( 28.f, 12.f, 16.f );
+
+CTFWeaponHelper::CTFWeaponHelper()
+{
+	m_bCarrying = false;
+}
+
+void CTFWeaponHelper::Precache( void )
+{
+	BaseClass::Precache();
+#ifdef GAME_DLL
+	UTIL_PrecacheOther( "tf_projectile_helperhook" );
+#endif
+}
+
+void CTFWeaponHelper::ItemPostFrame( void )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+#ifdef GAME_DLL
+	if ( m_bCarrying && !m_hCarried.Get() )
+		m_bCarrying = false;
+#endif
+
+	if ( ( pOwner->m_nButtons & IN_ATTACK ) && m_flNextPrimaryAttack <= gpGlobals->curtime )
+	{
+		PrimaryAttack();
+		return;
+	}
+
+	WeaponIdle();
+}
+
+void CTFWeaponHelper::PrimaryAttack( void )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner || !CanAttack() )
+		return;
+
+	float flDelay = GetTFWpnData().m_WeaponData[ TF_WEAPON_PRIMARY_MODE ].m_flTimeFireDelay;
+	if ( flDelay < 0.05f )
+		flDelay = 0.5f;
+	m_flNextPrimaryAttack = gpGlobals->curtime + flDelay;
+
+#ifdef GAME_DLL
+	if ( m_bCarrying )
+		ThrowCarried();
+	else if ( !m_hHook.Get() )
+		FireHook();
+#endif
+
+	WeaponSound( SINGLE );
+	SendWeaponAnim( ACT_VM_PRIMARYATTACK );
+	pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY );
+}
+
+bool CTFWeaponHelper::CanHolster( void ) const
+{
+	if ( m_bCarrying )
+		return false;
+
+	return BaseClass::CanHolster();
+}
+
+bool CTFWeaponHelper::Holster( CBaseCombatWeapon *pSwitchingTo )
+{
+	if ( m_bCarrying )
+		return false;
+
+#ifdef GAME_DLL
+	if ( m_hHook.Get() )
+	{
+		CBaseEntity *pHook = m_hHook;
+		m_hHook = NULL;
+		UTIL_Remove( pHook );
+	}
+#endif
+
+	return BaseClass::Holster( pSwitchingTo );
+}
+
+void CTFWeaponHelper::UpdateOnRemove( void )
+{
+#ifdef GAME_DLL
+	DropCarried( Vector( 0.f, 0.f, 80.f ) );
+
+	if ( m_hHook.Get() )
+	{
+		CBaseEntity *pHook = m_hHook;
+		m_hHook = NULL;
+		UTIL_Remove( pHook );
+	}
+#endif
+
+	BaseClass::UpdateOnRemove();
+}
+
+#ifdef GAME_DLL
+void CTFWeaponHelper::FireHook( void )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+	Vector vecForward;
+	AngleVectors( pOwner->EyeAngles(), &vecForward );
+	Vector vecSrc = pOwner->Weapon_ShootPosition();
+
+	m_hHook = CTFProjectile_HelperHook::Create( pOwner, this, vecSrc, vecForward );
+}
+
+void CTFWeaponHelper::ReceivePickup( CBaseEntity *pPickup )
+{
+	CTFPowerup *pPower = dynamic_cast< CTFPowerup * >( pPickup );
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pPower || !pOwner )
+	{
+		if ( pPower )
+		{
+			Vector vecDrop( 0.f, 0.f, 80.f );
+			pPower->SetParent( NULL );
+			pPower->DropSingleInstance( vecDrop, pOwner, 0.3f );
+		}
+		return;
+	}
+
+	if ( m_hCarried.Get() && m_hCarried != pPower )
+	{
+		Vector vecDrop( 0.f, 0.f, 80.f );
+		pPower->SetParent( NULL );
+		pPower->DropSingleInstance( vecDrop, pOwner, 0.3f );
+		return;
+	}
+
+	pPower->SetParent( NULL );
+	pPower->SetParent( pOwner );
+	pPower->SetLocalOrigin( s_vecHelperCarryOffset );
+	pPower->SetLocalAngles( vec3_angle );
+	pPower->SetSolid( SOLID_NONE );
+	pPower->SetMoveType( MOVETYPE_NONE );
+	pPower->SetAbsVelocity( vec3_origin );
+	m_hCarried = pPower;
+	m_bCarrying = true;
+}
+
+void CTFWeaponHelper::ClearHook( CBaseEntity *pHook )
+{
+	if ( m_hHook == pHook )
+		m_hHook = NULL;
+}
+
+void CTFWeaponHelper::ThrowCarried( void )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+	Vector vecForward;
+	QAngle angThrow = pOwner->EyeAngles() + QAngle( -10.f, 0.f, 0.f );
+	AngleVectors( angThrow, &vecForward );
+	DropCarried( vecForward * 500.f );
+}
+
+void CTFWeaponHelper::DropCarried( const Vector &vecVelocity )
+{
+	CTFPowerup *pPower = dynamic_cast< CTFPowerup * >( m_hCarried.Get() );
+	m_hCarried = NULL;
+	m_bCarrying = false;
+	if ( !pPower )
+		return;
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	pPower->SetParent( NULL );
+	if ( pOwner )
+	{
+		QAngle angThrow = pOwner->EyeAngles() + QAngle( -10.f, 0.f, 0.f );
+		pPower->SetAbsOrigin( pOwner->EyePosition() + Vector( 0.f, 0.f, -8.f ) );
+		pPower->SetAbsAngles( angThrow );
+	}
+
+	Vector vecVel = vecVelocity;
+	pPower->DropSingleInstance( vecVel, pOwner, 0.3f );
+}
+#endif

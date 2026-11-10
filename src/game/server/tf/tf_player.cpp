@@ -3400,6 +3400,13 @@ void CTFPlayer::PostThink()
 {
 	BaseClass::PostThink();
 
+	// CBasePlayer::PostThink just stamped the global 82/62 hull.
+	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		const bool bDucked = ( GetFlags() & FL_DUCKING ) != 0;
+		SetCollisionBounds( GuardDog_HullMins( GetModelScale() ), GuardDog_HullMaxs( bDucked, GetModelScale() ) );
+	}
+
 	QAngle angles = GetLocalAngles();
 	angles[PITCH] = 0;
 	SetLocalAngles( angles );
@@ -17759,7 +17766,42 @@ void CTFPlayer::RefreshCollisionBounds( void )
 {
 	BaseClass::RefreshCollisionBounds();
 
+	if ( IsPlayerClass( TF_CLASS_GUARDDOG ) && !IsObserver() )
+	{
+		const bool bDucked = ( GetFlags() & FL_DUCKING ) != 0;
+		float flScale = GetModelScale();
+		if ( flScale <= 0.f )
+			flScale = 1.f;
+		SetViewOffset( Vector( 0.f, 0.f, ( bDucked ? TF_GUARDDOG_VIEW_DUCK : TF_GUARDDOG_VIEW_STAND ) * flScale ) );
+		SetCollisionBounds( GuardDog_HullMins( flScale ), GuardDog_HullMaxs( bDucked, flScale ) );
+		return;
+	}
+
 	SetViewOffset( ( IsDucked() ) ? ( VEC_DUCK_VIEW_SCALED( this ) ) : ( GetClassEyeHeight() ) );
+}
+
+extern ConVar sv_turbophysics;
+
+//-----------------------------------------------------------------------------
+// The vphysics shadow is what pushes props. Keep it on the short hull too.
+//-----------------------------------------------------------------------------
+void CTFPlayer::InitVCollision( const Vector &vecAbsOrigin, const Vector &vecAbsVelocity )
+{
+	if ( !IsPlayerClass( TF_CLASS_GUARDDOG ) || IsObserver() )
+	{
+		BaseClass::InitVCollision( vecAbsOrigin, vecAbsVelocity );
+		return;
+	}
+
+	VPhysicsDestroyObject();
+
+	if ( sv_turbophysics.GetBool() )
+		return;
+
+	const float flScale = GetModelScale();
+	CPhysCollide *pStand = PhysCreateBbox( GuardDog_HullMins( flScale ), GuardDog_HullMaxs( false, flScale ) );
+	CPhysCollide *pCrouch = PhysCreateBbox( GuardDog_HullMins( flScale ), GuardDog_HullMaxs( true, flScale ) );
+	SetupVPhysicsShadow( vecAbsOrigin, vecAbsVelocity, pStand, "player_stand", pCrouch, "player_crouch" );
 }
 
 //-----------------------------------------------------------------------------

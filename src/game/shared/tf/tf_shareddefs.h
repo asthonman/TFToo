@@ -229,6 +229,7 @@ enum ETFClass
 	TF_CLASS_RESUPPLY,
 	TF_CLASS_BRICK,
 	TF_CLASS_WITCH,
+	TF_CLASS_GUARDDOG,
 	TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 	TF_CLASS_COUNT_ALL,
 
@@ -270,6 +271,31 @@ enum ETFClass
 #define TF_BRICK_SLAM_DAMAGE		140.0f
 // The slam volume is the attack pose's bbox, plus a pad, then this.
 #define TF_BRICK_SLAM_BOX_SCALE		1.5f
+
+// Guard Dog. 300 units/sec is 100%, so 400% is 1200. Standing hull is 50
+// instead of the global 82, crouch is 35 instead of 62. Eyes stay inside it.
+#define TF_GUARDDOG_SPEED			1200.f
+#define TF_GUARDDOG_HULL_STAND		50.f
+#define TF_GUARDDOG_HULL_DUCK		35.f
+#define TF_GUARDDOG_VIEW_STAND		42.f
+#define TF_GUARDDOG_VIEW_DUCK		28.f
+// Helper hook. Same reach as tf_flamethrower_maxdamagedist.
+#define TF_HELPER_HOOK_RANGE		350.f
+#define TF_HELPER_HOOK_SPEED		1500.f
+
+inline Vector GuardDog_HullMins( float flModelScale )
+{
+	if ( flModelScale <= 0.f )
+		flModelScale = 1.f;
+	return Vector( -24.f, -24.f, 0.f ) * flModelScale;
+}
+
+inline Vector GuardDog_HullMaxs( bool bDucked, float flModelScale )
+{
+	if ( flModelScale <= 0.f )
+		flModelScale = 1.f;
+	return Vector( 24.f, 24.f, bDucked ? TF_GUARDDOG_HULL_DUCK : TF_GUARDDOG_HULL_STAND ) * flModelScale;
+}
 
 // 0 at normal size, 1 at full grow. Used while the scale is still moving.
 inline float TFBrickGrowFraction( float flModelScale )

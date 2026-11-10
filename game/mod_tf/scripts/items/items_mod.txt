@@ -587,5 +587,60 @@
 				"madcap"		"1"
 			}
 		}
+		// Guard Dog stock primary. Sniper's SMG is a secondary, so this is a
+		// new definition on the primary slot.
+		"b16"
+		{
+			"name"				"b16"
+			"item_class"		"tf_weapon_smg"
+			"item_name"			"#TF_Weapon_SMG"
+			"item_type_name"	"#TF_Weapon_SMG"
+			"item_logname"		"smg"
+			"item_iconname"		"smg"
+			"item_slot"			"primary"
+			"anim_slot"			"PRIMARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"model_world"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"used_by_classes"
+			{
+				"guarddog"		"1"
+			}
+		}
+		// Guard Dog stock secondary. Grapples one pickup, then throws it.
+		"b17"
+		{
+			"name"				"b17"
+			"item_class"		"tf_weapon_helper"
+			"item_name"			"#TF_Weapon_Helper"
+			"item_type_name"	"#TF_Weapon_Helper"
+			"item_logname"		"helper"
+			"item_iconname"		"smg"
+			"item_slot"			"secondary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"unique"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"1"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"model_world"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"used_by_classes"
+			{
+				"guarddog"		"1"
+			}
+		}
 	}
 }

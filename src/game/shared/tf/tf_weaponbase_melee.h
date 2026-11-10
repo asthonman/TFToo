@@ -275,4 +275,45 @@ private:
 	CTFBrickSlamWeapon( const CTFBrickSlamWeapon & ) {}
 };
 
+#ifdef CLIENT_DLL
+#define CTFWeaponDemoShield C_TFWeaponDemoShield
+#endif
+
+//-----------------------------------------------------------------------------
+// Demoman shields, as a melee. Mouse2 charges (SecondaryAttack already calls
+// DoClassSpecialSkill). Mouse1 is the stock swing, which cancels the charge.
+// Any shield in the loadout still provides its attributes. Charge only starts
+// while this weapon is the active one.
+//-----------------------------------------------------------------------------
+class CTFWeaponDemoShield : public CTFWeaponBaseMelee
+{
+public:
+	DECLARE_CLASS( CTFWeaponDemoShield, CTFWeaponBaseMelee );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFWeaponDemoShield();
+
+	virtual void	Precache( void );
+	virtual void	Equip( CBaseCombatCharacter *pOwner );
+	virtual void	UpdateOnRemove( void );
+
+	void	DoSpecialAction( CTFPlayer *pPlayer );
+	void	EndSpecialAction( CTFPlayer *pPlayer );
+	bool	CanCharge( CTFPlayer *pPlayer );
+	void	DoCharge( CTFPlayer *pPlayer );
+	void	ShieldBash( CTFPlayer *pPlayer, float flCurrentChargeMeter );
+	float	CalculateChargeDamage( float flCurrentChargeMeter );
+	Vector	GetShieldDamageForce( float flCurrentChargeMeter );
+
+private:
+#ifdef GAME_DLL
+	bool	m_bImpactedSomething;
+#endif
+
+	CTFWeaponDemoShield( const CTFWeaponDemoShield & ) {}
+};
+
+CTFWeaponDemoShield *GetEquippedDemoShield( CTFPlayer *pPlayer );
+
 #endif // TF_WEAPONBASE_MELEE_H

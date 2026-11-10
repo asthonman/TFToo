@@ -375,6 +375,9 @@ public:
 	bool			CanPlayerMove() const;
 	float			TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility = false ) const;
 	void			TeamFortress_SetSpeed();
+	virtual const Vector	GetPlayerMins( void ) const;
+	virtual const Vector	GetPlayerMaxs( void ) const;
+	virtual void	PostThink( void );
 	bool			HasItem( void ) const;				// Currently can have only one item at a time.
 	void			SetItem( C_TFItem *pItem );
 	C_TFItem		*GetItem( void ) const;

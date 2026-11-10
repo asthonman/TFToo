@@ -2112,3 +2112,227 @@ void CTFBrickSlamWeapon::SlamDamage( void )
 }
 #endif
 
+#include "tf_wearable_weapons.h"
+
+//=============================================================================
+// Charge'n Targe and the other shields, as melee weapons.
+//=============================================================================
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponDemoShield, DT_TFWeaponDemoShield )
+
+BEGIN_NETWORK_TABLE( CTFWeaponDemoShield, DT_TFWeaponDemoShield )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFWeaponDemoShield )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_demoshield, CTFWeaponDemoShield );
+PRECACHE_WEAPON_REGISTER( tf_weapon_demoshield );
+
+CTFWeaponDemoShield::CTFWeaponDemoShield()
+{
+#ifdef GAME_DLL
+	m_bImpactedSomething = false;
+#endif
+}
+
+void CTFWeaponDemoShield::Precache( void )
+{
+	BaseClass::Precache();
+
+	PrecacheScriptSound( "DemoCharge.HitWorld" );
+	PrecacheScriptSound( "DemoCharge.HitFlesh" );
+	PrecacheScriptSound( "DemoCharge.HitFleshRange" );
+}
+
+void CTFWeaponDemoShield::Equip( CBaseCombatCharacter *pOwner )
+{
+	BaseClass::Equip( pOwner );
+
+	CTFPlayer *pTFPlayer = ToTFPlayer( pOwner );
+	if ( pTFPlayer )
+		pTFPlayer->m_Shared.SetShieldEquipped( true );
+}
+
+void CTFWeaponDemoShield::UpdateOnRemove( void )
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+
+	BaseClass::UpdateOnRemove();
+
+	if ( !pOwner )
+		return;
+
+	bool bOther = false;
+	for ( int i = 0; i < pOwner->WeaponCount(); ++i )
+	{
+		CTFWeaponDemoShield *pShield = dynamic_cast< CTFWeaponDemoShield * >( pOwner->GetWeapon( i ) );
+		if ( pShield && pShield != this )
+		{
+			bOther = true;
+			break;
+		}
+	}
+
+	if ( !bOther )
+	{
+		for ( int i = 0; i < pOwner->GetNumWearables(); ++i )
+		{
+			if ( dynamic_cast< CTFWearableDemoShield * >( pOwner->GetWearable( i ) ) )
+			{
+				bOther = true;
+				break;
+			}
+		}
+	}
+
+	if ( !bOther )
+		pOwner->m_Shared.SetShieldEquipped( false );
+}
+
+void CTFWeaponDemoShield::DoSpecialAction( CTFPlayer *pPlayer )
+{
+	if ( CanCharge( pPlayer ) )
+		DoCharge( pPlayer );
+}
+
+void CTFWeaponDemoShield::EndSpecialAction( CTFPlayer *pPlayer )
+{
+	int nAttackNotCancelCharge = 0;
+	CALL_ATTRIB_HOOK_INT( nAttackNotCancelCharge, attack_not_cancel_charge );
+	if ( nAttackNotCancelCharge > 0 )
+		return;
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+	{
+		pPlayer->m_Shared.CalcChargeCrit();
+		pPlayer->m_Shared.SetDemomanChargeMeter( 0 );
+		pPlayer->m_Shared.RemoveCond( TF_COND_SHIELD_CHARGE );
+	}
+}
+
+bool CTFWeaponDemoShield::CanCharge( CTFPlayer *pPlayer )
+{
+	if ( TFGameRules() && ( TFGameRules()->State_Get() == GR_STATE_PREROUND ) )
+		return false;
+
+	if ( pPlayer->m_Shared.IsLoser() )
+		return false;
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_STUNNED ) )
+		return false;
+
+	if ( pPlayer->IsTaunting() )
+		return false;
+
+	if ( pPlayer->GetGrapplingHookTarget() )
+		return false;
+
+	if ( pPlayer->m_Shared.GetDemomanChargeMeter() != 100.f )
+		return false;
+
+	if ( TFGameRules() && TFGameRules()->IsPasstimeMode() && pPlayer->m_Shared.HasPasstimeBall() )
+		return false;
+
+	return true;
+}
+
+void CTFWeaponDemoShield::DoCharge( CTFPlayer *pPlayer )
+{
+#ifdef GAME_DLL
+	float flChargeTime = 1.5f;
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayer, flChargeTime, mod_charge_time );
+	pPlayer->m_Shared.AddCond( TF_COND_SHIELD_CHARGE, flChargeTime );
+	m_bImpactedSomething = false;
+#endif
+}
+
+void CTFWeaponDemoShield::ShieldBash( CTFPlayer *pPlayer, float flCurrentChargeMeter )
+{
+#ifdef GAME_DLL
+	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+	if ( !pOwner )
+		return;
+
+	if ( m_bImpactedSomething )
+		return;
+
+	m_bImpactedSomething = true;
+
+	Vector vecForward;
+	AngleVectors( pOwner->EyeAngles(), &vecForward );
+	Vector vecStart = pOwner->Weapon_ShootPosition();
+	Vector vecEnd = vecStart + vecForward * 48;
+
+	trace_t trace;
+	UTIL_TraceHull( vecStart, vecEnd, -Vector( 24, 24, 24 ), Vector( 24, 24, 24 ),
+		MASK_SOLID, pOwner, COLLISION_GROUP_NONE, &trace );
+
+	bool bImpactDamage = false;
+	if ( trace.m_pEnt )
+	{
+		const char *pszSoundName = "DemoCharge.HitWorld";
+		if ( trace.m_pEnt->IsPlayer() )
+		{
+			bImpactDamage = true;
+			pszSoundName = "DemoCharge.HitFleshRange";
+		}
+		pOwner->EmitSound( pszSoundName );
+	}
+
+	if ( bImpactDamage )
+	{
+		float flBashDamage = CalculateChargeDamage( flCurrentChargeMeter );
+		CTakeDamageInfo info;
+		info.SetAttacker( pOwner );
+		info.SetInflictor( this );
+		info.SetWeapon( this );
+		info.SetDamage( flBashDamage );
+		info.SetDamageCustom( TF_DMG_CUSTOM_CHARGE_IMPACT );
+		info.SetDamageForce( GetShieldDamageForce( flCurrentChargeMeter ) );
+		info.SetDamagePosition( trace.endpos );
+		info.SetDamageType( DMG_CLUB );
+
+		Vector dir;
+		AngleVectors( pOwner->GetAbsAngles(), &dir );
+		trace.m_pEnt->DispatchTraceAttack( info, dir, &trace );
+		ApplyMultiDamage();
+
+		pOwner->m_Shared.CalcChargeCrit();
+	}
+
+	UTIL_ScreenShake( pOwner->WorldSpaceCenter(), 25.0, 150.0, 1.0, 750, SHAKE_START );
+#else
+	( void )pPlayer;
+	( void )flCurrentChargeMeter;
+#endif
+}
+
+float CTFWeaponDemoShield::CalculateChargeDamage( float flCurrentChargeMeter )
+{
+	float flImpactDamage = RemapValClamped( flCurrentChargeMeter, 90.0f, 40.0f, 15.0f, 50.0f );
+
+	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
+	if ( !pOwner )
+		return flImpactDamage;
+
+	int iDecaps = Min( pOwner->m_Shared.GetDecapitations(), 5 );
+	if ( iDecaps > 0 )
+		flImpactDamage *= ( 1.0f + iDecaps * 0.1f );
+
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pOwner, flImpactDamage, charge_impact_damage );
+	return flImpactDamage;
+}
+
+Vector CTFWeaponDemoShield::GetShieldDamageForce( float flCurrentChargeMeter )
+{
+	Vector vecVelocity = GetAbsVelocity();
+	IPhysicsObject *pPhysicsObject = VPhysicsGetObject();
+	if ( pPhysicsObject )
+	{
+		pPhysicsObject->GetVelocity( &vecVelocity, NULL );
+		VectorNormalize( vecVelocity );
+	}
+
+	return ( vecVelocity * CalculateChargeDamage( flCurrentChargeMeter ) );
+}
+

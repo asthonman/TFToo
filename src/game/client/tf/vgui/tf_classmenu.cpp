@@ -712,6 +712,7 @@ const char *g_pszLegacyClassSelectVCDWeapons[TF_LAST_NORMAL_CLASS] =
 	"",										// TF_CLASS_RESUPPLY,
 	"",										// TF_CLASS_BRICK,
 	"",										// TF_CLASS_WITCH,
+	"tf_weapon_smg",						// TF_CLASS_GUARDDOG,
 };
 
 int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
@@ -731,6 +732,7 @@ int g_iLegacyClassSelectWeaponSlots[TF_LAST_NORMAL_CLASS] =
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_RESUPPLY,
 	LOADOUT_POSITION_MELEE,			// TF_CLASS_BRICK,
 	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_WITCH,
+	LOADOUT_POSITION_PRIMARY,		// TF_CLASS_GUARDDOG,
 };
 
 //-----------------------------------------------------------------------------
@@ -1660,6 +1662,7 @@ int g_ClassDefinesRemap[] = {
 	TF_CLASS_RESUPPLY,
 	TF_CLASS_BRICK,
 	TF_CLASS_WITCH,
+	TF_CLASS_GUARDDOG,
 	TF_CLASS_CIVILIAN,
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_ClassDefinesRemap ) == TF_LAST_NORMAL_CLASS + 1 );

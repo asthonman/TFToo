@@ -313,3 +313,8 @@ void C_TFProjectile_GrapplingHook::RemoveRope()
 		m_hRope = NULL;
 	}
 }
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_HelperHook, DT_TFProjectile_HelperHook )
+
+BEGIN_NETWORK_TABLE( C_TFProjectile_HelperHook, DT_TFProjectile_HelperHook )
+END_NETWORK_TABLE()

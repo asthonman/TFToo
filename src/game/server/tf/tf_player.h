@@ -346,6 +346,9 @@ public:
 	void Touch( CBaseEntity *pOther );
 
 	virtual	void RefreshCollisionBounds( void );
+	virtual const Vector	GetPlayerMins( void ) const;
+	virtual const Vector	GetPlayerMaxs( void ) const;
+	virtual void			InitVCollision( const Vector &vecAbsOrigin, const Vector &vecAbsVelocity );
 
 	float GetMovementForwardPull( void ) const;
 	bool CanPlayerMove() const;

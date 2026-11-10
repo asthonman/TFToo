@@ -26,6 +26,7 @@ extern bool UseHWMorphModels();
 #define TF_CLASS_RESUPPLY_FILE			"scripts/playerclasses/resupply"
 #define TF_CLASS_BRICK_FILE				"scripts/playerclasses/brick"
 #define TF_CLASS_WITCH_FILE				"scripts/playerclasses/witch"
+#define TF_CLASS_GUARDDOG_FILE			"scripts/playerclasses/guarddog"
 #define TF_CLASS_CIVILIAN_FILE			"scripts/playerclasses/civilian"
 
 const char *s_aPlayerClassFiles[] =
@@ -45,6 +46,7 @@ const char *s_aPlayerClassFiles[] =
 	TF_CLASS_RESUPPLY_FILE,
 	TF_CLASS_BRICK_FILE,
 	TF_CLASS_WITCH_FILE,
+	TF_CLASS_GUARDDOG_FILE,
 	TF_CLASS_CIVILIAN_FILE
 };
 
