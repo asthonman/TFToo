@@ -1015,6 +1015,7 @@ CTFPlayer::CTFPlayer()
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
+	m_flMadcapCombatTime = 0.f;
 	m_hWitchSpellbook = NULL;
 	m_nLastWitchSpell = 0;
 	m_vecMadcapCourse.Init();
@@ -4450,6 +4451,7 @@ void CTFPlayer::Spawn()
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_flPMeter = 0.f;
+	m_flMadcapCombatTime = 0.f;
 	ClearMadcapCourse();
 	m_Shared.SetScoutEnergyDrinkMeter( 100.0f );
 	m_Shared.SetScoutHypeMeter( 0.0f );
@@ -4842,6 +4844,7 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 		m_bBrickGrown = false;
 		m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 		m_flPMeter = 0.f;
+		m_flMadcapCombatTime = 0.f;
 		ClearMadcapCourse();
 		SetModelScale( 1.0f );
 		m_Shared.SetScoutEnergyDrinkMeter( 100.0f );

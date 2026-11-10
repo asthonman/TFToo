@@ -614,8 +614,9 @@ bool CTFGameMovement::ChargeMove()
 }
 
 //-----------------------------------------------------------------------------
-// Madcap velocity. Rollerskate friction on the ground. The bar is just
-// horizontal speed over his top speed. There is no separate fill or drain.
+// Madcap adrenaline. Filled when he deals or takes damage. Fades on the
+// Medi Gun's in-combat clock. Server only: predicting it against a hit the
+// client has not heard about yet just causes a correction.
 //-----------------------------------------------------------------------------
 // sv_friction is 4, so 0.06 coasts instead of stopping short.
 static const float tf_madcap_friction_scale = 0.06f;
@@ -626,6 +627,7 @@ static const float tf_madcap_build_accel = 4.1888f;
 
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
+#ifdef GAME_DLL
 	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
 		return;
 
@@ -636,11 +638,8 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 		return;
 	}
 
-	Vector vecVel = mv->m_vecVelocity;
-	vecVel.z = 0.f;
-	const float flTop = Max( mv->m_flMaxSpeed, 1.f );
-	const float flMeter = clamp( vecVel.Length() / flTop, 0.f, 1.f ) * TF_MADCAP_PMETER_MAX;
-	m_pTFPlayer->SetPMeter( flMeter );
+	m_pTFPlayer->SetPMeter( Madcap_AdrenalineFromCombatTime( m_pTFPlayer->GetMadcapCombatTime(), gpGlobals->curtime ) );
+#endif
 }
 
 //-----------------------------------------------------------------------------

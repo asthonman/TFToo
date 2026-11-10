@@ -1892,7 +1892,7 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 
 	float flDamage = info.GetDamage();
 
-	// Same P-meter ramp as damage dealt to players. A building is never himself.
+	// Same adrenaline ramp as damage dealt to players. A building is never himself.
 	CTFPlayer *pMadcapAttacker = ToTFPlayer( info.GetAttacker() );
 	if ( pMadcapAttacker && pMadcapAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
 	{
@@ -1992,6 +1992,9 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 
 	// Only track actual damage - not overkill
 	m_AchievementData.AddDamageEventToHistory( info.GetAttacker(), ( IsDamageFatal( m_flHealth, flDamage ) ) ? m_flHealth : flDamage );
+
+	if ( flDamage > 0.f && pMadcapAttacker )
+		pMadcapAttacker->NoteMadcapAdrenaline();
 
 	// if we cannot die
 	if ( m_bCannotDie && IsDamageFatal( m_flHealth, flDamage ) )

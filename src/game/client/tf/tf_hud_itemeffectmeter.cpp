@@ -193,8 +193,9 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Madcap's velocity. The bar is his current speed as a percent of top speed.
-// The shield charge bar uses the same slot, so this meter steps above it.
+// Madcap's adrenaline. Fills when he deals or takes damage, then fades on
+// the Medi Gun's in-combat clock. The shield charge bar uses the same slot,
+// so this meter steps above it.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_Madcap : public CHudItemEffectMeter
 {
@@ -211,7 +212,7 @@ public:
 		return m_pPlayer && m_pPlayer->IsAlive() && m_pPlayer->IsPlayerClass( TF_CLASS_MADCAP );
 	}
 
-	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_Velocity"; }
+	virtual const char *GetLabelText( void ) OVERRIDE { return "#TF_Madcap_Adrenaline"; }
 	virtual bool ShouldBeep( void ) OVERRIDE { return false; }
 	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
 	virtual void PerformLayout() OVERRIDE;

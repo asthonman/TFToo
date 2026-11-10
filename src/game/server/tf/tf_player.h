@@ -541,6 +541,14 @@ public:
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float					GetPMeter( void ) const { return m_flPMeter; }
 	void					SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
+	float					GetMadcapCombatTime( void ) const { return m_flMadcapCombatTime; }
+	// Dealing or taking damage. The bar then fades on the Medi Gun clock.
+	void					NoteMadcapAdrenaline( void )
+	{
+		if ( !IsPlayerClass( TF_CLASS_MADCAP ) || !IsAlive() )
+			return;
+		m_flMadcapCombatTime = gpGlobals->curtime;
+	}
 	// Absolute horizontal direction the P-meter is measured against.
 	bool					HasMadcapCourse( void ) const { return m_bMadcapCourse; }
 	const Vector			&GetMadcapCourse( void ) const { return m_vecMadcapCourse; }
@@ -1234,8 +1242,10 @@ private:
 	CNetworkVar( float, m_flBrickGrowMeter );
 	// Ceiling blocked the standing hull. Held until standing fits again.
 	CNetworkVar( bool, m_bBrickGrowDuck );
-	// Madcap sprint. 0-100. Filled by running forward, not by missing health.
+	// Madcap adrenaline, 0-100. Damage dealt or taken fills it.
 	CNetworkVar( float, m_flPMeter );
+	// curtime of the last damage he dealt or took. Not networked.
+	float					m_flMadcapCombatTime;
 	// Not networked. Predicted on the client. Locked while the meter is up.
 	Vector					m_vecMadcapCourse;
 	bool					m_bMadcapCourse;

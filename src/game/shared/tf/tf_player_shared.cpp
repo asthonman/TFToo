@@ -10915,8 +10915,8 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	else if ( m_Shared.InCond( TF_COND_DISGUISED ) && !m_Shared.IsStealthed() )
 	{
 		// Spy is 320. Any slower disguise, including Engineer, Pyro, Sniper, and
-		// Resupply (all 300), caps him there. Madcap's sprint is a P-meter,
-		// so that disguise does not copy the meter and Spy stays at spy speed.
+		// Resupply (all 300), caps him there. Madcap's +60% speed is not part
+		// of the disguise, so Spy stays at spy speed.
 		if ( m_Shared.GetDisguiseClass() != TF_CLASS_MADCAP )
 		{
 			float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;
@@ -11010,7 +11010,7 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed *= pWeapon->GetSpeedMod();
 	}
 
-	// Top speed is fixed. Facing does not change it. The meter only tracks velocity.
+	// Top speed is fixed. Facing does not change it. Adrenaline does not either.
 	if ( playerclass == TF_CLASS_MADCAP )
 	{
 		maxfbspeed *= TF_MADCAP_TOP_SPEED_SCALE;
