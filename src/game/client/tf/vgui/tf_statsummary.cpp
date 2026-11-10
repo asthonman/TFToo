@@ -151,6 +151,8 @@ CTFStatsSummaryPanel::CTFStatsSummaryPanel()
 void CTFStatsSummaryPanel::Init( void )
 {
 	m_bControlsLoaded = false;
+	m_bClassScrollBuilt = false;
+	m_bStatFrameLifted = false;
 	m_bInteractive = false;
 	m_bEmbedded = false;
 	m_xStartLHBar = 0;
@@ -267,6 +269,29 @@ void CTFStatsSummaryPanel::PerformLayout()
 		m_pResetStatsButton->SizeToContents();
 	}
 #endif
+
+	// LoadControlSettings applies "c+" positions, but they are not real until
+	// this layout pass. Building the class scroller any earlier drops the
+	// names on the map photo.
+	if ( m_bControlsLoaded && m_pPlayerData && !m_bClassScrollBuilt )
+	{
+		Panel *pLeft = m_pPlayerData->FindChildByName( "ClassBarBG1A", false );
+		if ( pLeft && pLeft->GetXPos() > 0 && m_pPlayerData->GetWide() > 100 )
+		{
+			if ( SetupClassStatScroll() )
+				m_bClassScrollBuilt = true;
+		}
+	}
+
+	// The loading screen heading moves over the records column, and the
+	// points / playtime frame grows up into the space that frees. The
+	// embedded stats page keeps the res-file layout.
+	if ( m_bControlsLoaded && !m_bEmbedded )
+	{
+		if ( m_bClassScrollBuilt && !m_bStatFrameLifted )
+			LiftPerformanceReport();
+		AlignMapHeadingToRecords();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -399,6 +424,8 @@ void CTFStatsSummaryPanel::ApplySchemeSettings(vgui::IScheme *pScheme)
 	// of StatData. MarkForDeletion is too late: the build group would still
 	// find the doomed panels and then not replace them.
 	ReleaseClassStatScroll();
+	m_bClassScrollBuilt = false;
+	m_bStatFrameLifted = false;
 
 	if ( m_bEmbedded )
 	{
@@ -438,7 +465,7 @@ void CTFStatsSummaryPanel::ApplySchemeSettings(vgui::IScheme *pScheme)
 
 	// The stock list has one row per original class. Extra classes need rows,
 	// and those rows do not fit, so the time and score list scrolls.
-	SetupClassStatScroll();
+	// Built from PerformLayout, once "c+" positions are real.
 
 	// fill the combo box selections appropriately
 	InitBarChartComboBox( m_pBarChartComboBoxA );
@@ -787,6 +814,16 @@ void CTFStatsSummaryPanel::UpdateLeaderboard()
 		}
 		// show old stats
 		m_pPlayerData->SetVisible( bVisible == false );
+		// The report and the class tip travel together. Hiding the tip here
+		// is what left the bottom of the loading screen empty.
+		if ( !m_bEmbedded )
+		{
+			const bool bShowReport = ( bVisible == false );
+			if ( m_pTipText )
+				m_pTipText->SetVisible( bShowReport );
+			if ( m_pTipImage && !bShowReport )
+				m_pTipImage->SetVisible( false );
+		}
 		if ( m_pMapInfoPanel )
 		{
 			vgui::Panel* pInfoBG = m_pMapInfoPanel->FindChildByName( "InfoBG" );
@@ -1125,8 +1162,12 @@ void CTFStatsSummaryPanel::UpdateControls()
 	m_pPlayerData->SetVisible( bShowPlayerData );
 	m_pInteractiveHeaders->SetVisible( m_bInteractive );
 	m_pNonInteractiveHeaders->SetVisible( !m_bInteractive );
-	m_pTipText->SetVisible( bShowPlayerData );
-	m_pTipImage->SetVisible( bShowPlayerData );
+	// A new player has no spawns, so bShowPlayerData is false on the loading
+	// screen, and UpdateLeaderboard then shows the report anyway. Keep the tip.
+	const bool bShowTip = bShowPlayerData || ( !m_bEmbedded && !m_bInteractive );
+	m_pTipText->SetVisible( bShowTip );
+	if ( m_pTipImage && !bShowTip )
+		m_pTipImage->SetVisible( false );
 
 	if ( !IsX360() )
 	{
@@ -1243,19 +1284,162 @@ static void SetClassStatLabelVar( Label *pLabel, const char *pszVarFmt, int iRow
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: The loading-screen time and score list is built for nine classes.
-//		Extra classes get cloned rows inside a scrollbar that keeps the
-//		original list height, so the tip and the records stay put.
+// Purpose: Grow the points / playtime frame upward. The bottom stays put so
+//		the class tip still fits under the list. The records column is not moved.
 //-----------------------------------------------------------------------------
-void CTFStatsSummaryPanel::SetupClassStatScroll()
+void CTFStatsSummaryPanel::LiftPerformanceReport()
+{
+	if ( m_bStatFrameLifted || !m_pPlayerData )
+		return;
+
+	Panel *pAvg = m_pPlayerData->FindChildByName( "AveragesBG", false );
+	if ( !pAvg || pAvg->GetTall() < 20 )
+		return;
+
+	const int nLift = scheme()->GetProportionalScaledValueEx( GetScheme(), 64 );
+	if ( nLift < 1 )
+		return;
+
+	// The map heading is moved over the records panel, so this frame can
+	// grow into the space that heading used to occupy.
+	const int nMinY = scheme()->GetProportionalScaledValueEx( GetScheme(), 28 );
+	int x, y, w, h;
+	pAvg->GetBounds( x, y, w, h );
+	// Still the pre-layout value. Leave the flag clear so the next pass can lift.
+	if ( y < nMinY )
+		return;
+	int nUse = nLift;
+	if ( y - nUse < nMinY )
+		nUse = y - nMinY;
+	if ( nUse < 1 )
+	{
+		m_bStatFrameLifted = true;
+		return;
+	}
+
+	int nMaxBottom = y + h;
+	if ( m_pTipText )
+	{
+		int iTipX, iTipY;
+		m_pTipText->GetPos( iTipX, iTipY );
+		const int nGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 4 );
+		if ( iTipY > 40 )
+			nMaxBottom = iTipY - nGap;
+	}
+
+	pAvg->SetBounds( x, y - nUse, w, h + nUse );
+
+	Panel *pMove[] =
+	{
+		m_pPlayerData->FindChildByName( "AveragesLabel", false ),
+		m_pPlayerData->FindChildByName( "BarChartLabelA", true ),
+		m_pPlayerData->FindChildByName( "BarChartLabelB", true ),
+		m_pBarChartComboBoxA,
+		m_pBarChartComboBoxB,
+	};
+	for ( int i = 0; i < ARRAYSIZE( pMove ); i++ )
+	{
+		Panel *pPanel = pMove[i];
+		if ( !pPanel )
+			continue;
+		int px, py;
+		pPanel->GetPos( px, py );
+		pPanel->SetPos( px, py - nUse );
+	}
+
+	Panel *pScroll = m_pPlayerData->FindChildByName( "ClassStatScroll", false );
+	if ( pScroll )
+	{
+		int sx, sy, sw, sh;
+		pScroll->GetBounds( sx, sy, sw, sh );
+		int nBottom = sy + sh;
+		if ( nBottom > nMaxBottom )
+			nBottom = nMaxBottom;
+		const int nNewY = sy - nUse;
+		int nNewH = nBottom - nNewY;
+		if ( nNewH < 1 )
+			nNewH = sh;
+		pScroll->SetBounds( sx, nNewY, sw, nNewH );
+	}
+	else
+	{
+		static const char *kRowPatterns[] =
+		{
+			"ClassBarBG%dA", "ClassBarBG%dB",
+			"ClassBar%dA", "ClassBar%dB",
+			"ClassBarLabel%dA", "ClassBarLabel%dB",
+			"ClassLabel%d",
+		};
+		for ( int iRow = 1; iRow <= 9; iRow++ )
+		{
+			for ( int iCtl = 0; iCtl < ARRAYSIZE( kRowPatterns ); iCtl++ )
+			{
+				Panel *pRow = m_pPlayerData->FindChildByName( CFmtStr( kRowPatterns[iCtl], iRow ), false );
+				if ( !pRow )
+					continue;
+				int px, py;
+				pRow->GetPos( px, py );
+				pRow->SetPos( px, py - nUse );
+			}
+		}
+	}
+
+	m_bStatFrameLifted = true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Center "on your way to" / map name / map type on the records panel.
+//-----------------------------------------------------------------------------
+void CTFStatsSummaryPanel::AlignMapHeadingToRecords()
 {
 	if ( !m_pPlayerData )
 		return;
 
+	Panel *pRecords = m_pPlayerData->FindChildByName( "RecordsBG", false );
+	if ( !pRecords || pRecords->GetWide() < 20 )
+		return;
+
+	int nCenter = pRecords->GetXPos() + pRecords->GetWide() / 2;
+	Panel *pParent = pRecords->GetParent();
+	if ( pParent && pParent != this )
+	{
+		int px, py;
+		pParent->GetPos( px, py );
+		nCenter += px;
+	}
+	// Not laid out yet. A center this small would pin the heading to the photo.
+	if ( nCenter < pRecords->GetWide() )
+		return;
+
+	const char *pszLabels[] = { "OnYourWayLabel", "MapLabel", "MapType" };
+	for ( int i = 0; i < ARRAYSIZE( pszLabels ); i++ )
+	{
+		Panel *pLabel = FindChildByName( pszLabels[i], false );
+		if ( !pLabel || pLabel->GetWide() < 20 )
+			continue;
+		int lx, ly;
+		pLabel->GetPos( lx, ly );
+		pLabel->SetPos( nCenter - pLabel->GetWide() / 2, ly );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The loading-screen time and score list is built for nine classes.
+//		Extra classes get cloned rows inside a scrollbar. Returns false when
+//		positions are not ready yet so PerformLayout can try again.
+//-----------------------------------------------------------------------------
+bool CTFStatsSummaryPanel::SetupClassStatScroll()
+{
+	if ( !m_pPlayerData )
+		return false;
+
+	if ( m_pPlayerData->FindChildByName( "ClassStatScroll", false ) )
+		return true;
+
 	Label *pLabel1 = dynamic_cast< Label * >( m_pPlayerData->FindChildByName( "ClassLabel1", false ) );
 	Label *pLabel2 = dynamic_cast< Label * >( m_pPlayerData->FindChildByName( "ClassLabel2", false ) );
 	if ( !pLabel1 )
-		return;
+		return false;
 
 	int nExisting = 0;
 	for ( int i = 1; i < 64; i++ )
@@ -1265,7 +1449,7 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 		nExisting = i;
 	}
 	if ( nExisting < 1 )
-		return;
+		return false;
 
 	int nNeeded = 0;
 	for ( int iClass = TF_FIRST_NORMAL_CLASS; iClass <= TF_LAST_NORMAL_CLASS; iClass++ )
@@ -1275,7 +1459,7 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 		nNeeded++;
 	}
 	if ( nNeeded <= nExisting )
-		return;
+		return true;
 
 	int y0 = pLabel1->GetYPos();
 	int pitch = pLabel1->GetTall();
@@ -1292,7 +1476,16 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 	if ( !pLeft )
 		pLeft = m_pPlayerData->FindChildByName( "ClassBar1A", false );
 	if ( !pLeft )
-		return;
+		return false;
+
+	// "c+" values read as 0 until layout. Reparenting off those puts every
+	// class name to the left of the performance report.
+	if ( pLeft->GetXPos() <= 0 || pLabel1->GetXPos() <= pLeft->GetXPos() )
+		return false;
+	if ( pLabel2 && pLabel2->GetYPos() <= y0 )
+		return false;
+	if ( pLabel1->GetTall() < 1 || viewH < 1 )
+		return false;
 
 	const int nScrollbarWide = 16;
 	int parentW = m_pPlayerData->GetWide();
@@ -1309,7 +1502,7 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 	if ( scrollX + scrollW > parentW )
 		scrollW = parentW - scrollX;
 	if ( scrollW < nScrollbarWide + 32 || viewH < 1 )
-		return;
+		return false;
 
 	EditablePanel *pChild = new EditablePanel( NULL, "ClassStatList" );
 	pChild->SetPaintBackgroundEnabled( false );
@@ -1434,6 +1627,8 @@ void CTFStatsSummaryPanel::SetupClassStatScroll()
 		pLHBar->GetBounds( m_xStartLHBar, y, m_iBarMaxWidth, m_iBarHeight );
 		pRHBar->GetBounds( m_xStartRHBar, y, m_iBarMaxWidth, m_iBarHeight );
 	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------

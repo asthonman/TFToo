@@ -11079,7 +11079,7 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		}
 	}
 
-	// The dog already runs at 1200. A demoman charge is 750, which would slow him.
+	// Scout-speed run. A demoman charge is faster, so take the faster of the two.
 	if ( playerclass == TF_CLASS_GUARDDOG && !bIgnoreSpecialAbility && m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
 	{
 		maxfbspeed = Max( maxfbspeed, tf_max_charge_speed.GetFloat() );

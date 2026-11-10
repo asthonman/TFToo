@@ -74,7 +74,9 @@ private:
 	void UpdateLeaderboard();
 	void InitBarChartComboBox( vgui::ComboBox *pComboBox );
 	void ReleaseClassStatScroll();
-	void SetupClassStatScroll();
+	bool SetupClassStatScroll();
+	void LiftPerformanceReport();
+	void AlignMapHeadingToRecords();
 	void SetValueAsClass( const char *pDialogVariable, int iValue, int iPlayerClass );
 	void DisplayBarValue( int iChart, int iClass, ClassStats_t &stats, TFStatType_t statType, StatDisplay_t flags, float flMaxValue );	
 	static float GetDisplayValue( ClassStats_t &stats, TFStatType_t statType, StatDisplay_t statDisplay );
@@ -112,6 +114,8 @@ private:
 	bool m_bInteractive;							// are we in interactive mode
 	bool m_bEmbedded;								// are we embedded in a property sheet?
 	bool m_bControlsLoaded;							// have we loaded controls yet
+	bool m_bClassScrollBuilt;						// class rows have been moved under the scroller
+	bool m_bStatFrameLifted;						// performance report has been stretched up
 	CUtlVector<ClassStats_t> m_aClassStats;			// stats data
 	int m_xStartLHBar;								// x min of bars in left hand bar chart
 	int m_xStartRHBar;								// x min of bars in right hand bar chart

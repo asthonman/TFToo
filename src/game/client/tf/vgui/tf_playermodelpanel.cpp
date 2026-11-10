@@ -825,6 +825,17 @@ void CTFPlayerModelPanel::SwitchHeldItemTo( CEconItemView *pItem, bool bPreserve
 			
 			m_pScene = LoadSceneForModel( g_szSceneTmpName, this, &m_flSceneEndTime );
 			m_bLoopScene = m_bLoopVCD;
+			if ( m_pScene )
+				return;
+
+			// No class_select scene (the dog has none). Play the model's
+			// selectionMenu sequences if it has them.
+			if ( V_stricmp( m_pszVCD, "class_select" ) == 0 )
+			{
+				BeginClassSelectSequence();
+				if ( m_flClassSelectSequenceEnd != -1.f )
+					return;
+			}
 
 			return;
 		}

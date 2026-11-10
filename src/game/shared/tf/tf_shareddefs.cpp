@@ -349,7 +349,7 @@ const char g_szBotModels[][ MAX_PATH ] =
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
 	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 	"models/bots/spy/bot_spy.mdl", // Witch, Spy model for now
-	"models/props_agentsaxxy/guard_dog_v2.mdl", // Guard Dog
+	"models/player/hwm/guard_dog_v1.mdl", // Guard Dog
 };
 
 const char g_szPlayerRobotModels[][MAX_PATH] =
@@ -370,7 +370,7 @@ const char g_szPlayerRobotModels[][MAX_PATH] =
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
 	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 	"models/bots/spy/bot_spy.mdl", // Witch, Spy model for now
-	"models/props_agentsaxxy/guard_dog_v2.mdl", // Guard Dog
+	"models/player/hwm/guard_dog_v1.mdl", // Guard Dog
 };
 
 const char g_szBotBossModels[][ MAX_PATH ] = 
@@ -391,7 +391,7 @@ const char g_szBotBossModels[][ MAX_PATH ] =
 	"models/alaxe/tf2/actors/cabinette.mdl", // Resupply
 	"models/alaxe/tf2/actors/brick_mann.mdl", // Brick
 	"models/bots/spy/bot_spy.mdl", // Witch, Spy model for now
-	"models/props_agentsaxxy/guard_dog_v2.mdl", // Guard Dog
+	"models/player/hwm/guard_dog_v1.mdl", // Guard Dog
 };
 
 const char g_szBotBossSentryBusterModel[ MAX_PATH ] = "models/bots/demo/bot_sentry_buster.mdl";
