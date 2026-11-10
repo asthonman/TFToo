@@ -393,6 +393,15 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// Handle grappling hook move
 	GrapplingHookMove();
 
+	// Adrenaline changes his cap every command. SetSpeed is not called from
+	// the damage path, and the previous cap was already copied into the move.
+	UpdateMadcapPMeter();
+	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
+	{
+		m_pTFPlayer->TeamFortress_SetSpeed();
+		mv->m_flClientMaxSpeed = m_pTFPlayer->MaxSpeed();
+	}
+
 	// Brick's cap has to follow the grow scale on this command. SetSpeed is
 	// not called from the scale think, and m_flClientMaxSpeed was copied
 	// from the previous cap before ProcessMovement.
@@ -407,9 +416,6 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 
 	// Run the command.
 	PlayerMove();
-
-	// Meter is speed after this command, not a separate fill/drain.
-	UpdateMadcapPMeter();
 
 	FinishMove();
 
@@ -614,20 +620,12 @@ bool CTFGameMovement::ChargeMove()
 }
 
 //-----------------------------------------------------------------------------
-// Madcap adrenaline. Filled when he deals or takes damage. Fades on the
-// Medi Gun's in-combat clock. Server only: predicting it against a hit the
-// client has not heard about yet just causes a correction.
+// Madcap adrenaline. Filled when he deals or takes damage, including to
+// himself. Fades on the Medi Gun's in-combat clock. Both sides recompute
+// it from the networked timestamp so the speed fade predicts.
 //-----------------------------------------------------------------------------
-// sv_friction is 4, so 0.06 coasts instead of stopping short.
-static const float tf_madcap_friction_scale = 0.06f;
-// Slower build when the wish is not the way he is facing.
-static const float tf_madcap_back_accel = 0.45f;
-// Passed to Accelerate while he is still short of top speed.
-static const float tf_madcap_build_accel = 4.1888f;
-
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
-#ifdef GAME_DLL
 	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) )
 		return;
 
@@ -639,7 +637,6 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 	}
 
 	m_pTFPlayer->SetPMeter( Madcap_AdrenalineFromCombatTime( m_pTFPlayer->GetMadcapCombatTime(), gpGlobals->curtime ) );
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1892,58 +1889,10 @@ void CTFGameMovement::WalkMove( void )
 	float flWishSpeed = VectorNormalize( vecWishDirection );
 	flWishSpeed = clamp( flWishSpeed, 0.0f, mv->m_flMaxSpeed );
 
-	// A full key press is cl_forwardspeed (450), which is under his top speed.
-	// Lift that to the cap so the bar can actually fill. Partial input stays put.
-	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP )
-		&& !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE )
-		&& flWishSpeed > 0.f )
-	{
-		const float flInput = sqrtf( ( flForwardMove * flForwardMove ) + ( flSideMove * flSideMove ) );
-		const float flFull = cl_forwardspeed.GetFloat();
-		if ( flFull > 0.f && flInput + 1.f >= flFull && flWishSpeed < mv->m_flMaxSpeed )
-			flWishSpeed = mv->m_flMaxSpeed;
-	}
-
 	// Accelerate in the x,y plane.
 	mv->m_vecVelocity.z = 0;
 
 	float flAccelerate = sv_accelerate.GetFloat();
-	// Facing changes the build from class speed to top speed. At the cap, a
-	// turn that keeps his travel direction does not slow him down.
-	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && flWishSpeed > 0.f
-		&& !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE )
-		&& player->m_surfaceFriction > 0.f && player->m_surfaceFriction < 1.f )
-	{
-		Vector vecVel = mv->m_vecVelocity;
-		vecVel.z = 0.f;
-		const float flSpeed = vecVel.Length();
-		const float flTop = Max( mv->m_flMaxSpeed, 1.f );
-		const float flBase = flTop / TF_MADCAP_TOP_SPEED_SCALE;
-		const float flAlong = DotProduct( mv->m_vecVelocity, vecWishDirection );
-
-		Vector vecFace;
-		AngleVectors( mv->m_vecViewAngles, &vecFace, NULL, NULL );
-		vecFace.z = 0.f;
-		VectorNormalize( vecFace );
-		const float flFace = DotProduct( vecWishDirection, vecFace );
-		const float flFacingScale = RemapValClamped( flFace, -1.f, 1.f, tf_madcap_back_accel, 1.f );
-
-		const bool bAtCap = ( flAlong >= flWishSpeed * 0.98f );
-		if ( bAtCap )
-		{
-			flAccelerate *= ( 1.f / tf_madcap_friction_scale );
-		}
-		else
-		{
-			float flScale = 1.f;
-			if ( flSpeed > flBase )
-				flScale = flFacingScale;
-			flAccelerate = tf_madcap_build_accel * flScale;
-			// Stay at or above sv_friction so a wish still reaches the cap.
-			if ( flAccelerate < sv_friction.GetFloat() )
-				flAccelerate = sv_friction.GetFloat();
-		}
-	}
 	if ( m_nPaintPower == SPEED_POWER && flWishSpeed > 0.f )
 	{
 		flAccelerate = tf_paint_speed_accel.GetFloat();
@@ -2006,8 +1955,7 @@ void CTFGameMovement::WalkMove( void )
 
 	// Now reduce their backwards speed to some percent of max, if they are traveling backwards
 	// unless they are under some minimum, to not penalize deployed snipers or heavies.
-	// Madcap's top speed is the same in every direction.
-	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
+	if ( tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
 	{
 		float flDot = DotProduct( vecForward, mv->m_vecVelocity );
 
@@ -2884,9 +2832,6 @@ void CTFGameMovement::FullWalkMove()
 		{
 			m_bPaintLaunch = false;
 			mv->m_vecVelocity[2] = 0.0;
-			// Rollerskates. A shield charge keeps normal friction so it still snaps up to speed.
-			if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_MADCAP ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
-				player->m_surfaceFriction *= tf_madcap_friction_scale;
 			if ( m_nPaintPower == SPEED_POWER )
 				player->m_surfaceFriction *= tf_paint_speed_friction.GetFloat();
 			Friction();

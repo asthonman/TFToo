@@ -1244,8 +1244,9 @@ private:
 	CNetworkVar( bool, m_bBrickGrowDuck );
 	// Madcap adrenaline, 0-100. Damage dealt or taken fills it.
 	CNetworkVar( float, m_flPMeter );
-	// curtime of the last damage he dealt or took. Not networked.
-	float					m_flMadcapCombatTime;
+	// curtime of the last damage he dealt or took. Networked so the client
+	// can fade the bar and the speed bonus without waiting on the meter.
+	CNetworkVar( float, m_flMadcapCombatTime );
 	// Not networked. Predicted on the client. Locked while the meter is up.
 	Vector					m_vecMadcapCourse;
 	bool					m_bMadcapCourse;

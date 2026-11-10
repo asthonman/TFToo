@@ -3932,6 +3932,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropFloat( RECVINFO( m_flBrickGrowMeter ) ),
 	RecvPropBool( RECVINFO( m_bBrickGrowDuck ) ),
 	RecvPropFloat( RECVINFO( m_flPMeter ) ),
+	RecvPropFloat( RECVINFO( m_flMadcapCombatTime ) ),
 	RecvPropString( RECVINFO( m_szTauntSequence ) ),
 	RecvPropInt( RECVINFO( m_nTauntSequenceParity ) ),
 	RecvPropEHandle( RECVINFO( m_hOffHandWeapon ) ),
@@ -3955,6 +3956,7 @@ BEGIN_PREDICTION_DATA( C_TFPlayer )
 	DEFINE_PRED_FIELD( m_flVehicleReverseTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flInspectTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flHelpmeButtonPressTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD_TOL( m_flPMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE, 0.5f ),
 	DEFINE_PRED_FIELD( m_vecMadcapCourse, FIELD_VECTOR, 0 ),
 	DEFINE_PRED_FIELD( m_bMadcapCourse, FIELD_BOOLEAN, 0 ),
 END_PREDICTION_DATA()
@@ -4055,6 +4057,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
 	m_bBrickGrowDuck = false;
 	m_flPMeter = 0.f;
+	m_flMadcapCombatTime = 0.f;
 	m_vecMadcapCourse.Init();
 	m_bMadcapCourse = false;
 

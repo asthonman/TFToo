@@ -208,6 +208,7 @@ public:
 	float			GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float			GetPMeter( void ) const { return m_flPMeter; }
 	void			SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
+	float			GetMadcapCombatTime( void ) const { return m_flMadcapCombatTime; }
 	bool			HasMadcapCourse( void ) const { return m_bMadcapCourse; }
 	const Vector	&GetMadcapCourse( void ) const { return m_vecMadcapCourse; }
 	void			SetMadcapCourse( const Vector &vecCourse ) { m_vecMadcapCourse = vecCourse; m_bMadcapCourse = true; }
@@ -988,6 +989,7 @@ private:
 	CNetworkVar( float, m_flBrickGrowMeter );
 	CNetworkVar( bool, m_bBrickGrowDuck );
 	CNetworkVar( float, m_flPMeter );
+	CNetworkVar( float, m_flMadcapCombatTime );
 	Vector			m_vecMadcapCourse;
 	bool			m_bMadcapCourse;
 

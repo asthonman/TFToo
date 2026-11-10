@@ -853,6 +853,7 @@ IMPLEMENT_SERVERCLASS_ST( CTFPlayer, DT_TFPlayer )
 	SendPropFloat( SENDINFO( m_flBrickGrowMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	SendPropBool( SENDINFO( m_bBrickGrowDuck ) ),
 	SendPropFloat( SENDINFO( m_flPMeter ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
+	SendPropFloat( SENDINFO( m_flMadcapCombatTime ) ),
 	SendPropString( SENDINFO( m_szTauntSequence ) ),
 	SendPropInt( SENDINFO( m_nTauntSequenceParity ) ),
 	SendPropEHandle( SENDINFO( m_hOffHandWeapon ) ),

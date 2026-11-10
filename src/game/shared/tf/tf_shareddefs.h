@@ -301,7 +301,7 @@ inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam ==
 // Madcap's adrenaline. 100 the moment he deals or takes damage, then the
 // same clock the Medi Gun uses for a patient who was just in combat
 // (CTFPlayerShared heal: full penalty until 10s, gone at 15s). Full bar
-// is 300% damage. Top speed is still +60% and does not come from this bar.
+// is 300% damage and +60% move speed, including damage he deals to himself.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f
 #define TF_MADCAP_TOP_SPEED_SCALE 1.6f
@@ -318,10 +318,10 @@ inline float Madcap_PMeterRatio( float flMeter )
 	return flMeter / TF_MADCAP_PMETER_MAX;
 }
 
-// Movement does not call this. His cap is TF_MADCAP_TOP_SPEED_SCALE.
+// Empty bar is class speed. Full bar is TF_MADCAP_TOP_SPEED_SCALE.
 inline float Madcap_SpeedModFromPMeter( float flMeter )
 {
-	return 1.f + ( 0.6f * Madcap_PMeterRatio( flMeter ) );
+	return 1.f + ( ( TF_MADCAP_TOP_SPEED_SCALE - 1.f ) * Madcap_PMeterRatio( flMeter ) );
 }
 
 inline float Madcap_DamageScaleFromPMeter( float flMeter )

@@ -8,12 +8,10 @@
 // Claidheamh Mòr are Madcap melees only. Equalizer and Escape Plan
 // are shared melees with Soldier. Cleaver and
 // Mad Milk are shared secondaries. Blutsauger is a shared primary.
-// Adrenaline. Taking or dealing damage fills it. It then fades on the
-// same clock a Medi Gun uses for a patient who was just in combat:
-// full for 10 seconds, empty at 15. Full bar is 300% damage.
-// Top speed is +60% and the same in every direction. Low friction,
-// like rollerskates. Facing only changes how fast he builds from
-// class speed to that top speed.
+// Adrenaline. Taking or dealing damage fills it, including damage he
+// deals to himself. It then fades on the same clock a Medi Gun uses
+// for a patient who was just in combat: full for 10 seconds, empty
+// at 15. Full bar is 300% damage and +60% move speed. Normal friction.
 // Class passives (unset here): "airdash" "1", "afterburn_immune" "1",
 // "knockback_scale" "0.5", "health_regen" "1".
 "PlayerClassData"
