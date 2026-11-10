@@ -301,7 +301,8 @@ inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam ==
 // Madcap's adrenaline. 100 the moment he deals or takes damage, then the
 // same clock the Medi Gun uses for a patient who was just in combat
 // (CTFPlayerShared heal: full penalty until 10s, gone at 15s). Full bar
-// is 300% damage and +60% move speed, including damage he deals to himself.
+// is 300% damage to other targets and +60% move speed. Damage he deals
+// to himself is not boosted.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f
 #define TF_MADCAP_TOP_SPEED_SCALE 1.6f

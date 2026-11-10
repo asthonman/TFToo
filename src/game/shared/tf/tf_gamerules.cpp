@@ -6982,10 +6982,9 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 	}
 
 	// Madcap: outgoing damage scales from 100% at empty adrenaline to 300%
-	// when it is full, including damage he deals to himself. Falls and
-	// drowning are not his damage.
-	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP )
-		&& !( info.GetDamageType() & ( DMG_FALL | DMG_DROWN ) ) )
+	// when it is full. Damage he deals to himself does not, so a Boston
+	// Basher miss (and the bleed it causes) stays at its normal amount.
+	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) && pAttacker != pVictimBaseEntity )
 	{
 		flDamage *= Madcap_DamageScaleFromPMeter( pTFAttacker->GetPMeter() );
 	}
