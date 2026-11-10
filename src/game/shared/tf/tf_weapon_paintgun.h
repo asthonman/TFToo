@@ -88,6 +88,10 @@ public:
 	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
+#ifdef GAME_DLL
+	DECLARE_DATADESC();
+#endif
+
 	CTFWeaponHelper();
 
 	virtual int		GetWeaponID( void ) const { return TF_WEAPON_NONE; }

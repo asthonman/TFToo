@@ -97,7 +97,9 @@ void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound )
 #endif
 }
 
-bool TFPaint_SurfaceBlocksPaint( const trace_t &tr )
+// $nodecal (MATERIAL_VAR_SUPPRESS_DECALS) and SURF_NODECALS.
+// trace_t is a typedef, so this stays out of the header.
+static bool TFPaint_SurfaceBlocksPaint( const trace_t &tr )
 {
 	if ( tr.surface.flags & SURF_NODECALS )
 		return true;

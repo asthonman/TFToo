@@ -1571,14 +1571,14 @@ CTFProjectile_HelperHook *CTFProjectile_HelperHook::Create( CTFPlayer *pOwner, C
 
 void CTFProjectile_HelperHook::Spawn()
 {
-	m_iProjectileType = TF_PROJECTILE_GRAPPLINGHOOK;
+	SetProjectileType( TF_PROJECTILE_GRAPPLINGHOOK );
 	BaseClass::Spawn();
 
 	SetTouch( NULL );
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NOCLIP );
 	SetGravity( 0.f );
-	m_bCritical = false;
+	SetCritical( false );
 
 	SetThink( &CTFProjectile_HelperHook::FlyThink );
 	SetNextThink( gpGlobals->curtime );

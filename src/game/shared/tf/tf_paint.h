@@ -45,7 +45,6 @@ struct TFPaintContact_t
 };
 
 class CBaseEntity;
-struct trace_t;
 
 extern ConVar tf_paint_enabled;
 extern ConVar tf_paint_trace_radius;
@@ -72,9 +71,5 @@ void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntit
 void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f );
 void TFPaint_EraseSphere( const Vector &pos, float radius );
 void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
-
-struct trace_t;
-// $nodecal (MATERIAL_VAR_SUPPRESS_DECALS) and SURF_NODECALS.
-bool TFPaint_SurfaceBlocksPaint( const trace_t &tr );
 
 #endif // TF_PAINT_H

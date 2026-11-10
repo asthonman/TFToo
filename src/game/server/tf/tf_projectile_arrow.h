@@ -107,6 +107,8 @@ private:
 	bool			m_bFiredWhileZoomed;
 
 protected:
+	void SetProjectileType( int iType ) { m_iProjectileType = iType; }
+
 	CUtlVector< int >	m_HitEntities;
 	float			m_flInitTime;
 
