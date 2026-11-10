@@ -31,6 +31,7 @@
 #include "tf_hud_ammostatus.h"
 #include "tf_gamerules.h"
 #include "tf_logic_halloween_2014.h"
+#include "tf_weapon_paintgun.h"
 
 using namespace vgui;
 
@@ -143,8 +144,9 @@ bool CTFHudWeaponAmmo::ShouldDraw( void )
 	if ( !pWeapon->UsesPrimaryAmmo() )
 		return false;
 
-	// Don't show for weapons that use metal for their primary ammo
-	if ( pWeapon->GetPrimaryAmmoType() == TF_AMMO_METAL )
+	// Engineer metal is drawn on the metal counter, not here. The grease gun
+	// spends metal and has no other readout, so show it like flamethrower ammo.
+	if ( pWeapon->GetPrimaryAmmoType() == TF_AMMO_METAL && dynamic_cast< CTFWeaponGreasegun * >( pWeapon ) == NULL )
 		return false;
 
 	if ( pWeapon->UberChargeAmmoPerShot() > 0.0f )
