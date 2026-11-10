@@ -1,0 +1,49 @@
+// Guard Dog primary. Not an SMG. Fire rate, damage, and spread match the
+// stock SMG. No clip: each shot takes one round from the 200-round reserve,
+// the same ammo path the flamethrower uses. No arm viewmodel.
+"WeaponData"
+{
+	"printname"			"#TF_Weapon_Hanger"
+	"BuiltRightHanded"	"0"
+	"weight"			"2"
+	"WeaponType"		"primary"
+	"MeleeWeapon"		"0"
+
+	"Damage"			"8"
+	"Range"				"8192"
+	"BulletsPerShot"	"1"
+	"Spread"			"0.025"
+	"PunchAngle"		"0"
+	"TimeFireDelay"		"0.1"
+	"TimeIdle"			"5.0"
+	"TimeIdleEmpty"		"0.25"
+	"AmmoPerShot"		"1"
+	"UseRapidFireCrits"	"1"
+
+	"primary_ammo"		"TF_AMMO_PRIMARY"
+	"secondary_ammo"	"None"
+	"clip_size"			"-1"
+	"default_clip"		"-1"
+
+	"bucket"			"0"
+	"bucket_position"	"0"
+
+	"DoInstantEjectBrass"		"0"
+	"HasTeamSkins_Viewmodel"	"1"
+	"HasTeamSkins_Worldmodel"	"1"
+	"MuzzleFlashParticleEffect"	"muzzle_smg"
+	"TracerEffect"				"bullet_pistol_tracer01"
+
+	"viewmodel"			"models/weapons/hanger.mdl"
+	"playermodel"		"models/weapons/hanger.mdl"
+	"anim_prefix"		"smg"
+
+	"ProjectileType"	"projectile_bullet"
+
+	"SoundData"
+	{
+		"single_shot"	"Weapon_SMG.Single"
+		"burst"			"Weapon_SMG.SingleCrit"
+		"empty"			"Weapon_SMG.ClipEmpty"
+	}
+}

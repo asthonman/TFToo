@@ -14,6 +14,7 @@
 #ifdef CLIENT_DLL
 #define CTFSMG C_TFSMG
 #define CTFChargedSMG C_TFChargedSMG
+#define CTFWeaponHanger C_TFWeaponHanger
 #endif
 
 //=============================================================================
@@ -37,9 +38,6 @@ public:
 	~CTFSMG() {}
 
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SMG; }
-	// Stock script bucket is the Sniper's secondary. The Guard Dog's
-	// primary, The Hanger, is this same gun.
-	virtual int		GetSlot( void ) const;
 
 	virtual int		GetDamageType( void ) const;
 	virtual bool	CanFireCriticalShot( bool bIsHeadshot, CBaseEntity *pTarget = NULL ) OVERRIDE;
@@ -90,6 +88,30 @@ protected:
 
 private:
 	CTFChargedSMG( const CTFChargedSMG & ) {}
+};
+
+//=============================================================================
+//
+// Guard Dog primary. Hitscan, but not an SMG: its own entity, script, and
+// ammo pool. Fire rate, damage, and spread are copied from the SMG script.
+//
+class CTFWeaponHanger : public CTFWeaponBaseGun
+{
+public:
+	DECLARE_CLASS( CTFWeaponHanger, CTFWeaponBaseGun );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+#ifdef GAME_DLL
+	DECLARE_DATADESC();
+#endif
+
+	CTFWeaponHanger() {}
+
+	virtual int GetWeaponID( void ) const { return TF_WEAPON_HANGER; }
+
+private:
+	CTFWeaponHanger( const CTFWeaponHanger & ) {}
 };
 
 

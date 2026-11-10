@@ -29,6 +29,15 @@ BEGIN_DATADESC( CTFSMG )
 END_DATADESC()
 #endif
 
+// ---------- The Hanger (Guard Dog primary) -------------
+
+CREATE_SIMPLE_WEAPON_TABLE( TFWeaponHanger, tf_weapon_hanger )
+
+#ifndef CLIENT_DLL
+BEGIN_DATADESC( CTFWeaponHanger )
+END_DATADESC()
+#endif
+
 // ---------- Charged SMG -------------
 
 IMPLEMENT_NETWORKCLASS_ALIASED( TFChargedSMG, DT_WeaponChargedSMG )
@@ -62,17 +71,6 @@ PRECACHE_WEAPON_REGISTER( tf_weapon_charged_smg );
 //=============================================================================
 //
 // Weapon SMG functions.
-
-//-----------------------------------------------------------------------------
-// Purpose: Sniper keeps the script's secondary slot. Guard Dog's Hanger is primary.
-//-----------------------------------------------------------------------------
-int CTFSMG::GetSlot( void ) const
-{
-	CTFPlayer *pOwner = GetTFPlayerOwner();
-	if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_GUARDDOG ) )
-		return 0;
-	return BaseClass::GetSlot();
-}
 
 //-----------------------------------------------------------------------------
 // Purpose: 

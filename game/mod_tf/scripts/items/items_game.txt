@@ -25945,6 +25945,7 @@
 			"baseitem"		"1"
 			"model_player"	"models/weapons/hater.mdl"
 			"model_world"	"models/weapons/hater.mdl"
+			"attach_to_hands"	"0"
 			"first_sale_date"	"2010/09/29"
 			"xifier_class_remap"	"weapon_targe"
 		}

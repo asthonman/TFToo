@@ -587,11 +587,11 @@
 				"madcap"		"1"
 			}
 		}
-		// Guard Dog stock primary. SMG, named The Hanger.
+		// Guard Dog stock primary. Hitscan, 200 reserve rounds. Not an SMG.
 		"b16"
 		{
 			"name"				"b16"
-			"item_class"			"tf_weapon_smg"
+			"item_class"		"tf_weapon_hanger"
 			"item_name"			"#TF_Weapon_Hanger"
 			"item_type_name"		"#TF_Weapon_Hanger"
 			"item_logname"		"hanger"
@@ -606,7 +606,7 @@
 			"min_ilevel"			"1"
 			"max_ilevel"			"1"
 			"act_as_weapon"		"1"
-			"attach_to_hands"	"1"
+			"attach_to_hands"	"0"
 			"model_player"		"models/weapons/hanger.mdl"
 			"model_world"		"models/weapons/hanger.mdl"
 			"used_by_classes"
@@ -633,7 +633,7 @@
 			"min_ilevel"		"1"
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
-			"attach_to_hands"	"1"
+			"attach_to_hands"	"0"
 			"model_player"		"models/weapons/helper.mdl"
 			"model_world"		"models/weapons/helper.mdl"
 			"used_by_classes"

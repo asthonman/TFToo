@@ -656,6 +656,15 @@ const char *CTFWeaponBase::GetViewModel( int iViewModel ) const
 
 	CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
 
+	// A dog has no hands. The first-person model is the weapon mesh itself,
+	// not the class arm model and not a c_model that has arms built in.
+	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		const char *pszWeaponModel = GetWorldModel();
+		if ( pszWeaponModel && pszWeaponModel[0] )
+			return pszWeaponModel;
+	}
+
 	int iHandModelIndex = 0;
 	if ( pPlayer )
 	{
