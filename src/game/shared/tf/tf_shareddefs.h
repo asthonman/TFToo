@@ -272,9 +272,9 @@ enum ETFClass
 // The slam volume is the attack pose's bbox, plus a pad, then this.
 #define TF_BRICK_SLAM_BOX_SCALE		1.5f
 
-// Guard Dog. 300 units/sec is 100%, so 400% is 1200. Standing hull is 50
-// instead of the global 82, crouch is 35 instead of 62. Eyes stay inside it.
-#define TF_GUARDDOG_SPEED			1200.f
+// Guard Dog runs at Scout speed (400). Standing hull is 50 instead of the
+// global 82, crouch is 35 instead of 62. Eyes stay inside it.
+#define TF_GUARDDOG_SPEED			400.f
 #define TF_GUARDDOG_HULL_STAND		50.f
 #define TF_GUARDDOG_HULL_DUCK		35.f
 #define TF_GUARDDOG_VIEW_STAND		42.f

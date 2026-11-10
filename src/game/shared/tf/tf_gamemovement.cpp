@@ -545,8 +545,8 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 		mv->m_flClientMaxSpeed = m_pTFPlayer->MaxSpeed();
 	}
 
-	// 1200 is past the 520 scout cap this function writes above. A charge
-	// dash already set its own cap.
+	// Class speed is Scout's 400, under the 520 cap written above. Refresh it
+	// anyway so a charge dash's cap does not stick after the charge ends.
 	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
 	{
 		m_pTFPlayer->TeamFortress_SetSpeed();
@@ -737,7 +737,7 @@ bool CTFGameMovement::ChargeMove()
 	}
 
 	float flChargeSpeed = tf_max_charge_speed.GetFloat();
-	// The dog already runs faster than a demoman charge. Don't slow the dash.
+	// Don't let the dash go slower than the dog's run.
 	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && TF_GUARDDOG_SPEED > flChargeSpeed )
 		flChargeSpeed = TF_GUARDDOG_SPEED;
 

@@ -37,6 +37,9 @@ public:
 	~CTFSMG() {}
 
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SMG; }
+	// Stock script bucket is the Sniper's secondary. The Guard Dog's
+	// primary, The Hanger, is this same gun.
+	virtual int		GetSlot( void ) const;
 
 	virtual int		GetDamageType( void ) const;
 	virtual bool	CanFireCriticalShot( bool bIsHeadshot, CBaseEntity *pTarget = NULL ) OVERRIDE;

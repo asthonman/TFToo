@@ -1,16 +1,18 @@
-// Guard Dog. 115 health. 300 units/sec is 100%, so 400% is 1200.
-// The body is models/props_agentsaxxy/guard_dog_v2.mdl. That prop only
-// has idle-style sequences, so the player model will not run or crouch.
-// Hands are the Sniper's so the SMG viewmodel has arms. Class-script
-// weapons stay empty so schema base items fill the loadout: The Helper
-// (b17, primary), SMG (b16, secondary), The Hater (Charge'n Targe, item 131).
+// Guard Dog. 115 health, Scout speed (400). Body is
+// models/player/hwm/guard_dog_v1.mdl. It has run and walk sequences, but
+// they are not tied to TF2 activities, so the in-game pose stays on ref
+// unless a sequence is named directly. The class menu plays
+// selectionMenu_Anim01 (the old idle_sit). Hands are the Sniper's so the
+// weapon viewmodels have arms. Class-script weapons stay empty so schema
+// base items fill the loadout: The Hanger (b16, SMG, primary), The Helper
+// (b17, secondary), The Hater (Charge'n Targe, item 131).
 "PlayerClassData"
 {
 	"name"				"guarddog"
-	"model"				"models/props_agentsaxxy/guard_dog_v2.mdl"
+	"model"				"models/player/hwm/guard_dog_v1.mdl"
 	"model_hands"		"models/weapons/c_models/c_sniper_arms.mdl"
 	"localize_name"		"#TF_Class_Name_GuardDog"
-	"speed_max"			"1200"
+	"speed_max"			"400"
 	"health_max"		"115"
 	"armor_max"			"0"
 	"weapon1"			"tf_weapon_none"

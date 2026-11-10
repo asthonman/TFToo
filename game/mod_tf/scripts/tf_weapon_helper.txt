@@ -1,5 +1,5 @@
-// Guard Dog secondary. No ammo. The SMG mesh is a stand-in so the arms
-// have a viewmodel. The projectile is the grappling hook.
+// Guard Dog secondary. No ammo. The viewmodel is models/weapons/helper.mdl.
+// The projectile is the grappling hook.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Helper"
@@ -25,7 +25,7 @@
 	"HasTeamSkins_Viewmodel"	"1"
 	"HasTeamSkins_Worldmodel"	"1"
 
-	"viewmodel"			"models/weapons/c_models/c_smg/c_smg.mdl"
-	"playermodel"		"models/weapons/c_models/c_smg/c_smg.mdl"
+	"viewmodel"			"models/weapons/helper.mdl"
+	"playermodel"		"models/weapons/helper.mdl"
 	"anim_prefix"		"smg"
 }

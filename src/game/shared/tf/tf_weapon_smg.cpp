@@ -64,6 +64,17 @@ PRECACHE_WEAPON_REGISTER( tf_weapon_charged_smg );
 // Weapon SMG functions.
 
 //-----------------------------------------------------------------------------
+// Purpose: Sniper keeps the script's secondary slot. Guard Dog's Hanger is primary.
+//-----------------------------------------------------------------------------
+int CTFSMG::GetSlot( void ) const
+{
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return 0;
+	return BaseClass::GetSlot();
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 int	CTFSMG::GetDamageType( void ) const

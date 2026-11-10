@@ -25943,6 +25943,8 @@
 			"prefab"	"valve weapon_targe"
 			"item_name"		"#TF_Weapon_Hater"
 			"baseitem"		"1"
+			"model_player"	"models/weapons/hater.mdl"
+			"model_world"	"models/weapons/hater.mdl"
 			"first_sale_date"	"2010/09/29"
 			"xifier_class_remap"	"weapon_targe"
 		}
