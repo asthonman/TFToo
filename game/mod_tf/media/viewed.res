@@ -6,7 +6,7 @@
 	}
 	"ctf_2fort"
 	{
-		"viewed"		"4"
+		"viewed"		"5"
 	}
 	"itemtest"
 	{
@@ -14,10 +14,14 @@
 	}
 	"koth_badlands"
 	{
-		"viewed"		"16"
+		"viewed"		"43"
 	}
 	"cp_junction_final"
 	{
 		"viewed"		"8"
+	}
+	"cp_gullywash_final1"
+	{
+		"viewed"		"1"
 	}
 }
