@@ -193,9 +193,9 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Madcap's adrenaline. Fills when he deals or takes damage, then fades on
-// the Medi Gun's in-combat clock. The shield charge bar uses the same slot,
-// so this meter steps above it.
+// Madcap's adrenaline. Each point of damage dealt or taken adds one point,
+// up to 100, then fades on the Medi Gun's in-combat clock. The shield
+// charge bar uses the same slot, so this meter steps above it.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_Madcap : public CHudItemEffectMeter
 {

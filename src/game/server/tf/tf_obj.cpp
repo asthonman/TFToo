@@ -1893,10 +1893,13 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 	float flDamage = info.GetDamage();
 
 	// Same adrenaline ramp as damage dealt to players. A building is never himself.
+	// Fill from the damage before that ramp, so a full bar does not triple the gain.
 	CTFPlayer *pMadcapAttacker = ToTFPlayer( info.GetAttacker() );
+	float flMadcapScale = 1.f;
 	if ( pMadcapAttacker && pMadcapAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
 	{
-		flDamage *= Madcap_DamageScaleFromPMeter( pMadcapAttacker->GetPMeter() );
+		flMadcapScale = Madcap_DamageScaleFromPMeter( pMadcapAttacker->GetPMeter() );
+		flDamage *= flMadcapScale;
 	}
 
 	// Buildings are resistant to plasma damage.
@@ -1994,7 +1997,7 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 	m_AchievementData.AddDamageEventToHistory( info.GetAttacker(), ( IsDamageFatal( m_flHealth, flDamage ) ) ? m_flHealth : flDamage );
 
 	if ( flDamage > 0.f && pMadcapAttacker )
-		pMadcapAttacker->NoteMadcapAdrenaline();
+		pMadcapAttacker->NoteMadcapAdrenaline( flDamage / flMadcapScale );
 
 	// if we cannot die
 	if ( m_bCannotDie && IsDamageFatal( m_flHealth, flDamage ) )

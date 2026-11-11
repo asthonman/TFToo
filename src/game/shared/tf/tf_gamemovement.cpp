@@ -768,9 +768,9 @@ bool CTFGameMovement::ChargeMove()
 }
 
 //-----------------------------------------------------------------------------
-// Madcap adrenaline. Filled when he deals or takes damage, including to
-// himself. Fades on the Medi Gun's in-combat clock. Both sides recompute
-// it from the networked timestamp so the speed fade predicts.
+// Madcap adrenaline. The stored meter is the peak from damage dealt or
+// taken. GetPMeter holds that peak for 10s, then fades it to 0 by 15s.
+// Death clears the peak. Do not write the faded value back over it.
 //-----------------------------------------------------------------------------
 void CTFGameMovement::UpdateMadcapPMeter( void )
 {
@@ -781,10 +781,7 @@ void CTFGameMovement::UpdateMadcapPMeter( void )
 	{
 		m_pTFPlayer->SetPMeter( 0.f );
 		m_pTFPlayer->ClearMadcapCourse();
-		return;
 	}
-
-	m_pTFPlayer->SetPMeter( Madcap_AdrenalineFromCombatTime( m_pTFPlayer->GetMadcapCombatTime(), gpGlobals->curtime ) );
 }
 
 //-----------------------------------------------------------------------------

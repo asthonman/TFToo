@@ -542,14 +542,19 @@ public:
 	bool					IsBrickGrown( void ) const { return m_bBrickGrown; }
 	bool					IsBrickGrowDucking( void ) const { return m_bBrickGrowDuck; }
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
-	float					GetPMeter( void ) const { return m_flPMeter; }
+	float					GetPMeter( void ) const { return Madcap_AdrenalineFromCombatTime( m_flPMeter, m_flMadcapCombatTime, gpGlobals->curtime ); }
+	// Stores the peak. GetPMeter applies the hold and fade.
 	void					SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
 	float					GetMadcapCombatTime( void ) const { return m_flMadcapCombatTime; }
-	// Dealing or taking damage. The bar then fades on the Medi Gun clock.
-	void					NoteMadcapAdrenaline( void )
+	// Dealing or taking damage. Adds that much to whatever the bar has
+	// left, then restarts the Medi Gun hold/fade.
+	void					NoteMadcapAdrenaline( float flDamage )
 	{
 		if ( !IsPlayerClass( TF_CLASS_MADCAP ) || !IsAlive() )
 			return;
+		if ( flDamage <= 0.f )
+			return;
+		SetPMeter( GetPMeter() + flDamage );
 		m_flMadcapCombatTime = gpGlobals->curtime;
 	}
 	// Absolute horizontal direction the P-meter is measured against.
@@ -1245,10 +1250,11 @@ private:
 	CNetworkVar( float, m_flBrickGrowMeter );
 	// Ceiling blocked the standing hull. Held until standing fits again.
 	CNetworkVar( bool, m_bBrickGrowDuck );
-	// Madcap adrenaline, 0-100. Damage dealt or taken fills it.
+	// Madcap adrenaline peak, 0-100, at the last damage he dealt or took.
+	// GetPMeter fades it. One point of damage adds one point.
 	CNetworkVar( float, m_flPMeter );
-	// curtime of the last damage he dealt or took. Networked so the client
-	// can fade the bar and the speed bonus without waiting on the meter.
+	// curtime of that damage. Networked so the client fades the bar and
+	// the speed bonus from the same clock.
 	CNetworkVar( float, m_flMadcapCombatTime );
 	// Not networked. Predicted on the client. Locked while the meter is up.
 	Vector					m_vecMadcapCourse;

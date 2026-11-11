@@ -6988,21 +6988,20 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 	// Madcap: outgoing damage scales from 100% at empty adrenaline to 300%
 	// when it is full. Damage he deals to himself does not, so a Boston
 	// Basher miss (and the bleed it causes) stays at its normal amount.
+	// The fill uses damage before that scale, so the bar does not feed itself.
+	float flMadcapDealt = flDamage;
 	if ( pTFAttacker && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) && pAttacker != pVictimBaseEntity )
 	{
 		flDamage *= Madcap_DamageScaleFromPMeter( pTFAttacker->GetPMeter() );
 	}
 
 #ifdef GAME_DLL
-	// Any damage he deals or takes refills adrenaline. The fade is the
-	// Medi Gun in-combat window, applied in UpdateMadcapPMeter.
-	if ( flDamage > 0.f )
-	{
-		if ( pVictim && pVictim->IsPlayerClass( TF_CLASS_MADCAP ) )
-			pVictim->NoteMadcapAdrenaline();
-		if ( pTFAttacker && pTFAttacker != pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
-			pTFAttacker->NoteMadcapAdrenaline();
-	}
+	// One point of damage adds one point of adrenaline, up to 100. The
+	// hold and fade are the Medi Gun in-combat window, applied in GetPMeter.
+	if ( pVictim && pVictim->IsPlayerClass( TF_CLASS_MADCAP ) )
+		pVictim->NoteMadcapAdrenaline( flDamage );
+	if ( pTFAttacker && pTFAttacker != pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
+		pTFAttacker->NoteMadcapAdrenaline( flMadcapDealt );
 #endif
 
 	info.SetDamage( flDamage );

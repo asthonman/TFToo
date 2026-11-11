@@ -324,11 +324,12 @@ inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMA
 inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
 
 //-----------------------------------------------------------------------------
-// Madcap's adrenaline. 100 the moment he deals or takes damage, then the
-// same clock the Medi Gun uses for a patient who was just in combat
-// (CTFPlayerShared heal: full penalty until 10s, gone at 15s). Full bar
-// is 300% damage to other targets and +60% move speed. Damage he deals
-// to himself is not boosted.
+// Madcap's adrenaline. Each point of damage he deals or takes adds one
+// point, up to 100. The bar then uses the Medi Gun's in-combat clock
+// (CTFPlayerShared heal: hold until 10s, gone at 15s). Further damage
+// adds to whatever is left and restarts that clock. Full bar is 300%
+// damage to other targets and +60% move speed. Damage he deals to
+// himself fills the bar, but is not boosted.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f
 #define TF_MADCAP_TOP_SPEED_SCALE 1.6f
@@ -356,19 +357,20 @@ inline float Madcap_DamageScaleFromPMeter( float flMeter )
 	return 1.f + ( 2.f * Madcap_PMeterRatio( flMeter ) );
 }
 
-// Inverse of the Medi Gun heal ramp. Full while still "in combat", empty
-// once the gun would be healing at its out-of-combat rate.
-inline float Madcap_AdrenalineFromCombatTime( float flLastCombat, float flNow )
+// flPeak is the bar at the last damage. Held, then faded on the Medi Gun clock.
+inline float Madcap_AdrenalineFromCombatTime( float flPeak, float flLastCombat, float flNow )
 {
-	if ( flLastCombat <= 0.f )
+	if ( flPeak <= 0.f || flLastCombat <= 0.f )
 		return 0.f;
+	if ( flPeak > TF_MADCAP_PMETER_MAX )
+		flPeak = TF_MADCAP_PMETER_MAX;
 	const float flSince = flNow - flLastCombat;
 	if ( flSince <= TF_MADCAP_ADRENALINE_HOLD )
-		return TF_MADCAP_PMETER_MAX;
+		return flPeak;
 	if ( flSince >= TF_MADCAP_ADRENALINE_CLEAR )
 		return 0.f;
 	const float flFade = ( flSince - TF_MADCAP_ADRENALINE_HOLD ) / ( TF_MADCAP_ADRENALINE_CLEAR - TF_MADCAP_ADRENALINE_HOLD );
-	return TF_MADCAP_PMETER_MAX * ( 1.f - flFade );
+	return flPeak * ( 1.f - flFade );
 }
 
 #define FOR_EACH_NORMAL_PLAYER_CLASS( _i ) for ( int _i = TF_FIRST_NORMAL_CLASS; _i < TF_LAST_NORMAL_CLASS; _i++ )
