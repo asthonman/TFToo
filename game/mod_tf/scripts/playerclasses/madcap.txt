@@ -10,9 +10,8 @@
 // Mad Milk are shared secondaries. Blutsauger is a shared primary.
 // Adrenaline. Each point of damage he deals or takes adds one point,
 // including damage he deals to himself, up to 100. It then holds and
-// fades on the same clock a Medi Gun uses for a patient who was just
-// in combat: held for 10 seconds, empty at 15. Full bar is 300% damage
-// to others and +60% move speed. Damage he deals to himself is not
+// fades: held for 5 seconds, then 10% of that peak per second, empty at 15.
+// Full bar is 300% damage to others and +60% move speed. Damage he deals to himself is not
 // boosted. Normal friction.
 // Class passives (unset here): "airdash" "1", "afterburn_immune" "1",
 // "knockback_scale" "0.5", "health_regen" "1".

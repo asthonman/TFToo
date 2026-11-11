@@ -769,7 +769,7 @@ bool CTFGameMovement::ChargeMove()
 
 //-----------------------------------------------------------------------------
 // Madcap adrenaline. The stored meter is the peak from damage dealt or
-// taken. GetPMeter holds that peak for 10s, then fades it to 0 by 15s.
+// taken. GetPMeter holds that peak for 5s, then drains 10% of it per second.
 // Death clears the peak. Do not write the faded value back over it.
 //-----------------------------------------------------------------------------
 void CTFGameMovement::UpdateMadcapPMeter( void )

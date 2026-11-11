@@ -325,17 +325,17 @@ inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam ==
 
 //-----------------------------------------------------------------------------
 // Madcap's adrenaline. Each point of damage he deals or takes adds one
-// point, up to 100. The bar then uses the Medi Gun's in-combat clock
-// (CTFPlayerShared heal: hold until 10s, gone at 15s). Further damage
-// adds to whatever is left and restarts that clock. Full bar is 300%
-// damage to other targets and +60% move speed. Damage he deals to
-// himself fills the bar, but is not boosted.
+// point, up to 100. The bar holds for 5 seconds, then loses 10% of that
+// peak per second, so it is empty 15 seconds after the last damage.
+// Further damage adds to whatever is left and restarts that clock.
+// Full bar is 300% damage to other targets and +60% move speed. Damage
+// he deals to himself fills the bar, but is not boosted.
 //-----------------------------------------------------------------------------
 #define TF_MADCAP_PMETER_MAX 100.0f
 #define TF_MADCAP_TOP_SPEED_SCALE 1.6f
-// Hold, then fade. Matches RemapValClamped( timeSinceDamage, 10, 15, 1, 3 ).
-#define TF_MADCAP_ADRENALINE_HOLD 10.0f
-#define TF_MADCAP_ADRENALINE_CLEAR 15.0f
+// 5s hold, then 10% of the peak per second. A full bar is empty at 15s.
+#define TF_MADCAP_ADRENALINE_HOLD 5.0f
+#define TF_MADCAP_ADRENALINE_DRAIN_FRAC 0.10f
 
 inline float Madcap_PMeterRatio( float flMeter )
 {
@@ -357,7 +357,7 @@ inline float Madcap_DamageScaleFromPMeter( float flMeter )
 	return 1.f + ( 2.f * Madcap_PMeterRatio( flMeter ) );
 }
 
-// flPeak is the bar at the last damage. Held, then faded on the Medi Gun clock.
+// flPeak is the bar at the last damage. Held 5s, then 10% of that peak per second.
 inline float Madcap_AdrenalineFromCombatTime( float flPeak, float flLastCombat, float flNow )
 {
 	if ( flPeak <= 0.f || flLastCombat <= 0.f )
@@ -367,10 +367,10 @@ inline float Madcap_AdrenalineFromCombatTime( float flPeak, float flLastCombat, 
 	const float flSince = flNow - flLastCombat;
 	if ( flSince <= TF_MADCAP_ADRENALINE_HOLD )
 		return flPeak;
-	if ( flSince >= TF_MADCAP_ADRENALINE_CLEAR )
+	const float flDrained = ( flSince - TF_MADCAP_ADRENALINE_HOLD ) * TF_MADCAP_ADRENALINE_DRAIN_FRAC;
+	if ( flDrained >= 1.f )
 		return 0.f;
-	const float flFade = ( flSince - TF_MADCAP_ADRENALINE_HOLD ) / ( TF_MADCAP_ADRENALINE_CLEAR - TF_MADCAP_ADRENALINE_HOLD );
-	return flPeak * ( 1.f - flFade );
+	return flPeak * ( 1.f - flDrained );
 }
 
 #define FOR_EACH_NORMAL_PLAYER_CLASS( _i ) for ( int _i = TF_FIRST_NORMAL_CLASS; _i < TF_LAST_NORMAL_CLASS; _i++ )

@@ -547,7 +547,7 @@ public:
 	void					SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
 	float					GetMadcapCombatTime( void ) const { return m_flMadcapCombatTime; }
 	// Dealing or taking damage. Adds that much to whatever the bar has
-	// left, then restarts the Medi Gun hold/fade.
+	// left, then restarts the 5 second hold.
 	void					NoteMadcapAdrenaline( float flDamage )
 	{
 		if ( !IsPlayerClass( TF_CLASS_MADCAP ) || !IsAlive() )

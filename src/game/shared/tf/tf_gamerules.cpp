@@ -6997,7 +6997,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 
 #ifdef GAME_DLL
 	// One point of damage adds one point of adrenaline, up to 100. The
-	// hold and fade are the Medi Gun in-combat window, applied in GetPMeter.
+	// hold is 5 seconds, then 10% of that peak per second, applied in GetPMeter.
 	if ( pVictim && pVictim->IsPlayerClass( TF_CLASS_MADCAP ) )
 		pVictim->NoteMadcapAdrenaline( flDamage );
 	if ( pTFAttacker && pTFAttacker != pVictim && pTFAttacker->IsPlayerClass( TF_CLASS_MADCAP ) )
