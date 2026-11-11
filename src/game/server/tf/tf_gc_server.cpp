@@ -3913,6 +3913,30 @@ void CTFGCServerSystem::ProcessPlayerInventoryRequest( CSteamID steamID, KeyValu
 
 	// Clone off their existing request for processing
 	state.m_pKVNextRequest = pKVRequest->MakeCopy();
+
+	// The webapi backoff is for fetching Steam items. The loadout in this
+	// message can be applied now, or a respawn still has the old weapons.
+	KeyValues *pLoadoutKV = pKVRequest->FindKey( "local_loadout" );
+	if ( !pLoadoutKV )
+		return;
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer )
+			continue;
+
+		CSteamID sid;
+		if ( !pPlayer->GetSteamID( &sid ) || sid != steamID )
+			continue;
+
+		if ( pPlayer->Inventory() )
+		{
+			pPlayer->Inventory()->RememberAndApplyLocalLoadout( pLoadoutKV );
+			pPlayer->CheckInstantLoadoutRespawn();
+		}
+		break;
+	}
 }
 
 void CTFGCServerSystem::WebapiEquipmentState_t::OnWebapiEquipmentReceived( HTTPRequestCompleted_t* pInfo, bool bIOFailure )

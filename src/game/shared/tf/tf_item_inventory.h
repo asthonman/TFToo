@@ -21,6 +21,8 @@
 
 #define LOADOUT_SLOT_USE_BASE_ITEM		0
 
+class KeyValues;
+
 namespace vgui
 {
 	class Panel;
@@ -85,6 +87,13 @@ public:
 	// unequip them. Drop those slots before applying a fresh loadout.
 	void				ClearFakeLoadoutItems( void );
 
+#ifndef CLIENT_DLL
+	// Client loadout snapshot. Applied immediately, and again after the GC
+	// inventory subscribe, which would otherwise put custom classes back on stock.
+	void				RememberAndApplyLocalLoadout( KeyValues *pLoadoutKV );
+	bool				ApplyLocalLoadoutKV( KeyValues *pLoadoutKV );
+#endif
+
 	void				OnHasNewQuest();
 
 	static CEconItemView *GetFirstItemOfItemDef( item_definition_index_t nDefIndex, CPlayerInventory* pInventory = NULL );
@@ -102,6 +111,8 @@ protected:
 
 	void				VerifyChangedLoadoutsAreValid();
 	void				VerifyLoadoutItemsAreValid( int iClass );
+#else
+	virtual void		SOCacheSubscribed( const CSteamID & steamIDOwner, GCSDK::ESOCacheEvent eEvent ) OVERRIDE;
 #endif
 
 	virtual void		OnHasNewItems();
@@ -152,6 +163,10 @@ protected:
 	itemid_t		m_LoadoutItems[ TF_CLASS_COUNT ][ CLASS_LOADOUT_POSITION_COUNT ];
 	bool			m_bLoadoutChanged[ TF_CLASS_COUNT ];
 	itemid_t		m_AccountLoadoutItems[ ACCOUNT_LOADOUT_POSITION_COUNT ];
+#ifndef CLIENT_DLL
+	KeyValues		*m_pLocalLoadoutSnapshot;
+	bool			m_bApplyingLocalLoadout;
+#endif
 
 	friend class CTFInventoryManager;
 };

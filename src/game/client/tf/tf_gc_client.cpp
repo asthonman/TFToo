@@ -596,6 +596,44 @@ void CTFGCClientSystem::ServerRequestEquipment()
 void CTFGCClientSystem::LocalInventoryChanged()
 {
 	m_WebapiInventory.m_bLocalChangesApplied = true;
+
+	// The equipment webapi waits on an auth ticket and then a server backoff.
+	// A respawn or locker happens before that returns, so send the loadout itself now.
+	if ( !engine->IsInGame() )
+		return;
+
+	CTFPlayerInventory *pLocalInv = dynamic_cast<CTFPlayerInventory *>( TFInventoryManager()->GetLocalInventory() );
+	if ( !pLocalInv )
+		return;
+
+	KeyValues *kv = new KeyValues( "sdk_loadout" );
+	KeyValues *pLoadoutKV = new KeyValues( "local_loadout" );
+	kv->AddSubKey( pLoadoutKV );
+
+	for ( int iClass = TF_FIRST_NORMAL_CLASS; iClass < TF_LAST_NORMAL_CLASS; ++iClass )
+	{
+		char szClass[16];
+		V_snprintf( szClass, sizeof( szClass ), "%i", iClass );
+		KeyValues *pClassKV = new KeyValues( szClass );
+		pLoadoutKV->AddSubKey( pClassKV );
+
+		for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+		{
+			CEconItemView *pItemView = TFInventoryManager()->GetItemInLoadoutForClass( iClass, iSlot );
+			if ( !pItemView )
+				continue;
+
+			const itemid_t id = pItemView->GetItemID();
+			if ( id == INVALID_ITEM_ID || id == 0 )
+				continue;
+
+			char szSlot[16];
+			V_snprintf( szSlot, sizeof( szSlot ), "%i", iSlot );
+			pClassKV->SetUint64( szSlot, id );
+		}
+	}
+
+	engine->ServerCmdKeyValues( kv );
 }
 
 

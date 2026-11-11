@@ -876,6 +876,10 @@ CTFPlayerInventory::CTFPlayerInventory()
 	memset( m_LoadoutItems, LOADOUT_SLOT_USE_BASE_ITEM, sizeof( m_LoadoutItems ) );
 	memset( m_AccountLoadoutItems, LOADOUT_SLOT_USE_BASE_ITEM, sizeof( m_AccountLoadoutItems ) );
 	ClearClassLoadoutChangeTracking();
+#ifndef CLIENT_DLL
+	m_pLocalLoadoutSnapshot = NULL;
+	m_bApplyingLocalLoadout = false;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -889,6 +893,12 @@ CTFPlayerInventory::~CTFPlayerInventory()
 		FOR_EACH_MAP_FAST( m_CachedBaseTextureLowRes[ iTeam ], i )
 			m_CachedBaseTextureLowRes[ iTeam ][ i ]->Release();
 		m_CachedBaseTextureLowRes[ iTeam ].RemoveAll();
+	}
+#else
+	if ( m_pLocalLoadoutSnapshot )
+	{
+		m_pLocalLoadoutSnapshot->deleteThis();
+		m_pLocalLoadoutSnapshot = NULL;
 	}
 #endif
 }
@@ -1141,7 +1151,10 @@ void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, e
 		pItem->GetSOCData()->Equip(unClass, unSlot);
 	}
 
+	const bool bChanged = ( m_LoadoutItems[unClass][unSlot] != ulItemID );
 	m_LoadoutItems[unClass][unSlot] = ulItemID;
+	if ( bChanged )
+		m_bLoadoutChanged[unClass] = true;
 
 #ifdef CLIENT_DLL
 	int nPresets = (int)GetItemSchema()->GetNumAllowedItemPresets();
@@ -1192,6 +1205,94 @@ void CTFPlayerInventory::ClearFakeLoadoutItems( void )
 		}
 	}
 }
+
+#ifndef CLIENT_DLL
+//-----------------------------------------------------------------------------
+// A class key lists only the slots that are not the stock weapon. Every other
+// slot in that class goes back to the base item, so unequipping an unlock sticks.
+//-----------------------------------------------------------------------------
+bool CTFPlayerInventory::ApplyLocalLoadoutKV( KeyValues *pLoadoutKV )
+{
+	if ( !pLoadoutKV || m_bApplyingLocalLoadout )
+		return false;
+
+	m_bApplyingLocalLoadout = true;
+	bool bAnyChanged = false;
+
+	FOR_EACH_TRUE_SUBKEY( pLoadoutKV, pClassKey )
+	{
+		const int iClass = V_atoi( pClassKey->GetName() );
+		if ( iClass < TF_FIRST_NORMAL_CLASS || iClass >= TF_LAST_NORMAL_CLASS )
+			continue;
+
+		itemid_t want[ CLASS_LOADOUT_POSITION_COUNT ];
+		for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+			want[iSlot] = LOADOUT_SLOT_USE_BASE_ITEM;
+
+		FOR_EACH_SUBKEY( pClassKey, pEntry )
+		{
+			const int iSlot = V_atoi( pEntry->GetName() );
+			if ( iSlot < 0 || iSlot >= CLASS_LOADOUT_POSITION_COUNT )
+				continue;
+
+			const itemid_t id = pEntry->GetUint64();
+			if ( id == INVALID_ITEM_ID || id == 0 )
+				continue;
+
+			want[iSlot] = id;
+		}
+
+		for ( int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot )
+		{
+			if ( m_LoadoutItems[iClass][iSlot] == want[iSlot] )
+				continue;
+
+			const uint64 ulEquip = ( want[iSlot] == LOADOUT_SLOT_USE_BASE_ITEM ) ? (uint64)INVALID_ITEM_ID : want[iSlot];
+			EquipLocal( ulEquip, iClass, iSlot, false );
+			bAnyChanged = true;
+		}
+	}
+
+	m_bApplyingLocalLoadout = false;
+	return bAnyChanged;
+}
+
+void CTFPlayerInventory::RememberAndApplyLocalLoadout( KeyValues *pLoadoutKV )
+{
+	if ( !pLoadoutKV )
+		return;
+
+	if ( m_pLocalLoadoutSnapshot )
+		m_pLocalLoadoutSnapshot->deleteThis();
+	m_pLocalLoadoutSnapshot = pLoadoutKV->MakeCopy();
+	ApplyLocalLoadoutKV( m_pLocalLoadoutSnapshot );
+}
+
+void CTFPlayerInventory::SOCacheSubscribed( const CSteamID & steamIDOwner, GCSDK::ESOCacheEvent eEvent )
+{
+	BaseClass::SOCacheSubscribed( steamIDOwner, eEvent );
+
+	// The subscribe writes GC equip slots. Custom classes are not in that
+	// set, so put the client's loadout back on top of it.
+	if ( m_pLocalLoadoutSnapshot )
+		ApplyLocalLoadoutKV( m_pLocalLoadoutSnapshot );
+
+	if ( !GetOwner().IsValid() )
+		return;
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer || pPlayer->Inventory() != this )
+			continue;
+
+		CSteamID sid;
+		if ( pPlayer->GetSteamID( &sid ) && sid == GetOwner() )
+			pPlayer->CheckInstantLoadoutRespawn();
+		break;
+	}
+}
+#endif // !CLIENT_DLL
 
 //-----------------------------------------------------------------------------
 // Purpose: 

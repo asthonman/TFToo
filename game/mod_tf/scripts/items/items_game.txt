@@ -3,7 +3,7 @@
 	"game_info"
 	{
 		"first_valid_class"				"1"
-		"last_valid_class"				"13"
+		"last_valid_class"				"15"
 		"account_class_index"			"16" 
 		"account_first_valid_item_slot" "0"
 		"account_last_valid_item_slot"	"3"		

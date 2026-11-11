@@ -461,18 +461,36 @@ COMPILE_TIME_ASSERT( ARRAYSIZE( g_pszBreadModels ) == ( TF_LAST_NORMAL_CLASS - T
 
 int GetClassIndexFromString( const char *pClassName, int nLastClassIndex/*=TF_LAST_NORMAL_CLASS*/ )
 {
-	for ( int i = TF_FIRST_NORMAL_CLASS; i <= nLastClassIndex; ++i )
+	if ( !pClassName || !pClassName[0] )
+		return TF_CLASS_UNDEFINED;
+
+	int nLast = nLastClassIndex;
+	if ( nLast > TF_CLASS_COUNT_ALL - 1 )
+		nLast = TF_CLASS_COUNT_ALL - 1;
+	for ( int i = TF_FIRST_NORMAL_CLASS; i <= nLast; ++i )
+	{
+		// Exact match on every name the menus use. "Guard Dog" is not a prefix
+		// of "guarddog", so the loadout button never opened that page.
+		if ( g_aRawPlayerClassNames[i][0] && !V_stricmp( g_aRawPlayerClassNames[i], pClassName ) )
+			return i;
+		if ( g_aRawPlayerClassNamesShort[i][0] && !V_stricmp( g_aRawPlayerClassNamesShort[i], pClassName ) )
+			return i;
+		if ( g_aPlayerClassNames_NonLocalized[i][0] && !V_stricmp( g_aPlayerClassNames_NonLocalized[i], pClassName ) )
+			return i;
+	}
+
+	for ( int i = TF_FIRST_NORMAL_CLASS; i <= nLast; ++i )
 	{
 		// compare first N characters to allow matching both "heavy" and "heavyweapons"
 		int classnameLength = V_strlen( g_aPlayerClassNames_NonLocalized[i] );
+		if ( classnameLength <= 0 )
+			continue;
 
 		if ( V_strlen( pClassName ) < classnameLength )
 			continue;
 
 		if ( !V_strnicmp( g_aPlayerClassNames_NonLocalized[i], pClassName, classnameLength ) )
-		{
 			return i;
-		}
 	}
 
 	return TF_CLASS_UNDEFINED;
@@ -2087,15 +2105,19 @@ wpntranslation_class_weapons_t pszWpnEntTranslationList[] =
 //-----------------------------------------------------------------------------
 const char *TranslateWeaponEntForClass( const char *pszName, int iClass )
 {
-	if ( pszName )
+	if ( pszName && iClass >= 0 && iClass < TF_LAST_NORMAL_CLASS )
 	{
 		for ( int i = 0; i < ARRAYSIZE(pszWpnEntTranslationList); i++ )
 		{
 			if ( !Q_stricmp( pszName, pszWpnEntTranslationList[i].pszWpnString ) )
 			{
 				const char *pTransName = pszWpnEntTranslationList[i].pszClassWpn[ iClass ];
-				Assert( pTransName && pTransName[0] );
-				return pTransName;
+				// An empty entry means this class has no special entity.
+				// Returning it made GiveNamedItem spawn nothing, so the old
+				// weapon stayed through respawn and resupply.
+				if ( pTransName && pTransName[0] )
+					return pTransName;
+				return pszName;
 			}
 		}
 	}

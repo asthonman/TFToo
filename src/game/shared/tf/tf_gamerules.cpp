@@ -15522,6 +15522,17 @@ void CTFGameRules::ClientCommandKeyValues( edict_t *pEntity, KeyValues *pKeyValu
 
 			GTFGCClientSystem()->ProcessPlayerInventoryRequest( steamID, pKeyValues );
 		}
+		else if ( FStrEq( pszCommand, "sdk_loadout" ) )
+		{
+			// Loadout only. Do not wait for the equipment webapi. Respawn and
+			// resupply both read this inventory.
+			KeyValues *pLoadoutKV = pKeyValues->FindKey( "local_loadout" );
+			if ( pLoadoutKV && pTFPlayer->Inventory() )
+			{
+				pTFPlayer->Inventory()->RememberAndApplyLocalLoadout( pLoadoutKV );
+				pTFPlayer->CheckInstantLoadoutRespawn();
+			}
+		}
 		else
 		{
 			BaseClass::ClientCommandKeyValues( pEntity, pKeyValues );

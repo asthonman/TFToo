@@ -991,16 +991,16 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 			pClasses->AddSubKey( pKVAllClassKey );
 		}
 
-		// All-class taunts only list the original nine. Madcap through Guard Dog
-		// then have no loadout slot for them, so an equipped gesture fails the
-		// slot check and +taunt never opens the menu. Weapons stay off this
-		// set on purpose (see CanBeUsedByAllClasses).
-		if ( CanBeUsedByAllClasses() && m_iDefaultLoadoutSlot == LOADOUT_POSITION_TAUNT )
+		// All-class items only list the original nine. Madcap through Guard Dog
+		// then have no loadout slot, so EquipItemInLoadout rejects them and a
+		// respawn stays on the stock item. Multi-class weapons that are not
+		// usable by all nine are listed per class and are not touched here.
+		if ( CanBeUsedByAllClasses() )
 		{
 			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
 			{
 				m_vbClassUsability.Set( iClass );
-				m_iLoadoutSlots[iClass] = LOADOUT_POSITION_TAUNT;
+				m_iLoadoutSlots[iClass] = m_iDefaultLoadoutSlot;
 			}
 		}
 	}
