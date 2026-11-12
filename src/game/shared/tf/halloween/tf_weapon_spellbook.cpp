@@ -1091,7 +1091,7 @@ void CTFSpellBook::Precache()
 	PrecacheScriptSound( "Halloween.spell_stealth" );
 	PrecacheScriptSound( "Halloween.spell_teleport" );
 	PrecacheScriptSound( "Halloween.spell_overheal" );
-	PrecacheScriptSound( "Halloween.MerasmusAppears" );
+	PrecacheSound( "misc/halloween/merasmus_appear.wav" );
 
 	// The MIRV is a cannonball. Its first impact otherwise force-loads a
 	// physics sound inside the projectile think and stalls that think.

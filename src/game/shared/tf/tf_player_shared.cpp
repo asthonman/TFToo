@@ -7087,7 +7087,8 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 
 		int iReducedCloak = 0;
 		CALL_ATTRIB_HOOK_INT_ON_OTHER( m_pOuter, iReducedCloak, set_quiet_unstealth );
-		// Witch plays Halloween.MerasmusAppears from the server when this ends.
+		// Witch plays the Merasmus appear effect from the server when this ends.
+		// Not Halloween.MerasmusAppears: that entry is his voice lines.
 		if ( !m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
 		{
 			if ( iReducedCloak == 1 )
@@ -7122,8 +7123,8 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 #else
 	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )
 	{
-		// Merasmus: PlayHighPrioritySound( "Halloween.MerasmusAppears" ).
-		m_pOuter->EmitSound( "Halloween.MerasmusAppears" );
+		// The whoosh only. Halloween.MerasmusAppears is "I am here" and the rest.
+		m_pOuter->EmitSound( "misc/halloween/merasmus_appear.wav" );
 	}
 
 	if ( m_flCloakStartTime > 0 )
