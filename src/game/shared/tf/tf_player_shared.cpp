@@ -6181,7 +6181,10 @@ void CTFPlayerShared::OnAddShieldCharge( void )
 	m_pOuter->TeamFortress_SetSpeed();
 
 #ifdef CLIENT_DLL
-	m_pOuter->EmitSound( "DemoCharge.Charging" );
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		m_pOuter->EmitSound( "Weapon_RocketPack.BoostersFire" );
+	else
+		m_pOuter->EmitSound( "DemoCharge.Charging" );
 #else
 	m_hPlayersVisibleAtChargeStart.Purge();
 
@@ -6223,6 +6226,15 @@ void CTFPlayerShared::OnRemoveShieldCharge( void )
 	RemovePhaseEffects();
 
 	m_pOuter->TeamFortress_SetSpeed();
+
+#ifdef CLIENT_DLL
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		m_pOuter->StopSound( "Weapon_RocketPack.BoostersFire" );
+		m_pOuter->EmitSound( "Weapon_RocketPack.BoostersShutdown" );
+		m_pOuter->EmitSound( "Weapon_RocketPack.Land" );
+	}
+#endif
 
 	m_bPostShieldCharge = true;
 	m_flChargeEndTime = gpGlobals->curtime;

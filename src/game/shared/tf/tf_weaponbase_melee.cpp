@@ -881,6 +881,10 @@ void CTFWeaponBaseMelee::DoMeleeDamage( CBaseEntity* ent, trace_t& trace, float 
 	ent->DispatchTraceAttack( info, vecForward, &trace ); 
 	ApplyMultiDamage();
 
+	CTFWeaponDemoShield *pShield = dynamic_cast< CTFWeaponDemoShield * >( this );
+	if ( pShield )
+		pShield->HaterTryLatch( pPlayer, ToTFPlayer( ent ) );
+
 	OnEntityHit( ent, &info );
 
 	bool bTruce = TFGameRules() && TFGameRules()->IsTruceActive() && pPlayer->IsTruceValidForEnt();
@@ -2132,6 +2136,9 @@ CTFWeaponDemoShield::CTFWeaponDemoShield()
 {
 #ifdef GAME_DLL
 	m_bImpactedSomething = false;
+	m_bBiteFromCharge = false;
+	m_bHaterLatched = false;
+	m_flNextHaterSlow = 0.f;
 #endif
 }
 
@@ -2142,6 +2149,9 @@ void CTFWeaponDemoShield::Precache( void )
 	PrecacheScriptSound( "DemoCharge.HitWorld" );
 	PrecacheScriptSound( "DemoCharge.HitFlesh" );
 	PrecacheScriptSound( "DemoCharge.HitFleshRange" );
+	PrecacheScriptSound( "Weapon_RocketPack.BoostersFire" );
+	PrecacheScriptSound( "Weapon_RocketPack.BoostersShutdown" );
+	PrecacheScriptSound( "Weapon_RocketPack.Land" );
 }
 
 void CTFWeaponDemoShield::Equip( CBaseCombatCharacter *pOwner )
@@ -2187,6 +2197,146 @@ void CTFWeaponDemoShield::UpdateOnRemove( void )
 
 	if ( !bOther )
 		pOwner->m_Shared.SetShieldEquipped( false );
+
+	HaterReleaseLatch( pOwner );
+}
+
+void CTFWeaponDemoShield::PrimaryAttack( void )
+{
+#ifdef GAME_DLL
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	m_bBiteFromCharge = pPlayer && pPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) && pPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE );
+#endif
+	BaseClass::PrimaryAttack();
+}
+
+void CTFWeaponDemoShield::ItemPostFrame( void )
+{
+	BaseClass::ItemPostFrame();
+	HaterMaintainLatch();
+}
+
+bool CTFWeaponDemoShield::Holster( CBaseCombatWeapon *pSwitchingTo )
+{
+#ifdef GAME_DLL
+	m_bBiteFromCharge = false;
+#endif
+	HaterReleaseLatch( GetTFPlayerOwner() );
+	return BaseClass::Holster( pSwitchingTo );
+}
+
+void CTFWeaponDemoShield::HaterTryLatch( CTFPlayer *pOwner, CTFPlayer *pVictim )
+{
+#ifdef GAME_DLL
+	if ( !m_bBiteFromCharge || !pOwner || !pVictim || pVictim == pOwner )
+		return;
+
+	m_bBiteFromCharge = false;
+
+	if ( !( pOwner->m_nButtons & IN_ATTACK ) )
+		return;
+
+	if ( !pOwner->IsAlive() || !pVictim->IsAlive() )
+		return;
+
+	if ( pVictim->GetTeamNumber() == pOwner->GetTeamNumber() )
+		return;
+
+	if ( pOwner->GetGrapplingHookTarget() && pOwner->GetGrapplingHookTarget() != pVictim )
+		HaterReleaseLatch( pOwner );
+
+	if ( pOwner->GetGrapplingHookTarget() != pVictim )
+	{
+		// Same attach and bleed as a grappling hook into a player.
+		pOwner->SetGrapplingHookTarget( pVictim, false );
+		pVictim->m_Shared.MakeBleed( pOwner, this, 0.f, TF_BLEEDING_DMG, true );
+	}
+
+	m_bHaterLatched = true;
+	m_flNextHaterSlow = 0.f;
+	SetContextThink( &CTFWeaponDemoShield::HaterLatchThink, gpGlobals->curtime, "HaterLatchThink" );
+#else
+	( void )pOwner;
+	( void )pVictim;
+#endif
+}
+
+void CTFWeaponDemoShield::HaterReleaseLatch( CTFPlayer *pOwner )
+{
+#ifdef GAME_DLL
+	if ( !m_bHaterLatched )
+		return;
+
+	CTFPlayer *pVictim = pOwner ? ToTFPlayer( pOwner->GetGrapplingHookTarget() ) : NULL;
+	if ( pOwner && pVictim )
+	{
+		pVictim->m_Shared.StopBleed( pOwner, this );
+
+		stun_struct_t *pStun = pVictim->m_Shared.GetActiveStunInfo();
+		if ( pVictim->m_Shared.InCond( TF_COND_STUNNED ) && pStun && pStun->hPlayer == pOwner
+			&& ( pStun->iStunFlags & TF_STUN_MOVEMENT )
+			&& !( pStun->iStunFlags & TF_STUN_CONTROLS )
+			&& !( pStun->iStunFlags & TF_STUN_LOSER_STATE ) )
+		{
+			pVictim->m_Shared.SetStunExpireTime( gpGlobals->curtime );
+		}
+	}
+
+	if ( pOwner && pOwner->GetGrapplingHookTarget() )
+		pOwner->SetGrapplingHookTarget( NULL );
+
+	m_bHaterLatched = false;
+	m_bBiteFromCharge = false;
+	SetContextThink( NULL, 0.f, "HaterLatchThink" );
+#else
+	( void )pOwner;
+#endif
+}
+
+void CTFWeaponDemoShield::HaterMaintainLatch( void )
+{
+#ifdef GAME_DLL
+	if ( !m_bHaterLatched )
+		return;
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	CTFPlayer *pVictim = pOwner ? ToTFPlayer( pOwner->GetGrapplingHookTarget() ) : NULL;
+	if ( !pOwner || !pOwner->IsAlive() || !pVictim || !pVictim->IsAlive() || !( pOwner->m_nButtons & IN_ATTACK ) )
+	{
+		HaterReleaseLatch( pOwner );
+		return;
+	}
+
+	// Half speed, refreshed while the bite is held. Re-applying StunPlayer
+	// while one is already active only queues another, and that queue would
+	// keep slowing them after the bite lets go.
+	if ( gpGlobals->curtime >= m_flNextHaterSlow )
+	{
+		m_flNextHaterSlow = gpGlobals->curtime + 0.2f;
+
+		stun_struct_t *pStun = pVictim->m_Shared.GetActiveStunInfo();
+		if ( pVictim->m_Shared.InCond( TF_COND_STUNNED ) && pStun && pStun->hPlayer == pOwner
+			&& ( pStun->iStunFlags & TF_STUN_MOVEMENT )
+			&& !( pStun->iStunFlags & TF_STUN_CONTROLS )
+			&& !( pStun->iStunFlags & TF_STUN_LOSER_STATE ) )
+		{
+			pVictim->m_Shared.SetStunExpireTime( gpGlobals->curtime + 0.35f );
+		}
+		else if ( !pVictim->m_Shared.InCond( TF_COND_STUNNED ) )
+		{
+			pVictim->m_Shared.StunPlayer( 0.35f, 0.5f, TF_STUN_MOVEMENT, pOwner );
+		}
+	}
+#endif
+}
+
+void CTFWeaponDemoShield::HaterLatchThink( void )
+{
+	HaterMaintainLatch();
+#ifdef GAME_DLL
+	if ( m_bHaterLatched )
+		SetContextThink( &CTFWeaponDemoShield::HaterLatchThink, gpGlobals->curtime + 0.1f, "HaterLatchThink" );
+#endif
 }
 
 void CTFWeaponDemoShield::DoSpecialAction( CTFPlayer *pPlayer )

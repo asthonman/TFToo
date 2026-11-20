@@ -297,6 +297,9 @@ public:
 	virtual void	Precache( void );
 	virtual void	Equip( CBaseCombatCharacter *pOwner );
 	virtual void	UpdateOnRemove( void );
+	virtual void	PrimaryAttack( void );
+	virtual void	ItemPostFrame( void );
+	virtual bool	Holster( CBaseCombatWeapon *pSwitchingTo );
 
 	void	DoSpecialAction( CTFPlayer *pPlayer );
 	void	EndSpecialAction( CTFPlayer *pPlayer );
@@ -305,10 +308,18 @@ public:
 	void	ShieldBash( CTFPlayer *pPlayer, float flCurrentChargeMeter );
 	float	CalculateChargeDamage( float flCurrentChargeMeter );
 	Vector	GetShieldDamageForce( float flCurrentChargeMeter );
+	void	HaterTryLatch( CTFPlayer *pOwner, CTFPlayer *pVictim );
 
 private:
+	void	HaterReleaseLatch( CTFPlayer *pOwner );
+	void	HaterMaintainLatch( void );
+	void	HaterLatchThink( void );
+
 #ifdef GAME_DLL
 	bool	m_bImpactedSomething;
+	bool	m_bBiteFromCharge;
+	bool	m_bHaterLatched;
+	float	m_flNextHaterSlow;
 #endif
 
 	CTFWeaponDemoShield( const CTFWeaponDemoShield & ) {}

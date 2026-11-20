@@ -123,6 +123,7 @@ public:
 	virtual Vector GetPlayerViewOffset( bool ducked ) const;
 	bool			GrapplingHookMove( void );
 	bool			ChargeMove( void );
+	bool			GuardDogJetCharge( void );
 	bool			StunMove( void );
 	bool			TauntMove( void );
 	void			VehicleMove( void );
@@ -764,6 +765,63 @@ bool CTFGameMovement::ChargeMove()
 		mv->m_nButtons |= IN_ATTACK;
 	}
 
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Guard Dog Hater. Looking level or down on the ground stays a shield dash.
+// Looking up, or already airborne, flies along the aim for the charge.
+// A bite latch owns movement instead, through the grappling-hook path.
+//-----------------------------------------------------------------------------
+bool CTFGameMovement::GuardDogJetCharge( void )
+{
+	if ( !m_pTFPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return false;
+	if ( !m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+		return false;
+	if ( m_pTFPlayer->GetGrapplingHookTarget() )
+		return false;
+
+	const bool bOnGround = player->GetGroundEntity() != NULL;
+	// Positive pitch looks down.
+	if ( bOnGround && mv->m_vecViewAngles.x >= -15.f )
+		return false;
+
+	Vector vecDir;
+	AngleVectors( mv->m_vecViewAngles, &vecDir );
+	if ( bOnGround && vecDir.z < 0.f )
+		vecDir.z = 0.f;
+	if ( vecDir.LengthSqr() < 0.0001f )
+		return false;
+	VectorNormalize( vecDir );
+
+	float flSpeed = tf_max_charge_speed.GetFloat();
+	if ( TF_GUARDDOG_SPEED > flSpeed )
+		flSpeed = TF_GUARDDOG_SPEED;
+
+	mv->m_vecVelocity = vecDir * flSpeed;
+	if ( bOnGround )
+	{
+		SetGroundEntity( NULL );
+		// CategorizePosition keeps you grounded unless z is above 250,
+		// or the origin has already cleared its 2 unit ground trace.
+		if ( mv->m_vecVelocity.z < 260.f )
+			mv->m_vecVelocity.z = 260.f;
+	}
+
+	CheckVelocity();
+
+	// Ground dashes bash when they bump a player. The air path skips WalkMove,
+	// so do the same check here. EndCharge is server-side; the client follows
+	// the replicated condition.
+	Vector vecStart = mv->GetAbsOrigin();
+	Vector vecEnd = vecStart + mv->m_vecVelocity * gpGlobals->frametime;
+	trace_t trace;
+	TracePlayerBBox( vecStart, vecEnd, PlayerSolidMask(), COLLISION_GROUP_PLAYER_MOVEMENT, trace );
+	if ( trace.fraction < 1.f && ToTFPlayer( trace.m_pEnt ) )
+		m_pTFPlayer->m_Shared.EndCharge();
+
+	TryPlayerMove();
 	return true;
 }
 
@@ -2969,7 +3027,8 @@ void CTFGameMovement::FullWalkMove()
 	// Make sure velocity is valid.
 	CheckVelocity();
 
-	if (player->GetGroundEntity() != NULL)
+	const bool bGuardDogJet = GuardDogJetCharge();
+	if ( !bGuardDogJet && player->GetGroundEntity() != NULL )
 	{
 		bool bGelBounce = tf_paint_enabled.GetBool() && m_nPaintPower == BOUNCE_POWER
 			&& !( mv->m_nButtons & IN_DUCK ) && gpGlobals->curtime >= m_flNextPaintBounce
@@ -2990,7 +3049,7 @@ void CTFGameMovement::FullWalkMove()
 			WalkMove();
 		}
 	}
-	else
+	else if ( !bGuardDogJet )
 	{
 		AirMove();
 	}
@@ -2999,7 +3058,7 @@ void CTFGameMovement::FullWalkMove()
 	CategorizePosition();
 
 	// Add any remaining gravitational component if we are not in water.
-	if ( !InWater() )
+	if ( !InWater() && !bGuardDogJet )
 	{
 		FinishGravity();
 		if ( m_bBrickSlamHang )
@@ -3008,7 +3067,7 @@ void CTFGameMovement::FullWalkMove()
 
 	// If we are on ground, no downward velocity.
 	// A repulsion bounce has to keep its upward speed even if we're still touching the floor.
-	if ( player->GetGroundEntity() != NULL && !m_bPaintBounced )
+	if ( !bGuardDogJet && player->GetGroundEntity() != NULL && !m_bPaintBounced )
 	{
 		mv->m_vecVelocity[2] = 0;
 	}
