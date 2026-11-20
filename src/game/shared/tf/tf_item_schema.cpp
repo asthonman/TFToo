@@ -31,10 +31,12 @@
 extern const char *s_pszMatchGroups[];
 
 //-----------------------------------------------------------------------------
-// Taunts are not body cosmetics, so custom classes still get them. Anything
-// else has to live entirely in hat, medal, floating, or flair. A shirt that
-// also takes a hat does not qualify, and neither does a weapon with no region
-// (the passtime jack is one of those).
+// All-class cosmetics only equip on Madcap through Guard Dog when every
+// region they take is a hat, medal, disconnected floating item, or flair.
+// A shirt that also takes a hat does not qualify, and neither does a weapon
+// with no region (the passtime jack is one of those). Taunts are not copied
+// here. After the scene list loads, a class gets one only if its model has
+// the sequence that scene will play.
 //-----------------------------------------------------------------------------
 static bool CustomClassMayEquipAllClassItem( const CTFItemDefinition *pDef )
 {
@@ -43,7 +45,7 @@ static bool CustomClassMayEquipAllClassItem( const CTFItemDefinition *pDef )
 
 	const int iSlot = pDef->GetDefaultLoadoutSlot();
 	if ( iSlot >= LOADOUT_POSITION_TAUNT && iSlot <= LOADOUT_POSITION_TAUNT8 )
-		return true;
+		return false;
 
 	CEconItemSchema *pSchema = GetItemSchema();
 	if ( !pSchema )
@@ -942,6 +944,265 @@ void CTFItemDefinition::InternalInitialize()
 #include "filesystem.h"
 
 //-----------------------------------------------------------------------------
+// Custom classes only equip a taunt when their player model has the sequence
+// the scene will play. The scene used is the same donor order as
+// CTFPlayer::PlayTauntSceneFromItem (pyro first, then the rest of the nine).
+//-----------------------------------------------------------------------------
+static const char *CustomClassPlayerModel( int iClass )
+{
+	switch ( iClass )
+	{
+	case TF_CLASS_MADCAP:	return "models/player/scout.mdl";
+	case TF_CLASS_MOBSTER:	return "models/vip_mobster/player/mobster.mdl";
+	case TF_CLASS_RESUPPLY:	return "models/alaxe/tf2/actors/cabinette.mdl";
+	case TF_CLASS_BRICK:	return "models/alaxe/tf2/actors/brick_mann.mdl";
+	case TF_CLASS_WITCH:	return "models/player/spy.mdl";
+	case TF_CLASS_GUARDDOG:	return "models/player/hwm/guard_dog_v1.mdl";
+	}
+	return NULL;
+}
+
+static int TauntSceneDonorClass( const CTFTauntInfo *pTaunt, int iClass )
+{
+	if ( !pTaunt )
+		return -1;
+
+	// Same order as CTFPlayer::DonorTauntClass. A class with its own intro
+	// scene plays that. Otherwise borrow pyro, then the rest of the nine.
+	if ( iClass >= 0 && iClass < LOADOUT_COUNT && pTaunt->GetIntroSceneCount( iClass ) > 0 )
+		return iClass;
+
+	static const int s_nDonors[] =
+	{
+		TF_CLASS_PYRO,
+		TF_CLASS_SCOUT,
+		TF_CLASS_HEAVYWEAPONS,
+		TF_CLASS_SOLDIER,
+		TF_CLASS_DEMOMAN,
+		TF_CLASS_ENGINEER,
+		TF_CLASS_MEDIC,
+		TF_CLASS_SNIPER,
+		TF_CLASS_SPY,
+	};
+
+	for ( int i = 0; i < ARRAYSIZE( s_nDonors ); ++i )
+	{
+		const int iDonor = s_nDonors[i];
+		if ( iDonor >= 0 && iDonor < LOADOUT_COUNT && pTaunt->GetIntroSceneCount( iDonor ) > 0 )
+			return iDonor;
+	}
+
+	return -1;
+}
+
+static bool ReadBoundedString( const byte *data, int nSize, int nAbs, char *szOut, int nOut )
+{
+	if ( !data || !szOut || nOut < 2 || nAbs < 0 || nAbs >= nSize )
+		return false;
+
+	int n = 0;
+	while ( n < nOut - 1 && nAbs + n < nSize )
+	{
+		const unsigned char c = data[nAbs + n];
+		if ( c == '\0' )
+			break;
+		if ( c < 32 || c > 126 )
+			return false;
+		szOut[n++] = (char)c;
+	}
+
+	if ( n == 0 || nAbs + n >= nSize )
+		return false;
+
+	szOut[n] = '\0';
+	return true;
+}
+
+static bool ModelHasTauntSequenceName( const CUtlVector<CUtlString> &sequences, const char *pszName )
+{
+	if ( !pszName || !pszName[0] )
+		return false;
+
+	FOR_EACH_VEC( sequences, i )
+	{
+		if ( !V_stricmp( sequences[i].Get(), pszName ) )
+			return true;
+	}
+	return false;
+}
+
+static void CollectTauntSequencesFromModel( const char *pszModel, CUtlVector<CUtlString> &sequences, CUtlVector<CUtlString> &visited, int nDepth )
+{
+	if ( !pszModel || !pszModel[0] || nDepth > 6 || !g_pFullFileSystem )
+		return;
+
+	FOR_EACH_VEC( visited, i )
+	{
+		if ( !V_stricmp( visited[i].Get(), pszModel ) )
+			return;
+	}
+	visited.AddToTail( pszModel );
+
+	CUtlBuffer buf( 0, 0, CUtlBuffer::READ_ONLY );
+	if ( !g_pFullFileSystem->ReadFile( pszModel, "GAME", buf ) )
+		return;
+
+	const byte *data = (const byte *)buf.Base();
+	const int nSize = buf.TellPut();
+	if ( nSize < 400 || data[0] != 'I' || data[1] != 'D' || data[2] != 'S' || data[3] != 'T' )
+		return;
+
+	const int nSeq = *(const int *)( data + 188 );
+	const int nSeqIndex = *(const int *)( data + 192 );
+	if ( nSeq < 0 || nSeq > 4096 || nSeqIndex < 0 || nSeqIndex >= nSize )
+		return;
+
+	for ( int i = 0; i < nSeq; ++i )
+	{
+		const int o = nSeqIndex + i * 212;
+		if ( o + 8 > nSize )
+			break;
+
+		const int nLabel = *(const int *)( data + o + 4 );
+		char szName[128];
+		if ( !ReadBoundedString( data, nSize, o + nLabel, szName, sizeof( szName ) ) )
+			continue;
+		if ( !V_stristr( szName, "taunt" ) )
+			continue;
+		if ( !ModelHasTauntSequenceName( sequences, szName ) )
+			sequences.AddToTail( szName );
+	}
+
+	const int nIncludes = *(const int *)( data + 336 );
+	const int nIncludeIndex = *(const int *)( data + 340 );
+	if ( nIncludes < 0 || nIncludes > 32 || nIncludeIndex < 0 || nIncludeIndex >= nSize )
+		return;
+
+	for ( int i = 0; i < nIncludes; ++i )
+	{
+		const int o = nIncludeIndex + i * 8;
+		if ( o + 8 > nSize )
+			break;
+		const int nName = *(const int *)( data + o + 4 );
+		char szInclude[260];
+		if ( !ReadBoundedString( data, nSize, o + nName, szInclude, sizeof( szInclude ) ) )
+			continue;
+		CollectTauntSequencesFromModel( szInclude, sequences, visited, nDepth + 1 );
+	}
+}
+
+static const CUtlVector<CUtlString> &CustomClassTauntSequences( int iClass )
+{
+	static CUtlVector<CUtlString> s_Sequences[TF_CLASS_COUNT_ALL];
+	static bool s_bLoaded[TF_CLASS_COUNT_ALL];
+
+	if ( iClass < 0 || iClass >= TF_CLASS_COUNT_ALL )
+	{
+		static CUtlVector<CUtlString> s_Empty;
+		return s_Empty;
+	}
+
+	if ( !s_bLoaded[iClass] )
+	{
+		s_bLoaded[iClass] = true;
+		CUtlVector<CUtlString> visited;
+		CollectTauntSequencesFromModel( CustomClassPlayerModel( iClass ), s_Sequences[iClass], visited, 0 );
+	}
+
+	return s_Sequences[iClass];
+}
+
+static bool IsSequenceNameChar( unsigned char c )
+{
+	return ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) || c == '_';
+}
+
+static bool SceneNameMatchesModel( const char *pszName, const CUtlVector<CUtlString> &sequences )
+{
+	if ( ModelHasTauntSequenceName( sequences, pszName ) )
+		return true;
+
+	// conga.vcd plays taunt_conga. The filename drops the taunt_ prefix.
+	char szPrefixed[160];
+	V_snprintf( szPrefixed, sizeof( szPrefixed ), "taunt_%s", pszName );
+	return ModelHasTauntSequenceName( sequences, szPrefixed );
+}
+
+static bool SceneFileReferencesSequence( const char *pszScene, const CUtlVector<CUtlString> &sequences )
+{
+	if ( !pszScene || !pszScene[0] )
+		return false;
+
+	char szBase[128];
+	V_FileBase( pszScene, szBase, sizeof( szBase ) );
+
+	CUtlBuffer buf( 0, 0, CUtlBuffer::READ_ONLY );
+	if ( !g_pFullFileSystem || !g_pFullFileSystem->ReadFile( pszScene, "GAME", buf ) )
+		return SceneNameMatchesModel( szBase, sequences );
+
+	// Sequence names are identifiers inside the scene ("taunt_laugh",
+	// taunt_highFiveStart). A whole-line scan never exact-matches them.
+	const byte *data = (const byte *)buf.Base();
+	const int nSize = buf.TellPut();
+	bool bSawTauntName = false;
+	for ( int i = 0; i < nSize; )
+	{
+		if ( !IsSequenceNameChar( data[i] ) )
+		{
+			++i;
+			continue;
+		}
+
+		const int nStart = i;
+		while ( i < nSize && IsSequenceNameChar( data[i] ) )
+			++i;
+
+		const int nLen = i - nStart;
+		if ( nLen < 4 || nLen >= 96 )
+			continue;
+
+		char szToken[96];
+		V_memcpy( szToken, data + nStart, nLen );
+		szToken[nLen] = '\0';
+		if ( !V_stristr( szToken, "taunt" ) )
+			continue;
+		bSawTauntName = true;
+		if ( ModelHasTauntSequenceName( sequences, szToken ) )
+			return true;
+	}
+
+	// A scene that names a taunt sequence this model does not have cannot play.
+	// No name at all (unread or binary) falls back to the filename.
+	if ( bSawTauntName )
+		return false;
+
+	return SceneNameMatchesModel( szBase, sequences );
+}
+
+static bool CustomClassCanPlayTaunt( int iClass, const CTFTauntInfo *pTaunt, bool bDonorClassCanUse )
+{
+	const CUtlVector<CUtlString> &sequences = CustomClassTauntSequences( iClass );
+	if ( sequences.Count() == 0 )
+		return bDonorClassCanUse;
+
+	const int iDonor = TauntSceneDonorClass( pTaunt, iClass );
+	if ( iDonor < 0 )
+		return false;
+
+	const int nScenes = pTaunt->GetIntroSceneCount( iDonor );
+	if ( nScenes <= 0 )
+		return false;
+
+	for ( int iScene = 0; iScene < nScenes; ++iScene )
+	{
+		if ( !SceneFileReferencesSequence( pTaunt->GetIntroScene( iDonor, iScene ), sequences ) )
+			return false;
+	}
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> *pVecErrors )
@@ -1021,9 +1282,10 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 
 		// All-class items only list the original nine. Copying every one of them
 		// onto Madcap through Guard Dog also equipped the passtime jack, and
-		// body cosmetics those models cannot wear. Taunts still copy, so the
-		// gesture menu has something to open. A cosmetic copies only when every
-		// region it takes is a hat, medal, disconnected floating item, or flair.
+		// body cosmetics those models cannot wear. A cosmetic copies only when
+		// every region it takes is a hat, medal, disconnected floating item, or
+		// flair. Taunts are decided later, once the scene list is loaded, and
+		// only if that class's model has the sequence.
 		if ( CanBeUsedByAllClasses() && CustomClassMayEquipAllClassItem( this ) )
 		{
 			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
@@ -1090,6 +1352,29 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 			m_pTauntData->BInitFromKV( pTauntKV, pVecErrors ),
 			"Item definition %i \"%s\" failed to initialize taunt data!", GetDefinitionIndex(), GetItemBaseName() 
 		);
+
+		// Weapons such as the Thermal Thruster also carry a taunt block. Only
+		// real taunt items should gain or lose a custom class here.
+		const bool bTauntSlot = m_iDefaultLoadoutSlot >= LOADOUT_POSITION_TAUNT && m_iDefaultLoadoutSlot <= LOADOUT_POSITION_TAUNT8;
+		if ( bTauntSlot )
+		{
+			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
+			{
+				const bool bDonorClassCanUse =
+					( iClass == TF_CLASS_MADCAP && m_vbClassUsability.IsBitSet( TF_CLASS_SCOUT ) ) ||
+					( iClass == TF_CLASS_WITCH && m_vbClassUsability.IsBitSet( TF_CLASS_SPY ) );
+				if ( CustomClassCanPlayTaunt( iClass, m_pTauntData, bDonorClassCanUse ) )
+				{
+					m_vbClassUsability.Set( iClass );
+					m_iLoadoutSlots[iClass] = m_iDefaultLoadoutSlot;
+				}
+				else
+				{
+					m_vbClassUsability.Clear( iClass );
+					m_iLoadoutSlots[iClass] = LOADOUT_POSITION_INVALID;
+				}
+			}
+		}
 	}
 
 	if ( GetDefinitionIndex() == 7509 && !pTauntKV )

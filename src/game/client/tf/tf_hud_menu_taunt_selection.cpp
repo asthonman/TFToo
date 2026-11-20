@@ -438,9 +438,30 @@ static void OpenTauntSelectionUI()
 		return;
 	}
 
-	// Always open the gesture menu. Skipping it when the taunt slots were
-	// empty meant a new class, which does not start with a stock taunt item,
-	// played the weapon taunt and never showed the menu.
+	// No equipped taunt means the weapon taunt. An empty server cache used to
+	// look like "no taunts" on the new classes, so this reads the live loadout.
+	int iClass = pPlayer->GetPlayerClass()->GetClassIndex();
+	bool bHasAnyTauntEquipped = false;
+	CTFPlayerInventory *pInv = pPlayer->Inventory();
+	if ( pInv )
+	{
+		for ( int iTauntSlot = LOADOUT_POSITION_TAUNT; iTauntSlot <= LOADOUT_POSITION_TAUNT8; ++iTauntSlot )
+		{
+			CEconItemView *pItem = pInv->GetItemInLoadout( iClass, iTauntSlot );
+			if ( pItem && pItem->IsValid() )
+			{
+				bHasAnyTauntEquipped = true;
+				break;
+			}
+		}
+	}
+
+	if ( !bHasAnyTauntEquipped )
+	{
+		engine->ClientCmd( "taunt" );
+		return;
+	}
+
 	pPlayer->SetShowHudMenuTauntSelection( true );
 }
 static ConCommand in_taunt_keydown( "+taunt", OpenTauntSelectionUI );
