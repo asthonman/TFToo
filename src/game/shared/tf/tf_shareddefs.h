@@ -252,7 +252,8 @@ enum ETFClass
 // Reload sniffs. Same aim trace and range as a medigun lock-on
 // (GetTargetRange / script "Range": 450). Stick range is not applied.
 #define TF_GUARDDOG_SNIFF_RANGE			450.0f
-// Invisible enemies inside this blink when you sniff. It does not retarget.
+// Invisible enemies inside this blink when you sniff. Enemy stickies and
+// grenades in the same radius are outlined for the same short window.
 #define TF_GUARDDOG_SNIFF_BLINK_RADIUS	1000.0f
 #define TF_GUARDDOG_SNIFF_BLINK_TIME	1.0f
 

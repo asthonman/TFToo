@@ -6301,6 +6301,14 @@ struct GuardDogBuildGlow_t
 };
 static CUtlVector< GuardDogBuildGlow_t > s_GuardDogBuildGlows;
 
+struct GuardDogBombGlow_t
+{
+	int index;
+	float until;
+	CGlowObject *glow;
+};
+static CUtlVector< GuardDogBombGlow_t > s_GuardDogBombGlows;
+
 struct GuardDogVol_t
 {
 	int guid;
@@ -6352,6 +6360,12 @@ static void ClearGuardDogSense()
 		delete s_GuardDogBuildGlows[i].glow;
 	}
 	s_GuardDogBuildGlows.RemoveAll();
+
+	for ( int i = 0; i < s_GuardDogBombGlows.Count(); ++i )
+	{
+		delete s_GuardDogBombGlows[i].glow;
+	}
+	s_GuardDogBombGlows.RemoveAll();
 
 	for ( int i = 0; i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
 	{
@@ -6439,6 +6453,87 @@ static bool GuardDogIsEnemySentry( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
 
 	const int nTeam = pEnt->GetTeamNumber();
 	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
+}
+
+// Pills and stickies only. Jars and the launcher itself use other class names.
+static bool GuardDogIsEnemyBomb( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
+{
+	if ( !pEnt || pEnt->IsPlayer() )
+		return false;
+
+	ClientClass *pClass = pEnt->GetClientClass();
+	if ( !pClass || !pClass->GetName() || !V_stristr( pClass->GetName(), "GrenadePipebombProjectile" ) )
+		return false;
+
+	const int nTeam = pEnt->GetTeamNumber();
+	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
+}
+
+static void GuardDogClearBombGlows()
+{
+	for ( int i = 0; i < s_GuardDogBombGlows.Count(); ++i )
+	{
+		delete s_GuardDogBombGlows[i].glow;
+	}
+	s_GuardDogBombGlows.RemoveAll();
+}
+
+static void GuardDogNoteBomb( int nEnt )
+{
+	if ( nEnt <= 0 || nEnt >= MAX_EDICTS )
+		return;
+
+	const float flUntil = gpGlobals->curtime + TF_GUARDDOG_SNIFF_BLINK_TIME;
+	for ( int i = 0; i < s_GuardDogBombGlows.Count(); ++i )
+	{
+		if ( s_GuardDogBombGlows[i].index == nEnt )
+		{
+			if ( flUntil > s_GuardDogBombGlows[i].until )
+				s_GuardDogBombGlows[i].until = flUntil;
+			return;
+		}
+	}
+
+	GuardDogBombGlow_t add;
+	add.index = nEnt;
+	add.until = flUntil;
+	add.glow = NULL;
+	s_GuardDogBombGlows.AddToTail( add );
+}
+
+static void UpdateGuardDogBombGlows( C_TFPlayer *pLocal )
+{
+	if ( GuardDogSmellBlocked( pLocal ) )
+	{
+		GuardDogClearBombGlows();
+		return;
+	}
+
+	for ( int i = s_GuardDogBombGlows.Count() - 1; i >= 0; --i )
+	{
+		C_BaseEntity *pEnt = ClientEntityList().GetBaseEntity( s_GuardDogBombGlows[i].index );
+		const bool bKeep = pEnt && gpGlobals->curtime < s_GuardDogBombGlows[i].until && GuardDogIsEnemyBomb( pLocal, pEnt );
+		if ( !bKeep )
+		{
+			delete s_GuardDogBombGlows[i].glow;
+			s_GuardDogBombGlows.FastRemove( i );
+			continue;
+		}
+
+		float r, g, b;
+		TFGameRules()->GetTeamGlowColor( pEnt->GetTeamNumber(), r, g, b );
+		const Vector vecColor( r, g, b );
+		if ( !s_GuardDogBombGlows[i].glow )
+		{
+			s_GuardDogBombGlows[i].glow = new CGlowObject( pEnt, vecColor, 1.0f, true, false );
+		}
+		else
+		{
+			s_GuardDogBombGlows[i].glow->SetEntity( pEnt );
+			s_GuardDogBombGlows[i].glow->SetColor( vecColor );
+			s_GuardDogBombGlows[i].glow->SetRenderFlags( true, false );
+		}
+	}
 }
 
 // Looping fire, a voice line, or a sentry beep keeps the outline up until the
@@ -6655,6 +6750,18 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 		}
 	}
 
+	for ( C_BaseEntity *pEnt = ClientEntityList().FirstBaseEntity(); pEnt; pEnt = ClientEntityList().NextBaseEntity( pEnt ) )
+	{
+		if ( !GuardDogIsEnemyBomb( pLocal, pEnt ) )
+			continue;
+
+		const float flDistSqr = ( pEnt->WorldSpaceCenter() - vecFrom ).LengthSqr();
+		if ( flDistSqr <= flBlinkRadiusSqr )
+		{
+			GuardDogNoteBomb( pEnt->entindex() );
+		}
+	}
+
 	Vector vecAiming;
 	pLocal->EyeVectors( &vecAiming );
 	const Vector vecSrc = pLocal->Weapon_ShootPosition();
@@ -6824,6 +6931,7 @@ static void UpdateGuardDogSense()
 	}
 
 	UpdateGuardDogBuildingGlows( pLocal );
+	UpdateGuardDogBombGlows( pLocal );
 }
 
 static void UpdateGuardDogVision()

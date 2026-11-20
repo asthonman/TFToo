@@ -1395,7 +1395,8 @@ int CTFGrenadePipebombProjectile::UpdateTransmitState()
 		return SetTransmitState( FL_EDICT_ALWAYS );
 	}
 
-	return BaseClass::UpdateTransmitState();
+	// FULLCHECK so a Guard Dog's ShouldTransmit can pull bombs in through walls.
+	return SetTransmitState( FL_EDICT_FULLCHECK );
 }
 
 //-----------------------------------------------------------------------------
@@ -1406,6 +1407,20 @@ int CTFGrenadePipebombProjectile::ShouldTransmit( const CCheckTransmitInfo *pInf
 	if ( m_bDefensiveBomb )
 	{
 		return FL_EDICT_ALWAYS;
+	}
+
+	// A sniff can only outline a bomb the client already has.
+	if ( pInfo->m_pClientEnt )
+	{
+		CTFPlayer *pViewer = ToTFPlayer( CBaseEntity::Instance( pInfo->m_pClientEnt ) );
+		if ( pViewer && pViewer->IsAlive() && pViewer->IsPlayerClass( TF_CLASS_GUARDDOG )
+			&& GetTeamNumber() >= FIRST_GAME_TEAM
+			&& GetTeamNumber() != pViewer->GetTeamNumber() )
+		{
+			Vector vecDelta = WorldSpaceCenter() - pViewer->WorldSpaceCenter();
+			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS ) )
+				return FL_EDICT_ALWAYS;
+		}
 	}
 
 	return BaseClass::ShouldTransmit( pInfo );
