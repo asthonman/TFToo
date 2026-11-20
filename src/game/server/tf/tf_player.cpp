@@ -4254,9 +4254,9 @@ CON_COMMAND_F( verifyloadout, "Cause the server to verify the player's items on 
 #endif // DEBUG
 
 //-----------------------------------------------------------------------------
-// Guard Dog hearing. Action sounds outline the source for the length of the
-// sound, and a dog who would otherwise not hear it gets a copy that carries
-// to TF_GUARDDOG_HEARING_RANGE.
+// Guard Dog hearing. Action sounds outline the source inside
+// TF_GUARDDOG_NOISE_GLOW_RANGE. The extra copy still carries to
+// TF_GUARDDOG_HEARING_RANGE; that range does not draw an outline.
 //-----------------------------------------------------------------------------
 static bool s_bGuardDogRelay = false;
 static float s_flGuardDogNoiseCoveredUntil[MAX_EDICTS];
@@ -4402,6 +4402,8 @@ void GuardDog_NotifyActionNoise( CBaseEntity *pSource, const EmitSound_t *pParam
 		if ( flDist > TF_GUARDDOG_HEARING_RANGE )
 			continue;
 
+		// Arms the facing boost for the whole hearing range. The client only
+		// draws the outline inside TF_GUARDDOG_NOISE_GLOW_RANGE.
 		CSingleUserRecipientFilter msgFilter( pDog );
 		msgFilter.MakeReliable();
 		UserMessageBegin( msgFilter, "GuardDogNoise" );
@@ -4460,8 +4462,8 @@ int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 			return FL_EDICT_ALWAYS;
 
 		// Jarate, milk, bleed, afterburn, and gas are visible at any distance.
-		// Everyone else only needs to exist out to a dog's hearing range, so a
-		// shot or voice line can still draw after it leaves the PVS.
+		// A noise outline only needs the player out to the glow range.
+		// The sound itself is a separate copy and does not use this.
 		CTFPlayer *pViewer = ToTFPlayer( pRecipientEntity );
 		if ( pViewer && pViewer != this && pViewer->IsAlive() && IsAlive() && pViewer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
 		{
@@ -4478,7 +4480,7 @@ int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 				return FL_EDICT_ALWAYS;
 
 			Vector vecDelta = GetAbsOrigin() - pViewer->GetAbsOrigin();
-			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE ) )
+			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_NOISE_GLOW_RANGE * TF_GUARDDOG_NOISE_GLOW_RANGE ) )
 				return FL_EDICT_ALWAYS;
 		}
 	}

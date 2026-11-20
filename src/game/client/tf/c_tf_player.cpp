@@ -6419,6 +6419,15 @@ static bool GuardDogPlayerIsMarked( C_TFPlayer *pPlayer )
 		|| pPlayer->m_Shared.InCond( TF_COND_GAS );
 }
 
+// Jarate, milk, gas, or fire covers the nose. Bleed does not.
+static bool GuardDogSmellBlocked( C_TFPlayer *pPlayer )
+{
+	return pPlayer->m_Shared.InCond( TF_COND_URINE )
+		|| pPlayer->m_Shared.InCond( TF_COND_MAD_MILK )
+		|| pPlayer->m_Shared.InCond( TF_COND_GAS )
+		|| pPlayer->m_Shared.InCond( TF_COND_BURNING );
+}
+
 static bool GuardDogIsEnemySentry( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
 {
 	if ( !pEnt || pEnt->IsPlayer() )
@@ -6450,7 +6459,8 @@ static void GuardDogUpdateHeardSounds( C_TFPlayer *pLocal )
 	Vector vecForward;
 	pLocal->EyeVectors( &vecForward );
 	const Vector vecEar = pLocal->EyePosition();
-	const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+	const float flSoundSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+	const float flGlowSqr = TF_GUARDDOG_NOISE_GLOW_RANGE * TF_GUARDDOG_NOISE_GLOW_RANGE;
 
 	for ( int i = 0; i < snds.Count(); ++i )
 	{
@@ -6486,10 +6496,10 @@ static void GuardDogUpdateHeardSounds( C_TFPlayer *pLocal )
 
 		Vector vecTo = vecOrigin - vecEar;
 		const float flDistSqr = vecTo.LengthSqr();
-		if ( flDistSqr > flHearingSqr || flDistSqr < 1.0f )
+		if ( flDistSqr > flSoundSqr || flDistSqr < 1.0f )
 			continue;
 
-		if ( GuardDogChannelHoldsOutline( snd.m_nChannel ) && s_flGuardDogHeardUntil[idx] < gpGlobals->curtime + 0.15f )
+		if ( flDistSqr <= flGlowSqr && GuardDogChannelHoldsOutline( snd.m_nChannel ) && s_flGuardDogHeardUntil[idx] < gpGlobals->curtime + 0.15f )
 		{
 			s_flGuardDogHeardUntil[idx] = gpGlobals->curtime + 0.15f;
 		}
@@ -6546,7 +6556,7 @@ static void GuardDogUpdateHeardSounds( C_TFPlayer *pLocal )
 
 static void UpdateGuardDogBuildingGlows( C_TFPlayer *pLocal )
 {
-	const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+	const float flGlowSqr = TF_GUARDDOG_NOISE_GLOW_RANGE * TF_GUARDDOG_NOISE_GLOW_RANGE;
 
 	for ( int i = s_nGuardDogHeardBuildingCount - 1; i >= 0; --i )
 	{
@@ -6554,7 +6564,7 @@ static void UpdateGuardDogBuildingGlows( C_TFPlayer *pLocal )
 		const bool bTime = idx > 0 && idx < MAX_EDICTS && gpGlobals->curtime < s_flGuardDogHeardUntil[idx];
 		C_BaseEntity *pEnt = bTime ? ClientEntityList().GetBaseEntity( idx ) : NULL;
 		const bool bHeard = pEnt && GuardDogIsEnemySentry( pLocal, pEnt )
-			&& ( pEnt->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flHearingSqr;
+			&& ( pEnt->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flGlowSqr;
 
 		int nGlow = -1;
 		for ( int g = 0; g < s_GuardDogBuildGlows.Count(); ++g )
@@ -6623,6 +6633,12 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 	if ( !pLocal || !pLocal->IsAlive() || !pLocal->IsPlayerClass( TF_CLASS_GUARDDOG ) )
 		return;
 
+	if ( GuardDogSmellBlocked( pLocal ) )
+	{
+		s_nGuardDogSniffTarget = 0;
+		return;
+	}
+
 	const Vector vecFrom = pLocal->WorldSpaceCenter();
 	const float flBlinkRadiusSqr = TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS;
 
@@ -6681,7 +6697,11 @@ static void UpdateGuardDogSense()
 
 	GuardDogUpdateHeardSounds( pLocal );
 
-	if ( s_nGuardDogSniffTarget > 0 )
+	if ( GuardDogSmellBlocked( pLocal ) )
+	{
+		s_nGuardDogSniffTarget = 0;
+	}
+	else if ( s_nGuardDogSniffTarget > 0 )
 	{
 		C_TFPlayer *pSniffed = ToTFPlayer( UTIL_PlayerByIndex( s_nGuardDogSniffTarget ) );
 		if ( !pSniffed || !pSniffed->IsAlive() || !GuardDogIsEnemy( pLocal, pSniffed ) )
@@ -6710,11 +6730,11 @@ static void UpdateGuardDogSense()
 			}
 
 			const bool bMarked = GuardDogIsEnemy( pLocal, pPlayer ) && GuardDogPlayerIsMarked( pPlayer );
-			const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+			const float flGlowSqr = TF_GUARDDOG_NOISE_GLOW_RANGE * TF_GUARDDOG_NOISE_GLOW_RANGE;
 			const bool bHeard = GuardDogIsEnemy( pLocal, pPlayer )
 				&& i < MAX_EDICTS
 				&& gpGlobals->curtime < s_flGuardDogHeardUntil[i]
-				&& ( pPlayer->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flHearingSqr;
+				&& ( pPlayer->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flGlowSqr;
 
 			if ( bSniffed || bMarked || bHeard )
 			{
