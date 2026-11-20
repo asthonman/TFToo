@@ -472,8 +472,8 @@ void CHudItemEffectMeter_Madcap::PlaceClearOfCharge( void )
 }
 
 //-----------------------------------------------------------------------------
-// Guard Dog sniff. Same meter shape as the others, but it sits above the
-// shield charge and the ammo counter instead of in that row.
+// Guard Dog sniff. Right-hand column, above the ammo counter and the shield
+// charge. The center of the screen stays clear for the objective.
 //-----------------------------------------------------------------------------
 class CHudItemEffectMeter_GuardDog : public CHudItemEffectMeter
 {
