@@ -293,9 +293,6 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"0"
-			"image_inventory"	"backpack/weapons/w_models/w_resupply_ammo_medium"
-			"image_inventory_size_w"	"128"
-			"image_inventory_size_h"	"82"
 			"used_by_classes"
 			{
 				"resupply"		"1"
@@ -519,9 +516,6 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"0"
-			"image_inventory"	"backpack/weapons/w_models/w_resupply_ammo_small"
-			"image_inventory_size_w"	"128"
-			"image_inventory_size_h"	"82"
 			"used_by_classes"
 			{
 				"resupply"		"1"
@@ -553,9 +547,6 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"0"
-			"image_inventory"	"backpack/weapons/w_models/w_resupply_ammo_large"
-			"image_inventory_size_w"	"128"
-			"image_inventory_size_h"	"82"
 			"used_by_classes"
 			{
 				"resupply"		"1"
