@@ -4979,6 +4979,11 @@ void CTFPlayer::RemoveNemesisRelationships()
 //-----------------------------------------------------------------------------
 void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 {
+	// The cabinet and the Resupply aura both come through here. Put the
+	// client's loadout back on before the refill, so a weapon or cosmetic
+	// changed since the last spawn is what comes out of the locker.
+	m_Inventory.ReapplyRememberedLoadout();
+
 	// We may have been boosted over our max health. If we have, 
 	// restore it after we reset out class values.
 	int nOldMaxHealth = GetMaxHealth();
@@ -8057,70 +8062,10 @@ void CTFPlayer::HandleCommand_JoinClass( const char *pClassName, bool bAllowSpaw
 //-----------------------------------------------------------------------------
 void CTFPlayer::CheckInstantLoadoutRespawn( void )
 {
-	// Must be alive
-	if ( !IsAlive() )
-		return;
-
-	// In a respawn room of your own team
-	if ( !PointInRespawnRoom( this, WorldSpaceCenter(), true ) )
-		return;
-	
-	// Not in stalemate (beyond the change class period)
-	if ( TFGameRules()->InStalemate() && !TFGameRules()->CanChangeClassInStalemate() )
-		return;
-
-	// Not in Arena mode
-	if ( TFGameRules()->IsInArenaMode() == true )
-		return;
-
-	// Not if we're on the losing team
-	if ( TFGameRules()->State_Get() == GR_STATE_TEAM_WIN && TFGameRules()->GetWinningTeam() != GetTeamNumber() ) 
-		return;
-
-	// Not if our current class's loadout hasn't changed
-	int iClass = GetPlayerClass() ? GetPlayerClass()->GetClassIndex() : TF_CLASS_UNDEFINED;
-	if ( iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS )
-	{
-		if ( m_Inventory.ClassLoadoutHasChanged( iClass ) )
-		{
-			if ( m_Shared.InCond( TF_COND_AIMING ) )
-			{
-				// If we are in condition TF_COND_AIMING it will be removed during the ForceRespawn() so we need to reset the weapon
-				// (which is normally skipped while regenerating)...this only affects the Minigun and the Sniper Rifle.
-				CTFWeaponBase *pWeapon = GetActiveTFWeapon();
-				if ( pWeapon )
-				{
-					if ( IsPlayerClass( TF_CLASS_HEAVYWEAPONS ) || WeaponID_IsSniperRifleOrBow( pWeapon->GetWeaponID() ) )
-					{
-						pWeapon->WeaponReset();
-					}
-				}
-			}
-
-			if ( IsPlayerClass( TF_CLASS_MEDIC ) )
-			{
-				CWeaponMedigun *pMedigun = dynamic_cast< CWeaponMedigun* >( GetActiveTFWeapon() );
-				if ( pMedigun )
-				{
-					pMedigun->Lower();
-				}
-			}
-
-			// Force healers to disconnect, so they re-evaluate any healing mods/attributes from the patient
-			for ( int i = 0; i < m_Shared.GetNumHealers(); i++ )
-			{
-				CTFPlayer *pMedic = ToTFPlayer( m_Shared.GetHealerByIndex( i ) );
-				if ( pMedic && pMedic->IsPlayerClass( TF_CLASS_MEDIC ) && pMedic->GetActiveTFWeapon() )
-				{
-					pMedic->GetActiveTFWeapon()->Lower();
-				}
-			}
-
-			// We want to use ForceRespawn() here so the player is physically moved back
-			// into the spawn room and not just regenerated instantly in the doorway
-			ForceRegenerateAndRespawn();
-		}
-	}
+	// A loadout change used to ForceRegenerateAndRespawn while you stood in
+	// your own spawn. That teleport is only for changing class, which
+	// HandleCommand_JoinClass still does. The locker and the Resupply aura
+	// apply the new items when they refill health and ammo.
 }
 
 class CGC_RespawnPostLoadoutChange : public GCSDK::CGCClientJob

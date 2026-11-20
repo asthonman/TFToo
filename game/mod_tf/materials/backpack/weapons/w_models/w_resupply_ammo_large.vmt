@@ -1,0 +1,7 @@
+"UnlitGeneric"
+{
+	"$baseTexture" "models/items/ammopack_large"
+	"$vertexcolor" 1
+	"$no_fullbright" 1
+	"$ignorez" 1
+}

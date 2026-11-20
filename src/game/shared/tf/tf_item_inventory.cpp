@@ -51,6 +51,16 @@
 using namespace GCSDK;
 
 #define LOCAL_LOADOUT_FILE		"cfg/local_loadout.txt"
+// Madcap, Mobster, Resupply, Brick, Witch, and Guard Dog. Vanilla classes
+// stay in local_loadout.txt.
+#define LOCAL_LOADOUT_CUSTOM_FILE	"cfg/local_loadout_custom.txt"
+
+#ifdef CLIENT_DLL
+static bool IsModLoadoutClass( int iClass )
+{
+	return iClass >= TF_CLASS_MADCAP && iClass <= TF_CLASS_GUARDDOG;
+}
+#endif
 
 #ifdef CLIENT_DLL
 //-----------------------------------------------------------------------------
@@ -952,17 +962,30 @@ void CTFPlayerInventory::LoadLocalLoadout()
 		if ( !pLoadoutKV->LoadFromFile( g_pFullFileSystem, LOCAL_LOADOUT_FILE, "MOD" ) )
 		{
 			Warning( "Unable to parse local_loadout.txt into keyvalues.\n" );
+			pLoadoutKV->deleteThis();
 			return;
 		}
 	}
 
+	// Older saves kept Madcap through Guard Dog in the vanilla file. A missing
+	// custom file is that save. Read those classes out of it once, then the
+	// next SaveLocalLoadout writes them to their own script.
+	KeyValues *pCustomKV = new KeyValues("local_loadout");
+	const bool bHasCustomFile = pCustomKV->LoadFromFile( g_pFullFileSystem, LOCAL_LOADOUT_CUSTOM_FILE, "MOD" );
+
 	KeyValues *pActivePresetKV = pLoadoutKV->FindKey("active_preset");
-	if (pActivePresetKV) 
+	KeyValues *pCustomActiveKV = bHasCustomFile ? pCustomKV->FindKey("active_preset") : NULL;
+	if (pActivePresetKV || pCustomActiveKV)
 	{
 		for (int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass)
 		{
+			const bool bMod = IsModLoadoutClass( iClass );
+			KeyValues *pActive = bMod ? ( pCustomActiveKV ? pCustomActiveKV : pActivePresetKV ) : pActivePresetKV;
+			if ( !pActive )
+				continue;
+
 			const char* pszClassName = g_aPlayerClassNames_NonLocalized[iClass];
-			int activePreset = pActivePresetKV->GetInt(pszClassName);
+			int activePreset = pActive->GetInt(pszClassName);
 			if ( activePreset < 0 || activePreset >= CEconItemSchema::kMaxItemPresetCount )
 				activePreset = 0;
 			m_ActivePreset[iClass] = activePreset;
@@ -970,21 +993,25 @@ void CTFPlayerInventory::LoadLocalLoadout()
 	}
 
 	bool bHealedEmptyClass = false;
+	bool bMigratedCustom = !bHasCustomFile;
 	int numPresets = static_cast<int>(GetItemSchema()->GetNumAllowedItemPresets());
 	for (int iPreset = 0; iPreset < numPresets; ++iPreset)
 	{
 		char szPreset[256];
 		V_snprintf(szPreset, sizeof(szPreset), "%i", iPreset);
 		KeyValues* pPresetKV = pLoadoutKV->FindKey(szPreset);
-		if (!pPresetKV)
-			continue;
+		KeyValues* pCustomPresetKV = bHasCustomFile ? pCustomKV->FindKey(szPreset) : NULL;
 
-		FOR_EACH_TRUE_SUBKEY(pPresetKV, pClassKey)
+		for ( int iClass = TF_FIRST_NORMAL_CLASS; iClass < TF_CLASS_COUNT_ALL; ++iClass )
 		{
-			const char *pszClassName = pClassKey->GetName();
-			// TF_CLASS_COUNT_ALL is an empty name, and a length of 0 matches every string.
-			const int iClass = GetClassIndexFromString(pszClassName, TF_LAST_NORMAL_CLASS);
-			if ( iClass < TF_FIRST_NORMAL_CLASS || iClass >= TF_CLASS_COUNT )
+			const bool bMod = IsModLoadoutClass( iClass );
+			KeyValues *pSourcePreset = bMod ? ( pCustomPresetKV ? pCustomPresetKV : pPresetKV ) : pPresetKV;
+			if ( !pSourcePreset )
+				continue;
+
+			const char *pszClassName = g_aPlayerClassNames_NonLocalized[iClass];
+			KeyValues *pClassKey = pSourcePreset->FindKey( pszClassName );
+			if ( !pClassKey )
 				continue;
 
 			itemid_t savedIds[CLASS_LOADOUT_POSITION_COUNT];
@@ -1040,8 +1067,9 @@ void CTFPlayerInventory::LoadLocalLoadout()
 	}
 
 	pLoadoutKV->deleteThis();
+	pCustomKV->deleteThis();
 
-	if ( bHealedEmptyClass )
+	if ( bHealedEmptyClass || bMigratedCustom )
 		SaveLocalLoadout();
 
 	GTFGCClientSystem()->LocalInventoryChanged();
@@ -1049,6 +1077,8 @@ void CTFPlayerInventory::LoadLocalLoadout()
 
 //-----------------------------------------------------------------------------
 // Purpose: If we are in mod mode, we track loadout changes locally.
+// Vanilla classes stay in cfg/local_loadout.txt. Madcap through Guard Dog
+// are written to cfg/local_loadout_custom.txt.
 //-----------------------------------------------------------------------------
 void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 {
@@ -1067,28 +1097,36 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 	}
 
 	KeyValues *pLoadoutKV = new KeyValues("local_loadout");
+	KeyValues *pCustomKV = new KeyValues("local_loadout");
 
 	KeyValues *pActivePresetKV = new KeyValues("active_preset");
+	KeyValues *pCustomActiveKV = new KeyValues("active_preset");
+	pLoadoutKV->AddSubKey(pActivePresetKV);
+	pCustomKV->AddSubKey(pCustomActiveKV);
+
 	for (int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass)
 	{
 		const char* pszClassName = g_aPlayerClassNames_NonLocalized[iClass];
-		pActivePresetKV->SetInt(pszClassName, m_ActivePreset[iClass]);
+		KeyValues *pActive = IsModLoadoutClass( iClass ) ? pCustomActiveKV : pActivePresetKV;
+		pActive->SetInt(pszClassName, m_ActivePreset[iClass]);
 	}
-	pLoadoutKV->AddSubKey(pActivePresetKV);
 
 	for (int iPreset = 0; iPreset < numPresets; ++iPreset)
 	{
 		char szPreset[256];
 		V_snprintf(szPreset, sizeof(szPreset), "%i", iPreset);
 		KeyValues *pPresetKV = new KeyValues(szPreset);
+		KeyValues *pCustomPresetKV = new KeyValues(szPreset);
 		pLoadoutKV->AddSubKey(pPresetKV);
+		pCustomKV->AddSubKey(pCustomPresetKV);
 
 		for (int iClass = 1; iClass < TF_CLASS_COUNT_ALL; ++iClass)
 		{
 			const char* pszClassName = g_aPlayerClassNames_NonLocalized[iClass];
+			KeyValues *pDestPreset = IsModLoadoutClass( iClass ) ? pCustomPresetKV : pPresetKV;
 
 			KeyValues *pClassKV = new KeyValues(pszClassName);
-			pPresetKV->AddSubKey(pClassKV);
+			pDestPreset->AddSubKey(pClassKV);
 
 			for (int iSlot = 0; iSlot < CLASS_LOADOUT_POSITION_COUNT; ++iSlot)
 			{
@@ -1113,8 +1151,10 @@ void CTFPlayerInventory::SaveLocalLoadout( bool bReset, bool bDefaultToGC )
 	}
 
 	pLoadoutKV->SaveToFile(g_pFullFileSystem, LOCAL_LOADOUT_FILE, "MOD");
+	pCustomKV->SaveToFile(g_pFullFileSystem, LOCAL_LOADOUT_CUSTOM_FILE, "MOD");
 
 	pLoadoutKV->deleteThis();
+	pCustomKV->deleteThis();
 }
 
 
@@ -1175,6 +1215,7 @@ void CTFPlayerInventory::EquipLocal(uint64 ulItemID, equipped_class_t unClass, e
 		m_PresetItems[activePreset][unClass][unSlot] = ulItemID;
 	}
 
+	UpdateCachedServerLoadoutItems();
 	GTFGCClientSystem()->LocalInventoryChanged();
 #else
 	(void)bMirrorPreset;
@@ -1266,6 +1307,12 @@ void CTFPlayerInventory::RememberAndApplyLocalLoadout( KeyValues *pLoadoutKV )
 		m_pLocalLoadoutSnapshot->deleteThis();
 	m_pLocalLoadoutSnapshot = pLoadoutKV->MakeCopy();
 	ApplyLocalLoadoutKV( m_pLocalLoadoutSnapshot );
+}
+
+void CTFPlayerInventory::ReapplyRememberedLoadout( void )
+{
+	if ( m_pLocalLoadoutSnapshot )
+		ApplyLocalLoadoutKV( m_pLocalLoadoutSnapshot );
 }
 
 void CTFPlayerInventory::SOCacheSubscribed( const CSteamID & steamIDOwner, GCSDK::ESOCacheEvent eEvent )

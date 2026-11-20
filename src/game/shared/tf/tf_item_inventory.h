@@ -92,6 +92,7 @@ public:
 	// inventory subscribe, which would otherwise put custom classes back on stock.
 	void				RememberAndApplyLocalLoadout( KeyValues *pLoadoutKV );
 	bool				ApplyLocalLoadoutKV( KeyValues *pLoadoutKV );
+	void				ReapplyRememberedLoadout( void );
 #endif
 
 	void				OnHasNewQuest();

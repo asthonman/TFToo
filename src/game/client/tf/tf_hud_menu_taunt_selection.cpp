@@ -319,7 +319,7 @@ void CHudMenuTauntSelection::UpdateItemModelPanels()
 
 		CItemModelPanel *pItemModelPanel = m_pItemModelPanels[i];
 
-		CEconItemView *pOwnedItemInSlot = pPlayer->Inventory()->GetCacheServerItemInLoadout( iClass, iTauntSlot );
+		CEconItemView *pOwnedItemInSlot = pPlayer->Inventory()->GetItemInLoadout( iClass, iTauntSlot );
 		pItemModelPanel->SetItem( pOwnedItemInSlot );
 		pItemModelPanel->SetNoItemText( "#Hud_Menu_Taunt_NoItem" );
 
@@ -438,28 +438,9 @@ static void OpenTauntSelectionUI()
 		return;
 	}
 
-	int iClass = pPlayer->GetPlayerClass()->GetClassIndex();
-	bool bHasAnyTauntEquipped = false;
-	CTFPlayerInventory *pInv = pPlayer->Inventory();
-	if ( pInv )
-	{
-		for ( int iTauntSlot = LOADOUT_POSITION_TAUNT; iTauntSlot <= LOADOUT_POSITION_TAUNT8; ++iTauntSlot )
-		{
-			CEconItemView *pItem = pInv->GetCacheServerItemInLoadout( iClass, iTauntSlot );
-			if ( pItem && pItem->IsValid() )
-			{
-				bHasAnyTauntEquipped = true;
-				break;
-			}
-		}
-	}
-
-	if ( !bHasAnyTauntEquipped )
-	{
-		engine->ClientCmd( "taunt" );
-		return;
-	}
-
+	// Always open the gesture menu. Skipping it when the taunt slots were
+	// empty meant a new class, which does not start with a stock taunt item,
+	// played the weapon taunt and never showed the menu.
 	pPlayer->SetShowHudMenuTauntSelection( true );
 }
 static ConCommand in_taunt_keydown( "+taunt", OpenTauntSelectionUI );

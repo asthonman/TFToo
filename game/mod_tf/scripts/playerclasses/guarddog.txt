@@ -27,6 +27,6 @@
 	{
 		"TF_AMMO_PRIMARY"		"200"
 		"TF_AMMO_SECONDARY"		"0"
-		"TF_AMMO_METAL"			"0"
+		"TF_AMMO_METAL"			"100"
 	}
 }

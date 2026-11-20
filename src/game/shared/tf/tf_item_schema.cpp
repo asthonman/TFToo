@@ -30,6 +30,34 @@
 
 extern const char *s_pszMatchGroups[];
 
+//-----------------------------------------------------------------------------
+// Taunts are not body cosmetics, so custom classes still get them. Anything
+// else has to live entirely in hat, medal, floating, or flair. A shirt that
+// also takes a hat does not qualify, and neither does a weapon with no region
+// (the passtime jack is one of those).
+//-----------------------------------------------------------------------------
+static bool CustomClassMayEquipAllClassItem( const CTFItemDefinition *pDef )
+{
+	if ( !pDef )
+		return false;
+
+	const int iSlot = pDef->GetDefaultLoadoutSlot();
+	if ( iSlot >= LOADOUT_POSITION_TAUNT && iSlot <= LOADOUT_POSITION_TAUNT8 )
+		return true;
+
+	CEconItemSchema *pSchema = GetItemSchema();
+	if ( !pSchema )
+		return false;
+
+	const equip_region_mask_t unAllowed =
+		pSchema->GetEquipRegionBitMaskByName( "hat" )
+		| pSchema->GetEquipRegionBitMaskByName( "medal" )
+		| pSchema->GetEquipRegionBitMaskByName( "disconnected_floating_item" )
+		| pSchema->GetEquipRegionBitMaskByName( "flair" );
+
+	const equip_region_mask_t unMask = pDef->GetEquipRegionMask();
+	return unMask != 0 && ( unMask & ~unAllowed ) == 0;
+}
 
 // For a particular set of KeyValues, ensure that all of the one-level-deep subkeys are a subset of the values in testKeys.
 // This ensures that there are no typos in the keynames. 
@@ -991,11 +1019,12 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 			pClasses->AddSubKey( pKVAllClassKey );
 		}
 
-		// All-class items only list the original nine. Madcap through Guard Dog
-		// then have no loadout slot, so EquipItemInLoadout rejects them and a
-		// respawn stays on the stock item. Multi-class weapons that are not
-		// usable by all nine are listed per class and are not touched here.
-		if ( CanBeUsedByAllClasses() )
+		// All-class items only list the original nine. Copying every one of them
+		// onto Madcap through Guard Dog also equipped the passtime jack, and
+		// body cosmetics those models cannot wear. Taunts still copy, so the
+		// gesture menu has something to open. A cosmetic copies only when every
+		// region it takes is a hat, medal, disconnected floating item, or flair.
+		if ( CanBeUsedByAllClasses() && CustomClassMayEquipAllClassItem( this ) )
 		{
 			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
 			{
