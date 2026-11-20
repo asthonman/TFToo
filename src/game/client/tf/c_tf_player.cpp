@@ -6277,13 +6277,20 @@ static void UpdateGuardDogColorblindIcons( bool bGuardDog )
 }
 
 //-----------------------------------------------------------------------------
-// Same outline as a spawn glow or an intel carrier: occluded pixels only,
-// team colored. Both teams, inside TF_GUARDDOG_SENSE_RADIUS.
+// Outline matches spawn glow and the intel carrier (occluded pixels only).
+// Someone has to be seen before they light up. Full cover for
+// TF_GUARDDOG_GLOW_FADE_DELAY turns it off, unless they are the sniffed target.
 //-----------------------------------------------------------------------------
 static CGlowObject *s_pGuardDogSenseGlow[MAX_PLAYERS + 1];
+static bool s_bGuardDogSeen[MAX_PLAYERS + 1];
+static float s_flGuardDogLostLOS[MAX_PLAYERS + 1];
+static float s_flGuardDogBlinkUntil[MAX_PLAYERS + 1];
+static int s_nGuardDogSniffTarget = 0;
 
 static void ClearGuardDogSense()
 {
+	s_nGuardDogSniffTarget = 0;
+
 	for ( int i = 0; i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
 	{
 		if ( s_pGuardDogSenseGlow[i] )
@@ -6291,6 +6298,89 @@ static void ClearGuardDogSense()
 			delete s_pGuardDogSenseGlow[i];
 			s_pGuardDogSenseGlow[i] = NULL;
 		}
+
+		s_bGuardDogSeen[i] = false;
+		s_flGuardDogLostLOS[i] = -1.0f;
+		s_flGuardDogBlinkUntil[i] = 0.0f;
+	}
+}
+
+static bool GuardDogPlayerIsInvisible( C_TFPlayer *pPlayer )
+{
+	if ( pPlayer->m_Shared.IsStealthed() )
+		return true;
+
+	return pPlayer->GetPercentInvisible() >= 0.5f;
+}
+
+static bool GuardDogHasLineOfSight( C_TFPlayer *pLocal, C_TFPlayer *pTarget )
+{
+	// Fully obstructed means eyes, chest, and feet are all blocked.
+	if ( pLocal->IsLineOfSightClear( pTarget->EyePosition(), IGNORE_ACTORS, pTarget ) )
+		return true;
+
+	if ( pLocal->IsLineOfSightClear( pTarget->WorldSpaceCenter(), IGNORE_ACTORS, pTarget ) )
+		return true;
+
+	const Vector vecFeet = pTarget->GetAbsOrigin() + Vector( 0.0f, 0.0f, 16.0f );
+	return pLocal->IsLineOfSightClear( vecFeet, IGNORE_ACTORS, pTarget );
+}
+
+// Sniff blink. On beats of the flash the cloak proxy is forced off.
+static bool GuardDogBlinkVisible( const C_TFPlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return false;
+
+	const int nIndex = pPlayer->entindex();
+	if ( nIndex <= 0 || nIndex >= ARRAYSIZE( s_flGuardDogBlinkUntil ) )
+		return false;
+
+	if ( gpGlobals->curtime >= s_flGuardDogBlinkUntil[nIndex] )
+		return false;
+
+	return ( ( (int)( gpGlobals->curtime * 8.0f ) ) & 1 ) == 0;
+}
+
+static bool GuardDogIsEnemy( C_TFPlayer *pLocal, C_TFPlayer *pPlayer )
+{
+	const int nTeam = pPlayer->GetTeamNumber();
+	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
+}
+
+static void GuardDogSniff( C_TFPlayer *pLocal )
+{
+	if ( !pLocal || !pLocal->IsAlive() || !pLocal->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return;
+
+	const Vector vecFrom = pLocal->WorldSpaceCenter();
+	const float flSniffRadiusSqr = TF_GUARDDOG_SNIFF_RADIUS * TF_GUARDDOG_SNIFF_RADIUS;
+	const float flBlinkRadiusSqr = TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS;
+	C_TFPlayer *pClosest = NULL;
+	float flClosestSqr = flSniffRadiusSqr;
+
+	for ( int i = 1; i <= MAX_PLAYERS && i < ARRAYSIZE( s_flGuardDogBlinkUntil ); ++i )
+	{
+		C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer || pPlayer == pLocal || !pPlayer->IsAlive() || !GuardDogIsEnemy( pLocal, pPlayer ) )
+			continue;
+
+		const float flDistSqr = ( pPlayer->WorldSpaceCenter() - vecFrom ).LengthSqr();
+		if ( flDistSqr <= flClosestSqr )
+		{
+			flClosestSqr = flDistSqr;
+			pClosest = pPlayer;
+		}
+
+		if ( flDistSqr <= flBlinkRadiusSqr && GuardDogPlayerIsInvisible( pPlayer ) )
+		{
+			s_flGuardDogBlinkUntil[i] = gpGlobals->curtime + TF_GUARDDOG_SNIFF_BLINK_TIME;
+		}
+	}
+
+	if ( pClosest )
+	{
+		s_nGuardDogSniffTarget = pClosest->entindex();
 	}
 }
 
@@ -6303,17 +6393,58 @@ static void UpdateGuardDogSense()
 		return;
 	}
 
-	const float flRadiusSqr = TF_GUARDDOG_SENSE_RADIUS * TF_GUARDDOG_SENSE_RADIUS;
-	const Vector vecOrigin = pLocal->GetAbsOrigin();
+	if ( s_nGuardDogSniffTarget > 0 )
+	{
+		C_TFPlayer *pSniffed = ToTFPlayer( UTIL_PlayerByIndex( s_nGuardDogSniffTarget ) );
+		if ( !pSniffed || !pSniffed->IsAlive() || !GuardDogIsEnemy( pLocal, pSniffed ) )
+		{
+			s_nGuardDogSniffTarget = 0;
+		}
+	}
 
 	for ( int i = 1; i <= MAX_PLAYERS && i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
 	{
 		C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		const bool bSniffed = ( s_nGuardDogSniffTarget == i );
 		bool bShow = false;
+
 		if ( pPlayer && pPlayer != pLocal && pPlayer->IsAlive() && pPlayer->GetTeamNumber() >= FIRST_GAME_TEAM )
 		{
-			Vector vecDelta = pPlayer->GetAbsOrigin() - vecOrigin;
-			bShow = vecDelta.LengthSqr() <= flRadiusSqr;
+			const bool bLOS = GuardDogHasLineOfSight( pLocal, pPlayer );
+			if ( bLOS )
+			{
+				s_bGuardDogSeen[i] = true;
+				s_flGuardDogLostLOS[i] = -1.0f;
+			}
+			else if ( s_bGuardDogSeen[i] && s_flGuardDogLostLOS[i] < 0.0f )
+			{
+				s_flGuardDogLostLOS[i] = gpGlobals->curtime;
+			}
+
+			if ( bSniffed )
+			{
+				bShow = true;
+			}
+			else if ( s_bGuardDogSeen[i] )
+			{
+				if ( bLOS )
+				{
+					bShow = true;
+				}
+				else if ( s_flGuardDogLostLOS[i] >= 0.0f && ( gpGlobals->curtime - s_flGuardDogLostLOS[i] ) < TF_GUARDDOG_GLOW_FADE_DELAY )
+				{
+					bShow = true;
+				}
+			}
+		}
+		else
+		{
+			s_bGuardDogSeen[i] = false;
+			s_flGuardDogLostLOS[i] = -1.0f;
+			if ( bSniffed )
+			{
+				s_nGuardDogSniffTarget = 0;
+			}
 		}
 
 		if ( !bShow )
@@ -6326,18 +6457,28 @@ static void UpdateGuardDogSense()
 			continue;
 		}
 
+		int nColorTeam = pPlayer->GetTeamNumber();
+		const bool bDisguisedEnemy = GuardDogIsEnemy( pLocal, pPlayer ) && pPlayer->IsPlayerClass( TF_CLASS_SPY ) && pPlayer->m_Shared.InCond( TF_COND_DISGUISED );
+		if ( bDisguisedEnemy && !bSniffed )
+		{
+			nColorTeam = pLocal->GetTeamNumber();
+		}
+
 		float r, g, b;
-		TFGameRules()->GetTeamGlowColor( pPlayer->GetTeamNumber(), r, g, b );
+		TFGameRules()->GetTeamGlowColor( nColorTeam, r, g, b );
 		const Vector vecColor( r, g, b );
+		// A cloaked sniff stays lit in the open. Everyone else is the usual through-wall outline.
+		const bool bDrawUnoccluded = bSniffed && GuardDogPlayerIsInvisible( pPlayer );
 
 		if ( !s_pGuardDogSenseGlow[i] )
 		{
-			s_pGuardDogSenseGlow[i] = new CGlowObject( pPlayer, vecColor, 1.0f, true );
+			s_pGuardDogSenseGlow[i] = new CGlowObject( pPlayer, vecColor, 1.0f, true, bDrawUnoccluded );
 		}
 		else
 		{
 			s_pGuardDogSenseGlow[i]->SetEntity( pPlayer );
 			s_pGuardDogSenseGlow[i]->SetColor( vecColor );
+			s_pGuardDogSenseGlow[i]->SetRenderFlags( true, bDrawUnoccluded );
 		}
 	}
 }
@@ -7021,6 +7162,19 @@ bool C_TFPlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 {
 	static QAngle angMoveAngle( 0.0f, 0.0f, 0.0f );
 	static float flTauntTurnSpeed = 0.f;
+	static int s_nGuardDogButtons = 0;
+
+	// Reload is the sniff. Eat the button before a weapon can reload.
+	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		const int nRawButtons = pCmd->buttons;
+		if ( ( nRawButtons & IN_RELOAD ) && !( s_nGuardDogButtons & IN_RELOAD ) )
+		{
+			GuardDogSniff( this );
+		}
+		s_nGuardDogButtons = nRawButtons;
+		pCmd->buttons &= ~IN_RELOAD;
+	}
 	
 	bool bNoTaunt = true;
 	bool bInTaunt = m_Shared.InCond( TF_COND_TAUNTING ) || m_Shared.InCond( TF_COND_HALLOWEEN_THRILLER );
@@ -7278,6 +7432,9 @@ Vector C_TFPlayer::GetObserverCamOrigin( void )
 //-----------------------------------------------------------------------------
 float C_TFPlayer::GetEffectiveInvisibilityLevel( void )
 {
+	if ( GuardDogBlinkVisible( this ) )
+		return 0.0f;
+
 	float flPercentInvisible = GetPercentInvisible();
 
 	// Crude way to limit Halloween spell

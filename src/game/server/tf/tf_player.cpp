@@ -3890,6 +3890,12 @@ void CTFPlayer::PlayerRunCommand( CUserCmd *ucmd, IMoveHelper *moveHelper )
 	if ( !sv_runcmds.GetInt() )
 		return;
 
+	// Reload sniffs. The weapon must not consume the key.
+	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	{
+		ucmd->buttons &= ~IN_RELOAD;
+	}
+
 	if ( m_Shared.InCond( TF_COND_HALLOWEEN_KART ) )
 	{
 		m_Shared.CreateVehicleMove( gpGlobals->frametime, ucmd );
