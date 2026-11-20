@@ -256,6 +256,8 @@ enum ETFClass
 // grenades in the same radius are outlined for the same short window.
 #define TF_GUARDDOG_SNIFF_BLINK_RADIUS	1000.0f
 #define TF_GUARDDOG_SNIFF_BLINK_TIME	1.0f
+// Reload sniff. Full again after this long.
+#define TF_GUARDDOG_SNIFF_COOLDOWN		3.0f
 
 // Resupply's locker pulse. Same window as func_regenerate.
 #define TF_RESUPPLY_PULSE_INTERVAL	3.0f

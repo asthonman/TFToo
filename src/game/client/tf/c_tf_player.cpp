@@ -6290,6 +6290,7 @@ static bool s_bGuardDogSeen[MAX_PLAYERS + 1];
 static float s_flGuardDogLostLOS[MAX_PLAYERS + 1];
 static float s_flGuardDogBlinkUntil[MAX_PLAYERS + 1];
 static int s_nGuardDogSniffTarget = 0;
+static float s_flGuardDogNextSniff = 0.0f;
 static float s_flGuardDogHeardUntil[MAX_EDICTS];
 static int s_nGuardDogHeardBuildings[32];
 static int s_nGuardDogHeardBuildingCount = 0;
@@ -6350,6 +6351,10 @@ USER_MESSAGE( GuardDogNoise )
 
 static void ClearGuardDogSense()
 {
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocal || !pLocal->IsAlive() )
+		s_flGuardDogNextSniff = 0.0f;
+
 	s_nGuardDogSniffTarget = 0;
 	s_nGuardDogVol = 0;
 	s_nGuardDogHeardBuildingCount = 0;
@@ -6734,6 +6739,11 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 		return;
 	}
 
+	if ( gpGlobals->curtime < s_flGuardDogNextSniff )
+		return;
+
+	s_flGuardDogNextSniff = gpGlobals->curtime + TF_GUARDDOG_SNIFF_COOLDOWN;
+
 	const Vector vecFrom = pLocal->WorldSpaceCenter();
 	const float flBlinkRadiusSqr = TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS;
 
@@ -6791,6 +6801,15 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 	{
 		s_nGuardDogSniffTarget = pLocked->entindex();
 	}
+}
+
+float C_TFPlayer::GetGuardDogSniffMeter( void ) const
+{
+	if ( s_flGuardDogNextSniff <= gpGlobals->curtime )
+		return 1.0f;
+
+	const float flLeft = ( s_flGuardDogNextSniff - gpGlobals->curtime ) / TF_GUARDDOG_SNIFF_COOLDOWN;
+	return 1.0f - clamp( flLeft, 0.0f, 1.0f );
 }
 
 static void UpdateGuardDogSense()
