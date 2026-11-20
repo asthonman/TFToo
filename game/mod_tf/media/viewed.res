@@ -6,7 +6,7 @@
 	}
 	"ctf_2fort"
 	{
-		"viewed"		"8"
+		"viewed"		"14"
 	}
 	"itemtest"
 	{
@@ -18,7 +18,7 @@
 	}
 	"cp_junction_final"
 	{
-		"viewed"		"8"
+		"viewed"		"9"
 	}
 	"cp_gullywash_final1"
 	{
