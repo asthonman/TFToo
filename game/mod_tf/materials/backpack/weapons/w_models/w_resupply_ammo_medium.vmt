@@ -1,7 +1,6 @@
 "UnlitGeneric"
 {
-	"$baseTexture" "models/items/ammopack_medium"
-	"$vertexcolor" 1
-	"$no_fullbright" 1
-	"$ignorez" 1
+	"$baseTexture" "backpack/weapons/w_models/w_ammomed"
+	"$translucent" 1
+	$vertexcolor 1
 }
