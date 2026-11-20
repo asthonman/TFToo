@@ -241,8 +241,9 @@ enum ETFClass
 #define TF_GUARDDOG_SENSE_RADIUS		5000.0f
 // Seen players stay outlined for this long after they are fully blocked.
 #define TF_GUARDDOG_GLOW_FADE_DELAY		1.0f
-// Reload sniffs. Closest enemy inside this becomes the locked target.
-#define TF_GUARDDOG_SNIFF_RADIUS		500.0f
+// Reload sniffs. Same aim trace and range as a medigun lock-on
+// (GetTargetRange / script "Range": 450). Stick range is not applied.
+#define TF_GUARDDOG_SNIFF_RANGE			450.0f
 // Invisible enemies inside this blink when you sniff. It does not retarget.
 #define TF_GUARDDOG_SNIFF_BLINK_RADIUS	1000.0f
 #define TF_GUARDDOG_SNIFF_BLINK_TIME	1.0f

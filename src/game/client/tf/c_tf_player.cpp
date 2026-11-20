@@ -6348,16 +6348,25 @@ static bool GuardDogIsEnemy( C_TFPlayer *pLocal, C_TFPlayer *pPlayer )
 	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
 }
 
+static bool GuardDogCanSniffLock( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
+{
+	C_TFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( !pPlayer || pPlayer == pLocal || !pPlayer->IsAlive() )
+		return false;
+
+	return GuardDogIsEnemy( pLocal, pPlayer );
+}
+
+// Same pick as CWeaponMedigun::FindNewTargetForSlot: a crosshair ray of
+// medigun lock-on range, hull first, then hitboxes so a stacked enemy wins.
+// A miss does not clear the current sniff. Real team, not disguise.
 static void GuardDogSniff( C_TFPlayer *pLocal )
 {
 	if ( !pLocal || !pLocal->IsAlive() || !pLocal->IsPlayerClass( TF_CLASS_GUARDDOG ) )
 		return;
 
 	const Vector vecFrom = pLocal->WorldSpaceCenter();
-	const float flSniffRadiusSqr = TF_GUARDDOG_SNIFF_RADIUS * TF_GUARDDOG_SNIFF_RADIUS;
 	const float flBlinkRadiusSqr = TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS;
-	C_TFPlayer *pClosest = NULL;
-	float flClosestSqr = flSniffRadiusSqr;
 
 	for ( int i = 1; i <= MAX_PLAYERS && i < ARRAYSIZE( s_flGuardDogBlinkUntil ); ++i )
 	{
@@ -6366,21 +6375,40 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 			continue;
 
 		const float flDistSqr = ( pPlayer->WorldSpaceCenter() - vecFrom ).LengthSqr();
-		if ( flDistSqr <= flClosestSqr )
-		{
-			flClosestSqr = flDistSqr;
-			pClosest = pPlayer;
-		}
-
 		if ( flDistSqr <= flBlinkRadiusSqr && GuardDogPlayerIsInvisible( pPlayer ) )
 		{
 			s_flGuardDogBlinkUntil[i] = gpGlobals->curtime + TF_GUARDDOG_SNIFF_BLINK_TIME;
 		}
 	}
 
-	if ( pClosest )
+	Vector vecAiming;
+	pLocal->EyeVectors( &vecAiming );
+	const Vector vecSrc = pLocal->Weapon_ShootPosition();
+	const Vector vecEnd = vecSrc + vecAiming * TF_GUARDDOG_SNIFF_RANGE;
+
+	trace_t tr;
+	UTIL_TraceLine( vecSrc, vecEnd, ( MASK_SHOT & ~CONTENTS_HITBOX ), pLocal, COLLISION_GROUP_NONE, &tr );
+
+	if ( tr.fraction == 1.0f || !tr.m_pEnt )
+		return;
+
+	C_BaseEntity *pTarget = tr.m_pEnt;
+
+	UTIL_TraceLine( vecSrc, vecEnd, MASK_SHOT, pLocal, COLLISION_GROUP_NONE, &tr );
+
+	if ( tr.fraction != 1.0f && tr.m_pEnt && tr.m_pEnt != pTarget && GuardDogCanSniffLock( pLocal, tr.m_pEnt ) )
 	{
-		s_nGuardDogSniffTarget = pClosest->entindex();
+		pTarget = tr.m_pEnt;
+	}
+	else if ( !GuardDogCanSniffLock( pLocal, pTarget ) )
+	{
+		pTarget = NULL;
+	}
+
+	C_TFPlayer *pLocked = ToTFPlayer( pTarget );
+	if ( pLocked )
+	{
+		s_nGuardDogSniffTarget = pLocked->entindex();
 	}
 }
 
