@@ -6760,7 +6760,33 @@ static void UpdateGuardDogSense()
 		}
 
 		float r, g, b;
-		TFGameRules()->GetTeamGlowColor( nColorTeam, r, g, b );
+		// Teammates use the intel-carrier health colors. Enemies stay team colored.
+		if ( pPlayer->GetTeamNumber() == pLocal->GetTeamNumber() )
+		{
+			const float flHealth = (float)pPlayer->GetHealth() / (float)Max( 1, pPlayer->GetMaxHealth() );
+			if ( flHealth > 0.6f )
+			{
+				r = 0.33f;
+				g = 0.75f;
+				b = 0.23f;
+			}
+			else if ( flHealth > 0.3f )
+			{
+				r = 0.75f;
+				g = 0.72f;
+				b = 0.23f;
+			}
+			else
+			{
+				r = 0.75f;
+				g = 0.23f;
+				b = 0.23f;
+			}
+		}
+		else
+		{
+			TFGameRules()->GetTeamGlowColor( nColorTeam, r, g, b );
+		}
 		const Vector vecColor( r, g, b );
 		// A cloaked sniff stays lit in the open. Everyone else is the usual through-wall outline.
 		const bool bDrawUnoccluded = bSniffed && GuardDogPlayerIsInvisible( pPlayer );
@@ -9075,9 +9101,9 @@ void C_TFPlayer::CreateSaveMeEffect( MedicCallerType nType /*= CALLER_TYPE_NORMA
 		m_pSaveMeEffect->SetControlPoint( 1, vHealth );
 	}
 	
-	// Medics and Resupply both answer a medic call. The call itself is not a weapon.
+	// Medics, Resupply, and Guard Dogs answer a medic call. The call itself is not a weapon.
 	if ( pLocalPlayer && pLocalPlayer->IsAlive() &&
-		 ( pLocalPlayer->IsPlayerClass( TF_CLASS_MEDIC ) || pLocalPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) ) )
+		 ( pLocalPlayer->IsPlayerClass( TF_CLASS_MEDIC ) || pLocalPlayer->IsPlayerClass( TF_CLASS_RESUPPLY ) || pLocalPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) ) )
 	{
 		Vector vecPos;
 		if ( GetAttachmentLocal( LookupAttachment( "head" ), vecPos ) )

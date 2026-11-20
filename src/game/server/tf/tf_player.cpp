@@ -4473,6 +4473,10 @@ int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 			if ( bMarked )
 				return FL_EDICT_ALWAYS;
 
+			// The medic-call icon has to exist even if the teammate is outside hearing range.
+			if ( GetTeamNumber() == pViewer->GetTeamNumber() && IsCallingForMedic() )
+				return FL_EDICT_ALWAYS;
+
 			Vector vecDelta = GetAbsOrigin() - pViewer->GetAbsOrigin();
 			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE ) )
 				return FL_EDICT_ALWAYS;
@@ -17101,6 +17105,7 @@ void CTFPlayer::SaveMe( void )
 	if ( !IsAlive() || IsPlayerClass( TF_CLASS_UNDEFINED ) || GetTeamNumber() < TF_TEAM_RED )
 		return;
 
+	NoteMedicCall();
 	m_bSaveMeParity = !m_bSaveMeParity;
 }
 
