@@ -1647,7 +1647,13 @@ bool ClientModeTFNormal::DoPostScreenSpaceEffects( const CViewSetup *pSetup )
 	if( IsInFreezeCam() )
 		return false;
 
-	g_GlowObjectManager.RenderGlowEffects( pSetup, 0 );
+	// Dog vision color-corrects the frame after this. Hold the outlines until
+	// then so red and blue are not pushed through the blue-yellow lookup.
+	extern bool TF_ShouldDeferGlowForDogVision( const CViewSetup *pSetup );
+	if ( !TF_ShouldDeferGlowForDogVision( pSetup ) )
+	{
+		g_GlowObjectManager.RenderGlowEffects( pSetup, 0 );
+	}
 
 	return true;
 }

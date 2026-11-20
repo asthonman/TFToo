@@ -4270,6 +4270,16 @@ int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 		CBaseEntity *pRecipientEntity = CBaseEntity::Instance( pInfo->m_pClientEnt );
 		if ( pRecipientEntity && pRecipientEntity->ShouldForceTransmitsForTeam( GetTeamNumber() ) )
 			return FL_EDICT_ALWAYS;
+
+		// The dog's outline is client-side, but a player outside the PVS is never
+		// sent, so there is nothing to draw. Push living players inside the radius.
+		CTFPlayer *pViewer = ToTFPlayer( pRecipientEntity );
+		if ( pViewer && pViewer != this && pViewer->IsAlive() && IsAlive() && pViewer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		{
+			Vector vecDelta = GetAbsOrigin() - pViewer->GetAbsOrigin();
+			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_SENSE_RADIUS * TF_GUARDDOG_SENSE_RADIUS ) )
+				return FL_EDICT_ALWAYS;
+		}
 	}
 
 	return BaseClass::ShouldTransmit( pInfo );

@@ -21,6 +21,7 @@ ConVar glow_outline_effect_enable( "glow_outline_effect_enable", "1", FCVAR_ARCH
 ConVar glow_outline_effect_width( "glow_outline_width", "10.0f", FCVAR_CHEAT, "Width of glow outline effect in screen space." );
 
 extern bool g_bDumpRenderTargets; // in viewpostprocess.cpp
+bool g_bRenderingGlowOutlines = false;
 
 CGlowObjectManager g_GlowObjectManager;
 
@@ -154,6 +155,9 @@ void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitS
 
 void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h )
 {
+	// Cloaked players skip DrawModel. This pass still needs their silhouette.
+	g_bRenderingGlowOutlines = true;
+
 	//=======================================================//
 	// Render objects into stencil buffer					 //
 	//=======================================================//
@@ -257,7 +261,10 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 	// this fixes a bug where if there are glow objects in the list, but none of them are glowing,
 	// the whole screen blooms.
 	if ( iNumGlowObjects <= 0 )
+	{
+		g_bRenderingGlowOutlines = false;
 		return;
+	}
 
 	//=============================================
 	// Render the glow colors to _rt_FullFrameFB 
@@ -308,6 +315,8 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 
 		stencilStateDisable.SetStencilState( pRenderContext );
 	}
+
+	g_bRenderingGlowOutlines = false;
 }
 
 void CGlowObjectManager::GlowObjectDefinition_t::DrawModel()

@@ -236,6 +236,9 @@ enum ETFClass
 	TF_CLASS_RANDOM
 };
 
+// Guard Dog smells both teams through walls inside this radius.
+#define TF_GUARDDOG_SENSE_RADIUS	5000.0f
+
 // Resupply's locker pulse. Same window as func_regenerate.
 #define TF_RESUPPLY_PULSE_INTERVAL	3.0f
 // Thrown packs use their own 0-100 meter, not the pulse. One throw is half

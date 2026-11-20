@@ -23,6 +23,7 @@
 
 #ifdef TF_CLIENT_DLL
 extern bool TF_ForceDogVisionColorCorrection();
+extern void TF_RenderDeferredDogVisionGlow();
 #endif
 
 //-----------------------------------------------------------------------------
@@ -2644,6 +2645,11 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();
+#endif
+
+#ifdef TF_CLIENT_DLL
+	// Outlines were skipped before this pass. Draw them on the corrected frame.
+	TF_RenderDeferredDogVisionGlow();
 #endif
 }
 

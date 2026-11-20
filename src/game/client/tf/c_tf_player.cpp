@@ -116,6 +116,7 @@
 #include "tf_weapon_rocketpack.h"
 #include "econ_paintkit.h"
 #include "colorcorrectionmgr.h"
+#include "glow_outline_effect.h"
 #include "soundstartparams.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 
@@ -6194,9 +6195,11 @@ static void UpdateResupplyAutoCallers( C_TFPlayer *pLocalPlayer )
 }
 
 //-----------------------------------------------------------------------------
-// Guard Dog is a dichromat: a yellow cone (~555nm) and a blue cone (~429nm).
-// The lookup keeps brightness, leaves blues and yellows, and folds red and
-// green into the same brown / yellow-gray. It is not a grayscale filter.
+// Guard Dog is a dichromat. The lookup is the same move as the DogVision camera
+// app: red and green both become their average, blue is left alone. That kills
+// red-versus-green and keeps blue and yellow. Gamma space, same as that app's
+// canvas pixels. A high weight keeps a map's own color correction from watering
+// it down.
 //-----------------------------------------------------------------------------
 static ClientCCHandle_t s_hGuardDogVision = INVALID_CLIENT_CCHANDLE;
 static bool s_bGuardDogColorblindIcons = false;
@@ -6208,6 +6211,37 @@ bool TF_ForceDogVisionColorCorrection()
 		return false;
 
 	return pLocal->IsPlayerClass( TF_CLASS_GUARDDOG );
+}
+
+static CViewSetup s_DogVisionGlowView;
+static bool s_bDeferDogVisionGlow = false;
+
+bool TF_ShouldDeferGlowForDogVision( const CViewSetup *pSetup )
+{
+	s_bDeferDogVisionGlow = false;
+	if ( !pSetup || !TF_ForceDogVisionColorCorrection() )
+		return false;
+
+	// Postprocess is skipped in these cases, so the outlines are not filtered
+	// and can stay in the normal pass.
+	if ( !pSetup->m_bDoBloomAndToneMapping || building_cubemaps.GetBool() )
+		return false;
+
+	s_DogVisionGlowView = *pSetup;
+	s_bDeferDogVisionGlow = true;
+	return true;
+}
+
+void TF_RenderDeferredDogVisionGlow()
+{
+	if ( !s_bDeferDogVisionGlow )
+		return;
+
+	s_bDeferDogVisionGlow = false;
+	if ( IsInFreezeCam() )
+		return;
+
+	g_GlowObjectManager.RenderGlowEffects( &s_DogVisionGlowView, 0 );
 }
 
 static void UpdateGuardDogColorblindIcons( bool bGuardDog )
@@ -6242,6 +6276,72 @@ static void UpdateGuardDogColorblindIcons( bool bGuardDog )
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Same outline as a spawn glow or an intel carrier: occluded pixels only,
+// team colored. Both teams, inside TF_GUARDDOG_SENSE_RADIUS.
+//-----------------------------------------------------------------------------
+static CGlowObject *s_pGuardDogSenseGlow[MAX_PLAYERS + 1];
+
+static void ClearGuardDogSense()
+{
+	for ( int i = 0; i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
+	{
+		if ( s_pGuardDogSenseGlow[i] )
+		{
+			delete s_pGuardDogSenseGlow[i];
+			s_pGuardDogSenseGlow[i] = NULL;
+		}
+	}
+}
+
+static void UpdateGuardDogSense()
+{
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocal || !pLocal->IsAlive() || !TF_ForceDogVisionColorCorrection() || !TFGameRules() )
+	{
+		ClearGuardDogSense();
+		return;
+	}
+
+	const float flRadiusSqr = TF_GUARDDOG_SENSE_RADIUS * TF_GUARDDOG_SENSE_RADIUS;
+	const Vector vecOrigin = pLocal->GetAbsOrigin();
+
+	for ( int i = 1; i <= MAX_PLAYERS && i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
+	{
+		C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		bool bShow = false;
+		if ( pPlayer && pPlayer != pLocal && pPlayer->IsAlive() && pPlayer->GetTeamNumber() >= FIRST_GAME_TEAM )
+		{
+			Vector vecDelta = pPlayer->GetAbsOrigin() - vecOrigin;
+			bShow = vecDelta.LengthSqr() <= flRadiusSqr;
+		}
+
+		if ( !bShow )
+		{
+			if ( s_pGuardDogSenseGlow[i] )
+			{
+				delete s_pGuardDogSenseGlow[i];
+				s_pGuardDogSenseGlow[i] = NULL;
+			}
+			continue;
+		}
+
+		float r, g, b;
+		TFGameRules()->GetTeamGlowColor( pPlayer->GetTeamNumber(), r, g, b );
+		const Vector vecColor( r, g, b );
+
+		if ( !s_pGuardDogSenseGlow[i] )
+		{
+			s_pGuardDogSenseGlow[i] = new CGlowObject( pPlayer, vecColor, 1.0f, true );
+		}
+		else
+		{
+			s_pGuardDogSenseGlow[i]->SetEntity( pPlayer );
+			s_pGuardDogSenseGlow[i]->SetColor( vecColor );
+		}
+	}
+}
+
 static void UpdateGuardDogVision()
 {
 	if ( s_hGuardDogVision == INVALID_CLIENT_CCHANDLE )
@@ -6250,12 +6350,15 @@ static void UpdateGuardDogVision()
 	}
 
 	const bool bDog = TF_ForceDogVisionColorCorrection();
+	// Above 1 this replaces the frame instead of blending back toward normal,
+	// and it wins against a map color correction instead of splitting with it.
 	if ( s_hGuardDogVision != INVALID_CLIENT_CCHANDLE )
 	{
-		g_pColorCorrectionMgr->SetColorCorrectionWeight( s_hGuardDogVision, bDog ? 1.0f : 0.0f );
+		g_pColorCorrectionMgr->SetColorCorrectionWeight( s_hGuardDogVision, bDog ? 32.0f : 0.0f );
 	}
 
 	UpdateGuardDogColorblindIcons( bDog );
+	UpdateGuardDogSense();
 }
 
 //-----------------------------------------------------------------------------
@@ -7266,8 +7369,10 @@ int C_TFPlayer::DrawModel( int flags )
 
 	RecalcBodygroupsIfDirty();
 
-	// Don't draw the model at all if we're fully invisible
-	if ( GetEffectiveInvisibilityLevel() >= 1.0f )
+	// Don't draw the model at all if we're fully invisible.
+	// The glow pass still draws it, so a Guard Dog's outline can mark a cloaked spy.
+	extern bool g_bRenderingGlowOutlines;
+	if ( GetEffectiveInvisibilityLevel() >= 1.0f && !g_bRenderingGlowOutlines )
 	{
 		if ( m_hHalloweenBombHat && ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 ) && !m_hHalloweenBombHat->IsEffectActive( EF_NODRAW ) )
 		{
