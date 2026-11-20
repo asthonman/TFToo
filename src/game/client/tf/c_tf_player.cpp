@@ -6397,14 +6397,14 @@ static bool GuardDogPlayerIsInvisible( C_TFPlayer *pPlayer )
 static bool GuardDogHasLineOfSight( C_TFPlayer *pLocal, C_TFPlayer *pTarget )
 {
 	// Fully obstructed means eyes, chest, and feet are all blocked.
-	if ( pLocal->IsLineOfSightClear( pTarget->EyePosition(), IGNORE_ACTORS, pTarget ) )
+	if ( pLocal->IsLineOfSightClear( pTarget->EyePosition(), C_BaseCombatCharacter::IGNORE_ACTORS, pTarget ) )
 		return true;
 
-	if ( pLocal->IsLineOfSightClear( pTarget->WorldSpaceCenter(), IGNORE_ACTORS, pTarget ) )
+	if ( pLocal->IsLineOfSightClear( pTarget->WorldSpaceCenter(), C_BaseCombatCharacter::IGNORE_ACTORS, pTarget ) )
 		return true;
 
 	const Vector vecFeet = pTarget->GetAbsOrigin() + Vector( 0.0f, 0.0f, 16.0f );
-	return pLocal->IsLineOfSightClear( vecFeet, IGNORE_ACTORS, pTarget );
+	return pLocal->IsLineOfSightClear( vecFeet, C_BaseCombatCharacter::IGNORE_ACTORS, pTarget );
 }
 
 // Sniff blink. On beats of the flash the cloak proxy is forced off.
