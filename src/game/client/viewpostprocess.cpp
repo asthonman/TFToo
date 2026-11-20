@@ -21,6 +21,10 @@
 
 #include "proxyentity.h"
 
+#ifdef TF_CLIENT_DLL
+extern bool TF_ForceDogVisionColorCorrection();
+#endif
+
 //-----------------------------------------------------------------------------
 // Globals
 //-----------------------------------------------------------------------------
@@ -2324,6 +2328,15 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 
 			static ConVarRef mat_colorcorrection( "mat_colorcorrection" );
 
+			// Guard Dog vision is part of the class, not the user's color-correction toggle.
+			bool bAllowColorCorrection = mat_colorcorrection.GetInt() != 0;
+#ifdef TF_CLIENT_DLL
+			if ( TF_ForceDogVisionColorCorrection() )
+			{
+				bAllowColorCorrection = true;
+			}
+#endif
+
 			// bloom, software-AA and colour-correction (applied in 1 pass, after generation of the bloom texture)
 			bool  bPerformSoftwareAA	= IsX360() && ( engine->GetDXSupportLevel() >= 90 ) && ( flAAStrength != 0.0f );
 			bool  bPerformBloom			= !bPostVGui && ( flBloomScale > 0.0f ) && ( engine->GetDXSupportLevel() >= 90 );
@@ -2331,7 +2344,7 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 										  ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() >= 90) &&
 										  ( g_pMaterialSystemHardwareConfig->GetHDRType() != HDR_TYPE_FLOAT ) &&
 										  g_pColorCorrectionMgr->HasNonZeroColorCorrectionWeights() &&
-										  mat_colorcorrection.GetInt();
+										  bAllowColorCorrection;
 			bool  bSplitScreenHDR		= mat_show_ab_hdr.GetInt();
 			pRenderContext->EnableColorCorrection( bPerformColCorrect );
 			if ( bPerformBloom || bPerformSoftwareAA || bPerformColCorrect )

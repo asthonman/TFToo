@@ -115,6 +115,7 @@
 #include <vgui_controls/AnimationController.h>
 #include "tf_weapon_rocketpack.h"
 #include "econ_paintkit.h"
+#include "colorcorrectionmgr.h"
 #include "soundstartparams.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 
@@ -6193,6 +6194,71 @@ static void UpdateResupplyAutoCallers( C_TFPlayer *pLocalPlayer )
 }
 
 //-----------------------------------------------------------------------------
+// Guard Dog is a dichromat: a yellow cone (~555nm) and a blue cone (~429nm).
+// The lookup keeps brightness, leaves blues and yellows, and folds red and
+// green into the same brown / yellow-gray. It is not a grayscale filter.
+//-----------------------------------------------------------------------------
+static ClientCCHandle_t s_hGuardDogVision = INVALID_CLIENT_CCHANDLE;
+static bool s_bGuardDogColorblindIcons = false;
+
+bool TF_ForceDogVisionColorCorrection()
+{
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocal || pLocal->GetTeamNumber() == TEAM_SPECTATOR )
+		return false;
+
+	return pLocal->IsPlayerClass( TF_CLASS_GUARDDOG );
+}
+
+static void UpdateGuardDogColorblindIcons( bool bGuardDog )
+{
+	if ( bGuardDog == s_bGuardDogColorblindIcons )
+		return;
+
+	s_bGuardDogColorblindIcons = bGuardDog;
+
+	// The convar already shows these. Don't remove them on a class change.
+	static ConVarRef colorblind( "tf_colorblindassist" );
+	if ( colorblind.GetBool() )
+		return;
+
+	for ( int i = 1; i <= MAX_PLAYERS; i++ )
+	{
+		C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer )
+			continue;
+
+		if ( bGuardDog )
+		{
+			if ( pPlayer->m_Shared.InCond( TF_COND_URINE ) )
+			{
+				pPlayer->AddOverheadEffect( "peejar_icon" );
+			}
+		}
+		else
+		{
+			pPlayer->RemoveOverheadEffect( "peejar_icon", true );
+		}
+	}
+}
+
+static void UpdateGuardDogVision()
+{
+	if ( s_hGuardDogVision == INVALID_CLIENT_CCHANDLE )
+	{
+		s_hGuardDogVision = g_pColorCorrectionMgr->AddColorCorrection( "materials/correction/guarddog_vision.raw" );
+	}
+
+	const bool bDog = TF_ForceDogVisionColorCorrection();
+	if ( s_hGuardDogVision != INVALID_CLIENT_CCHANDLE )
+	{
+		g_pColorCorrectionMgr->SetColorCorrectionWeight( s_hGuardDogVision, bDog ? 1.0f : 0.0f );
+	}
+
+	UpdateGuardDogColorblindIcons( bDog );
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void C_TFPlayer::ClientThink()
@@ -6271,6 +6337,8 @@ void C_TFPlayer::ClientThink()
 
 	if ( IsLocalPlayer() )
 	{
+		UpdateGuardDogVision();
+
 		g_ItemEffectMeterManager.Update( this );
 
 		if ( IsAlive() && IsPlayerClass( TF_CLASS_RESUPPLY ) )

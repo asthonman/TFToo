@@ -3634,7 +3634,16 @@ void CTFPlayerShared::OnRemovePhase( void )
 void CTFPlayerShared::OnAddUrine( void )
 {
 #ifdef CLIENT_DLL
-	if ( tf_colorblindassist.GetBool() )
+	bool bColorblindAssist = tf_colorblindassist.GetBool();
+	if ( !bColorblindAssist )
+	{
+		// Guard Dog always sees the assist markers, even if the setting is off.
+		// This runs on each client, so the local viewer is the one who decides.
+		C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+		bColorblindAssist = pLocal && pLocal->GetTeamNumber() != TEAM_SPECTATOR && pLocal->IsPlayerClass( TF_CLASS_GUARDDOG );
+	}
+
+	if ( bColorblindAssist )
 	{
 		m_pOuter->AddOverheadEffect( "peejar_icon" );
 	}
