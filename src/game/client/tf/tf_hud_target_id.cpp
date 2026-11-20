@@ -1759,7 +1759,8 @@ static CTFWeaponBase *WeaponInLoadoutSlot( C_TFPlayer *pPlayer, int iSlot )
 
 // Numeric ammo is clip + reserve over the max of both. Energy weapons, and
 // anything else the owner's HUD draws as a bar instead of a count, are meters.
-// Metal is the engineer's own corner, so a weapon that spends metal is skipped.
+// Engineer metal stays on its own corner. A Widowmaker on another class uses
+// that weapon's corner, since they have no metal counter.
 static void FillCornerFromWeapon( C_TFPlayer *pPlayer, CTFWeaponBase *pWeapon, AmmoCornerInfo_t &out )
 {
 	ClearCorner( out );
@@ -1782,8 +1783,19 @@ static void FillCornerFromWeapon( C_TFPlayer *pPlayer, CTFWeaponBase *pWeapon, A
 		return;
 
 	int iType = pWeapon->GetPrimaryAmmoType();
-	if ( iType <= TF_AMMO_DUMMY || iType >= TF_AMMO_COUNT || iType == TF_AMMO_METAL )
+	if ( iType <= TF_AMMO_DUMMY || iType >= TF_AMMO_COUNT )
 		return;
+
+	// Engineer metal stays on its own corner. A Widowmaker on another class
+	// has no other readout, so that slot shows the metal count.
+	if ( iType == TF_AMMO_METAL )
+	{
+		const int iID = pWeapon->GetWeaponID();
+		const bool bMetalShotgun = ( iID == TF_WEAPON_SHOTGUN_PRIMARY || iID == TF_WEAPON_SHOTGUN_SOLDIER
+			|| iID == TF_WEAPON_SHOTGUN_HWG || iID == TF_WEAPON_SHOTGUN_PYRO );
+		if ( !bMetalShotgun || pPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
+			return;
+	}
 
 	int iReserve = pPlayer->GetSharedAmmoCount( iType );
 	int iMaxReserve = pPlayer->GetMaxAmmo( iType );

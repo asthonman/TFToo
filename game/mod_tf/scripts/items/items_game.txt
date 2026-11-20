@@ -21724,7 +21724,8 @@
 			"model_player"	"models/workshop/weapons/c_models/c_winger_pistol/c_winger_pistol.mdl"
 			"used_by_classes"
 			{
-				"scout"	"1"
+				"scout"		"1"
+				"engineer"	"1"
 			}
 			"static_attrs"
 			{
@@ -41418,7 +41419,7 @@
 		{
 			"name"	"The Widowmaker"
 			"first_sale_date"	"2011/08/11"
-			"item_class"	"tf_weapon_shotgun_primary"
+			"item_class"	"tf_weapon_shotgun"
 			"craft_material_type"	"weapon"
 			"craft_class"	"weapon"
 			"capabilities"
@@ -41454,7 +41455,12 @@
 			"attach_to_hands" "1"
 			"used_by_classes"
 			{
-				"engineer"	"1"
+				"engineer"	"primary"
+				"soldier"	"secondary"
+				"pyro"		"secondary"
+				"heavy"		"secondary"
+				"mobster"	"primary"
+				"witch"		"primary"
 			}
 			"static_attrs"
 			{
@@ -49630,7 +49636,8 @@
 			}
 			"used_by_classes"
 			{
-				"scout"	"1"
+				"scout"		"1"
+				"engineer"	"1"
 			}
 			"static_attrs"
 			{

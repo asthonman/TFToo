@@ -145,9 +145,16 @@ bool CTFHudWeaponAmmo::ShouldDraw( void )
 		return false;
 
 	// Engineer metal is drawn on the metal counter, not here. The grease gun
-	// spends metal and has no other readout, so show it like flamethrower ammo.
+	// and the Widowmaker spend metal and have no other readout, so show that
+	// count like flamethrower ammo while the weapon is out.
 	if ( pWeapon->GetPrimaryAmmoType() == TF_AMMO_METAL && dynamic_cast< CTFWeaponGreasegun * >( pWeapon ) == NULL )
-		return false;
+	{
+		const int iID = pWeapon->GetWeaponID();
+		const bool bMetalShotgun = ( iID == TF_WEAPON_SHOTGUN_PRIMARY || iID == TF_WEAPON_SHOTGUN_SOLDIER
+			|| iID == TF_WEAPON_SHOTGUN_HWG || iID == TF_WEAPON_SHOTGUN_PYRO );
+		if ( !bMetalShotgun )
+			return false;
+	}
 
 	if ( pWeapon->UberChargeAmmoPerShot() > 0.0f )
 		return false;
