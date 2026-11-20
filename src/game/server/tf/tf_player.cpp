@@ -69,6 +69,9 @@
 #include "trains.h"
 #include "tf_fx.h"
 #include "recipientfilter.h"
+#include "usermessages.h"
+#include "soundchars.h"
+#include "engine/IEngineSound.h"
 #include "ilagcompensationmanager.h"
 #include "dt_utlvector_send.h"
 #include "tf_item_wearable.h"
@@ -4251,6 +4254,185 @@ CON_COMMAND_F( verifyloadout, "Cause the server to verify the player's items on 
 #endif // DEBUG
 
 //-----------------------------------------------------------------------------
+// Guard Dog hearing. Action sounds outline the source for the length of the
+// sound, and a dog who would otherwise not hear it gets a copy that carries
+// to TF_GUARDDOG_HEARING_RANGE.
+//-----------------------------------------------------------------------------
+static bool s_bGuardDogRelay = false;
+static float s_flGuardDogNoiseCoveredUntil[MAX_EDICTS];
+
+static bool GuardDog_IsActionSound( const char *psz, bool bSentry )
+{
+	if ( !psz || !psz[0] )
+		return false;
+
+	if ( V_stristr( psz, "Deny" ) || V_stristr( psz, "Death" ) || V_stristr( psz, "Pain" )
+		|| V_stristr( psz, "Fall" ) || V_stristr( psz, "Footstep" ) )
+		return false;
+
+	if ( bSentry )
+	{
+		return V_stristr( psz, "Sentrygun.Idle" )
+			|| V_stristr( psz, "Sentrygun.Alert" )
+			|| V_stristr( psz, "Sentrygun.Fire" )
+			|| V_stristr( psz, "Sentrygun.Shaft" )
+			|| V_stristr( psz, "MiniSentrygun.Fire" );
+	}
+
+	if ( V_stristr( psz, "vo/" ) || V_stristr( psz, "vo\\" ) )
+		return true;
+
+	if ( V_stristr( psz, "spell" ) )
+		return true;
+
+	if ( V_stristr( psz, "Spy_Cloak" ) || V_stristr( psz, "Spy_UnCloak" ) || V_stristr( psz, "DemoCharge." ) )
+		return true;
+
+	if ( V_strnicmp( psz, "Weapon", 6 ) != 0 )
+		return false;
+
+	if ( V_stristr( psz, ".Reload" ) || V_stristr( psz, ".Deploy" ) || V_stristr( psz, ".Empty" )
+		|| V_stristr( psz, ".Draw" ) || V_stristr( psz, ".Holster" ) || V_stristr( psz, ".Pickup" )
+		|| V_stristr( psz, "ClipEmpty" ) || V_stristr( psz, "Bolt" ) || V_stristr( psz, "Pilot" ) )
+		return false;
+
+	return true;
+}
+
+static float GuardDog_SoundDuration( const char *pszSound )
+{
+	float flDuration = 0.0f;
+	CSoundParameters params;
+	if ( pszSound && CBaseEntity::GetParametersForSound( pszSound, params, NULL ) && params.soundname[0] )
+	{
+		flDuration = enginesound->GetSoundDuration( PSkipSoundChars( params.soundname ) );
+	}
+
+	if ( flDuration <= 0.05f && pszSound )
+	{
+		flDuration = enginesound->GetSoundDuration( PSkipSoundChars( pszSound ) );
+	}
+
+	if ( flDuration < 0.12f )
+		flDuration = 0.35f;
+	if ( flDuration > 6.0f )
+		flDuration = 6.0f;
+
+	return flDuration;
+}
+
+void GuardDog_NotifyActionNoise( CBaseEntity *pSource, const EmitSound_t *pParams, float flDuration )
+{
+	if ( s_bGuardDogRelay || !pSource )
+		return;
+
+	const char *pszSound = ( pParams && pParams->m_pSoundName ) ? pParams->m_pSoundName : NULL;
+	const bool bSentry = !pSource->IsPlayer() && pSource->IsBaseObject()
+		&& static_cast< CBaseObject * >( pSource )->ObjectType() == OBJ_SENTRYGUN;
+
+	if ( pszSound )
+	{
+		if ( !GuardDog_IsActionSound( pszSound, bSentry ) )
+			return;
+	}
+	else if ( flDuration < 0.0f )
+	{
+		return;
+	}
+
+	const int nTeam = pSource->GetTeamNumber();
+	if ( nTeam < FIRST_GAME_TEAM )
+		return;
+
+	if ( pSource->IsPlayer() )
+	{
+		CTFPlayer *pNoisy = ToTFPlayer( pSource );
+		if ( !pNoisy || !pNoisy->IsAlive() )
+			return;
+	}
+
+	if ( flDuration < 0.0f )
+		flDuration = GuardDog_SoundDuration( pszSound );
+
+	const int nIndex = pSource->entindex();
+	if ( nIndex <= 0 || nIndex >= MAX_EDICTS )
+		return;
+
+	const float flEnd = gpGlobals->curtime + flDuration;
+	float &flCovered = s_flGuardDogNoiseCoveredUntil[nIndex];
+	if ( flCovered > gpGlobals->curtime + 30.0f || flCovered < gpGlobals->curtime - 1.0f )
+		flCovered = 0.0f;
+	if ( flEnd <= flCovered + 0.05f )
+		return;
+	flCovered = flEnd;
+
+	CSoundParameters sndParams;
+	soundlevel_t lvl = SNDLVL_NORM;
+	float flVolume = VOL_NORM;
+	int nPitch = PITCH_NORM;
+	int nChannel = CHAN_AUTO;
+	const bool bHaveParams = pszSound && CBaseEntity::GetParametersForSound( pszSound, sndParams, NULL );
+	if ( bHaveParams )
+	{
+		lvl = sndParams.soundlevel;
+		flVolume = sndParams.volume;
+		nPitch = sndParams.pitch;
+		nChannel = sndParams.channel;
+	}
+	else if ( pParams )
+	{
+		if ( pParams->m_SoundLevel != SNDLVL_NONE )
+			lvl = pParams->m_SoundLevel;
+		flVolume = pParams->m_flVolume;
+		nPitch = pParams->m_nPitch;
+		if ( pParams->m_nChannel != 0 )
+			nChannel = pParams->m_nChannel;
+	}
+
+	const Vector vecSrc = pSource->WorldSpaceCenter();
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pDog = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pDog || pDog == pSource || !pDog->IsAlive() || pDog->IsBot() || !pDog->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+			continue;
+		if ( pDog->GetTeamNumber() == nTeam )
+			continue;
+
+		const float flDist = ( pDog->EyePosition() - vecSrc ).Length();
+		if ( flDist > TF_GUARDDOG_HEARING_RANGE )
+			continue;
+
+		CSingleUserRecipientFilter msgFilter( pDog );
+		msgFilter.MakeReliable();
+		UserMessageBegin( msgFilter, "GuardDogNoise" );
+		WRITE_SHORT( nIndex );
+		WRITE_FLOAT( flDuration );
+		MessageEnd();
+
+		if ( !pszSound )
+			continue;
+
+		const float flGain = enginesound->GetDistGainFromSoundLevel( lvl, flDist );
+		if ( flGain >= 0.02f )
+			continue;
+
+		EmitSound_t relay;
+		relay.m_pSoundName = pszSound;
+		relay.m_flVolume = flVolume;
+		relay.m_SoundLevel = (soundlevel_t)TF_GUARDDOG_HEARING_SOUNDLEVEL;
+		relay.m_nPitch = nPitch;
+		relay.m_nChannel = nChannel;
+		relay.m_bEmitCloseCaption = false;
+		relay.m_bWarnOnDirectWaveReference = false;
+
+		CSingleUserRecipientFilter sndFilter( pDog );
+		s_bGuardDogRelay = true;
+		CBaseEntity::EmitSound( sndFilter, nIndex, relay );
+		s_bGuardDogRelay = false;
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
@@ -4277,13 +4459,22 @@ int	CTFPlayer::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 		if ( pRecipientEntity && pRecipientEntity->ShouldForceTransmitsForTeam( GetTeamNumber() ) )
 			return FL_EDICT_ALWAYS;
 
-		// The dog's outline is client-side, but a player outside the PVS is never
-		// sent, so there is nothing to draw. Push living players inside the radius.
+		// Jarate, milk, bleed, afterburn, and gas are visible at any distance.
+		// Everyone else only needs to exist out to a dog's hearing range, so a
+		// shot or voice line can still draw after it leaves the PVS.
 		CTFPlayer *pViewer = ToTFPlayer( pRecipientEntity );
 		if ( pViewer && pViewer != this && pViewer->IsAlive() && IsAlive() && pViewer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
 		{
+			const bool bMarked = m_Shared.InCond( TF_COND_URINE )
+				|| m_Shared.InCond( TF_COND_MAD_MILK )
+				|| m_Shared.InCond( TF_COND_BLEEDING )
+				|| m_Shared.InCond( TF_COND_BURNING )
+				|| m_Shared.InCond( TF_COND_GAS );
+			if ( bMarked )
+				return FL_EDICT_ALWAYS;
+
 			Vector vecDelta = GetAbsOrigin() - pViewer->GetAbsOrigin();
-			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_SENSE_RADIUS * TF_GUARDDOG_SENSE_RADIUS ) )
+			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE ) )
 				return FL_EDICT_ALWAYS;
 		}
 	}
@@ -21227,6 +21418,8 @@ void CTFPlayer::NoteSpokeVoiceCommand( const char *pszScenePlayed )
 		// and the next voice command would be allowed immediately.
 		flSpokenFor = 2.5f;
 	}
+
+	GuardDog_NotifyActionNoise( this, NULL, flSpokenFor );
 
 	m_flNextVoiceCommandTime = gpGlobals->curtime + MIN( flSpokenFor, tf_max_voice_speak_delay.GetFloat() );
 

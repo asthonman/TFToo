@@ -128,6 +128,7 @@ void RegisterUserMessages()
 	usermessages->Register( "SdkRequestEquipment", -1 );
 
 	usermessages->Register( "BuiltObject", 3 ); // object type, object mode (entrance vs. exit), index
+	usermessages->Register( "GuardDogNoise", -1 );
 
 	// NVNT register haptic user messages
 	RegisterHapticMessages();

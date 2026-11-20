@@ -117,6 +117,9 @@
 #include "econ_paintkit.h"
 #include "colorcorrectionmgr.h"
 #include "glow_outline_effect.h"
+#include "engine/IEngineSound.h"
+
+extern IEngineSound *enginesound;
 #include "soundstartparams.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 
@@ -6279,17 +6282,76 @@ static void UpdateGuardDogColorblindIcons( bool bGuardDog )
 //-----------------------------------------------------------------------------
 // Outline matches spawn glow and the intel carrier (occluded pixels only).
 // Someone has to be seen before they light up. Full cover for
-// TF_GUARDDOG_GLOW_FADE_DELAY turns it off, unless they are the sniffed target.
+// TF_GUARDDOG_GLOW_FADE_DELAY turns it off, unless they are sniffed, marked
+// (jarate, milk, bleed, afterburn, gas), or heard.
 //-----------------------------------------------------------------------------
 static CGlowObject *s_pGuardDogSenseGlow[MAX_PLAYERS + 1];
 static bool s_bGuardDogSeen[MAX_PLAYERS + 1];
 static float s_flGuardDogLostLOS[MAX_PLAYERS + 1];
 static float s_flGuardDogBlinkUntil[MAX_PLAYERS + 1];
 static int s_nGuardDogSniffTarget = 0;
+static float s_flGuardDogHeardUntil[MAX_EDICTS];
+static int s_nGuardDogHeardBuildings[32];
+static int s_nGuardDogHeardBuildingCount = 0;
+
+struct GuardDogBuildGlow_t
+{
+	int index;
+	CGlowObject *glow;
+};
+static CUtlVector< GuardDogBuildGlow_t > s_GuardDogBuildGlows;
+
+struct GuardDogVol_t
+{
+	int guid;
+	float base;
+	bool touched;
+};
+static GuardDogVol_t s_GuardDogVol[96];
+static int s_nGuardDogVol = 0;
+
+static void GuardDogNoteHeard( int nEnt, float flDuration )
+{
+	if ( nEnt <= 0 || nEnt >= MAX_EDICTS || flDuration <= 0.0f )
+		return;
+
+	const float flEnd = gpGlobals->curtime + flDuration;
+	if ( flEnd > s_flGuardDogHeardUntil[nEnt] )
+		s_flGuardDogHeardUntil[nEnt] = flEnd;
+
+	// Player slots are 1..maxClients. Buildings sit above that.
+	if ( nEnt <= gpGlobals->maxClients )
+		return;
+
+	for ( int i = 0; i < s_nGuardDogHeardBuildingCount; ++i )
+	{
+		if ( s_nGuardDogHeardBuildings[i] == nEnt )
+			return;
+	}
+
+	if ( s_nGuardDogHeardBuildingCount < ARRAYSIZE( s_nGuardDogHeardBuildings ) )
+	{
+		s_nGuardDogHeardBuildings[s_nGuardDogHeardBuildingCount++] = nEnt;
+	}
+}
+
+USER_MESSAGE( GuardDogNoise )
+{
+	GuardDogNoteHeard( msg.ReadShort(), msg.ReadFloat() );
+}
 
 static void ClearGuardDogSense()
 {
 	s_nGuardDogSniffTarget = 0;
+	s_nGuardDogVol = 0;
+	s_nGuardDogHeardBuildingCount = 0;
+	memset( s_flGuardDogHeardUntil, 0, sizeof( s_flGuardDogHeardUntil ) );
+
+	for ( int i = 0; i < s_GuardDogBuildGlows.Count(); ++i )
+	{
+		delete s_GuardDogBuildGlows[i].glow;
+	}
+	s_GuardDogBuildGlows.RemoveAll();
 
 	for ( int i = 0; i < ARRAYSIZE( s_pGuardDogSenseGlow ); ++i )
 	{
@@ -6346,6 +6408,202 @@ static bool GuardDogIsEnemy( C_TFPlayer *pLocal, C_TFPlayer *pPlayer )
 {
 	const int nTeam = pPlayer->GetTeamNumber();
 	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
+}
+
+static bool GuardDogPlayerIsMarked( C_TFPlayer *pPlayer )
+{
+	return pPlayer->m_Shared.InCond( TF_COND_URINE )
+		|| pPlayer->m_Shared.InCond( TF_COND_MAD_MILK )
+		|| pPlayer->m_Shared.InCond( TF_COND_BLEEDING )
+		|| pPlayer->m_Shared.InCond( TF_COND_BURNING )
+		|| pPlayer->m_Shared.InCond( TF_COND_GAS );
+}
+
+static bool GuardDogIsEnemySentry( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
+{
+	if ( !pEnt || pEnt->IsPlayer() )
+		return false;
+
+	ClientClass *pClass = pEnt->GetClientClass();
+	if ( !pClass || !pClass->GetName() || !V_stristr( pClass->GetName(), "Sentrygun" ) )
+		return false;
+
+	const int nTeam = pEnt->GetTeamNumber();
+	return nTeam >= FIRST_GAME_TEAM && nTeam != pLocal->GetTeamNumber();
+}
+
+// Looping fire, a voice line, or a sentry beep keeps the outline up until the
+// channel actually stops. Footsteps are CHAN_BODY and do not.
+static bool GuardDogChannelHoldsOutline( int nChannel )
+{
+	return nChannel == CHAN_WEAPON || nChannel == CHAN_VOICE || nChannel == CHAN_ITEM || nChannel == CHAN_STATIC;
+}
+
+static void GuardDogUpdateHeardSounds( C_TFPlayer *pLocal )
+{
+	if ( !enginesound )
+		return;
+
+	CUtlVector< SndInfo_t > snds;
+	enginesound->GetActiveSounds( snds );
+
+	Vector vecForward;
+	pLocal->EyeVectors( &vecForward );
+	const Vector vecEar = pLocal->EyePosition();
+	const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+
+	for ( int i = 0; i < snds.Count(); ++i )
+	{
+		const SndInfo_t &snd = snds[i];
+		int idx = snd.m_nSoundSource;
+		if ( idx <= 0 || idx >= MAX_EDICTS )
+			continue;
+
+		// Casts and some weapon scripts are emitted on the weapon. The outline
+		// is tracked on the owner.
+		if ( s_flGuardDogHeardUntil[idx] < gpGlobals->curtime - 0.2f )
+		{
+			C_BaseEntity *pEnt = ClientEntityList().GetBaseEntity( idx );
+			C_BaseEntity *pOwner = pEnt ? pEnt->GetOwnerEntity() : NULL;
+			const int nOwner = pOwner ? pOwner->entindex() : 0;
+			if ( nOwner <= 0 || nOwner >= MAX_EDICTS || s_flGuardDogHeardUntil[nOwner] < gpGlobals->curtime - 0.2f )
+				continue;
+			idx = nOwner;
+		}
+
+		Vector vecOrigin;
+		if ( snd.m_pOrigin )
+		{
+			vecOrigin = *snd.m_pOrigin;
+		}
+		else
+		{
+			C_BaseEntity *pEnt = ClientEntityList().GetBaseEntity( idx );
+			if ( !pEnt )
+				continue;
+			vecOrigin = pEnt->WorldSpaceCenter();
+		}
+
+		Vector vecTo = vecOrigin - vecEar;
+		const float flDistSqr = vecTo.LengthSqr();
+		if ( flDistSqr > flHearingSqr || flDistSqr < 1.0f )
+			continue;
+
+		if ( GuardDogChannelHoldsOutline( snd.m_nChannel ) && s_flGuardDogHeardUntil[idx] < gpGlobals->curtime + 0.15f )
+		{
+			s_flGuardDogHeardUntil[idx] = gpGlobals->curtime + 0.15f;
+		}
+
+		if ( snd.m_nGuid == 0 )
+			continue;
+
+		vecTo *= 1.0f / sqrtf( flDistSqr );
+		const float flDot = DotProduct( vecForward, vecTo );
+		const float flBoost = RemapValClamped( flDot, 0.15f, 1.0f, 1.0f, TF_GUARDDOG_HEARING_FACING_BOOST );
+
+		float flBase = snd.m_flVolume;
+		int nSlot = -1;
+		for ( int j = 0; j < s_nGuardDogVol; ++j )
+		{
+			if ( s_GuardDogVol[j].guid == snd.m_nGuid )
+			{
+				flBase = s_GuardDogVol[j].base;
+				nSlot = j;
+				s_GuardDogVol[j].touched = true;
+				break;
+			}
+		}
+
+		if ( nSlot < 0 )
+		{
+			if ( s_nGuardDogVol >= ARRAYSIZE( s_GuardDogVol ) )
+				continue;
+			nSlot = s_nGuardDogVol++;
+			s_GuardDogVol[nSlot].guid = snd.m_nGuid;
+			s_GuardDogVol[nSlot].base = snd.m_flVolume;
+			s_GuardDogVol[nSlot].touched = true;
+			flBase = snd.m_flVolume;
+		}
+
+		const float flVol = MIN( flBase * flBoost, 1.5f );
+		if ( fabsf( flVol - snd.m_flVolume ) > 0.02f )
+		{
+			enginesound->SetVolumeByGuid( snd.m_nGuid, flVol );
+		}
+	}
+
+	int nWrite = 0;
+	for ( int j = 0; j < s_nGuardDogVol; ++j )
+	{
+		if ( !s_GuardDogVol[j].touched )
+			continue;
+		s_GuardDogVol[nWrite] = s_GuardDogVol[j];
+		s_GuardDogVol[nWrite].touched = false;
+		++nWrite;
+	}
+	s_nGuardDogVol = nWrite;
+}
+
+static void UpdateGuardDogBuildingGlows( C_TFPlayer *pLocal )
+{
+	const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+
+	for ( int i = s_nGuardDogHeardBuildingCount - 1; i >= 0; --i )
+	{
+		const int idx = s_nGuardDogHeardBuildings[i];
+		const bool bTime = idx > 0 && idx < MAX_EDICTS && gpGlobals->curtime < s_flGuardDogHeardUntil[idx];
+		C_BaseEntity *pEnt = bTime ? ClientEntityList().GetBaseEntity( idx ) : NULL;
+		const bool bHeard = pEnt && GuardDogIsEnemySentry( pLocal, pEnt )
+			&& ( pEnt->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flHearingSqr;
+
+		int nGlow = -1;
+		for ( int g = 0; g < s_GuardDogBuildGlows.Count(); ++g )
+		{
+			if ( s_GuardDogBuildGlows[g].index == idx )
+			{
+				nGlow = g;
+				break;
+			}
+		}
+
+		if ( !bTime )
+		{
+			if ( nGlow >= 0 )
+			{
+				delete s_GuardDogBuildGlows[nGlow].glow;
+				s_GuardDogBuildGlows.FastRemove( nGlow );
+			}
+			s_nGuardDogHeardBuildings[i] = s_nGuardDogHeardBuildings[--s_nGuardDogHeardBuildingCount];
+			continue;
+		}
+
+		if ( !bHeard )
+		{
+			if ( nGlow >= 0 )
+			{
+				delete s_GuardDogBuildGlows[nGlow].glow;
+				s_GuardDogBuildGlows.FastRemove( nGlow );
+			}
+			continue;
+		}
+
+		float r, g, b;
+		TFGameRules()->GetTeamGlowColor( pEnt->GetTeamNumber(), r, g, b );
+		const Vector vecColor( r, g, b );
+		if ( nGlow < 0 )
+		{
+			GuardDogBuildGlow_t add;
+			add.index = idx;
+			add.glow = new CGlowObject( pEnt, vecColor, 1.0f, true, false );
+			s_GuardDogBuildGlows.AddToTail( add );
+		}
+		else
+		{
+			s_GuardDogBuildGlows[nGlow].glow->SetEntity( pEnt );
+			s_GuardDogBuildGlows[nGlow].glow->SetColor( vecColor );
+			s_GuardDogBuildGlows[nGlow].glow->SetRenderFlags( true, false );
+		}
+	}
 }
 
 static bool GuardDogCanSniffLock( C_TFPlayer *pLocal, C_BaseEntity *pEnt )
@@ -6421,6 +6679,8 @@ static void UpdateGuardDogSense()
 		return;
 	}
 
+	GuardDogUpdateHeardSounds( pLocal );
+
 	if ( s_nGuardDogSniffTarget > 0 )
 	{
 		C_TFPlayer *pSniffed = ToTFPlayer( UTIL_PlayerByIndex( s_nGuardDogSniffTarget ) );
@@ -6449,7 +6709,14 @@ static void UpdateGuardDogSense()
 				s_flGuardDogLostLOS[i] = gpGlobals->curtime;
 			}
 
-			if ( bSniffed )
+			const bool bMarked = GuardDogIsEnemy( pLocal, pPlayer ) && GuardDogPlayerIsMarked( pPlayer );
+			const float flHearingSqr = TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE;
+			const bool bHeard = GuardDogIsEnemy( pLocal, pPlayer )
+				&& i < MAX_EDICTS
+				&& gpGlobals->curtime < s_flGuardDogHeardUntil[i]
+				&& ( pPlayer->GetAbsOrigin() - pLocal->GetAbsOrigin() ).LengthSqr() <= flHearingSqr;
+
+			if ( bSniffed || bMarked || bHeard )
 			{
 				bShow = true;
 			}
@@ -6509,6 +6776,8 @@ static void UpdateGuardDogSense()
 			s_pGuardDogSenseGlow[i]->SetRenderFlags( true, bDrawUnoccluded );
 		}
 	}
+
+	UpdateGuardDogBuildingGlows( pLocal );
 }
 
 static void UpdateGuardDogVision()

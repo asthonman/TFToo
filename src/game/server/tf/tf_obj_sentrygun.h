@@ -97,6 +97,7 @@ public:
 
 	void			EmitSentrySound( const char* soundname );
 	void			EmitSentrySound( IRecipientFilter& filter, int iEntIndex, const char *soundname );
+	virtual void	ModifyEmitSoundParams( EmitSound_t &params );
 
 	CTFPlayer *		GetAssistingTeammate( float maxAssistDuration = -1.0f ) const;
 

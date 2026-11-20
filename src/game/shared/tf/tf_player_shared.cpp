@@ -12322,6 +12322,13 @@ void CTFPlayer::ModifyEmitSoundParams( EmitSound_t &params )
 		pWeapon->ModifyEmitSoundParams( params );
 	}
 
+#ifdef GAME_DLL
+	if ( params.m_pSoundName && params.m_pSoundName[0] )
+	{
+		GuardDog_NotifyActionNoise( this, &params );
+	}
+#endif
+
 #ifdef CLIENT_DLL
 	ClientAdjustStartSoundParams( params );
 #endif // CLIENT_DLL

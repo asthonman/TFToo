@@ -236,9 +236,14 @@ enum ETFClass
 	TF_CLASS_RANDOM
 };
 
-// Guard Dog still receives players inside this radius so a glow can outlast
-// a broken line of sight. The outline itself is not always on.
-#define TF_GUARDDOG_SENSE_RADIUS		5000.0f
+// Dogs are cited as hearing about four times farther than a person:
+// roughly 400 m against a person's 100 m. 1 hammer unit is 1 inch.
+#define TF_GUARDDOG_HEARING_RANGE		15748.0f
+// About +5 dB. Loud enough to notice when you turn toward the source.
+#define TF_GUARDDOG_HEARING_FACING_BOOST	1.8f
+// Falloff that stays audible out to TF_GUARDDOG_HEARING_RANGE
+// (snd_refdb 60, snd_refdist 36). Only the dog's extra copy uses this.
+#define TF_GUARDDOG_HEARING_SOUNDLEVEL		113
 // Seen players stay outlined for this long after they are fully blocked.
 #define TF_GUARDDOG_GLOW_FADE_DELAY		1.0f
 // Reload sniffs. Same aim trace and range as a medigun lock-on

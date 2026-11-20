@@ -325,6 +325,19 @@ int CBaseObject::ShouldTransmit( const CCheckTransmitInfo *pInfo )
 		CBaseEntity *pRecipientEntity = CBaseEntity::Instance( pInfo->m_pClientEnt );
 		if ( pRecipientEntity && pRecipientEntity->ShouldForceTransmitsForTeam( GetTeamNumber() ) )
 			return FL_EDICT_ALWAYS;
+
+		// Enemy sentries have to exist on the dog out to hearing range so a
+		// beep, lock, or shot can draw an outline.
+		CTFPlayer *pViewer = ToTFPlayer( pRecipientEntity );
+		if ( pViewer && pViewer->IsAlive() && pViewer->IsPlayerClass( TF_CLASS_GUARDDOG )
+			&& ObjectType() == OBJ_SENTRYGUN
+			&& GetTeamNumber() != pViewer->GetTeamNumber()
+			&& GetTeamNumber() >= FIRST_GAME_TEAM )
+		{
+			Vector vecDelta = GetAbsOrigin() - pViewer->GetAbsOrigin();
+			if ( vecDelta.LengthSqr() <= ( TF_GUARDDOG_HEARING_RANGE * TF_GUARDDOG_HEARING_RANGE ) )
+				return FL_EDICT_ALWAYS;
+		}
 	}
 
 	return BaseClass::ShouldTransmit( pInfo );

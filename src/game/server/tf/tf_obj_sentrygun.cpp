@@ -2222,6 +2222,15 @@ void CObjectSentrygun::EmitSentrySound( IRecipientFilter& filter, int iEntIndex,
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Beep, lock-on, and fire reach Guard Dogs inside hearing range.
+//-----------------------------------------------------------------------------
+void CObjectSentrygun::ModifyEmitSoundParams( EmitSound_t &params )
+{
+	BaseClass::ModifyEmitSoundParams( params );
+	GuardDog_NotifyActionNoise( this, &params );
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CObjectSentrygun::EmitSentrySound( const char* soundname )

@@ -37,6 +37,11 @@ class CTFDroppedWeapon;
 
 extern const float tf_afterburn_max_duration;
 
+struct EmitSound_t;
+// Weapon fire, spells, abilities, voice lines, and sentry noise.
+// psz comes from pParams. Pass NULL with a duration for a voice scene.
+void GuardDog_NotifyActionNoise( CBaseEntity *pSource, const EmitSound_t *pParams, float flDuration = -1.0f );
+
 #define MAX_FIRE_WEAPON_SCENES 4
 
 //=============================================================================

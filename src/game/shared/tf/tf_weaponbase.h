@@ -357,6 +357,7 @@ class CTFWeaponBase : public CBaseCombatWeapon, public IHasOwner, public IHasGen
 	// Attacks.
 	virtual void Misfire( void );
 	virtual void FireFullClipAtOnce( void );
+	virtual void ModifyEmitSoundParams( EmitSound_t &params );
 	virtual void PrimaryAttack();
 	virtual void SecondaryAttack();
 	void CalcIsAttackCritical( void );

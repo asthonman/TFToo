@@ -1496,8 +1496,18 @@ void CTFWeaponBase::Misfire( void )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose:
-// ----------------------------------------------------------------------------
+// Player sounds are forwarded here. Spells are emitted on the weapon.
+//-----------------------------------------------------------------------------
+void CTFWeaponBase::ModifyEmitSoundParams( EmitSound_t &params )
+{
+	BaseClass::ModifyEmitSoundParams( params );
+
+#if !defined( CLIENT_DLL )
+	CBaseEntity *pOwner = GetOwner();
+	GuardDog_NotifyActionNoise( pOwner ? pOwner : this, &params );
+#endif
+}
+
 void CTFWeaponBase::FireFullClipAtOnce( void )
 {
 	AssertMsg( 0, "weapon that has AutoFiresFullClipAllAtOnce should implement this function" );
