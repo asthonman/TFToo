@@ -13352,28 +13352,6 @@ int	CTFPlayer::GetMaxAmmo( int iAmmoIndex, int iClassIndex /*= -1*/ )
 	else if ( iAmmoIndex == TF_AMMO_METAL )
 	{
 		CALL_ATTRIB_HOOK_INT( iMax, mult_maxammo_metal );
-
-		// The Widowmaker does not raise a class that already carries metal.
-		// Soldier, Pyro, Heavy, Witch, and Mobster have an empty pool, so the
-		// gun could not be loaded. While it is in the loadout they get the
-		// stock 200, and nothing past that.
-		if ( iClassIndex == -1 && iMax <= 0 )
-		{
-			for ( int i = 0; i < MAX_WEAPONS; ++i )
-			{
-				CTFWeaponBase *pWeapon = dynamic_cast< CTFWeaponBase * >( GetWeapon( i ) );
-				if ( !pWeapon || pWeapon->GetPrimaryAmmoType() != TF_AMMO_METAL )
-					continue;
-
-				const int iID = pWeapon->GetWeaponID();
-				if ( iID == TF_WEAPON_SHOTGUN_PRIMARY || iID == TF_WEAPON_SHOTGUN_SOLDIER
-					|| iID == TF_WEAPON_SHOTGUN_HWG || iID == TF_WEAPON_SHOTGUN_PYRO )
-				{
-					iMax = 200;
-					break;
-				}
-			}
-		}
 	}
 	else if ( iAmmoIndex == TF_AMMO_GRENADES1 )
 	{
