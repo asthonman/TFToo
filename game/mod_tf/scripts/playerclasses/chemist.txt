@@ -1,9 +1,9 @@
 // Chemist. 150 health, 107% move speed (320, same as Spy, Medic, and Witch).
-// Engineer body until a chemist model exists. Primary is the nailgun (schema
-// b15) with 150 reserve. No secondary. Melee is the spatula (b16). PDA is the
-// chemistry set (b17). PDA2 is the jet boots (b18), a passive fuel meter.
-// Class-script weapons stay empty so the schema items fill the loadout.
-// Reagents are TF_AMMO_METAL, capped at 10.
+// Engineer body until a chemist model exists. Primary is Madcap's nailgun
+// (schema b1), with 150 reserve from this script. No secondary. Melee is the
+// spatula (b19). PDA is the chemistry set (b20). PDA2 is the jet boots (b21),
+// a passive fuel meter. Class-script weapons stay empty so the schema items
+// fill the loadout. Reagents are TF_AMMO_METAL, capped at 10.
 "PlayerClassData"
 {
 	"name"				"chemist"

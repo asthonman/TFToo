@@ -20,7 +20,7 @@
 	}
 	"items"
 	{
-		// Madcap stock primary. First person is Scout's arms, secondary slot.
+		// Madcap and Chemist stock primary. First person is Scout's arms, secondary slot.
 		"b1"
 		{
 			"name"				"b1"
@@ -45,6 +45,7 @@
 			"used_by_classes"
 			{
 				"madcap"		"1"
+				"chemist"		"1"
 			}
 		}
 		// Madcap unlock. Unique quality is the yellow name. The stock secondary
@@ -648,33 +649,6 @@
 			"used_by_classes"
 			{
 				"guarddog"		"1"
-			}
-		}
-		// Chemist stock primary. Same nailgun as Madcap, own reserve from the class script.
-		"b18"
-		{
-			"name"				"b18"
-			"item_class"		"tf_weapon_nailgun"
-			"item_name"			"#TF_Weapon_Nailgun"
-			"item_type_name"	"#TF_Weapon_Nailgun"
-			"item_logname"		"nailgun"
-			"item_iconname"	"nailgun"
-			"item_slot"			"primary"
-			"anim_slot"			"SECONDARY"
-			"item_quality"		"normal"
-			"baseitem"			"1"
-			"enabled"			"1"
-			"hidden"			"0"
-			"propername"		"0"
-			"min_ilevel"		"1"
-			"max_ilevel"		"1"
-			"act_as_weapon"		"1"
-			"attach_to_hands"	"1"
-			"model_player"		"models/weapons/w_models/w_nailgun.mdl"
-			"model_world"		"models/weapons/w_models/w_nailgun.mdl"
-			"used_by_classes"
-			{
-				"chemist"		"1"
 			}
 		}
 		// Chemist stock melee. Frying pan mesh until a spatula exists.
