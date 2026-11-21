@@ -511,6 +511,26 @@ public:
 	// Grease-gun ice. Absolute gpGlobals->curtime. Ground friction and accel only.
 	void	AddIcePhysics( float flSeconds );
 	bool	InIcePhysics( void ) const;
+	int		GetChemSelected( void ) const;
+	void	SetChemSelected( int slot );
+	int		GetChemPrev( void ) const;
+	int		GetChemBrewSlot( void ) const;
+	void	SetChemBrewSlot( int slot );
+	int		GetChemUses( int slot ) const;
+	void	SetChemUses( int slot, int uses );
+	float	GetChemBrewDone( void ) const { return m_flChemBrewDone; }
+	bool	IsChemJetting( void ) const { return m_bChemJetting; }
+	void	SetChemJetting( bool bJetting ) { m_bChemJetting = bJetting; }
+	void	ChemSelect( int slot );
+	void	ChemSelectLast( void );
+	void	ChemBeginBrew( int slot );
+	void	ChemistBrewThink( void );
+	void	ResetChemist( void );
+#ifdef GAME_DLL
+	void	ApplyPoison( CTFPlayer *pAttacker, float flDuration );
+	void	ClearPoison( void );
+	bool	IsPoisoned( void ) const { return m_flPoisonExpire > gpGlobals->curtime; }
+#endif
 
 	void	UpdateRageBuffsAndRage();
 	bool	IsRageDraining() const			{ return m_bRageDraining; }
@@ -1115,6 +1135,15 @@ private:
 	// Holding right-click to aim a spell. Teammates draw the arc or circle.
 	CNetworkVar( bool, m_bWitchHoldingCast );
 	CNetworkVar( float, m_flWitchChargeBegin );
+	// Chemist concoctions, reagents are TF_AMMO_METAL, fuel is m_flCloakMeter.
+	CNetworkVar( int, m_nChemPacked );
+	CNetworkVar( float, m_flChemBrewDone );
+	CNetworkVar( bool, m_bChemJetting );
+#ifdef GAME_DLL
+	float	m_flPoisonExpire;
+	float	m_flPoisonNextDamage;
+	EHANDLE	m_hPoisonAttacker;
+#endif
 
 	CNetworkVar( bool, m_bInUpgradeZone );
 

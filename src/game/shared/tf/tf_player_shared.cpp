@@ -33,6 +33,7 @@
 #include "tf_dropped_weapon.h"
 #include "tf_weapon_passtime_gun.h"
 #include "tf_weapon_rocketpack.h"
+#include "tf_chemist.h"
 #include <functional>
 
 // Client specific.
@@ -413,6 +414,9 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropBool( RECVINFO( m_bWitchManaExhausted ) ),
 	RecvPropBool( RECVINFO( m_bWitchHoldingCast ) ),
 	RecvPropFloat( RECVINFO( m_flWitchChargeBegin ) ),
+	RecvPropInt( RECVINFO( m_nChemPacked ) ),
+	RecvPropFloat( RECVINFO( m_flChemBrewDone ) ),
+	RecvPropBool( RECVINFO( m_bChemJetting ) ),
 	RecvPropFloat( RECVINFO( m_flSpyTranqBuffDuration ) ),
 
 	// Local Data.
@@ -456,6 +460,9 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_bWitchManaExhausted, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bWitchHoldingCast, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flWitchChargeBegin, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nChemPacked, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flChemBrewDone, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_bChemJetting, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRageMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bRageDraining, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNextRageEarnTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -600,6 +607,9 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropBool( SENDINFO( m_bWitchManaExhausted ) ),
 	SendPropBool( SENDINFO( m_bWitchHoldingCast ) ),
 	SendPropFloat( SENDINFO( m_flWitchChargeBegin ) ),
+	SendPropInt( SENDINFO( m_nChemPacked ), 21, SPROP_UNSIGNED ),
+	SendPropFloat( SENDINFO( m_flChemBrewDone ) ),
+	SendPropBool( SENDINFO( m_bChemJetting ) ),
 	SendPropFloat( SENDINFO( m_flSpyTranqBuffDuration ), 16, SPROP_NOSCALE, 0.0, 100.0 ),
 	
 	// Local Data.
@@ -860,6 +870,14 @@ CTFPlayerShared::CTFPlayerShared()
 	m_bWitchManaExhausted = false;
 	m_bWitchHoldingCast = false;
 	m_flWitchChargeBegin = 0.f;
+	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
+	m_flChemBrewDone = 0.f;
+	m_bChemJetting = false;
+#ifdef GAME_DLL
+	m_flPoisonExpire = 0.f;
+	m_flPoisonNextDamage = 0.f;
+	m_hPoisonAttacker = NULL;
+#endif
 
 	m_iItemFindBonus = 0;
 
@@ -3159,12 +3177,32 @@ void CTFPlayerShared::SharedThink( void )
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::ConditionThink( void )
 {
+#ifdef GAME_DLL
+	// Poison does not stack. Walking through the cloud only refreshes the timer.
+	if ( m_pOuter->IsAlive() && m_flPoisonExpire > gpGlobals->curtime )
+	{
+		if ( gpGlobals->curtime >= m_flPoisonNextDamage )
+		{
+			CTFPlayer *pAttacker = ToTFPlayer( m_hPoisonAttacker.Get() );
+			CTakeDamageInfo info( pAttacker ? pAttacker : m_pOuter, pAttacker ? pAttacker : m_pOuter, NULL, 8.f, DMG_GENERIC | DMG_PREVENT_PHYSICS_FORCE );
+			m_pOuter->TakeDamage( info );
+			m_flPoisonNextDamage = gpGlobals->curtime + 0.5f;
+		}
+	}
+	else if ( m_flPoisonExpire != 0.f && m_flPoisonExpire <= gpGlobals->curtime )
+	{
+		m_hPoisonAttacker = NULL;
+		m_flPoisonExpire = 0.f;
+	}
+#endif
+
 	// Client Only Updates Meters for Local Only
 #ifdef CLIENT_DLL
 	if ( m_pOuter->IsLocalPlayer() )
 #endif
 	{
 		UpdateCloakMeter();
+		ChemistBrewThink();
 		UpdateRageBuffsAndRage();
 		UpdateEnergyDrinkMeter();
 		UpdateChargeMeter();
@@ -11005,6 +11043,10 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 		maxfbspeed = Lerp( TFBrickGrowFraction( GetModelScale() ), flSmall, TF_BRICK_GROW_SPEED );
 	}
 
+	// Jet boots are 80% of his run speed while they are burning fuel.
+	if ( playerclass == TF_CLASS_CHEMIST && m_Shared.IsChemJetting() )
+		maxfbspeed *= 0.8f;
+
 	if ( !TFGameRules()->IsMannVsMachineMode() || !IsMiniBoss() ) // No aiming slowdown penalties for MiniBoss players in MVM
 	{
 		// if they're a sniper, and they're aiming, their speed must be 80 or less
@@ -12608,6 +12650,24 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				if ( m_Shared.GetSpyCloakMeter() > 0.0f )
 					m_Shared.SetWitchManaExhausted( false );
 			}
+#endif
+			bDoSkill = true;
+		}
+		break;
+	case TF_CLASS_CHEMIST:
+		{
+			const int iSlot = m_Shared.GetChemSelected();
+			if ( m_Shared.GetChemUses( iSlot ) <= 0 || GetAmmoCount( TF_AMMO_METAL ) < 1 )
+			{
+#ifdef CLIENT_DLL
+				EmitSound( "Player.DenyWeaponSelection" );
+#endif
+				return false;
+			}
+#ifdef GAME_DLL
+			m_Shared.SetChemUses( iSlot, m_Shared.GetChemUses( iSlot ) - 1 );
+			RemoveAmmo( 1, TF_AMMO_METAL );
+			Chemist_Throw( this, iSlot );
 #endif
 			bDoSkill = true;
 		}
@@ -14503,10 +14563,173 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 }
 
 //-----------------------------------------------------------------------------
+// Chemist concoction pack. Reagents are metal. Fuel is the cloak meter.
+//-----------------------------------------------------------------------------
+float ChemBrewSeconds( int slot )
+{
+	switch ( slot )
+	{
+	case CHEM_POISON:		return 45.f;
+	case CHEM_REPULSION:	return 30.f;
+	case CHEM_NITRIC:		return 45.f;
+	case CHEM_NEUTRAL:		return 10.f;
+	default:				return 45.f;
+	}
+}
+
+int ChemUsesPerBrew( int slot )
+{
+	switch ( slot )
+	{
+	case CHEM_POISON:		return 1;
+	case CHEM_REPULSION:	return 3;
+	case CHEM_NITRIC:		return 1;
+	case CHEM_NEUTRAL:		return 5;
+	default:				return 1;
+	}
+}
+
+const char *ChemConcoctionName( int slot )
+{
+	switch ( slot )
+	{
+	case CHEM_POISON:		return "#TF_Chem_Poison";
+	case CHEM_REPULSION:	return "#TF_Chem_Repulsion";
+	case CHEM_NITRIC:		return "#TF_Chem_Nitric";
+	case CHEM_NEUTRAL:		return "#TF_Chem_Neutral";
+	default:				return "#TF_Chem_Poison";
+	}
+}
+
+int CTFPlayerShared::GetChemSelected( void ) const { return ChemPack_Selected( m_nChemPacked ); }
+void CTFPlayerShared::SetChemSelected( int slot ) { m_nChemPacked = ChemPack_SetSelected( m_nChemPacked, slot ); }
+int CTFPlayerShared::GetChemPrev( void ) const { return ChemPack_Prev( m_nChemPacked ); }
+int CTFPlayerShared::GetChemBrewSlot( void ) const { return ChemPack_Brew( m_nChemPacked ); }
+void CTFPlayerShared::SetChemBrewSlot( int slot ) { m_nChemPacked = ChemPack_SetBrew( m_nChemPacked, slot ); }
+int CTFPlayerShared::GetChemUses( int slot ) const { return ChemPack_Uses( m_nChemPacked, slot ); }
+void CTFPlayerShared::SetChemUses( int slot, int uses ) { m_nChemPacked = ChemPack_SetUses( m_nChemPacked, slot, uses ); }
+
+void CTFPlayerShared::ChemSelect( int slot )
+{
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		return;
+
+	const int iCur = GetChemSelected();
+	if ( slot == iCur )
+		return;
+
+	m_nChemPacked = ChemPack_SetPrev( m_nChemPacked, iCur );
+	SetChemSelected( slot );
+}
+
+void CTFPlayerShared::ChemSelectLast( void )
+{
+	ChemSelect( GetChemPrev() );
+}
+
+void CTFPlayerShared::ChemBeginBrew( int slot )
+{
+	if ( !m_pOuter->IsPlayerClass( TF_CLASS_CHEMIST ) || !m_pOuter->IsAlive() )
+		return;
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		return;
+	// Already brewed, or a brew is already running.
+	if ( GetChemUses( slot ) > 0 )
+		return;
+	if ( GetChemBrewSlot() < CHEM_COUNT )
+		return;
+	if ( m_pOuter->GetAmmoCount( TF_AMMO_METAL ) < 1 )
+		return;
+
+	m_pOuter->RemoveAmmo( 1, TF_AMMO_METAL );
+	SetChemBrewSlot( slot );
+	m_flChemBrewDone = gpGlobals->curtime + ChemBrewSeconds( slot );
+}
+
+void CTFPlayerShared::ChemistBrewThink( void )
+{
+	if ( !m_pOuter->IsPlayerClass( TF_CLASS_CHEMIST ) || !m_pOuter->IsAlive() )
+		return;
+
+	const int iBrew = GetChemBrewSlot();
+	if ( iBrew < 0 || iBrew >= CHEM_COUNT )
+		return;
+	if ( gpGlobals->curtime < m_flChemBrewDone )
+		return;
+
+	int nUses = GetChemUses( iBrew ) + ChemUsesPerBrew( iBrew );
+	if ( nUses > 7 )
+		nUses = 7;
+	SetChemUses( iBrew, nUses );
+	m_nChemPacked = ChemPack_SetPrev( m_nChemPacked, GetChemSelected() );
+	SetChemSelected( iBrew );
+	SetChemBrewSlot( CHEM_BREW_NONE );
+}
+
+void CTFPlayerShared::ResetChemist( void )
+{
+	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
+	m_flChemBrewDone = 0.f;
+	m_bChemJetting = false;
+#ifdef GAME_DLL
+	ClearPoison();
+#endif
+}
+
+#ifdef GAME_DLL
+void CTFPlayerShared::ApplyPoison( CTFPlayer *pAttacker, float flDuration )
+{
+	if ( !m_pOuter->IsAlive() )
+		return;
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_PYRO ) )
+		return;
+	if ( m_flPoisonNextDamage <= gpGlobals->curtime )
+		m_flPoisonNextDamage = gpGlobals->curtime;
+	m_flPoisonExpire = gpGlobals->curtime + flDuration;
+	if ( pAttacker )
+		m_hPoisonAttacker = pAttacker;
+}
+
+void CTFPlayerShared::ClearPoison( void )
+{
+	m_flPoisonExpire = 0.f;
+	m_flPoisonNextDamage = 0.f;
+	m_hPoisonAttacker = NULL;
+}
+#endif
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::UpdateCloakMeter( void )
 {
+	// Chemist fuel. Jet boots drain it. On the ground it refills.
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_CHEMIST ) )
+	{
+		if ( !m_pOuter->IsAlive() )
+		{
+			m_bChemJetting = false;
+			return;
+		}
+
+		if ( m_bChemJetting )
+		{
+			m_flCloakMeter -= gpGlobals->frametime * 20.0f;
+			if ( m_flCloakMeter <= 0.0f )
+			{
+				m_flCloakMeter = 0.0f;
+				m_bChemJetting = false;
+			}
+		}
+		else
+		{
+			m_flCloakMeter += gpGlobals->frametime * 15.0f;
+			if ( m_flCloakMeter >= 100.0f )
+				m_flCloakMeter = 100.0f;
+		}
+		return;
+	}
+
 	// Witch mana. Stealth is a fixed-cost buff now. Spy debuffs, motion cloak, and the
 	// watch itself are not part of this.
 	if ( m_pOuter->IsPlayerClass( TF_CLASS_WITCH ) )

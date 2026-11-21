@@ -23,6 +23,7 @@
 #define CTFJarGas C_TFJarGas
 #define CTFProjectile_JarGas C_TFProjectile_JarGas
 #define CTFGasManager C_TFGasManager
+#define CTFPoisonGas C_TFPoisonGas
 #endif
 
 #define TF_GAS_LIFETIME	5.f
@@ -87,6 +88,9 @@ public:
 
 	virtual int GetWeaponID( void ) const OVERRIDE { return TF_WEAPON_GRENADE_JAR_GAS; }
 	virtual void Precache() OVERRIDE;
+
+	CTFProjectile_JarGas();
+	bool m_bPoison;
 };
 
 #ifdef CLIENT_DLL
@@ -146,6 +150,22 @@ private:
 
 	float m_flLastMoveUpdate;
 	bool m_bKeepMovingPoints;
+};
+
+// Poison cloud. Same gas passer projectile and particles. Pyro is immune and
+// airblast removes the cloud. The debuff is a timer on the player, not TF_COND_GAS.
+class CTFPoisonGas : public CTFGasManager
+{
+	DECLARE_CLASS( CTFPoisonGas, CTFGasManager );
+public:
+	DECLARE_NETWORKCLASS();
+	DECLARE_DATADESC();
+
+#ifdef GAME_DLL
+	static CTFPoisonGas *Create( CBaseEntity *pOwner, const Vector &vPos );
+	virtual void OnCollide( CBaseEntity *pEnt, int iPointIndex ) OVERRIDE;
+	virtual bool ShouldCollide( CBaseEntity *pEnt ) const OVERRIDE;
+#endif
 };
 
 #endif // TF_WEAPON_JAR_GAS_H

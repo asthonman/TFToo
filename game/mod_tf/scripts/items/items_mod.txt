@@ -650,5 +650,116 @@
 				"guarddog"		"1"
 			}
 		}
+		// Chemist stock primary. Same nailgun as Madcap, own reserve from the class script.
+		"b18"
+		{
+			"name"				"b18"
+			"item_class"		"tf_weapon_nailgun"
+			"item_name"			"#TF_Weapon_Nailgun"
+			"item_type_name"	"#TF_Weapon_Nailgun"
+			"item_logname"		"nailgun"
+			"item_iconname"	"nailgun"
+			"item_slot"			"primary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/w_models/w_nailgun.mdl"
+			"model_world"		"models/weapons/w_models/w_nailgun.mdl"
+			"used_by_classes"
+			{
+				"chemist"		"1"
+			}
+		}
+		// Chemist stock melee. Frying pan mesh until a spatula exists.
+		"b19"
+		{
+			"name"				"b19"
+			"item_class"		"tf_weapon_spatula"
+			"item_name"			"#TF_Weapon_Spatula"
+			"item_type_name"	"#TF_Weapon_Spatula"
+			"item_logname"		"spatula"
+			"item_iconname"	"spatula"
+			"item_slot"			"melee"
+			"anim_slot"			"MELEE"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
+			"model_world"		"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
+			"image_inventory"	"backpack/weapons/c_models/c_frying_pan/c_frying_pan"
+			"image_inventory_size_w"	"128"
+			"image_inventory_size_h"	"82"
+			"used_by_classes"
+			{
+				"chemist"		"1"
+			}
+		}
+		// Chemist PDA. Same backpack icon as the crafting chemistry set.
+		"b20"
+		{
+			"name"				"b20"
+			"item_class"		"tf_weapon_pda_chemistry"
+			"item_name"			"#TF_Weapon_ChemistrySet"
+			"item_type_name"	"#TF_Weapon_ChemistrySet"
+			"item_logname"		"chemistry_set"
+			"item_iconname"	"chemistry_set"
+			"item_slot"			"pda"
+			"anim_slot"			"PDA"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"model_player"		"models/weapons/w_models/w_pda_engineer.mdl"
+			"image_inventory"	"backpack/crafting/chemistry_set"
+			"image_inventory_size_w"	"128"
+			"image_inventory_size_h"	"128"
+			"used_by_classes"
+			{
+				"chemist"		"1"
+			}
+		}
+		// Chemist jet boots. Passive PDA2. Fuel is the cloak meter.
+		"b21"
+		{
+			"name"				"b21"
+			"item_class"		"tf_weapon_jetboots"
+			"item_name"			"#TF_Weapon_JetBoots"
+			"item_type_name"	"#TF_Weapon_JetBoots"
+			"item_logname"		"jetboots"
+			"item_iconname"	"jetboots"
+			"item_slot"			"pda2"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"0"
+			"used_by_classes"
+			{
+				"chemist"		"1"
+			}
+		}
 	}
 }

@@ -364,6 +364,7 @@ ClientModeTFNormal::ClientModeTFNormal()
 	m_pMenuEngyDestroy = NULL;
 	m_pMenuSpyDisguise = NULL;
 	m_pMenuSpellbook = NULL;
+	m_pMenuChemistry = NULL;
 	m_pEurekaTeleportMenu = NULL;
 	m_pMenuTauntSelection = NULL;
 	m_pGameUI = NULL;
@@ -422,6 +423,9 @@ void ClientModeTFNormal::Init()
 
 	m_pMenuSpellbook = ( CHudMenuSpellbook * )GET_HUDELEMENT( CHudMenuSpellbook );
 	Assert( m_pMenuSpellbook );
+
+	m_pMenuChemistry = ( CHudMenuChemistry * )GET_HUDELEMENT( CHudMenuChemistry );
+	Assert( m_pMenuChemistry );
 
 	m_pFreezePanel = ( CTFFreezePanel * )GET_HUDELEMENT( CTFFreezePanel );
 	Assert( m_pFreezePanel );
@@ -1540,6 +1544,14 @@ int	ClientModeTFNormal::HudElementKeyInput( int down, ButtonCode_t keynum, const
 	if ( m_pMenuSpellbook )
 	{
 		if ( !m_pMenuSpellbook->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
+		{
+			return 0;
+		}
+	}
+
+	if ( m_pMenuChemistry )
+	{
+		if ( !m_pMenuChemistry->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
 		{
 			return 0;
 		}

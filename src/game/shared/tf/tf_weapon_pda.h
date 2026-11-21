@@ -29,6 +29,8 @@
 	#define CTFWeaponPDA_Spy		C_TFWeaponPDA_Spy
 	#define CTFWeaponPDA_Spy_Build	C_TFWeaponPDA_Spy_Build
 	#define CTFWeaponPDA_Spellbook	C_TFWeaponPDA_Spellbook
+	#define CTFWeaponPDA_Chemistry	C_TFWeaponPDA_Chemistry
+	#define CTFWeaponJetBoots		C_TFWeaponJetBoots
 	
 	#define CTFWeaponPDAExpansion_Dispenser		C_TFWeaponPDAExpansion_Dispenser
 	#define CTFWeaponPDAExpansion_Teleporter	C_TFWeaponPDAExpansion_Teleporter
@@ -163,6 +165,46 @@ public:
 #endif
 };
 
+// Chemist chemistry set. Build-menu layout, one slot per concoction.
+class CTFWeaponPDA_Chemistry : public CTFWeaponPDA
+{
+public:
+	DECLARE_CLASS( CTFWeaponPDA_Chemistry, CTFWeaponPDA );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual const char *GetPanelName() { return ""; }
+	virtual int		GetWeaponID( void ) const { return TF_WEAPON_PDA; }
+	virtual bool	ShouldShowControlPanels( void ) { return false; }
+
+#ifdef CLIENT_DLL
+	virtual CHudBaseBuildMenu *GetBuildMenu() const OVERRIDE;
+#endif
+};
+
+// Passive fuel meter. Not the invis watch, so spy cloak code never sees it.
+class CTFWeaponJetBoots : public CTFWeaponPDA
+{
+public:
+	DECLARE_CLASS( CTFWeaponJetBoots, CTFWeaponPDA );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	virtual const char *GetPanelName() { return ""; }
+	virtual int		GetWeaponID( void ) const { return TF_WEAPON_NONE; }
+	virtual bool	ShouldShowControlPanels( void ) { return false; }
+	virtual bool	VisibleInWeaponSelection( void ) { return false; }
+	virtual bool	AllowsAutoSwitchTo( void ) { return false; }
+	virtual bool	CanDeploy( void ) { return false; }
+	virtual void	PrimaryAttack( void ) {}
+	virtual void	SecondaryAttack( void ) {}
+
+#ifdef CLIENT_DLL
+	virtual void	OnDataChanged( DataUpdateType_t type ) OVERRIDE;
+	virtual CHudBaseBuildMenu *GetBuildMenu() const OVERRIDE { return NULL; }
+#endif
+};
+
 #ifdef CLIENT_DLL
 
 using namespace vgui;
@@ -218,6 +260,33 @@ private:
 	int m_iSelectedItem;
 	int m_iGroupSelection;
 	bool m_bInConsoleMode;
+};
+
+#define CHEM_MENU_SLOTS 4
+
+class CHudMenuChemistry : public CHudBaseBuildMenu
+{
+	DECLARE_CLASS_SIMPLE( CHudMenuChemistry, EditablePanel );
+
+public:
+	CHudMenuChemistry( const char *pElementName );
+
+	virtual void	ApplySchemeSettings( IScheme *scheme );
+	virtual void	OnTick( void );
+
+	int		HudElementKeyInput( int down, ButtonCode_t keynum, const char *pszCurrentBinding );
+
+	virtual int GetRenderGroupPriority( void ) { return 50; }
+	virtual GameActionSet_t GetPreferredActionSet() { return IsActive() ? GAME_ACTION_SET_IN_GAME_HUD : GAME_ACTION_SET_NONE; }
+
+private:
+	void	UpdateSlots( void );
+	void	PlaceOnScreen( void );
+
+	EditablePanel *m_pAvailable[CHEM_MENU_SLOTS];
+	EditablePanel *m_pAlreadyBuilt[CHEM_MENU_SLOTS];
+	EditablePanel *m_pCantAfford[CHEM_MENU_SLOTS];
+	EditablePanel *m_pUnavailable[CHEM_MENU_SLOTS];
 };
 
 #endif // CLIENT_DLL

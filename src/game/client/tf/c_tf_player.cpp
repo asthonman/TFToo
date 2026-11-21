@@ -96,6 +96,7 @@
 #include "baseanimatedtextureproxy.h"
 #include "econ_entity.h"
 #include "halloween/tf_weapon_spellbook.h"
+#include "tf_chemist.h"
 #include "tf_weapon_grapplinghook.h"
 #include "tf_logic_robot_destruction.h"
 #include "econ_notifications.h"
@@ -10687,6 +10688,9 @@ void SelectDisguise( int iClass, int iTeam );
 // Off: last disguise swaps her two most recent spells. On: it cycles the list.
 ConVar tf_witch_spell_cycle( "tf_witch_spell_cycle", "0", FCVAR_ARCHIVE, "Cycle Witch spells with the last disguise key." );
 
+// Off: last disguise swaps his two most recent concoctions. On: it cycles the list.
+ConVar tf_chemist_concoction_cycle( "tf_chemist_concoction_cycle", "0", FCVAR_ARCHIVE, "Cycle Chemist concoctions with the last disguise key." );
+
 static void cc_tf_player_lastdisguise( const CCommand &args )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
@@ -10712,6 +10716,22 @@ static void cc_tf_player_lastdisguise( const CCommand &args )
 		else
 		{
 			engine->ClientCmd( "witch_lastspell" );
+		}
+		return;
+	}
+
+	if ( pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+	{
+		if ( tf_chemist_concoction_cycle.GetBool() )
+		{
+			const int iNext = ( pPlayer->m_Shared.GetChemSelected() + 1 ) % CHEM_COUNT;
+			char szCmd[32];
+			Q_snprintf( szCmd, sizeof( szCmd ), "chem_select %d", iNext + 1 );
+			engine->ClientCmd( szCmd );
+		}
+		else
+		{
+			engine->ClientCmd( "chem_last" );
 		}
 		return;
 	}

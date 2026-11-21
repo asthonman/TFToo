@@ -5,6 +5,7 @@
 //=============================================================================//
 #include "cbase.h"
 #include "tf_weaponbase_rocket.h"
+#include "tf_paint.h"
 
 // Server specific.
 #ifdef GAME_DLL
@@ -341,6 +342,13 @@ void CTFBaseRocket::RocketTouch( CBaseEntity *pOther )
 	{
 		UTIL_Remove( this );
 		return;
+	}
+
+	// Repulsion gel throws the rocket back instead of detonating it.
+	if ( pOther && !pOther->IsPlayer() && !pOther->IsBaseObject() )
+	{
+		if ( TFPaint_ReflectProjectile( this, pTrace->endpos, pTrace->plane.normal ) )
+			return;
 	}
 
 	trace_t trace;

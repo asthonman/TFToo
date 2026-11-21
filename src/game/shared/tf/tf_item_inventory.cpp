@@ -51,14 +51,13 @@
 using namespace GCSDK;
 
 #define LOCAL_LOADOUT_FILE		"cfg/local_loadout.txt"
-// Madcap, Mobster, Resupply, Brick, Witch, and Guard Dog. Vanilla classes
-// stay in local_loadout.txt.
+// Madcap through Chemist. Vanilla classes stay in local_loadout.txt.
 #define LOCAL_LOADOUT_CUSTOM_FILE	"cfg/local_loadout_custom.txt"
 
 #ifdef CLIENT_DLL
 static bool IsModLoadoutClass( int iClass )
 {
-	return iClass >= TF_CLASS_MADCAP && iClass <= TF_CLASS_GUARDDOG;
+	return iClass >= TF_CLASS_MADCAP && iClass <= TF_CLASS_CHEMIST;
 }
 #endif
 

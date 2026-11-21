@@ -6,6 +6,7 @@
 
 #include "cbase.h"
 #include "tf_weapon_jar.h"
+#include "tf_paint.h"
 #include "decals.h"
 
 // Client specific.
@@ -550,6 +551,13 @@ void CTFProjectile_Jar::PipebombTouch( CBaseEntity *pOther )
 	{
 		UTIL_Remove( this );
 		return;
+	}
+
+	// A jar that hits repulsion gel bounces. A later hit on a player still splashes.
+	if ( !pOther->IsPlayer() )
+	{
+		if ( TFPaint_ReflectProjectile( this, pTrace.endpos, pTrace.plane.normal ) )
+			return;
 	}
 
 	// If we already touched a surface then we're not exploding on contact anymore.

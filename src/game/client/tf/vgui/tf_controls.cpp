@@ -704,6 +704,36 @@ CTFAdvancedOptionsDialog::CTFAdvancedOptionsDialog(vgui::Panel *parent) : BaseCl
 		}
 	}
 
+	// Same section as the Witch toggle. Last disguise cycles concoctions, or swaps the last two.
+	{
+		CScriptObject *pChemCycle = new CScriptObject();
+		Q_strncpy( pChemCycle->cvarname, "tf_chemist_concoction_cycle", sizeof( pChemCycle->cvarname ) );
+		Q_strncpy( pChemCycle->prompt, "Cycle Chemist concoctions with the last disguise key", sizeof( pChemCycle->prompt ) );
+		Q_strncpy( pChemCycle->tooltip, "On: the last disguise key cycles through his concoctions. Off: it swaps his two most recent concoctions.", sizeof( pChemCycle->tooltip ) );
+		pChemCycle->type = O_BOOL;
+		Q_strncpy( pChemCycle->defValue, "0", sizeof( pChemCycle->defValue ) );
+		pChemCycle->fdefValue = 0.f;
+		Q_strncpy( pChemCycle->curValue, "0", sizeof( pChemCycle->curValue ) );
+		pChemCycle->fcurValue = 0.f;
+		pChemCycle->fMin = 0.f;
+		pChemCycle->fMax = 1.f;
+
+		CScriptObject *pWitch = m_pDescription->FindObject( "tf_witch_spell_cycle" );
+		if ( m_pDescription->FindObject( "tf_chemist_concoction_cycle" ) )
+		{
+			pChemCycle->MarkForDeletion();
+		}
+		else if ( pWitch )
+		{
+			pChemCycle->pNext = pWitch->pNext;
+			pWitch->pNext = pChemCycle;
+		}
+		else
+		{
+			m_pDescription->AddObject( pChemCycle );
+		}
+	}
+
 	m_pDescription->TransferCurrentValues( NULL );
 
 // 	MoveToCenterOfScreen();

@@ -206,6 +206,22 @@ private:
 	float	m_flNextCoatExpire;
 	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife );
 	void	PlaySplatSound( const Vector &pos );
+
+	struct ChemCoat_t
+	{
+		Vector	pos;
+		float	radius;
+		float	die;
+		int		type;
+		bool	nitric;
+		bool	ignited;
+		EHANDLE	owner;
+	};
+	CUtlVector< ChemCoat_t > m_ChemCoats;
+	void	AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
+	void	EraseCoatsNear( const Vector &pos, float radius );
+	void	IgniteNitricSegment( const Vector &start, const Vector &end );
+	void	ThinkCoats( void );
 #endif
 
 #ifdef CLIENT_DLL
@@ -879,6 +895,134 @@ void CTFPaintMap::Think( void )
 
 		m_vecBlobPos.Set( i, next );
 	}
+
+	ThinkCoats();
+}
+
+void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner )
+{
+	if ( !tf_paint_enabled.GetBool() )
+		return;
+	if ( radius < 16.f )
+		radius = 16.f;
+
+	if ( m_ChemCoats.Count() >= 24 )
+	{
+		EraseSphere( m_ChemCoats[0].pos, m_ChemCoats[0].radius );
+		m_ChemCoats.Remove( 0 );
+	}
+
+	ChemCoat_t coat;
+	coat.pos = pos;
+	coat.radius = radius;
+	coat.die = gpGlobals->curtime + lifetime;
+	coat.type = type;
+	coat.nitric = bNitric;
+	coat.ignited = false;
+	coat.owner = pOwner;
+	m_ChemCoats.AddToTail( coat );
+	PaintSphere( pos, normal, type, radius, lifetime );
+}
+
+void CTFPaintMap::EraseCoatsNear( const Vector &pos, float radius )
+{
+	const float r2 = radius * radius;
+	for ( int i = m_ChemCoats.Count() - 1; i >= 0; --i )
+	{
+		if ( m_ChemCoats[i].pos.DistToSqr( pos ) <= r2 )
+		{
+			EraseSphere( m_ChemCoats[i].pos, m_ChemCoats[i].radius );
+			m_ChemCoats.Remove( i );
+		}
+	}
+	EraseSphere( pos, radius );
+}
+
+void CTFPaintMap::IgniteNitricSegment( const Vector &start, const Vector &end )
+{
+	const Vector seg = end - start;
+	const float segLenSqr = seg.LengthSqr();
+	for ( int i = 0; i < m_ChemCoats.Count(); ++i )
+	{
+		ChemCoat_t &coat = m_ChemCoats[i];
+		if ( !coat.nitric || coat.ignited )
+			continue;
+
+		float t = 0.f;
+		if ( segLenSqr > 1.f )
+		{
+			t = DotProduct( coat.pos - start, seg ) / segLenSqr;
+			if ( t < 0.f )
+				t = 0.f;
+			if ( t > 1.f )
+				t = 1.f;
+		}
+		const Vector closest = start + seg * t;
+		if ( closest.DistToSqr( coat.pos ) > ( coat.radius + 32.f ) * ( coat.radius + 32.f ) )
+			continue;
+
+		coat.ignited = true;
+		const float flRemain = coat.die - gpGlobals->curtime;
+		coat.die = gpGlobals->curtime + flRemain * 0.5f;
+	}
+}
+
+void CTFPaintMap::ThinkCoats( void )
+{
+	if ( m_ChemCoats.Count() <= 0 )
+		return;
+
+	for ( int i = m_ChemCoats.Count() - 1; i >= 0; --i )
+	{
+		ChemCoat_t &coat = m_ChemCoats[i];
+		if ( gpGlobals->curtime >= coat.die )
+		{
+			EraseSphere( coat.pos, coat.radius );
+			m_ChemCoats.Remove( i );
+			continue;
+		}
+
+		if ( !coat.nitric )
+			continue;
+
+		const float r2 = coat.radius * coat.radius;
+		bool bIgnite = coat.ignited;
+		for ( int p = 1; p <= gpGlobals->maxClients && !bIgnite; ++p )
+		{
+			CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( p ) );
+			if ( !pPlayer || !pPlayer->IsAlive() )
+				continue;
+			if ( pPlayer->GetAbsOrigin().DistToSqr( coat.pos ) > r2 )
+				continue;
+			if ( pPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+				bIgnite = true;
+		}
+
+		if ( bIgnite && !coat.ignited )
+		{
+			coat.ignited = true;
+			const float flRemain = coat.die - gpGlobals->curtime;
+			coat.die = gpGlobals->curtime + flRemain * 0.5f;
+		}
+
+		CTFPlayer *pOwner = ToTFPlayer( coat.owner.Get() );
+		for ( int p = 1; p <= gpGlobals->maxClients; ++p )
+		{
+			CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( p ) );
+			if ( !pPlayer || !pPlayer->IsAlive() )
+				continue;
+			if ( pPlayer->GetAbsOrigin().DistToSqr( coat.pos ) > r2 )
+				continue;
+			if ( pOwner && pPlayer->GetTeamNumber() == pOwner->GetTeamNumber() )
+				continue;
+			if ( pPlayer->m_Shared.IsInvulnerable() )
+				continue;
+
+			pPlayer->m_Shared.AddCond( TF_COND_GAS, 1.0f, pOwner ? pOwner : pPlayer );
+			if ( coat.ignited )
+				pPlayer->m_Shared.Burn( pOwner ? pOwner : pPlayer, NULL, 2.0f );
+		}
+	}
 }
 
 static CTFPaintMap *TFPaint_Ensure( void )
@@ -942,6 +1086,85 @@ void TFPaint_EraseSphere( const Vector &pos, float radius )
 #else
 	(void)pos; (void)radius;
 #endif
+}
+
+void TFPaint_AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner )
+{
+#ifdef GAME_DLL
+	CTFPaintMap *pMap = TFPaint_Ensure();
+	if ( pMap )
+		pMap->AddTimedCoat( pos, normal, type, radius, lifetime, bNitric, pOwner );
+#else
+	(void)pos; (void)normal; (void)type; (void)radius; (void)lifetime; (void)bNitric; (void)pOwner;
+#endif
+}
+
+void TFPaint_EraseCoatsNear( const Vector &pos, float radius )
+{
+#ifdef GAME_DLL
+	CTFPaintMap *pMap = TFPaint_Ensure();
+	if ( pMap )
+		pMap->EraseCoatsNear( pos, radius );
+#else
+	(void)pos; (void)radius;
+#endif
+}
+
+void TFPaint_IgniteNitricSegment( const Vector &start, const Vector &end )
+{
+#ifdef GAME_DLL
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( pMap )
+		pMap->IgniteNitricSegment( start, end );
+#else
+	(void)start; (void)end;
+#endif
+}
+
+bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward )
+{
+	if ( !pEnt || !tf_paint_enabled.GetBool() )
+		return false;
+
+	TFPaintContact_t hit = TFPaint_Query( hitPos, 16.f );
+	if ( hit.type != BOUNCE_POWER )
+		return false;
+
+	Vector n = nOutward;
+	if ( n.LengthSqr() < 0.01f )
+		n = hit.normal;
+	if ( n.NormalizeInPlace() < 0.1f )
+		return false;
+
+	Vector vel = pEnt->GetAbsVelocity();
+	IPhysicsObject *pPhys = pEnt->VPhysicsGetObject();
+	AngularImpulse ang( 0, 0, 0 );
+	if ( pPhys && vel.LengthSqr() < 100.f )
+		pPhys->GetVelocity( &vel, &ang );
+
+	const float into = DotProduct( vel, n );
+	if ( into > -50.f )
+		return false;
+
+	const float flSpeed = vel.Length();
+	Vector out = vel - 2.f * into * n;
+	if ( out.Length() < flSpeed * 0.85f )
+	{
+		Vector dir = out;
+		if ( dir.NormalizeInPlace() < 0.1f )
+			dir = n;
+		out = dir * flSpeed;
+	}
+
+	pEnt->SetAbsOrigin( hitPos + n * 8.f );
+	pEnt->SetAbsVelocity( out );
+	if ( pPhys )
+	{
+		AngularImpulse zero( 0, 0, 0 );
+		pPhys->SetVelocity( &out, &zero );
+		pPhys->Wake();
+	}
+	return true;
 }
 
 #ifndef CLIENT_DLL

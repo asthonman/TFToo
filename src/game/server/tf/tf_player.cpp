@@ -36,6 +36,7 @@
 #include "networkstringtable_gamedll.h"
 #include "team_control_point_master.h"
 #include "tf_weapon_pda.h"
+#include "tf_chemist.h"
 #include "sceneentity.h"
 #include "AI_ResponseSystem.h"
 #include "fmtstr.h"
@@ -1736,6 +1737,39 @@ static void CC_WitchLastSpell( const CCommand &args )
 	pPlayer->SwitchLastWitchSpell();
 }
 static ConCommand witch_lastspell( "witch_lastspell", CC_WitchLastSpell, "Switch the Witch to her previous spell.", 0 );
+#endif
+
+#ifndef CLIENT_DLL
+static void CC_ChemBrew( const CCommand &args )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+		return;
+	if ( args.ArgC() < 2 )
+		return;
+	pPlayer->m_Shared.ChemBeginBrew( atoi( args.Arg( 1 ) ) - 1 );
+}
+static ConCommand chem_brew( "chem_brew", CC_ChemBrew, "Brew a Chemist concoction, 1 through 4.", FCVAR_GAMEDLL | FCVAR_CLIENTCMD_CAN_EXECUTE );
+
+static void CC_ChemSelect( const CCommand &args )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+		return;
+	if ( args.ArgC() < 2 )
+		return;
+	pPlayer->m_Shared.ChemSelect( atoi( args.Arg( 1 ) ) - 1 );
+}
+static ConCommand chem_select( "chem_select", CC_ChemSelect, "Select a Chemist concoction, 1 through 4.", FCVAR_GAMEDLL | FCVAR_CLIENTCMD_CAN_EXECUTE );
+
+static void CC_ChemLast( const CCommand &args )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+		return;
+	pPlayer->m_Shared.ChemSelectLast();
+}
+static ConCommand chem_last( "chem_last", CC_ChemLast, "Switch the Chemist to his previous concoction.", FCVAR_GAMEDLL | FCVAR_CLIENTCMD_CAN_EXECUTE );
 #endif
 
 void CTFPlayer::ThinkBrickGrow( void )
@@ -4668,6 +4702,7 @@ void CTFPlayer::Spawn()
 
 	m_Shared.SetSpyCloakMeter( 100.0f );
 	m_Shared.SetWitchManaExhausted( false );
+	m_Shared.ResetChemist();
 	m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 	m_bBrickGrown = false;
 	m_flBrickGrowMeter = TF_BRICK_GROW_MAX;
@@ -5033,6 +5068,9 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 			m_Shared.RemoveCond( TF_COND_GAS );
 		}
 
+		// Poison is a timer, not a condition, so the cabinet has to clear it itself.
+		m_Shared.ClearPoison();
+
 		if ( m_Shared.InCond( TF_COND_BLEEDING ) )
 		{
 			m_Shared.RemoveCond( TF_COND_BLEEDING );
@@ -5066,6 +5104,7 @@ void CTFPlayer::Regenerate( bool bRefillHealthAndAmmo /*= true*/ )
 
 		m_Shared.SetSpyCloakMeter( 100.0f );
 		m_Shared.SetWitchManaExhausted( false );
+		m_Shared.SetChemJetting( false );
 		m_flResupplyThrowMeter = TF_RESUPPLY_THROW_MAX;
 		m_bBrickGrown = false;
 		m_flBrickGrowMeter = TF_BRICK_GROW_MAX;

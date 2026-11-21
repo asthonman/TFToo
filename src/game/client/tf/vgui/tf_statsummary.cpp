@@ -56,6 +56,7 @@ const char *g_pszTipsClassImages[] =
 	"class_portraits/brick",	// TF_CLASS_BRICK,
 	"class_portraits/witch",	// TF_CLASS_WITCH,
 	"class_portraits/dog",		// TF_CLASS_GUARDDOG,
+	"class_portraits/engineer",	// TF_CLASS_CHEMIST,
 	"",							// TF_CLASS_CIVILIAN,
 };
 

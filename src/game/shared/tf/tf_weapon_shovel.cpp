@@ -244,6 +244,17 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( tf_weapon_broom, CTFBroomstick );
 PRECACHE_WEAPON_REGISTER( tf_weapon_broom );
 
+IMPLEMENT_NETWORKCLASS_ALIASED( TFSpatula, DT_TFWeaponSpatula )
+
+BEGIN_NETWORK_TABLE( CTFSpatula, DT_TFWeaponSpatula )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFSpatula )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_spatula, CTFSpatula );
+PRECACHE_WEAPON_REGISTER( tf_weapon_spatula );
+
 void CTFLeadPipe::Precache( void )
 {
 	BaseClass::Precache();

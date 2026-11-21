@@ -958,6 +958,7 @@ static const char *CustomClassPlayerModel( int iClass )
 	case TF_CLASS_BRICK:	return "models/alaxe/tf2/actors/brick_mann.mdl";
 	case TF_CLASS_WITCH:	return "models/player/spy.mdl";
 	case TF_CLASS_GUARDDOG:	return "models/player/hwm/guard_dog_v1.mdl";
+	case TF_CLASS_CHEMIST:	return "models/player/engineer.mdl";
 	}
 	return NULL;
 }
@@ -1288,7 +1289,7 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 		// only if that class's model has the sequence.
 		if ( CanBeUsedByAllClasses() && CustomClassMayEquipAllClassItem( this ) )
 		{
-			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
+			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_CHEMIST; ++iClass )
 			{
 				m_vbClassUsability.Set( iClass );
 				m_iLoadoutSlots[iClass] = m_iDefaultLoadoutSlot;
@@ -1358,11 +1359,12 @@ bool CTFItemDefinition::BInitFromKV( KeyValues *pKVItem, CUtlVector<CUtlString> 
 		const bool bTauntSlot = m_iDefaultLoadoutSlot >= LOADOUT_POSITION_TAUNT && m_iDefaultLoadoutSlot <= LOADOUT_POSITION_TAUNT8;
 		if ( bTauntSlot )
 		{
-			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_GUARDDOG; ++iClass )
+			for ( int iClass = TF_CLASS_MADCAP; iClass <= TF_CLASS_CHEMIST; ++iClass )
 			{
 				const bool bDonorClassCanUse =
 					( iClass == TF_CLASS_MADCAP && m_vbClassUsability.IsBitSet( TF_CLASS_SCOUT ) ) ||
-					( iClass == TF_CLASS_WITCH && m_vbClassUsability.IsBitSet( TF_CLASS_SPY ) );
+					( iClass == TF_CLASS_WITCH && m_vbClassUsability.IsBitSet( TF_CLASS_SPY ) ) ||
+					( iClass == TF_CLASS_CHEMIST && m_vbClassUsability.IsBitSet( TF_CLASS_ENGINEER ) );
 				if ( CustomClassCanPlayTaunt( iClass, m_pTauntData, bDonorClassCanUse ) )
 				{
 					m_vbClassUsability.Set( iClass );
@@ -2069,7 +2071,7 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 
 	// Shipped items_game.txt sets last_valid_class to Brick. This still
 	// covers a vanilla file, whose range ends at Engineer. Account stays above it.
-	ExtendLastValidClass( TF_CLASS_GUARDDOG );
+	ExtendLastValidClass( TF_CLASS_CHEMIST );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );

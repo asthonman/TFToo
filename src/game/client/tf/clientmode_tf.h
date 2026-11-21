@@ -20,6 +20,7 @@ class CHudMenuEngyBuild;
 class CHudMenuEngyDestroy;
 class CHudMenuSpyDisguise;
 class CHudMenuSpellbook;
+class CHudMenuChemistry;
 class CTFFreezePanel;
 class CItemQuickSwitchPanel;
 class CHudEurekaEffectTeleportMenu;
@@ -124,6 +125,7 @@ private:
 	CHudMenuEngyDestroy 	*m_pMenuEngyDestroy;
 	CHudMenuSpyDisguise 	*m_pMenuSpyDisguise;
 	CHudMenuSpellbook		*m_pMenuSpellbook;
+	CHudMenuChemistry		*m_pMenuChemistry;
 	CHudMenuTauntSelection	*m_pMenuTauntSelection;
 	CHudUpgradePanel		*m_pMenuUpgradePanel;
 	CHudSpellMenu			*m_pMenuSpell;

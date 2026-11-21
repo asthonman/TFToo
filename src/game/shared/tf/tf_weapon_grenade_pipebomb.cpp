@@ -11,6 +11,7 @@
 #include "tf_weapon_grenade_pipebomb.h"
 #include "tf_weapon_pipebomblauncher.h"
 #include "tf_weapon_grenadelauncher.h"
+#include "tf_paint.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -861,6 +862,21 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 		Fizzle();
 		Detonate();
 		return;
+	}
+
+	// Bounce off repulsion gel without counting as a world touch, so a later
+	// hit on an enemy player can still detonate a grenade immediately.
+	if ( pHitEntity && !pHitEntity->IsPlayer() && !pHitEntity->IsBaseObject() && pHitEntity->m_takedamage == DAMAGE_NO )
+	{
+		surfacedata_t *pGelProps = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
+		if ( !pGelProps || pGelProps->game.material != 'X' )
+		{
+			Vector vecNormal;
+			pEvent->pInternalData->GetSurfaceNormal( vecNormal );
+			vecNormal.Negate();
+			if ( TFPaint_ReflectProjectile( this, GetAbsOrigin(), vecNormal ) )
+				return;
+		}
 	}
 
 	if ( m_iType == TF_GL_MODE_REGULAR || m_iType == TF_GL_MODE_CANNONBALL )

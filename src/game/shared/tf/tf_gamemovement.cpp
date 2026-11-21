@@ -1528,6 +1528,21 @@ bool CTFGameMovement::CheckJumpButton()
 
 	ToggleParachute();
 
+	// Cannot jump again until the jump button has been released.
+	// Checked before the duck reject so a crouched chemist can still light the jets.
+	if ( mv->m_nOldButtons & IN_JUMP )
+		return false;
+
+	// Chemist jet boots. A new jump press while airborne lights them.
+	// The ground jump still happens first, because this only runs in the air.
+	if ( !bOnGround && m_pTFPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+	{
+		if ( !m_pTFPlayer->m_Shared.IsChemJetting() && m_pTFPlayer->m_Shared.GetSpyCloakMeter() > 1.0f )
+			m_pTFPlayer->m_Shared.SetChemJetting( true );
+		mv->m_nOldButtons |= IN_JUMP;
+		return false;
+	}
+
 	// Cannot jump will ducked.
 	if ( player->GetFlags() & FL_DUCKING )
 	{
@@ -1540,10 +1555,6 @@ bool CTFGameMovement::CheckJumpButton()
 
 	// Cannot jump while in the unduck transition.
 	if ( ( player->m_Local.m_bDucking && (  player->GetFlags() & FL_DUCKING ) ) || ( player->m_Local.m_flDuckJumpTime > 0.0f ) )
-		return false;
-
-	// Cannot jump again until the jump button has been released.
-	if ( mv->m_nOldButtons & IN_JUMP )
 		return false;
 
 	// In air, so ignore jumps 
@@ -2964,8 +2975,38 @@ void CTFGameMovement::FullWalkMove()
 {
 	UpdatePaintContact();
 
+	if ( m_pTFPlayer->m_Shared.IsChemJetting() && ( InWater() || player->pl.deadflag ) )
+		m_pTFPlayer->m_Shared.SetChemJetting( false );
+
 	if ( !InWater() ) 
 	{
+		// Jet boots: no gravity. Jump climbs, crouch sinks, neither hovers.
+		if ( m_pTFPlayer->m_Shared.IsChemJetting() )
+		{
+			float flZ = 0.f;
+			const bool bUp = ( mv->m_nButtons & IN_JUMP ) != 0;
+			const bool bDown = ( mv->m_nButtons & IN_DUCK ) != 0;
+			if ( bUp && !bDown )
+				flZ = 260.f;
+			else if ( bDown && !bUp )
+				flZ = -260.f;
+			mv->m_vecVelocity[2] = flZ;
+
+			if ( bUp )
+				mv->m_nOldButtons |= IN_JUMP;
+			else
+				mv->m_nOldButtons &= ~IN_JUMP;
+
+			CheckVelocity();
+			AirMove();
+			CategorizePosition();
+			CheckWater();
+
+			if ( player->GetGroundEntity() != NULL || InWater() || m_pTFPlayer->m_Shared.GetSpyCloakMeter() <= 0.f )
+				m_pTFPlayer->m_Shared.SetChemJetting( false );
+			return;
+		}
+
 		if ( m_pTFPlayer->m_Shared.InCond( TF_COND_PARACHUTE_ACTIVE ) && mv->m_vecVelocity[2] < 0 )
 		{
 			mv->m_vecVelocity[2] = Max( mv->m_vecVelocity[2], m_pTFPlayer->m_Shared.InCond( TF_COND_BURNING ) ? tf_parachute_maxspeed_onfire_z.GetFloat() : tf_parachute_maxspeed_z.GetFloat() );

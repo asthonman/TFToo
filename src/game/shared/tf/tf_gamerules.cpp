@@ -180,6 +180,7 @@ static int g_TauntCamRagdollAchievements[] =
 	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_WITCH,
 	0,		// TF_CLASS_GUARDDOG,
+	0,		// TF_CLASS_CHEMIST,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -203,6 +204,7 @@ static int g_TauntCamAchievements[] =
 	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_WITCH,
 	0,		// TF_CLASS_GUARDDOG,
+	0,		// TF_CLASS_CHEMIST,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -228,6 +230,7 @@ static int g_TauntCamAchievements2[] =
 	0,		// TF_CLASS_BRICK,
 	0,		// TF_CLASS_WITCH,
 	0,		// TF_CLASS_GUARDDOG,
+	0,		// TF_CLASS_CHEMIST,
 	0,		// TF_CLASS_CIVILIAN,
 	0,		// TF_CLASS_COUNT_ALL,
 };
@@ -1393,6 +1396,7 @@ Vector g_TFClassViewVectors[TF_CLASS_COUNT_ALL] =
 	Vector( 0, 0, 75 ),		// TF_CLASS_BRICK,			// model top is about 85
 	Vector( 0, 0, 75 ),		// TF_CLASS_WITCH,			// Spy height
 	Vector( 0, 0, 42 ),		// TF_CLASS_GUARDDOG,		// under the 50-tall hull
+	Vector( 0, 0, 68 ),		// TF_CLASS_CHEMIST,		// Engineer height
 	Vector( 0, 0, 65 ),		// TF_CLASS_CIVILIAN,		// TF_LAST_NORMAL_CLASS
 };
 
@@ -11411,6 +11415,7 @@ static kill_eater_event_t g_eClassKillEvents[] =
 	kKillEaterEvent_HeavyKill,					// TF_CLASS_BRICK, no dedicated strange part yet
 	kKillEaterEvent_SpyKill,					// TF_CLASS_WITCH, no dedicated strange part yet
 	kKillEaterEvent_ScoutKill,					// TF_CLASS_GUARDDOG, no dedicated strange part yet
+	kKillEaterEvent_EngineerKill,				// TF_CLASS_CHEMIST, no dedicated strange part yet
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 
@@ -11432,6 +11437,7 @@ static kill_eater_event_t g_eRobotClassKillEvents[] =
 	kKillEaterEvent_RobotHeavyKill,				// TF_CLASS_BRICK
 	kKillEaterEvent_RobotSpyKill,				// TF_CLASS_WITCH
 	kKillEaterEvent_RobotScoutKill,				// TF_CLASS_GUARDDOG
+	kKillEaterEvent_RobotEngineerKill,			// TF_CLASS_CHEMIST
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_eRobotClassKillEvents ) == (TF_LAST_NORMAL_CLASS - TF_FIRST_NORMAL_CLASS) );
 

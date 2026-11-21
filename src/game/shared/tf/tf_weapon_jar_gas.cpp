@@ -6,6 +6,9 @@
 
 #include "cbase.h"
 #include "tf_weapon_jar_gas.h"
+#include "tf_chemist.h"
+#include "tf_paint.h"
+#include "weapon_parse.h"
 #include "decals.h"
 #include "debugoverlay_shared.h"
 #include "tf_weaponbase_gun.h"
@@ -46,6 +49,11 @@ END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( tf_projectile_jar_gas, CTFProjectile_JarGas );
 PRECACHE_WEAPON_REGISTER( tf_projectile_jar_gas );
+
+CTFProjectile_JarGas::CTFProjectile_JarGas()
+{
+	m_bPoison = false;
+}
 
 
 IMPLEMENT_NETWORKCLASS_ALIASED( TFGasManager, DT_TFGasManager );
@@ -147,6 +155,7 @@ CTFProjectile_JarGas* CTFProjectile_JarGas::Create( const Vector &position, cons
 
 		pGrenade->InitGrenade( velocity, angVelocity, pOwner, weaponInfo );
 		pGrenade->m_flFullDamage = 0;
+		pGrenade->m_bPoison = false;
 		pGrenade->ApplyLocalAngularVelocityImpulse( angVelocity );
 	}
 
@@ -192,10 +201,19 @@ void CTFProjectile_JarGas::Explode( trace_t *pTrace, int bitsDamageType )
 		{
 			vecManagerPos = vecAbsOrigin;
 		}
-		pGasManager = CTFGasManager::Create( pThrower, vecManagerPos );
-		if ( pGasManager )
+		if ( m_bPoison )
 		{
-			pGasManager->AddGas();
+			CTFPoisonGas *pPoison = CTFPoisonGas::Create( pThrower, vecManagerPos );
+			if ( pPoison )
+				pPoison->AddGas();
+		}
+		else
+		{
+			pGasManager = CTFGasManager::Create( pThrower, vecManagerPos );
+			if ( pGasManager )
+			{
+				pGasManager->AddGas();
+			}
 		}
 	}
 
@@ -388,6 +406,155 @@ void CTFGasManager::OnCollide( CBaseEntity *pEnt, int iPointIndex )
 	}
 
 	m_Touched.AddToTail( pTFPlayer );
+}
+
+#endif // GAME_DLL
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFPoisonGas, DT_TFPoisonGas );
+
+BEGIN_NETWORK_TABLE( CTFPoisonGas, DT_TFPoisonGas )
+END_NETWORK_TABLE()
+
+BEGIN_DATADESC( CTFPoisonGas )
+END_DATADESC()
+
+LINK_ENTITY_TO_CLASS( tf_poison_gas, CTFPoisonGas );
+
+#ifdef GAME_DLL
+CTFPoisonGas *CTFPoisonGas::Create( CBaseEntity *pOwner, const Vector &vPos )
+{
+	CTFPoisonGas *pGas = static_cast< CTFPoisonGas * >( CBaseEntity::Create( "tf_poison_gas", vPos, vec3_angle, pOwner ) );
+	if ( pGas )
+	{
+		pGas->SetOwnerEntity( pOwner );
+		pGas->ChangeTeam( pOwner->GetTeamNumber() );
+	}
+	return pGas;
+}
+
+bool CTFPoisonGas::ShouldCollide( CBaseEntity *pEnt ) const
+{
+	if ( !pEnt->IsPlayer() )
+		return false;
+
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( !pPlayer || !pPlayer->IsAlive() )
+		return false;
+	if ( pPlayer->IsPlayerClass( TF_CLASS_PYRO ) )
+		return false;
+	if ( pPlayer->GetTeamNumber() == GetTeamNumber() )
+		return false;
+	if ( TFGameRules() && TFGameRules()->IsTruceActive() )
+		return false;
+	return true;
+}
+
+void CTFPoisonGas::OnCollide( CBaseEntity *pEnt, int iPointIndex )
+{
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( !pPlayer )
+		return;
+	if ( pPlayer->m_Shared.IsInvulnerable() || pPlayer->m_Shared.InCond( TF_COND_PHASE ) || !pPlayer->CanGetWet() )
+		return;
+
+	// Refresh the duration. Do not reset the next damage tick, so it cannot stack.
+	pPlayer->m_Shared.ApplyPoison( ToTFPlayer( GetOwnerEntity() ), 5.0f );
+	(void)iPointIndex;
+}
+
+static void Chemist_SplashNeutral( CTFPlayer *pPlayer, const Vector &pos )
+{
+	TFPaint_EraseCoatsNear( pos, 160.f );
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pAlly = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pAlly || !pAlly->IsAlive() )
+			continue;
+		if ( pAlly->GetTeamNumber() != pPlayer->GetTeamNumber() )
+			continue;
+		if ( pAlly->GetAbsOrigin().DistToSqr( pos ) > 160.f * 160.f )
+			continue;
+
+		pAlly->m_Shared.RemoveCond( TF_COND_BURNING );
+		pAlly->m_Shared.RemoveCond( TF_COND_URINE );
+		pAlly->m_Shared.RemoveCond( TF_COND_MAD_MILK );
+		pAlly->m_Shared.RemoveCond( TF_COND_GAS );
+		pAlly->m_Shared.ClearPoison();
+	}
+}
+
+void Chemist_Throw( CTFPlayer *pPlayer, int slot )
+{
+	if ( !pPlayer )
+		return;
+
+	Vector vecForward;
+	AngleVectors( pPlayer->EyeAngles(), &vecForward );
+	const Vector vecEye = pPlayer->EyePosition();
+
+	if ( slot == CHEM_POISON )
+	{
+		WEAPON_FILE_INFO_HANDLE hWpn = LookupWeaponInfoSlot( "tf_weapon_jar_gas" );
+		if ( hWpn == GetInvalidWeaponInfoHandle() )
+			return;
+		CTFWeaponInfo *pInfo = static_cast< CTFWeaponInfo * >( GetFileWeaponInfoFromHandle( hWpn ) );
+		if ( !pInfo )
+			return;
+
+		AngularImpulse ang( 300, random->RandomFloat( -100.f, 100.f ), 0 );
+		const Vector vecVel = vecForward * TF_GAS_PROJ_SPEED;
+		CTFProjectile_JarGas *pProj = CTFProjectile_JarGas::Create( vecEye + vecForward * 16.f, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
+		if ( pProj )
+			pProj->m_bPoison = true;
+		return;
+	}
+
+	trace_t tr;
+	CTraceFilterSimple filter( pPlayer, COLLISION_GROUP_NONE );
+	const float flRange = ( slot == CHEM_NEUTRAL ) ? 500.f : 800.f;
+	UTIL_TraceLine( vecEye, vecEye + vecForward * flRange, MASK_SOLID, &filter, &tr );
+	const Vector vecPos = tr.endpos;
+	Vector vecNormal = ( tr.fraction < 1.f ) ? tr.plane.normal : Vector( 0, 0, 1 );
+
+	if ( slot == CHEM_REPULSION )
+	{
+		TFPaint_AddTimedCoat( vecPos, vecNormal, BOUNCE_POWER, 80.f, 15.f, false, pPlayer );
+	}
+	else if ( slot == CHEM_NITRIC )
+	{
+		TFPaint_AddTimedCoat( vecPos, vecNormal, FIFTH_POWER, 80.f, 15.f, true, pPlayer );
+	}
+	else if ( slot == CHEM_NEUTRAL )
+	{
+		Chemist_SplashNeutral( pPlayer, vecPos );
+	}
+}
+
+void Chemist_AirblastDispel( CTFPlayer *pPyro )
+{
+	if ( !pPyro )
+		return;
+
+	Vector vecForward;
+	AngleVectors( pPyro->EyeAngles(), &vecForward );
+	const Vector vecStart = pPyro->EyePosition();
+	const Vector vecEnd = vecStart + vecForward * 280.f;
+
+	CBaseEntity *pEnt = NULL;
+	while ( ( pEnt = gEntList->FindEntityByClassname( pEnt, "tf_poison_gas" ) ) != NULL )
+	{
+		Vector vecDelta = pEnt->WorldSpaceCenter() - vecStart;
+		if ( vecDelta.LengthSqr() > 280.f * 280.f )
+			continue;
+		Vector vecDir = vecDelta;
+		VectorNormalize( vecDir );
+		if ( DotProduct( vecDir, vecForward ) < 0.5f )
+			continue;
+		UTIL_Remove( pEnt );
+	}
+
+	TFPaint_IgniteNitricSegment( vecStart, vecEnd );
 }
 #endif // GAME_DLL
 

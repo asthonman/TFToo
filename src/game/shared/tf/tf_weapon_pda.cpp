@@ -11,6 +11,7 @@
 #endif
 
 #include "tf_weapon_pda.h"
+#include "tf_chemist.h"
 #include "in_buttons.h"
 #include "tf_gamerules.h"
 #include "tf_weaponbase_gun.h"
@@ -33,6 +34,8 @@
 	#include "inputsystem/iinputsystem.h"
 	#include "halloween/tf_weapon_spellbook.h"
 	#include "vgui/IScheme.h"
+	#include "vgui/IVGui.h"
+	#include "fmtstr.h"
 	#ifdef SIXENSE
 		#include "sixense/in_sixense.h"
 	#endif
@@ -502,7 +505,34 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( tf_weapon_pda_spellbook, CTFWeaponPDA_Spellbook );
 PRECACHE_WEAPON_REGISTER( tf_weapon_pda_spellbook );
 
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponPDA_Chemistry, DT_TFWeaponPDA_Chemistry )
+BEGIN_NETWORK_TABLE( CTFWeaponPDA_Chemistry, DT_TFWeaponPDA_Chemistry )
+END_NETWORK_TABLE()
+BEGIN_PREDICTION_DATA( CTFWeaponPDA_Chemistry )
+END_PREDICTION_DATA()
+LINK_ENTITY_TO_CLASS( tf_weapon_pda_chemistry, CTFWeaponPDA_Chemistry );
+PRECACHE_WEAPON_REGISTER( tf_weapon_pda_chemistry );
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponJetBoots, DT_TFWeaponJetBoots )
+BEGIN_NETWORK_TABLE( CTFWeaponJetBoots, DT_TFWeaponJetBoots )
+END_NETWORK_TABLE()
+BEGIN_PREDICTION_DATA( CTFWeaponJetBoots )
+END_PREDICTION_DATA()
+LINK_ENTITY_TO_CLASS( tf_weapon_jetboots, CTFWeaponJetBoots );
+PRECACHE_WEAPON_REGISTER( tf_weapon_jetboots );
+
 #ifdef CLIENT_DLL
+
+CHudBaseBuildMenu *CTFWeaponPDA_Chemistry::GetBuildMenu() const
+{
+	return GET_HUDELEMENT( CHudMenuChemistry );
+}
+
+void CTFWeaponJetBoots::OnDataChanged( DataUpdateType_t type )
+{
+	// Skip the PDA menu hook. These boots are never deployed.
+	CTFWeaponBase::OnDataChanged( type );
+}
 
 CHudBaseBuildMenu *CTFWeaponPDA_Spellbook::GetBuildMenu() const
 {
@@ -1175,6 +1205,174 @@ void CHudMenuSpellbook::SetVisible( bool state )
 	}
 
 	BaseClass::SetVisible( state );
+}
+
+static const char *const s_pszChemStateRes[4] =
+{
+	"resource/UI/chem_menu/chem_active.res",
+	"resource/UI/chem_menu/chem_built.res",
+	"resource/UI/chem_menu/chem_cant_afford.res",
+	"resource/UI/chem_menu/chem_unavailable.res",
+};
+
+DECLARE_HUDELEMENT( CHudMenuChemistry );
+
+CHudMenuChemistry::CHudMenuChemistry( const char *pElementName )
+	: CHudBaseBuildMenu( pElementName, "HudMenuChemistry" )
+{
+	Panel *pParent = g_pClientMode->GetViewport();
+	SetParent( pParent );
+	SetHiddenBits( HIDEHUD_MISCSTATUS );
+
+	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
+	{
+		char buf[32];
+		Q_snprintf( buf, sizeof( buf ), "active_item_%d", i + 1 );
+		m_pAvailable[i] = new EditablePanel( this, buf );
+		Q_snprintf( buf, sizeof( buf ), "already_built_item_%d", i + 1 );
+		m_pAlreadyBuilt[i] = new EditablePanel( this, buf );
+		Q_snprintf( buf, sizeof( buf ), "cant_afford_item_%d", i + 1 );
+		m_pCantAfford[i] = new EditablePanel( this, buf );
+		Q_snprintf( buf, sizeof( buf ), "unavailable_item_%d", i + 1 );
+		m_pUnavailable[i] = new EditablePanel( this, buf );
+	}
+
+	vgui::ivgui()->AddTickSignal( GetVPanel() );
+	RegisterForRenderGroup( "mid" );
+}
+
+void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
+{
+	LoadControlSettings( "resource/UI/chem_menu/HudMenuChemistry.res" );
+
+	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
+	{
+		EditablePanel *pStates[4] = { m_pAvailable[i], m_pAlreadyBuilt[i], m_pCantAfford[i], m_pUnavailable[i] };
+		for ( int s = 0; s < 4; ++s )
+		{
+			pStates[s]->LoadControlSettings( s_pszChemStateRes[s] );
+			CExLabel *pName = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "ItemNameLabel" ) );
+			if ( pName )
+				pName->SetText( ChemConcoctionName( i ) );
+			CExLabel *pNumber = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "NumberLabel" ) );
+			if ( pNumber )
+				pNumber->SetText( CFmtStr( "%d", i + 1 ) );
+		}
+	}
+
+	BaseClass::ApplySchemeSettings( pScheme );
+	PlaceOnScreen();
+}
+
+void CHudMenuChemistry::UpdateSlots( void )
+{
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer )
+		return;
+
+	const int iSelected = pPlayer->m_Shared.GetChemSelected();
+	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
+	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
+	const int iMetal = pPlayer->GetAmmoCount( TF_AMMO_METAL );
+	const float flLeft = bBrewing ? ( pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime ) : 0.f;
+
+	vgui::Label *pSelected = dynamic_cast< vgui::Label * >( FindChildByName( "SelectedLabel" ) );
+	if ( pSelected )
+		pSelected->SetText( ChemConcoctionName( iSelected ) );
+
+	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
+	{
+		const int nUses = pPlayer->m_Shared.GetChemUses( i );
+		const bool bThisBrew = bBrewing && iBrew == i;
+		bool bAvailable = false;
+		bool bBuilt = false;
+		bool bCant = false;
+		bool bUnavail = false;
+
+		if ( nUses > 0 )
+			bBuilt = true;
+		else if ( bThisBrew || bBrewing )
+			bUnavail = true;
+		else if ( iMetal < 1 )
+			bCant = true;
+		else
+			bAvailable = true;
+
+		m_pAvailable[i]->SetVisible( bAvailable );
+		m_pAlreadyBuilt[i]->SetVisible( bBuilt );
+		m_pCantAfford[i]->SetVisible( bCant );
+		m_pUnavailable[i]->SetVisible( bUnavail );
+
+		if ( bBuilt )
+		{
+			CExLabel *pStatus = dynamic_cast< CExLabel * >( m_pAlreadyBuilt[i]->FindChildByName( "StatusLabel" ) );
+			if ( pStatus )
+				pStatus->SetText( CFmtStr( "%d", nUses ) );
+		}
+		if ( bThisBrew )
+		{
+			CExLabel *pStatus = dynamic_cast< CExLabel * >( m_pUnavailable[i]->FindChildByName( "StatusLabel" ) );
+			if ( pStatus )
+				pStatus->SetText( CFmtStr( "%d", ( flLeft > 0.f ) ? (int)( flLeft + 0.999f ) : 0 ) );
+		}
+	}
+}
+
+void CHudMenuChemistry::OnTick( void )
+{
+	if ( !ShouldDraw() )
+		return;
+	PlaceOnScreen();
+	UpdateSlots();
+}
+
+void CHudMenuChemistry::PlaceOnScreen( void )
+{
+	vgui::Panel *pParent = GetParent();
+	if ( !pParent )
+		return;
+
+	const int iWide = scheme()->GetProportionalScaledValueEx( GetScheme(), 470 );
+	const int iTall = scheme()->GetProportionalScaledValueEx( GetScheme(), 190 );
+	const int x = pParent->GetWide() / 2 - scheme()->GetProportionalScaledValueEx( GetScheme(), 235 );
+	const int y = pParent->GetTall() / 2 - scheme()->GetProportionalScaledValueEx( GetScheme(), 70 );
+	SetBounds( x, y, iWide, iTall );
+	SetZPos( 20 );
+}
+
+int CHudMenuChemistry::HudElementKeyInput( int down, ButtonCode_t keynum, const char *pszCurrentBinding )
+{
+	if ( !ShouldDraw() || !down )
+		return 1;
+
+	int iSlot = -1;
+	if ( pszCurrentBinding && !Q_strncmp( pszCurrentBinding, "slot", 4 ) && Q_strlen( pszCurrentBinding ) > 4 )
+		iSlot = atoi( pszCurrentBinding + 4 ) - 1;
+	else if ( keynum >= KEY_1 && keynum <= KEY_4 )
+		iSlot = keynum - KEY_1;
+
+	if ( iSlot < 0 || iSlot >= CHEM_COUNT )
+		return 1;
+
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer )
+		return 1;
+
+	if ( pPlayer->m_Shared.GetChemUses( iSlot ) > 0 || pPlayer->m_Shared.GetChemBrewSlot() < CHEM_COUNT )
+	{
+		pPlayer->EmitSound( "Player.DenyWeaponSelection" );
+		return 0;
+	}
+	if ( pPlayer->GetAmmoCount( TF_AMMO_METAL ) < 1 )
+	{
+		pPlayer->EmitSound( "Player.DenyWeaponSelection" );
+		return 0;
+	}
+
+	char szCmd[32];
+	Q_snprintf( szCmd, sizeof( szCmd ), "chem_brew %d", iSlot + 1 );
+	engine->ClientCmd( szCmd );
+	return 0;
 }
 
 #endif // CLIENT_DLL

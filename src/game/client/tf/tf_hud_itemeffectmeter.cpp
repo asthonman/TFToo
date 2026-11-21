@@ -818,6 +818,17 @@ void CHudItemEffectMeter::CreateHudElementsForClass( C_TFPlayer* pPlayer, CUtlVe
 		}
 		break;
 
+	case TF_CLASS_CHEMIST:
+		// Jet boot fuel is the same meter. The label says fuel.
+		hNewMeter = new CHudItemEffectMeter( pszElementName, pPlayer );
+		if ( hNewMeter )
+		{
+			gHUD.AddHudElement( hNewMeter );
+			outMeters.AddToHead( hNewMeter );
+			hNewMeter->SetVisible( false );
+		}
+		break;
+
 	case TF_CLASS_MEDIC:
 		// Kritz, Quick-Fix, and Vaccinator share the stock medigun meters.
 		DECLARE_ITEM_EFFECT_METER( CWeaponMedigun, TF_WEAPON_MEDIGUN, true, "resource/UI/HudItemEffectMeter_Scout.res" );
@@ -1182,6 +1193,9 @@ const char*	CHudItemEffectMeter::GetLabelText( void )
 {
 	if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_WITCH ) )
 		return "#TF_Mana";
+
+	if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+		return "#TF_Fuel";
 
 	if ( m_pPlayer && m_pPlayer->IsPlayerClass( TF_CLASS_SPY ) )
 	{

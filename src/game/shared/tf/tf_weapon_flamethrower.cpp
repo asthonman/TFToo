@@ -5,6 +5,8 @@
 //=============================================================================
 #include "cbase.h"
 #include "tf_weapon_flamethrower.h"
+#include "tf_chemist.h"
+#include "tf_paint.h"
 #include "tf_fx_shared.h"
 #include "in_buttons.h"
 #include "ammodef.h"
@@ -895,6 +897,9 @@ void CTFFlameThrower::PrimaryAttack()
 				m_hFlameManager->UpdateDamage( iDmgType, flDamage, tf_flamethrower_burn_frequency, iCritFromBehind == 1 );
 				m_hFlameManager->AddPoint( TIME_TO_TICKS( gpGlobals->curtime ) );
 			}
+
+			Vector vecFlameEnd = pOwner->EyePosition() + vForward * 500.f;
+			TFPaint_IgniteNitricSegment( pOwner->EyePosition(), vecFlameEnd );
 		}
 
 		// Pyros can become invis in some game modes.  Hitting fire normally handles this,
@@ -988,6 +993,7 @@ void CTFFlameThrower::FireAirBlast( int iAmmoPerShot )
 	if ( !nDash )
 	{
 		DeflectProjectiles();
+		Chemist_AirblastDispel( pOwner );
 	}
 	else
 	{

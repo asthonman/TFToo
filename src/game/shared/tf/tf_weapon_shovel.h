@@ -16,6 +16,7 @@
 #define CTFShovel C_TFShovel
 #define CTFLeadPipe C_TFLeadPipe
 #define CTFBroomstick C_TFBroomstick
+#define CTFSpatula C_TFSpatula
 #endif
 
 enum shovel_weapontypes_t
@@ -105,6 +106,22 @@ public:
 
 private:
 	CTFBroomstick( const CTFBroomstick & ) {}
+};
+
+// Chemist spatula. Frying pan mesh until the spatula model exists.
+class CTFSpatula : public CTFShovel
+{
+public:
+	DECLARE_CLASS( CTFSpatula, CTFShovel );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+	CTFSpatula() {}
+
+	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_SHOVEL; }
+
+private:
+	CTFSpatula( const CTFSpatula & ) {}
 };
 
 #endif // TF_WEAPON_SHOVEL_H

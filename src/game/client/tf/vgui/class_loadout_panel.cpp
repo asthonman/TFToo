@@ -253,6 +253,31 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Witch =
 	}
 };
 
+const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Chemist =
+{
+	{
+		1,	// LOADOUT_POSITION_PRIMARY = 0,	// nailgun
+		0,	// LOADOUT_POSITION_SECONDARY,
+		2,	// LOADOUT_POSITION_MELEE,			// spatula
+		0,	// LOADOUT_POSITION_UTILITY,  // STAGING ONLY
+		0,	// LOADOUT_POSITION_BUILDING,
+		3,	// LOADOUT_POSITION_PDA,			// chemistry set
+		4,	// LOADOUT_POSITION_PDA2,			// jet boots
+		5,	// LOADOUT_POSITION_HEAD,
+		6,	// LOADOUT_POSITION_MISC,
+		8,	// LOADOUT_POSITION_ACTION,
+		7,	// LOADOUT_POSITION_MISC2,
+		9,	// LOADOUT_POSITION_TAUNT,
+		10,	// LOADOUT_POSITION_TAUNT2,
+		11,	// LOADOUT_POSITION_TAUNT3,
+		12,	// LOADOUT_POSITION_TAUNT4,
+		13,	// LOADOUT_POSITION_TAUNT5,
+		14,	// LOADOUT_POSITION_TAUNT6,
+		15,	// LOADOUT_POSITION_TAUNT7,
+		16,	// LOADOUT_POSITION_TAUNT8,
+	}
+};
+
 const LoadoutPanelPositioningInstance *g_VisibleLoadoutSlotsPerClass[] =
 {
 	&g_DefaultLoadoutPanelPositioning,			// TF_CLASS_UNDEFINED
@@ -271,6 +296,7 @@ const LoadoutPanelPositioningInstance *g_VisibleLoadoutSlotsPerClass[] =
 	&g_LoadoutPanelPositioning_Brick,		// TF_CLASS_BRICK
 	&g_LoadoutPanelPositioning_Witch,		// TF_CLASS_WITCH
 	&g_DefaultLoadoutPanelPositioning,		// TF_CLASS_GUARDDOG
+	&g_LoadoutPanelPositioning_Chemist,		// TF_CLASS_CHEMIST
 };
 
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_VisibleLoadoutSlotsPerClass ) == TF_LAST_NORMAL_CLASS );

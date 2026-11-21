@@ -72,4 +72,13 @@ void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, flo
 void TFPaint_EraseSphere( const Vector &pos, float radius );
 void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
 
+// Timed chemist coats. Repulsion is BOUNCE_POWER. Nitric fluid is FIFTH_POWER.
+void TFPaint_AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
+void TFPaint_EraseCoatsNear( const Vector &pos, float radius );
+void TFPaint_IgniteNitricSegment( const Vector &start, const Vector &end );
+
+// Bounce a projectile off repulsion gel instead of its normal surface hit.
+// nOutward is the surface normal pointing out of the solid. Returns true if it bounced.
+bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward );
+
 #endif // TF_PAINT_H
