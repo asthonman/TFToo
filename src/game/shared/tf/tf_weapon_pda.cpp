@@ -1375,4 +1375,163 @@ int CHudMenuChemistry::HudElementKeyInput( int down, ButtonCode_t keynum, const 
 	return 0;
 }
 
+DECLARE_HUDELEMENT( CHudChemStatus );
+
+CHudChemStatus::CHudChemStatus( const char *pElementName )
+	: CHudElement( pElementName ), BaseClass( NULL, "HudChemStatus" )
+{
+	Panel *pParent = g_pClientMode->GetViewport();
+	SetParent( pParent );
+	SetHiddenBits( HIDEHUD_MISCSTATUS | HIDEHUD_BUILDING_STATUS );
+	SetProportional( true );
+	SetPaintBackgroundEnabled( false );
+	SetMouseInputEnabled( false );
+	SetKeyBoardInputEnabled( false );
+
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+	{
+		m_szDrawnCount[i][0] = '\0';
+		m_pRow[i] = new EditablePanel( this, "ChemStatusItem" );
+		m_pRow[i]->SetProportional( true );
+		m_pRow[i]->SetPaintBackgroundEnabled( false );
+		m_pRow[i]->SetMouseInputEnabled( false );
+		m_pBackground[i] = new CIconPanel( m_pRow[i], "Background" );
+		m_pName[i] = new CExLabel( m_pRow[i], "NameLabel", "" );
+		m_pCount[i] = new CExLabel( m_pRow[i], "CountLabel", "0" );
+		m_pSelectedBar[i] = new Panel( m_pRow[i], "SelectedBar" );
+	}
+
+	ivgui()->AddTickSignal( GetVPanel() );
+}
+
+void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
+{
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+	{
+		m_pRow[i]->LoadControlSettings( "resource/UI/chem_menu/chem_status_item.res" );
+		m_pSelectedBar[i]->SetPaintBackgroundEnabled( true );
+		m_pSelectedBar[i]->SetBgColor( Color( 255, 210, 40, 255 ) );
+
+		wchar_t wszName[64];
+		const wchar_t *pszLoc = g_pVGuiLocalize ? g_pVGuiLocalize->Find( ChemConcoctionName( i ) ) : NULL;
+		if ( pszLoc )
+			m_pName[i]->SetText( pszLoc );
+		else if ( g_pVGuiLocalize )
+		{
+			g_pVGuiLocalize->ConvertANSIToUnicode( ChemConcoctionName( i ), wszName, sizeof( wszName ) );
+			m_pName[i]->SetText( wszName );
+		}
+
+		int w = 0;
+		int h = 0;
+		m_pBackground[i]->GetSize( w, h );
+		if ( w < 1 )
+			w = scheme()->GetProportionalScaledValueEx( GetScheme(), 168 );
+		if ( h < 1 )
+			h = scheme()->GetProportionalScaledValueEx( GetScheme(), 28 );
+		m_pRow[i]->SetSize( w, h + scheme()->GetProportionalScaledValueEx( GetScheme(), 2 ) );
+	}
+
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+		m_szDrawnCount[i][0] = '\0';
+
+	BaseClass::ApplySchemeSettings( pScheme );
+	PlaceRows();
+}
+
+bool CHudChemStatus::ShouldDraw( void )
+{
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+		return false;
+
+	if ( pPlayer->GetObserverMode() == OBS_MODE_FREEZECAM )
+		return false;
+
+	if ( pPlayer->GetTeamNumber() <= TEAM_SPECTATOR )
+		return false;
+
+	return CHudElement::ShouldDraw();
+}
+
+void CHudChemStatus::PlaceRows( void )
+{
+	// CHudBuildingStatusContainer::RepositionObjectPanels starts here.
+	const int x = XRES( 9 );
+	const int y = YRES( 9 );
+	int wide = 0;
+	int tall = 0;
+
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+	{
+		m_pRow[i]->SetPos( 0, tall );
+		int w = 0;
+		int h = 0;
+		m_pRow[i]->GetSize( w, h );
+		if ( w > wide )
+			wide = w;
+		tall += h;
+	}
+
+	SetBounds( x, y, wide > 0 ? wide : XRES( 168 ), tall > 0 ? tall : YRES( 120 ) );
+}
+
+void CHudChemStatus::UpdateRows( void )
+{
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pPlayer )
+		return;
+
+	const int iSelected = pPlayer->m_Shared.GetChemSelected();
+	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
+	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
+	const float flLeft = bBrewing ? ( pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime ) : 0.f;
+	const bool bRed = pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
+	const char *pszReady = bRed ? "obj_status_background_red" : "obj_status_background_blue";
+
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+	{
+		const int nUses = pPlayer->m_Shared.GetChemUses( i );
+		const bool bSelected = ( i == iSelected );
+		const bool bThisBrew = bBrewing && ( iBrew == i );
+		const bool bReady = nUses > 0;
+
+		m_pBackground[i]->SetIcon( ( bReady || bSelected ) ? pszReady : "obj_status_background_disabled" );
+		m_pSelectedBar[i]->SetVisible( bSelected );
+
+		const Color nameCol = bSelected ? Color( 255, 255, 255, 255 ) : ( bReady ? Color( 235, 226, 202, 255 ) : Color( 150, 150, 150, 255 ) );
+		m_pName[i]->SetFgColor( nameCol );
+
+		char szCount[8];
+		Color countCol;
+		if ( bThisBrew )
+		{
+			const int secs = ( flLeft > 0.f ) ? (int)( flLeft + 0.999f ) : 0;
+			Q_snprintf( szCount, sizeof( szCount ), "%ds", secs );
+			countCol = Color( 255, 210, 40, 255 );
+		}
+		else
+		{
+			Q_snprintf( szCount, sizeof( szCount ), "%d", nUses );
+			countCol = bSelected ? Color( 255, 210, 40, 255 ) : ( bReady ? Color( 255, 255, 255, 255 ) : Color( 140, 140, 140, 255 ) );
+		}
+
+		if ( Q_strcmp( m_szDrawnCount[i], szCount ) )
+		{
+			Q_strncpy( m_szDrawnCount[i], szCount, sizeof( m_szDrawnCount[i] ) );
+			m_pCount[i]->SetText( szCount );
+		}
+		m_pCount[i]->SetFgColor( countCol );
+	}
+}
+
+void CHudChemStatus::OnTick( void )
+{
+	if ( !ShouldDraw() )
+		return;
+
+	PlaceRows();
+	UpdateRows();
+}
+
 #endif // CLIENT_DLL

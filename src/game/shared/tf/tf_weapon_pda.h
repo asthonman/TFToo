@@ -14,6 +14,7 @@
 #include "tf_weaponbase.h"
 #ifdef CLIENT_DLL
 	#include "tf_hud_base_build_menu.h"
+	#include "tf_chemist.h"
 	#include <vgui_controls/EditablePanel.h>
 	#include <vgui_controls/Label.h>
 	#include <vgui_controls/ImagePanel.h>
@@ -287,6 +288,31 @@ private:
 	EditablePanel *m_pAlreadyBuilt[CHEM_MENU_SLOTS];
 	EditablePanel *m_pCantAfford[CHEM_MENU_SLOTS];
 	EditablePanel *m_pUnavailable[CHEM_MENU_SLOTS];
+};
+
+// Ready concoctions. Same corner as the Engineer building status.
+class CHudChemStatus : public CHudElement, public vgui::EditablePanel
+{
+	DECLARE_CLASS_SIMPLE( CHudChemStatus, vgui::EditablePanel );
+
+public:
+	CHudChemStatus( const char *pElementName );
+
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme );
+	virtual bool ShouldDraw( void );
+	virtual void OnTick( void );
+
+private:
+	void PlaceRows( void );
+	void UpdateRows( void );
+
+	vgui::EditablePanel *m_pRow[CHEM_COUNT];
+	CIconPanel *m_pBackground[CHEM_COUNT];
+	CExLabel *m_pName[CHEM_COUNT];
+	CExLabel *m_pCount[CHEM_COUNT];
+	vgui::Panel *m_pSelectedBar[CHEM_COUNT];
+
+	char m_szDrawnCount[CHEM_COUNT][8];
 };
 
 #endif // CLIENT_DLL
