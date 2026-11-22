@@ -3,8 +3,11 @@
 	"game_info"
 	{
 		"first_valid_class"				"1"
-		"last_valid_class"				"15"
-		"account_class_index"			"16" 
+		// Chemist is 16. The account index is the quest loadout, not a class.
+		// It used to be 16, which is Chemist, so he was given no weapons.
+		// 20 is above TF_CLASS_RANDOM. Do not set this to a player class.
+		"last_valid_class"				"16"
+		"account_class_index"			"20" 
 		"account_first_valid_item_slot" "0"
 		"account_last_valid_item_slot"	"3"		
 		"first_valid_item_slot"			"0"	

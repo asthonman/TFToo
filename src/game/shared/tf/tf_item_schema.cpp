@@ -2070,8 +2070,9 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 
 	SCHEMA_INIT_SUBSTEP( CEconItemSchema::BInitSchema( pKVRawDefinition, pVecErrors ) );
 
-	// Shipped items_game.txt sets last_valid_class to Brick. This still
-	// covers a vanilla file, whose range ends at Engineer. Account stays above it.
+	// Shipped items_game.txt used to end at Guard Dog, with the account index
+	// on 16. That index is now Chemist. ExtendLastValidClass moves the
+	// account index if a class lands on it. items_game.txt is updated too.
 	ExtendLastValidClass( TF_CLASS_CHEMIST );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );

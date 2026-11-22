@@ -2813,15 +2813,22 @@ public:
 	void NoteRuntimeBaseItem( CEconItemDefinition *pItemDef );
 
 protected:
-	// items_game.txt sets last_valid_class through Brick. Raising it here
-	// covers a vanilla file that still ends at Engineer, without a second CRC.
+	// items_game.txt's last_valid_class lags behind classes added in code.
+	// The account index is the quest loadout, not a player class. If a real
+	// class uses that index, GetBaseItemForClass returns the empty default
+	// item and the class spawns with no weapons.
 	void ExtendLastValidClass( equipped_class_t unClass )
 	{
-		// The account slot is its own equip type, not the last playable
-		// class. Stock items_game leaves it at 11, which is already inside
-		// the extra classes. A later class still has to be equippable.
 		if ( unClass > m_unLastValidClass && unClass != m_unAccoutClassIndex )
 			m_unLastValidClass = unClass;
+
+		// The class we were asked to enable may itself be the account index,
+		// because items_game.txt still ends at the previous class.
+		if ( unClass == m_unAccoutClassIndex )
+			m_unLastValidClass = unClass;
+
+		if ( m_unAccoutClassIndex != 0 && m_unAccoutClassIndex <= m_unLastValidClass )
+			m_unAccoutClassIndex = m_unLastValidClass + 1;
 	}
 
 	virtual void Reset( void );
