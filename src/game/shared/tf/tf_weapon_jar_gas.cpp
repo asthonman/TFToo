@@ -542,7 +542,7 @@ void Chemist_AirblastDispel( CTFPlayer *pPyro )
 	const Vector vecEnd = vecStart + vecForward * 280.f;
 
 	CBaseEntity *pEnt = NULL;
-	while ( ( pEnt = gEntList->FindEntityByClassname( pEnt, "tf_poison_gas" ) ) != NULL )
+	while ( ( pEnt = gEntList.FindEntityByClassname( pEnt, "tf_poison_gas" ) ) != NULL )
 	{
 		Vector vecDelta = pEnt->WorldSpaceCenter() - vecStart;
 		if ( vecDelta.LengthSqr() > 280.f * 280.f )

@@ -174,6 +174,9 @@ public:
 	void EraseSphere( const Vector &pos, float radius );
 	void AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife );
 	void ReplayStamps( void );
+	void AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
+	void EraseCoatsNear( const Vector &pos, float radius );
+	void IgniteNitricSegment( const Vector &start, const Vector &end );
 #endif
 
 	TFPaintContact_t Query( const Vector &origin, float extra );
@@ -218,9 +221,6 @@ private:
 		EHANDLE	owner;
 	};
 	CUtlVector< ChemCoat_t > m_ChemCoats;
-	void	AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
-	void	EraseCoatsNear( const Vector &pos, float radius );
-	void	IgniteNitricSegment( const Vector &start, const Vector &end );
 	void	ThinkCoats( void );
 #endif
 
