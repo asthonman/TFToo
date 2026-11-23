@@ -3336,6 +3336,8 @@ bool CDefaultResponseSystem::Init()
 	LoadRuleSet( basescript );
 	// Mobster lines live in the mod. Missing file is ignored.
 	LoadRuleSet( "scripts/talker/mobster_response_rules.txt" );
+	// Guard Dog voice commands. Missing file is ignored.
+	LoadRuleSet( "scripts/talker/guarddog_response_rules.txt" );
 	// Original classes dominating a Witch. Missing file is ignored.
 	LoadRuleSet( "scripts/talker/witch_domination_response_rules.txt" );
 

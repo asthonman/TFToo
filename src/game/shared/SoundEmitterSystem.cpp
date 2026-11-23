@@ -310,6 +310,11 @@ public:
 			soundemitterbase->AddSoundOverrides( "scripts/game_sounds_mobster.txt", true );
 		}
 
+		if ( filesystem->FileExists( "scripts/game_sounds_guarddog.txt", "GAME" ) )
+		{
+			soundemitterbase->AddSoundOverrides( "scripts/game_sounds_guarddog.txt", true );
+		}
+
 		if ( filesystem->FileExists( "scripts/game_sounds_paint.txt", "GAME" ) )
 		{
 			soundemitterbase->AddSoundOverrides( "scripts/game_sounds_paint.txt", true );

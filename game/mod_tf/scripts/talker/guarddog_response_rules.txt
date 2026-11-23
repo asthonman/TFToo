@@ -1,0 +1,184 @@
+// Guard Dog voice commands. The class weight beats a stock line.
+// The bark is the same word the chat subtitle uses for that menu slot.
+// Medic is Yip. Spy is Grrrr. Everything else is (menu * 9 + item) % 5
+// across Bark, Bork, Woof, Ruff, Howl.
+criterion "GuardDogClass" "playerclass" "Guard Dog" required weight 10
+criterion "GuardDogConceptMedic" "Concept" "TLK_PLAYER_MEDIC" required
+criterion "GuardDogConceptThanks" "Concept" "TLK_PLAYER_THANKS" required
+criterion "GuardDogConceptGo" "Concept" "TLK_PLAYER_GO" required
+criterion "GuardDogConceptMoveUp" "Concept" "TLK_PLAYER_MOVEUP" required
+criterion "GuardDogConceptLeft" "Concept" "TLK_PLAYER_LEFT" required
+criterion "GuardDogConceptRight" "Concept" "TLK_PLAYER_RIGHT" required
+criterion "GuardDogConceptYes" "Concept" "TLK_PLAYER_YES" required
+criterion "GuardDogConceptNo" "Concept" "TLK_PLAYER_NO" required
+criterion "GuardDogConceptIncoming" "Concept" "TLK_PLAYER_INCOMING" required
+criterion "GuardDogConceptCloakedSpy" "Concept" "TLK_PLAYER_CLOAKEDSPY" required
+criterion "GuardDogConceptSentryAhead" "Concept" "TLK_PLAYER_SENTRYAHEAD" required
+criterion "GuardDogConceptTeleporter" "Concept" "TLK_PLAYER_TELEPORTERHERE" required
+criterion "GuardDogConceptDispenser" "Concept" "TLK_PLAYER_DISPENSERHERE" required
+criterion "GuardDogConceptSentry" "Concept" "TLK_PLAYER_SENTRYHERE" required
+criterion "GuardDogConceptCharge" "Concept" "TLK_PLAYER_ACTIVATECHARGE" required
+criterion "GuardDogConceptChargeReady" "Concept" "TLK_PLAYER_CHARGEREADY" required
+criterion "GuardDogConceptHelp" "Concept" "TLK_PLAYER_HELP" required
+criterion "GuardDogConceptBattleCry" "Concept" "TLK_PLAYER_BATTLECRY" required
+criterion "GuardDogConceptCheers" "Concept" "TLK_PLAYER_CHEERS" required
+criterion "GuardDogConceptJeers" "Concept" "TLK_PLAYER_JEERS" required
+criterion "GuardDogConceptPositive" "Concept" "TLK_PLAYER_POSITIVE" required
+criterion "GuardDogConceptNegative" "Concept" "TLK_PLAYER_NEGATIVE" required
+criterion "GuardDogConceptNiceShot" "Concept" "TLK_PLAYER_NICESHOT" required
+criterion "GuardDogConceptGoodJob" "Concept" "TLK_PLAYER_GOODJOB" required
+
+response "GuardDogYip"
+{
+	speak "GuardDog.Yip"
+}
+response "GuardDogGrrrr"
+{
+	speak "GuardDog.Grrrr"
+}
+response "GuardDogBark"
+{
+	speak "GuardDog.Bark"
+}
+response "GuardDogBork"
+{
+	speak "GuardDog.Bork"
+}
+response "GuardDogWoof"
+{
+	speak "GuardDog.Woof"
+}
+response "GuardDogRuff"
+{
+	speak "GuardDog.Ruff"
+}
+response "GuardDogHowl"
+{
+	speak "GuardDog.Howl"
+}
+
+// Menu 1. Medic is the fixed yip.
+rule "GuardDogMedic"
+{
+	criteria GuardDogClass GuardDogConceptMedic
+	response GuardDogYip
+}
+rule "GuardDogThanks"
+{
+	criteria GuardDogClass GuardDogConceptThanks
+	response GuardDogBork
+}
+rule "GuardDogGo"
+{
+	criteria GuardDogClass GuardDogConceptGo
+	response GuardDogWoof
+}
+rule "GuardDogMoveUp"
+{
+	criteria GuardDogClass GuardDogConceptMoveUp
+	response GuardDogRuff
+}
+rule "GuardDogLeft"
+{
+	criteria GuardDogClass GuardDogConceptLeft
+	response GuardDogHowl
+}
+rule "GuardDogRight"
+{
+	criteria GuardDogClass GuardDogConceptRight
+	response GuardDogBark
+}
+rule "GuardDogYes"
+{
+	criteria GuardDogClass GuardDogConceptYes
+	response GuardDogBork
+}
+rule "GuardDogNo"
+{
+	criteria GuardDogClass GuardDogConceptNo
+	response GuardDogWoof
+}
+
+// Menu 2. Spy is the fixed growl. Uber-ready is not "Medic!", so it stays a bork.
+rule "GuardDogIncoming"
+{
+	criteria GuardDogClass GuardDogConceptIncoming
+	response GuardDogHowl
+}
+rule "GuardDogCloakedSpy"
+{
+	criteria GuardDogClass GuardDogConceptCloakedSpy
+	response GuardDogGrrrr
+}
+rule "GuardDogSentryAhead"
+{
+	criteria GuardDogClass GuardDogConceptSentryAhead
+	response GuardDogBork
+}
+rule "GuardDogTeleporter"
+{
+	criteria GuardDogClass GuardDogConceptTeleporter
+	response GuardDogWoof
+}
+rule "GuardDogDispenser"
+{
+	criteria GuardDogClass GuardDogConceptDispenser
+	response GuardDogRuff
+}
+rule "GuardDogSentry"
+{
+	criteria GuardDogClass GuardDogConceptSentry
+	response GuardDogHowl
+}
+rule "GuardDogCharge"
+{
+	criteria GuardDogClass GuardDogConceptCharge
+	response GuardDogBark
+}
+rule "GuardDogChargeReady"
+{
+	criteria GuardDogClass GuardDogConceptChargeReady
+	response GuardDogBork
+}
+
+// Menu 3.
+rule "GuardDogHelp"
+{
+	criteria GuardDogClass GuardDogConceptHelp
+	response GuardDogRuff
+}
+rule "GuardDogBattleCry"
+{
+	criteria GuardDogClass GuardDogConceptBattleCry
+	response GuardDogHowl
+}
+rule "GuardDogCheers"
+{
+	criteria GuardDogClass GuardDogConceptCheers
+	response GuardDogBark
+}
+rule "GuardDogJeers"
+{
+	criteria GuardDogClass GuardDogConceptJeers
+	response GuardDogBork
+}
+rule "GuardDogPositive"
+{
+	criteria GuardDogClass GuardDogConceptPositive
+	response GuardDogWoof
+}
+rule "GuardDogNegative"
+{
+	criteria GuardDogClass GuardDogConceptNegative
+	response GuardDogRuff
+}
+rule "GuardDogNiceShot"
+{
+	criteria GuardDogClass GuardDogConceptNiceShot
+	response GuardDogHowl
+}
+rule "GuardDogGoodJob"
+{
+	criteria GuardDogClass GuardDogConceptGoodJob
+	response GuardDogBark
+}

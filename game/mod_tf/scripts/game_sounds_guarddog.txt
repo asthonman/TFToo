@@ -1,0 +1,102 @@
+// Guard Dog voice. One bark per chat word, so the sound matches the subtitle.
+// Clips are single dogs from the CC0 USC Optical Sound Effects Library
+// (archive.org Red_Library_Animals_Dogs). No pack, pair, or kennel recordings.
+// Yip   R29-57 Tiny Dog Barks
+// Grrrr R11-45 Growling Dog
+// Howl  R01-12 Hound Dog Baying and Howling
+// Bark  R01-62 Single Dog Barks
+// Bork  R01-16 Low Bark and Whine
+// Woof  R29-54 Small Dog Large Room
+// Ruff  R01-11 Dog Barking Increasing Intensity
+
+"GuardDog.Yip"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"98,103"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/yip01.wav"
+		"wave"	"vo/guarddog/yip02.wav"
+		"wave"	"vo/guarddog/yip03.wav"
+	}
+}
+
+"GuardDog.Grrrr"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"98,103"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/grrrr01.wav"
+		"wave"	"vo/guarddog/grrrr02.wav"
+	}
+}
+
+"GuardDog.Bark"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"98,103"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/bark01.wav"
+		"wave"	"vo/guarddog/bark02.wav"
+	}
+}
+
+"GuardDog.Bork"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"97,102"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/bork01.wav"
+		"wave"	"vo/guarddog/bork02.wav"
+	}
+}
+
+"GuardDog.Woof"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"98,104"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/woof01.wav"
+		"wave"	"vo/guarddog/woof02.wav"
+	}
+}
+
+"GuardDog.Ruff"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"97,103"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/ruff01.wav"
+		"wave"	"vo/guarddog/ruff02.wav"
+	}
+}
+
+"GuardDog.Howl"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_90dB"
+	"pitch"			"98,102"
+	"rndwave"
+	{
+		"wave"	"vo/guarddog/howl01.wav"
+		"wave"	"vo/guarddog/howl02.wav"
+	}
+}
