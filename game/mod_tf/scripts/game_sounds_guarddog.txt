@@ -100,3 +100,16 @@
 		"wave"	"vo/guarddog/howl02.wav"
 	}
 }
+
+// Sniff. One file, not a random pitch: the client stops on measured sniff
+// endings, and a pitch shift would walk those times off the waveform.
+// 004 - Dog Sniffing by Trashcan_Studios, CC BY 4.0.
+// https://freesound.org/people/Trashcan_Studios/sounds/580218/
+"GuardDog.Sniff"
+{
+	"channel"		"CHAN_STATIC"
+	"volume"		"0.9"
+	"soundlevel"	"SNDLVL_70dB"
+	"pitch"			"100"
+	"wave"			"vo/guarddog/sniff.wav"
+}

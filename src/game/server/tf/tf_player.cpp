@@ -3889,6 +3889,7 @@ void CTFPlayer::PrecacheTFPlayer()
 
 	PrecacheScriptSound( "Parachute_open" );
 	PrecacheScriptSound( "Parachute_close" );
+	PrecacheScriptSound( "GuardDog.Sniff" );
 
 
 	// precache the EOTL bomb cart replacements

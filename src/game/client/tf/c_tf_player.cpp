@@ -6291,7 +6291,9 @@ static bool s_bGuardDogSeen[MAX_PLAYERS + 1];
 static float s_flGuardDogLostLOS[MAX_PLAYERS + 1];
 static float s_flGuardDogBlinkUntil[MAX_PLAYERS + 1];
 static int s_nGuardDogSniffTarget = 0;
-static float s_flGuardDogNextSniff = 0.0f;
+static int s_nGuardDogSniffGuid = 0;
+static float s_flGuardDogSniffStart = 0.0f;
+static float s_flGuardDogSniffStopAt = 0.0f;
 static float s_flGuardDogHeardUntil[MAX_EDICTS];
 static int s_nGuardDogHeardBuildings[32];
 static int s_nGuardDogHeardBuildingCount = 0;
@@ -6350,11 +6352,38 @@ USER_MESSAGE( GuardDogNoise )
 	GuardDogNoteHeard( msg.ReadShort(), msg.ReadFloat() );
 }
 
+static void GuardDogStopSniffSound()
+{
+	if ( !s_nGuardDogSniffGuid )
+		return;
+
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( pLocal )
+		pLocal->StopSound( "GuardDog.Sniff" );
+	if ( enginesound )
+		enginesound->StopSoundByGuid( s_nGuardDogSniffGuid );
+	s_nGuardDogSniffGuid = 0;
+	s_flGuardDogSniffStopAt = 0.0f;
+}
+
+static void GuardDogStartSniffSound( C_TFPlayer *pLocal )
+{
+	if ( !pLocal )
+		return;
+
+	if ( s_nGuardDogSniffGuid && enginesound && enginesound->IsSoundStillPlaying( s_nGuardDogSniffGuid ) )
+		return;
+
+	pLocal->EmitSound( "GuardDog.Sniff" );
+	s_nGuardDogSniffGuid = enginesound ? enginesound->GetGuidForLastSoundEmitted() : 0;
+	s_flGuardDogSniffStart = gpGlobals->curtime;
+}
+
 static void ClearGuardDogSense()
 {
 	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
 	if ( !pLocal || !pLocal->IsAlive() )
-		s_flGuardDogNextSniff = 0.0f;
+		GuardDogStopSniffSound();
 
 	s_nGuardDogSniffTarget = 0;
 	s_nGuardDogVol = 0;
@@ -6566,6 +6595,9 @@ static void GuardDogUpdateHeardSounds( C_TFPlayer *pLocal )
 	for ( int i = 0; i < snds.Count(); ++i )
 	{
 		const SndInfo_t &snd = snds[i];
+		if ( s_nGuardDogSniffGuid && snd.m_nGuid == s_nGuardDogSniffGuid )
+			continue;
+
 		int idx = snd.m_nSoundSource;
 		if ( idx <= 0 || idx >= MAX_EDICTS )
 			continue;
@@ -6740,11 +6772,6 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 		return;
 	}
 
-	if ( gpGlobals->curtime < s_flGuardDogNextSniff )
-		return;
-
-	s_flGuardDogNextSniff = gpGlobals->curtime + TF_GUARDDOG_SNIFF_COOLDOWN;
-
 	const Vector vecFrom = pLocal->WorldSpaceCenter();
 	const float flBlinkRadiusSqr = TF_GUARDDOG_SNIFF_BLINK_RADIUS * TF_GUARDDOG_SNIFF_BLINK_RADIUS;
 
@@ -6806,11 +6833,8 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 
 float C_TFPlayer::GetGuardDogSniffMeter( void ) const
 {
-	if ( s_flGuardDogNextSniff <= gpGlobals->curtime )
-		return 1.0f;
-
-	const float flLeft = ( s_flGuardDogNextSniff - gpGlobals->curtime ) / TF_GUARDDOG_SNIFF_COOLDOWN;
-	return 1.0f - clamp( flLeft, 0.0f, 1.0f );
+	// Sniff has no cooldown. The bar stays unused.
+	return 1.0f;
 }
 
 static void UpdateGuardDogSense()
@@ -7624,6 +7648,100 @@ void C_TFPlayer::AvoidPlayers( CUserCmd *pCmd )
 
 
 
+// Ends of each sniff in vo/guarddog/sniff.wav. Measured from the waveform so
+// releasing reload finishes the sniff in progress instead of clipping it.
+// A time in a gap stops immediately. Pitch on GuardDog.Sniff must stay at 100.
+static const float s_flGuardDogSniffLen = 16.962f;
+struct GuardDogSniffSpan_t
+{
+	float start;
+	float end;
+};
+static const GuardDogSniffSpan_t s_GuardDogSniffSpans[] =
+{
+	{ 0.319f, 0.527f },
+	{ 1.056f, 1.171f },
+	{ 2.656f, 2.786f },
+	{ 2.915f, 3.055f },
+	{ 4.478f, 4.592f },
+	{ 5.661f, 6.001f },
+	{ 6.918f, 7.012f },
+	{ 7.104f, 7.579f },
+	{ 8.098f, 8.309f },
+	{ 8.824f, 8.944f },
+	{ 9.199f, 9.554f },
+	{ 10.604f, 10.861f },
+	{ 11.394f, 11.504f },
+	{ 11.681f, 11.777f },
+	{ 12.641f, 12.805f },
+	{ 12.941f, 13.056f },
+	{ 13.178f, 13.611f },
+	{ 14.040f, 14.166f },
+	{ 14.258f, 14.379f },
+	{ 14.471f, 14.645f },
+	{ 14.752f, 14.870f },
+	{ 15.471f, 15.593f },
+	{ 15.726f, 15.842f },
+};
+
+static float GuardDogSniffReleasePos( float flPos )
+{
+	const float flLead = 0.02f;
+	for ( int i = 0; i < ARRAYSIZE( s_GuardDogSniffSpans ); ++i )
+	{
+		const GuardDogSniffSpan_t &span = s_GuardDogSniffSpans[i];
+		if ( flPos >= span.start - flLead && flPos < span.end )
+			return span.end;
+	}
+
+	return flPos;
+}
+
+static void GuardDogUpdateSniffSound( C_TFPlayer *pLocal, bool bHold )
+{
+	if ( !pLocal || !pLocal->IsAlive() || !pLocal->IsPlayerClass( TF_CLASS_GUARDDOG ) || GuardDogSmellBlocked( pLocal ) )
+	{
+		GuardDogStopSniffSound();
+		return;
+	}
+
+	const bool bPlaying = s_nGuardDogSniffGuid && enginesound && enginesound->IsSoundStillPlaying( s_nGuardDogSniffGuid );
+
+	if ( bHold )
+	{
+		s_flGuardDogSniffStopAt = 0.0f;
+		if ( !bPlaying )
+			GuardDogStartSniffSound( pLocal );
+		return;
+	}
+
+	if ( !bPlaying )
+	{
+		s_nGuardDogSniffGuid = 0;
+		s_flGuardDogSniffStopAt = 0.0f;
+		return;
+	}
+
+	if ( s_flGuardDogSniffStopAt <= 0.0f )
+	{
+		float flPos = gpGlobals->curtime - s_flGuardDogSniffStart;
+		if ( flPos < 0.0f )
+			flPos = 0.0f;
+		if ( flPos > s_flGuardDogSniffLen )
+			flPos = s_flGuardDogSniffLen;
+
+		const float flEnd = GuardDogSniffReleasePos( flPos );
+		if ( flEnd <= flPos + 0.02f )
+			GuardDogStopSniffSound();
+		else
+			s_flGuardDogSniffStopAt = s_flGuardDogSniffStart + flEnd;
+		return;
+	}
+
+	if ( gpGlobals->curtime >= s_flGuardDogSniffStopAt )
+		GuardDogStopSniffSound();
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : flInputSampleTime - 
@@ -7633,18 +7751,20 @@ bool C_TFPlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 {
 	static QAngle angMoveAngle( 0.0f, 0.0f, 0.0f );
 	static float flTauntTurnSpeed = 0.f;
-	static int s_nGuardDogButtons = 0;
 
-	// Reload is the sniff. Eat the button before a weapon can reload.
-	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
+	// Reload sniffs for as long as it is held. No cooldown. The weapon must
+	// not see the button.
+	if ( IsPlayerClass( TF_CLASS_GUARDDOG ) )
 	{
-		const int nRawButtons = pCmd->buttons;
-		if ( ( nRawButtons & IN_RELOAD ) && !( s_nGuardDogButtons & IN_RELOAD ) )
-		{
+		const bool bSniff = IsAlive() && ( pCmd->buttons & IN_RELOAD ) != 0;
+		if ( bSniff )
 			GuardDogSniff( this );
-		}
-		s_nGuardDogButtons = nRawButtons;
+		GuardDogUpdateSniffSound( this, bSniff );
 		pCmd->buttons &= ~IN_RELOAD;
+	}
+	else
+	{
+		GuardDogUpdateSniffSound( this, false );
 	}
 	
 	bool bNoTaunt = true;
