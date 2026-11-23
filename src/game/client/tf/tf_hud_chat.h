@@ -78,6 +78,7 @@ public:
 	virtual int		GetFilterForString( const char *pString );
 
 	virtual const char *GetDisplayedSubtitlePlayerName( int clientIndex );
+	virtual const char *FilterVoiceSubtitle( int clientIndex, int iMenu, int iItem, const char *pszSubtitle );
 	virtual bool IsVisible();
 
 	virtual int				GetFilterFlags( void );

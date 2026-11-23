@@ -985,6 +985,10 @@ void CBaseHudChat::MsgFunc_VoiceSubtitle( bf_read &msg )
 		pszSubtitle = pMultiRules->GetVoiceCommandSubtitle( iMenu, iItem );
 	}
 
+	pszSubtitle = FilterVoiceSubtitle( client, iMenu, iItem, pszSubtitle );
+	if ( !pszSubtitle )
+		pszSubtitle = "";
+
 	SetVoiceSubtitleState( true );
 
 	const wchar_t *pBuf = g_pVGuiLocalize->Find( pszSubtitle );

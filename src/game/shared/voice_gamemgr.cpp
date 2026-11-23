@@ -14,6 +14,10 @@
 #include "ivoiceserver.h"
 #include "usermessages.h"
 
+#ifdef TF_DLL
+#include "tf_player.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -232,8 +236,17 @@ void CVoiceGameMgr::UpdateMasks()
 			for(int iOtherClient=0; iOtherClient < m_nMaxPlayers; iOtherClient++)
 			{
 				CBaseEntity *pEnt = UTIL_PlayerByIndex(iOtherClient+1);
-				if(pEnt && pEnt->IsPlayer() && 
-					(bAllTalk || m_pHelper->CanPlayerHearPlayer(pPlayer, (CBasePlayer*)pEnt, bProximity )) )
+				if( !pEnt || !pEnt->IsPlayer() )
+					continue;
+
+				CBasePlayer *pTalker = (CBasePlayer*)pEnt;
+#ifdef TF_DLL
+				// sv_alltalk skips the game-rules check. A Guard Dog still cannot talk.
+				CTFPlayer *pTFTalker = ToTFPlayer( pTalker );
+				if ( pTFTalker && pTFTalker->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+					continue;
+#endif
+				if( bAllTalk || m_pHelper->CanPlayerHearPlayer( pPlayer, pTalker, bProximity ) )
 				{
 					gameRulesMask[iOtherClient] = true;
 					ProximityMask[iOtherClient] = bProximity;

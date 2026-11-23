@@ -7865,6 +7865,9 @@ bool CTFGameRules::TFVoiceManager( CBasePlayer *pListener, CBasePlayer *pTalker 
 	// check coaching--we only want coaches and students to talk and listen to each other!
 	CTFPlayer* pTFListener = (CTFPlayer*)pListener;
 	CTFPlayer* pTFTalker = (CTFPlayer*)pTalker;
+	// A Guard Dog cannot speak. Voice commands still print as barks.
+	if ( pTFTalker && pTFTalker->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return false;
 	if ( pTFListener->GetStudent() || pTFListener->GetCoach() || 
 			pTFTalker->GetStudent() || pTFTalker->GetCoach() )
 	{

@@ -240,6 +240,26 @@ void Host_Say( edict_t *pEdict, const CCommand &args, bool teamonly )
 		if ( !p )
 			return;
 
+#ifdef TF_DLL
+		// Guard Dog has no words. Typed chat is a bark, picked each time.
+		static const char *const s_pszGuardDogBarks[] =
+		{
+			"Bark!",
+			"Bork!",
+			"Woof!",
+			"Ruff!",
+			"Howl!",
+		};
+		char szGuardDogBark[16];
+		CTFPlayer *pTFSpeaker = ToTFPlayer( pPlayer );
+		if ( pTFSpeaker && pTFSpeaker->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		{
+			const int iBark = RandomInt( 0, ARRAYSIZE( s_pszGuardDogBarks ) - 1 );
+			Q_strncpy( szGuardDogBark, s_pszGuardDogBarks[iBark], sizeof( szGuardDogBark ) );
+			p = szGuardDogBark;
+		}
+#endif
+
 		Assert( strlen( pPlayer->GetPlayerName() ) > 0 );
 
 		bSenderDead = ( pPlayer->m_lifeState != LIFE_ALIVE );

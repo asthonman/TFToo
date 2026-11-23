@@ -353,6 +353,54 @@ bool CHudChat::IsVisible( void )
 	return BaseClass::IsVisible();
 }
 
+const char *CHudChat::FilterVoiceSubtitle( int clientIndex, int iMenu, int iItem, const char *pszSubtitle )
+{
+	C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( clientIndex ) );
+	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_GUARDDOG ) )
+		return pszSubtitle;
+
+	// Medic and Spy keep a fixed bark. Every other command picks one of the
+	// same set, and the same command always picks the same bark.
+	bool bMedic = ( iMenu == 0 && iItem == 0 );
+	bool bSpy = ( iMenu == 1 && iItem == 1 );
+	if ( pszSubtitle && pszSubtitle[0] && g_pVGuiLocalize )
+	{
+		if ( !V_stricmp( pszSubtitle, "#Voice_Menu_Medic" ) )
+			bMedic = true;
+		else if ( !V_stricmp( pszSubtitle, "#Voice_Menu_Spy" ) )
+			bSpy = true;
+		else
+		{
+			const wchar_t *pLoc = g_pVGuiLocalize->Find( pszSubtitle );
+			if ( pLoc )
+			{
+				char szAnsi[96];
+				g_pVGuiLocalize->ConvertUnicodeToANSI( pLoc, szAnsi, sizeof( szAnsi ) );
+				if ( !V_stricmp( szAnsi, "MEDIC!" ) || !V_stricmp( szAnsi, "Medic!" ) )
+					bMedic = true;
+				else if ( !V_stricmp( szAnsi, "Spy!" ) || !V_stricmp( szAnsi, "SPY!" ) )
+					bSpy = true;
+			}
+		}
+	}
+
+	if ( bMedic )
+		return "Yip!";
+	if ( bSpy )
+		return "Grrrr!";
+
+	static const char *const s_pszBarks[] =
+	{
+		"Bark!",
+		"Bork!",
+		"Woof!",
+		"Ruff!",
+		"Howl!",
+	};
+	const int iBark = ( iMenu * 9 + iItem ) % ARRAYSIZE( s_pszBarks );
+	return s_pszBarks[iBark];
+}
+
 const char *CHudChat::GetDisplayedSubtitlePlayerName( int clientIndex )
 {
 	C_TFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( clientIndex ) );

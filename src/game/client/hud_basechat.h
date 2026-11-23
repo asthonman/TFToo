@@ -293,6 +293,9 @@ public:
 
 	virtual const char *GetDisplayedSubtitlePlayerName( int clientIndex );
 
+	// A class can replace the voice-command subtitle. The default is the menu string.
+	virtual const char *FilterVoiceSubtitle( int clientIndex, int iMenu, int iItem, const char *pszSubtitle ) { return pszSubtitle; }
+
 	bool			IsVoiceSubtitle( void ) { return m_bEnteringVoice; }
 	void			SetVoiceSubtitleState( bool bState ) { m_bEnteringVoice = bState; }
 	int				GetMessageMode( void ) { return m_nMessageMode; }
