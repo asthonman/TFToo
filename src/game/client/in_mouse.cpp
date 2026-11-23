@@ -48,6 +48,31 @@
 extern ConVar lookstrafe;
 extern ConVar cl_pitchdown;
 extern ConVar cl_pitchup;
+
+//-----------------------------------------------------------------------------
+// TF2 binds ALT to +strafe. Launching, or alt-tabbing as the window comes up,
+// delivers the key-down and then drops the key-up (the engine's ClearStates
+// only drops mouse accumulators). in_strafe stays down, and ApplyMouse feeds
+// the mouse into sidemove/forwardmove instead of the view. A bare "+strafe"
+// latches the same way with key id -1, which can never match a key-up.
+//-----------------------------------------------------------------------------
+static void ReleaseStuckStrafe( void )
+{
+	if ( !( in_strafe.state & 1 ) )
+		return;
+
+	if ( inputsystem )
+	{
+		for ( int i = 0; i < 2; ++i )
+		{
+			const int key = in_strafe.down[i];
+			if ( key > BUTTON_CODE_NONE && inputsystem->IsButtonDown( (ButtonCode_t)key ) )
+				return;
+		}
+	}
+
+	KeyUp( &in_strafe, NULL );
+}
 extern const ConVar *sv_cheats;
 
 class ConVar_m_pitch : public ConVar_ServerBounded
@@ -171,6 +196,9 @@ void CInput::ActivateMouse (void)
 		int rawX, rawY;
 		inputsystem->GetRawMouseAccumulators(rawX, rawY);
 	}
+
+	// Focus came back. Drop a +strafe whose key-up was lost while we were away.
+	ReleaseStuckStrafe();
 }
 
 //-----------------------------------------------------------------------------
@@ -499,6 +527,10 @@ void CInput::ScaleMouse( float *x, float *y )
 //-----------------------------------------------------------------------------
 void CInput::ApplyMouse( QAngle& viewangles, CUserCmd *cmd, float mouse_x, float mouse_y )
 {
+	// A stuck +strafe (lost ALT key-up) turns the mouse into movement. The
+	// key is not down anymore; don't keep steering with it.
+	ReleaseStuckStrafe();
+
 	if ( !((in_strafe.state & 1) || lookstrafe.GetInt()) )
 	{
 #ifdef PORTAL

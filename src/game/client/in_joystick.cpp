@@ -465,6 +465,50 @@ void CInput::Joystick_Advanced(void)
 		in_joystick.SetValue( 1 );
 	}
 
+	// Decide this before mapping axes. "exec" is queued, so a restore has to
+	// be written onto the cvars here or this call keeps the old map.
+	//
+	// joy_xcontroller_found is an engine cvar. Steam Input and a phantom
+	// XInput slot can report it at launch before any real pad exists, and
+	// 360controller.cfg then remaps X/Y to side/forward (look moves to R/U).
+	// A mouse Windows enumerated as a 2-axis joystick walks instead of aiming.
+	// undo360controller.cfg does not put the look axes back, and those cvars
+	// are archived, so one false detect sticks for later launches too.
+	static ConVarRef s_joyXControllerFound( "joy_xcontroller_found" );
+	const bool bXControllerFound = s_joyXControllerFound.IsValid() && s_joyXControllerFound.GetBool();
+	const bool bHaveJoystick = inputsystem && inputsystem->GetJoystickCount() > 0;
+
+	if ( bXControllerFound && in_joystick.GetBool() && bHaveJoystick )
+	{
+		if ( joy_xcontroller_cfg_loaded.GetInt() < 2 )
+		{
+			engine->ClientCmd_Unrestricted( "exec 360controller.cfg" );
+			if ( IsLinux () )
+			{
+				engine->ClientCmd_Unrestricted( "exec 360controller-linux.cfg" );
+			}
+			joy_xcontroller_cfg_loaded.SetValue( 2 );
+		}
+	}
+	else if ( joy_xcontroller_cfg_loaded.GetInt() > 0 && !( bXControllerFound && !bHaveJoystick ) )
+	{
+		engine->ClientCmd_Unrestricted( "exec undo360controller.cfg" );
+		joy_xcontroller_cfg_loaded.SetValue( 0 );
+
+		joy_advaxisx.SetValue( 4 );
+		joy_advaxisy.SetValue( 2 );
+		joy_advaxisz.SetValue( 0 );
+		joy_advaxisr.SetValue( 1 );
+		joy_advaxisu.SetValue( 3 );
+		joy_advaxisv.SetValue( 0 );
+
+		// 360controller.cfg ends with a bare "+jlook", which latches key id -1.
+		if ( ( in_jlook.state & 1 ) && in_jlook.down[0] <= 0 && in_jlook.down[1] <= 0 )
+		{
+			KeyUp( &in_jlook, NULL );
+		}
+	}
+
 	// Initialize all the maps
 	for ( i = 0; i < MAX_JOYSTICK_AXES; i++ )
 	{
@@ -526,26 +570,6 @@ void CInput::Joystick_Advanced(void)
 		DescribeJoystickAxis( "JOY_AXIS_V", &m_rgAxes[JOY_AXIS_V] );
 
 		Msg( "Advanced Joystick settings initialized\n" );
-	}
-
-	// If we have an xcontroller, load the cfg file if it hasn't been loaded.
-	static ConVarRef var( "joy_xcontroller_found" );
-	if ( var.IsValid() && var.GetBool() && in_joystick.GetBool() )
-	{
-		if ( joy_xcontroller_cfg_loaded.GetInt() < 2 )
-		{
-			engine->ClientCmd_Unrestricted( "exec 360controller.cfg" );
-			if ( IsLinux () )
-			{
-				engine->ClientCmd_Unrestricted( "exec 360controller-linux.cfg" );
-			}
-			joy_xcontroller_cfg_loaded.SetValue( 2 );
-		}
-	}
-	else if ( joy_xcontroller_cfg_loaded.GetInt() > 0 )
-	{
-		engine->ClientCmd_Unrestricted( "exec undo360controller.cfg" );
-		joy_xcontroller_cfg_loaded.SetValue( 0 );
 	}
 }
 
