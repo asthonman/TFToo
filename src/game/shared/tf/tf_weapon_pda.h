@@ -311,8 +311,10 @@ private:
 	CExLabel *m_pName[CHEM_COUNT];
 	CExLabel *m_pCount[CHEM_COUNT];
 	vgui::Panel *m_pSelectedBar[CHEM_COUNT];
+	vgui::Panel *m_pBrewMeter[CHEM_COUNT];
 
 	char m_szDrawnCount[CHEM_COUNT][8];
+	int m_iBrewMeterFullWide[CHEM_COUNT];
 };
 
 #endif // CLIENT_DLL

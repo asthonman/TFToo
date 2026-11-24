@@ -6831,12 +6831,6 @@ static void GuardDogSniff( C_TFPlayer *pLocal )
 	}
 }
 
-float C_TFPlayer::GetGuardDogSniffMeter( void ) const
-{
-	// Sniff has no cooldown. The bar stays unused.
-	return 1.0f;
-}
-
 static void UpdateGuardDogSense()
 {
 	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();

@@ -1273,8 +1273,6 @@ void CHudMenuChemistry::UpdateSlots( void )
 	const int iSelected = pPlayer->m_Shared.GetChemSelected();
 	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
 	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
-	const int iMetal = pPlayer->GetAmmoCount( TF_AMMO_METAL );
-	const float flLeft = bBrewing ? ( pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime ) : 0.f;
 
 	vgui::Label *pSelected = dynamic_cast< vgui::Label * >( FindChildByName( "SelectedLabel" ) );
 	if ( pSelected )
@@ -1284,24 +1282,12 @@ void CHudMenuChemistry::UpdateSlots( void )
 	{
 		const int nUses = pPlayer->m_Shared.GetChemUses( i );
 		const bool bThisBrew = bBrewing && iBrew == i;
-		bool bAvailable = false;
-		bool bBuilt = false;
-		bool bCant = false;
-		bool bUnavail = false;
+		const bool bBuilt = nUses > 0;
 
-		if ( nUses > 0 )
-			bBuilt = true;
-		else if ( bThisBrew || bBrewing )
-			bUnavail = true;
-		else if ( iMetal < 1 )
-			bCant = true;
-		else
-			bAvailable = true;
-
-		m_pAvailable[i]->SetVisible( bAvailable );
+		m_pAvailable[i]->SetVisible( false );
+		m_pCantAfford[i]->SetVisible( false );
 		m_pAlreadyBuilt[i]->SetVisible( bBuilt );
-		m_pCantAfford[i]->SetVisible( bCant );
-		m_pUnavailable[i]->SetVisible( bUnavail );
+		m_pUnavailable[i]->SetVisible( !bBuilt );
 
 		if ( bBuilt )
 		{
@@ -1309,11 +1295,33 @@ void CHudMenuChemistry::UpdateSlots( void )
 			if ( pStatus )
 				pStatus->SetText( CFmtStr( "%d", nUses ) );
 		}
-		if ( bThisBrew )
+
+		vgui::Panel *pMeter = m_pUnavailable[i]->FindChildByName( "BrewMeter" );
+		if ( pMeter )
 		{
-			CExLabel *pStatus = dynamic_cast< CExLabel * >( m_pUnavailable[i]->FindChildByName( "StatusLabel" ) );
-			if ( pStatus )
-				pStatus->SetText( CFmtStr( "%d", ( flLeft > 0.f ) ? (int)( flLeft + 0.999f ) : 0 ) );
+			pMeter->SetPaintBackgroundEnabled( true );
+			pMeter->SetBgColor( Color( 255, 210, 40, 255 ) );
+			pMeter->SetVisible( bThisBrew );
+			if ( bThisBrew )
+			{
+				const float flDur = ChemBrewSeconds( i );
+				float flFrac = 1.f;
+				if ( flDur > 0.f )
+				{
+					const float flLeft = pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime;
+					flFrac = 1.f - ( flLeft / flDur );
+				}
+				if ( flFrac < 0.f )
+					flFrac = 0.f;
+				if ( flFrac > 1.f )
+					flFrac = 1.f;
+
+				static int s_iMenuMeterWide = 84;
+				int iWide = (int)( s_iMenuMeterWide * flFrac );
+				if ( iWide < 1 && flFrac > 0.f )
+					iWide = 1;
+				pMeter->SetWide( iWide );
+			}
 		}
 	}
 }
@@ -1358,19 +1366,8 @@ int CHudMenuChemistry::HudElementKeyInput( int down, ButtonCode_t keynum, const 
 	if ( !pPlayer )
 		return 1;
 
-	if ( pPlayer->m_Shared.GetChemUses( iSlot ) > 0 || pPlayer->m_Shared.GetChemBrewSlot() < CHEM_COUNT )
-	{
-		pPlayer->EmitSound( "Player.DenyWeaponSelection" );
-		return 0;
-	}
-	if ( pPlayer->GetAmmoCount( TF_AMMO_METAL ) < 1 )
-	{
-		pPlayer->EmitSound( "Player.DenyWeaponSelection" );
-		return 0;
-	}
-
 	char szCmd[32];
-	Q_snprintf( szCmd, sizeof( szCmd ), "chem_brew %d", iSlot + 1 );
+	Q_snprintf( szCmd, sizeof( szCmd ), "chem_select %d", iSlot + 1 );
 	engine->ClientCmd( szCmd );
 	return 0;
 }
@@ -1399,6 +1396,8 @@ CHudChemStatus::CHudChemStatus( const char *pElementName )
 		m_pName[i] = new CExLabel( m_pRow[i], "NameLabel", "" );
 		m_pCount[i] = new CExLabel( m_pRow[i], "CountLabel", "0" );
 		m_pSelectedBar[i] = new Panel( m_pRow[i], "SelectedBar" );
+		m_pBrewMeter[i] = new Panel( m_pRow[i], "BrewMeter" );
+		m_iBrewMeterFullWide[i] = 0;
 	}
 
 	ivgui()->AddTickSignal( GetVPanel() );
@@ -1411,6 +1410,11 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 		m_pRow[i]->LoadControlSettings( "resource/UI/chem_menu/chem_status_item.res" );
 		m_pSelectedBar[i]->SetPaintBackgroundEnabled( true );
 		m_pSelectedBar[i]->SetBgColor( Color( 255, 210, 40, 255 ) );
+		m_pBrewMeter[i]->SetPaintBackgroundEnabled( true );
+		m_pBrewMeter[i]->SetBgColor( Color( 255, 210, 40, 255 ) );
+		m_iBrewMeterFullWide[i] = m_pBrewMeter[i]->GetWide();
+		if ( m_iBrewMeterFullWide[i] < 1 )
+			m_iBrewMeterFullWide[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 156 );
 
 		wchar_t wszName[64];
 		const wchar_t *pszLoc = g_pVGuiLocalize ? g_pVGuiLocalize->Find( ChemConcoctionName( i ) ) : NULL;
@@ -1485,7 +1489,6 @@ void CHudChemStatus::UpdateRows( void )
 	const int iSelected = pPlayer->m_Shared.GetChemSelected();
 	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
 	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
-	const float flLeft = bBrewing ? ( pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime ) : 0.f;
 	const bool bRed = pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
 	const char *pszReady = bRed ? "obj_status_background_red" : "obj_status_background_blue";
 
@@ -1502,12 +1505,41 @@ void CHudChemStatus::UpdateRows( void )
 		const Color nameCol = bSelected ? Color( 255, 255, 255, 255 ) : ( bReady ? Color( 235, 226, 202, 255 ) : Color( 150, 150, 150, 255 ) );
 		m_pName[i]->SetFgColor( nameCol );
 
+		float flFrac = 0.f;
+		if ( bThisBrew )
+		{
+			const float flDur = ChemBrewSeconds( i );
+			if ( flDur > 0.f )
+			{
+				const float flLeft = pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime;
+				flFrac = 1.f - ( flLeft / flDur );
+			}
+			else
+			{
+				flFrac = 1.f;
+			}
+			if ( flFrac < 0.f )
+				flFrac = 0.f;
+			if ( flFrac > 1.f )
+				flFrac = 1.f;
+		}
+		m_pBrewMeter[i]->SetVisible( bThisBrew );
+		if ( bThisBrew )
+		{
+			int iFull = m_iBrewMeterFullWide[i];
+			if ( iFull < 1 )
+				iFull = m_pBrewMeter[i]->GetWide();
+			int iWide = (int)( iFull * flFrac );
+			if ( iWide < 1 && flFrac > 0.f )
+				iWide = 1;
+			m_pBrewMeter[i]->SetWide( iWide );
+		}
+
 		char szCount[8];
 		Color countCol;
 		if ( bThisBrew )
 		{
-			const int secs = ( flLeft > 0.f ) ? (int)( flLeft + 0.999f ) : 0;
-			Q_snprintf( szCount, sizeof( szCount ), "%ds", secs );
+			Q_snprintf( szCount, sizeof( szCount ), "%d%%", (int)( flFrac * 100.f + 0.5f ) );
 			countCol = Color( 255, 210, 40, 255 );
 		}
 		else

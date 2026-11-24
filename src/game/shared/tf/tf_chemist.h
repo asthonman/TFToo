@@ -1,6 +1,6 @@
 //========= Copyright Valve Corporation, All rights reserved. ============//
 //
-// Chemist (class B7). Concoctions, reagents, and jet-boot helpers.
+// Chemist (class B7). Concoctions and jet-boot helpers.
 //
 //=============================================================================
 #ifndef TF_CHEMIST_H

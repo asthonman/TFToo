@@ -1135,7 +1135,7 @@ private:
 	// Holding right-click to aim a spell. Teammates draw the arc or circle.
 	CNetworkVar( bool, m_bWitchHoldingCast );
 	CNetworkVar( float, m_flWitchChargeBegin );
-	// Chemist concoctions, reagents are TF_AMMO_METAL, fuel is m_flCloakMeter.
+	// Chemist concoctions. Fuel is m_flCloakMeter. Brewing spends nothing.
 	CNetworkVar( int, m_nChemPacked );
 	CNetworkVar( float, m_flChemBrewDone );
 	CNetworkVar( bool, m_bChemJetting );

@@ -29,6 +29,19 @@
 		"enabled"		"1"
 		"bgcolor_override"	"255 210 40 255"
 	}
+	"BrewMeter"
+	{
+		"ControlName"	"Panel"
+		"fieldName"		"BrewMeter"
+		"xpos"			"6"
+		"ypos"			"23"
+		"zpos"			"3"
+		"wide"			"156"
+		"tall"			"4"
+		"visible"		"0"
+		"enabled"		"1"
+		"bgcolor_override"	"255 210 40 255"
+	}
 	"NameLabel"
 	{
 		"ControlName"	"CExLabel"

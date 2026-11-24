@@ -3,7 +3,7 @@
 // (schema b1), with 150 reserve from this script. No secondary. Melee is the
 // spatula (b19). PDA is the chemistry set (b20). PDA2 is the jet boots (b21),
 // a passive fuel meter. Class-script weapons stay empty so the schema items
-// fill the loadout. Reagents are TF_AMMO_METAL, capped at 10.
+// fill the loadout. Concoctions brew on their own. No reagent ammo.
 "PlayerClassData"
 {
 	"name"				"chemist"
@@ -26,6 +26,6 @@
 	{
 		"TF_AMMO_PRIMARY"		"150"
 		"TF_AMMO_SECONDARY"		"0"
-		"TF_AMMO_METAL"			"10"
+		"TF_AMMO_METAL"			"0"
 	}
 }

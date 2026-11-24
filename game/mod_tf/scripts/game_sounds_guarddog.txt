@@ -103,13 +103,14 @@
 
 // Sniff. One file, not a random pitch: the client stops on measured sniff
 // endings, and a pitch shift would walk those times off the waveform.
+// The take is boosted 12 dB (peaks limited). No attenuation. Local hold sound.
 // 004 - Dog Sniffing by Trashcan_Studios, CC BY 4.0.
 // https://freesound.org/people/Trashcan_Studios/sounds/580218/
 "GuardDog.Sniff"
 {
 	"channel"		"CHAN_STATIC"
-	"volume"		"0.9"
-	"soundlevel"	"SNDLVL_70dB"
+	"volume"		"1"
+	"soundlevel"	"SNDLVL_NONE"
 	"pitch"			"100"
 	"wave"			"vo/guarddog/sniff.wav"
 }

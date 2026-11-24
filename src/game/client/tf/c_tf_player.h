@@ -207,7 +207,6 @@ public:
 	bool			IsBrickGrowDucking( void ) const { return m_bBrickGrowDuck; }
 	float			GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float			GetPMeter( void ) const { return Madcap_AdrenalineFromCombatTime( m_flPMeter, m_flMadcapCombatTime, gpGlobals->curtime ); }
-	float			GetGuardDogSniffMeter( void ) const;
 	void			SetPMeter( float flMeter ) { m_flPMeter = clamp( flMeter, 0.f, TF_MADCAP_PMETER_MAX ); }
 	float			GetMadcapCombatTime( void ) const { return m_flMadcapCombatTime; }
 	bool			HasMadcapCourse( void ) const { return m_bMadcapCourse; }

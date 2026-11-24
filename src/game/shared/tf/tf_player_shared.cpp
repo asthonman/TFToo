@@ -12657,7 +12657,7 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 	case TF_CLASS_CHEMIST:
 		{
 			const int iSlot = m_Shared.GetChemSelected();
-			if ( m_Shared.GetChemUses( iSlot ) <= 0 || GetAmmoCount( TF_AMMO_METAL ) < 1 )
+			if ( m_Shared.GetChemUses( iSlot ) <= 0 )
 			{
 #ifdef CLIENT_DLL
 				EmitSound( "Player.DenyWeaponSelection" );
@@ -12665,9 +12665,12 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 				return false;
 			}
 #ifdef GAME_DLL
-			m_Shared.SetChemUses( iSlot, m_Shared.GetChemUses( iSlot ) - 1 );
-			RemoveAmmo( 1, TF_AMMO_METAL );
+			const int nLeft = m_Shared.GetChemUses( iSlot ) - 1;
+			m_Shared.SetChemUses( iSlot, nLeft );
 			Chemist_Throw( this, iSlot );
+			// The last prepared charge starts the next brew. No reagent.
+			if ( nLeft <= 0 )
+				m_Shared.ChemBeginBrew( iSlot );
 #endif
 			bDoSkill = true;
 		}
@@ -14563,7 +14566,7 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 }
 
 //-----------------------------------------------------------------------------
-// Chemist concoction pack. Reagents are metal. Fuel is the cloak meter.
+// Chemist concoction pack. Fuel is the cloak meter. Brewing does not spend ammo.
 //-----------------------------------------------------------------------------
 float ChemBrewSeconds( int slot )
 {
@@ -14633,15 +14636,13 @@ void CTFPlayerShared::ChemBeginBrew( int slot )
 		return;
 	if ( slot < 0 || slot >= CHEM_COUNT )
 		return;
-	// Already brewed, or a brew is already running.
+	// Already brewed, or a brew is already running. The next empty one starts
+	// when this one finishes.
 	if ( GetChemUses( slot ) > 0 )
 		return;
 	if ( GetChemBrewSlot() < CHEM_COUNT )
 		return;
-	if ( m_pOuter->GetAmmoCount( TF_AMMO_METAL ) < 1 )
-		return;
 
-	m_pOuter->RemoveAmmo( 1, TF_AMMO_METAL );
 	SetChemBrewSlot( slot );
 	m_flChemBrewDone = gpGlobals->curtime + ChemBrewSeconds( slot );
 }
@@ -14652,23 +14653,35 @@ void CTFPlayerShared::ChemistBrewThink( void )
 		return;
 
 	const int iBrew = GetChemBrewSlot();
-	if ( iBrew < 0 || iBrew >= CHEM_COUNT )
-		return;
-	if ( gpGlobals->curtime < m_flChemBrewDone )
-		return;
+	if ( iBrew >= 0 && iBrew < CHEM_COUNT )
+	{
+		if ( gpGlobals->curtime < m_flChemBrewDone )
+			return;
 
-	int nUses = GetChemUses( iBrew ) + ChemUsesPerBrew( iBrew );
-	if ( nUses > 7 )
-		nUses = 7;
-	SetChemUses( iBrew, nUses );
-	m_nChemPacked = ChemPack_SetPrev( m_nChemPacked, GetChemSelected() );
-	SetChemSelected( iBrew );
-	SetChemBrewSlot( CHEM_BREW_NONE );
+		int nUses = ChemUsesPerBrew( iBrew );
+		if ( nUses > 7 )
+			nUses = 7;
+		SetChemUses( iBrew, nUses );
+		SetChemBrewSlot( CHEM_BREW_NONE );
+	}
+
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+	{
+		if ( GetChemUses( i ) <= 0 )
+		{
+			ChemBeginBrew( i );
+			return;
+		}
+	}
 }
 
 void CTFPlayerShared::ResetChemist( void )
 {
-	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
+	// Spawn with every concoction already brewed.
+	int packed = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
+	for ( int i = 0; i < CHEM_COUNT; ++i )
+		packed = ChemPack_SetUses( packed, i, ChemUsesPerBrew( i ) );
+	m_nChemPacked = packed;
 	m_flChemBrewDone = 0.f;
 	m_bChemJetting = false;
 #ifdef GAME_DLL

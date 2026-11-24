@@ -49,6 +49,19 @@
 		"centerwrap"	"1"
 		"fgcolor"		"220 180 80 255"
 	}
+	"BrewMeter"
+	{
+		"ControlName"	"Panel"
+		"fieldName"		"BrewMeter"
+		"xpos"			"8"
+		"ypos"			"78"
+		"zpos"			"3"
+		"wide"			"84"
+		"tall"			"6"
+		"visible"		"0"
+		"enabled"		"1"
+		"bgcolor_override"	"255 210 40 255"
+	}
 	"NumberLabel"
 	{
 		"ControlName"	"CExLabel"
