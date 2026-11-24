@@ -18,7 +18,6 @@
 #include "vgui/IInput.h"
 #include "vgui_controls/PanelListPanel.h"
 #include "IconPanel.h"
-#include "hud.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
@@ -109,15 +108,6 @@ static bool ClassOpensPdaBlueprintPage( int iClass )
 	return iClass == TF_CLASS_ENGINEER || iClass == TF_CLASS_CHEMIST;
 }
 
-// Build menu icons. The mini-sentry has no PDA art of its own in this SDK.
-static const char *s_pszEngineerBlueprintIcons[4] =
-{
-	"hud_menu_sentry_build",
-	"hud_menu_dispenser_build",
-	"hud_menu_tele_entrance_build",
-	"hud_menu_tele_exit_build",
-};
-
 static bool LoadoutWrenchBuildsMiniSentry( int iClass )
 {
 	if ( iClass != TF_CLASS_ENGINEER )
@@ -131,22 +121,6 @@ static bool LoadoutWrenchBuildsMiniSentry( int iClass )
 	static CSchemaAttributeDefHandle pAttr_MiniSentry( "mod wrench builds minisentry" );
 	float flMiniSentry = 0.f;
 	return FindAttribute_UnsafeBitwiseCast<attrib_value_t>( pMelee, pAttr_MiniSentry, &flMiniSentry ) && flMiniSentry != 0.f;
-}
-
-static const char *EngineerBlueprintIconName( int iBlueprint, bool bMiniSentry )
-{
-	if ( iBlueprint == 0 && bMiniSentry )
-	{
-		if ( gHUD.GetIcon( "hud_menu_sentry_build_mini" ) )
-			return "hud_menu_sentry_build_mini";
-		if ( gHUD.GetIcon( "obj_status_sentrygun_1" ) )
-			return "obj_status_sentrygun_1";
-	}
-
-	if ( iBlueprint < 0 || iBlueprint >= 4 )
-		return s_pszEngineerBlueprintIcons[0];
-
-	return s_pszEngineerBlueprintIcons[iBlueprint];
 }
 
 const LoadoutPanelPositioningInstance g_DefaultLoadoutPanelPositioning =
@@ -868,7 +842,9 @@ void CClassLoadoutPanel::PerformLayout( void )
 
 
 //-----------------------------------------------------------------------------
-// Purpose: Engineer blueprint slots use the build PDA icons. The exit is locked.
+// Purpose: Lock the stock teleporter exit and rename the mini-sentry.
+// The icons themselves are drawn by the item panel, including the inventory
+// page that opens when a blueprint is clicked.
 //-----------------------------------------------------------------------------
 void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 {
@@ -880,32 +856,15 @@ void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 
 	for ( int i = 0; i < 4; i++ )
 	{
+		if ( m_pBlueprintIcons[i] )
+			m_pBlueprintIcons[i]->SetVisible( false );
+
 		const int iSlot = LOADOUT_POSITION_PDA_SLOT1 + i;
 		CItemModelPanel *pItem = m_pItemModelPanels[iSlot];
 		if ( !pItem )
 			continue;
 
-		if ( !m_pBlueprintIcons[i] )
-		{
-			CIconPanel *pIcon = new CIconPanel( this, CFmtStr( "EngineerBlueprintIcon%d", i ) );
-			KeyValues *pKV = new KeyValues( "IconPanel" );
-			pKV->SetInt( "scaleImage", 1 );
-			pIcon->ApplySettings( pKV );
-			pKV->deleteThis();
-			pIcon->SetMouseInputEnabled( false );
-			pIcon->SetKeyBoardInputEnabled( false );
-			pIcon->SetPaintBackgroundEnabled( false );
-			pIcon->SetZPos( 200 );
-			pIcon->SetVisible( false );
-			m_pBlueprintIcons[i] = pIcon;
-		}
-
-		CIconPanel *pIcon = m_pBlueprintIcons[i];
-		const bool bShow = bEngineerPage && pItem->IsVisible();
-		// The entrance keeps the exit on the stock teleporter. The slot is not a choice.
-		const bool bLockedExit = bShow && ( iSlot == LOADOUT_POSITION_PDA_SLOT4 );
-
-		pItem->SetModelIsHidden( bShow );
+		const bool bLockedExit = bEngineerPage && pItem->IsVisible() && ( iSlot == LOADOUT_POSITION_PDA_SLOT4 );
 		pItem->SetActAsButton( !bLockedExit, !bLockedExit );
 		pItem->SetGreyedOut( bLockedExit ? "" : NULL );
 
@@ -922,7 +881,6 @@ void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 				}
 				else if ( m_bMiniSentryNameOverride && pItem->HasItem() && pItem->GetItem() )
 				{
-					// The label no longer tracks %itemname% after the override, so keep writing the real name.
 					const wchar_t *pszName = pItem->GetItem()->GetItemName();
 					if ( pszName )
 						pName->SetText( pszName );
@@ -930,30 +888,7 @@ void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 			}
 		}
 
-		if ( !bShow )
-		{
-			pIcon->SetVisible( false );
-			continue;
-		}
-
-		pIcon->SetIcon( EngineerBlueprintIconName( i, bMiniSentry ) );
-		pIcon->SetIconColor( bLockedExit ? Color( 128, 128, 128, 255 ) : Color( 255, 255, 255, 255 ) );
-
-		int iX = 0;
-		int iY = 0;
-		pItem->GetPos( iX, iY );
-		const int iPanelW = pItem->GetWide();
-		const int iPanelH = pItem->GetTall();
-		int iIcon = ( iPanelH * 58 ) / 100;
-		const int iMax = ( iPanelW * 58 ) / 100;
-		if ( iIcon > iMax )
-			iIcon = iMax;
-		if ( iIcon < 8 )
-			iIcon = 8;
-
-		pIcon->SetBounds( iX + ( iPanelW - iIcon ) / 2, iY + ( iPanelH * 6 ) / 100, iIcon, iIcon );
-		pIcon->SetVisible( true );
-		pIcon->MoveToFront();
+		pItem->RefreshBlueprintIcon();
 	}
 }
 
@@ -1222,8 +1157,8 @@ void CClassLoadoutPanel::UpdateModelPanels( void )
 		// Hide the blueprint model before SetItem so the panel keeps its name and skips the spinner.
 		if ( IsPdaBlueprintSlot( i ) )
 		{
-			const bool bUseBuildIcon = m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER;
-			m_pItemModelPanels[i]->SetModelIsHidden( bUseBuildIcon );
+			// Chemist and engineer blueprint pages draw HUD icons, not the 3D model.
+			m_pItemModelPanels[i]->SetModelIsHidden( m_bInPdaLoadoutMode );
 		}
 		m_pItemModelPanels[i]->SetItem( pItemData );
 		m_pItemModelPanels[i]->SetShowQuantity( true );

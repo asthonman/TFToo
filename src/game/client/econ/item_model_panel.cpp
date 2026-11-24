@@ -36,8 +36,17 @@
 #ifdef TF_CLIENT_DLL
 #include "tf_shareddefs.h"
 #include "tf_gamerules.h"
+#include "IconPanel.h"
+#include "hud.h"
+#include "tf_item_inventory.h"
+#include "vgui_controls/ImagePanel.h"
 #endif // TF_CLIENT_DLL
 #include "KeyValues.h"
+
+#ifdef TF_CLIENT_DLL
+static bool ItemWantsBlueprintIcon( const CEconItemView *pItem );
+static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry );
+#endif
 
 ConVar tf_time_loading_item_panels( "tf_time_loading_item_panels", "0.0005", FCVAR_ARCHIVE, "The time to spend per frame loading data for item panels" );
 
@@ -1376,6 +1385,11 @@ CItemModelPanel::CItemModelPanel( vgui::Panel *parent, const char *name ) : vgui
 	m_pSeriesLabel = NULL;
 	m_pMainContentContainer = NULL;
 	m_pLoadingSpinner = NULL;
+#ifdef TF_CLIENT_DLL
+	m_pBlueprintHudIcon = NULL;
+	m_pBlueprintImage = NULL;
+	m_bBlueprintIconActive = false;
+#endif
 //	m_ItemData = NULL;
 	m_nCollectionItemLoaded = LOADED_COLLECTION_NONE;
 	m_pFontNameSmallest = vgui::INVALID_FONT;
@@ -1713,6 +1727,7 @@ void CItemModelPanel::LoadResFileForCurrentItem( bool bForceLoad )
 	}
 
 	UpdatePanels();
+	RefreshBlueprintIcon();
 }
 
 //-----------------------------------------------------------------------------
@@ -1981,6 +1996,9 @@ void CItemModelPanel::PerformLayout( void )
 		}
 	}
 
+#ifdef TF_CLIENT_DLL
+	PositionBlueprintIcon();
+#endif
 	BaseClass::PerformLayout();
 }
 
@@ -2306,11 +2324,23 @@ void CItemModelPanel::SetItem( const CEconItemView *pItem )
 	}
 
 	// only update panels when item is not matched
+#ifdef TF_CLIENT_DLL
+	{
+		const CEconItemView *pIconItem = ( pItem && pItem->IsValid() ) ? pItem : NULL;
+		if ( ItemWantsBlueprintIcon( pIconItem ) )
+			m_bHideModel = true;
+		else if ( m_bBlueprintIconActive )
+			m_bHideModel = m_bHideModelDefault;
+	}
+#endif
 	if ( !bMatch )
 	{
 		UpdatePanels();
 	}
 
+#ifdef TF_CLIENT_DLL
+	RefreshBlueprintIcon();
+#endif
 	// TODO: Update only description for strange item in the same panel
 }
 
@@ -3368,6 +3398,201 @@ void CItemModelPanel::UpdatePanels( void )
 	InvalidateLayout();
 }
 
+#ifdef TF_CLIENT_DLL
+static bool BlueprintLogName( const char *psz, const char *pszWant )
+{
+	return psz && psz[0] && FStrEq( psz, pszWant );
+}
+
+static bool ItemWantsBlueprintIcon( const CEconItemView *pItem )
+{
+	if ( !pItem || !pItem->IsValid() || !pItem->GetItemDefinition() )
+		return false;
+	const CEconItemDefinition *pDef = pItem->GetItemDefinition();
+	const char *pszLog = pDef->GetLogClassname();
+	const char *pszName = pDef->GetDefinitionName();
+	const char *pszKeys[] =
+	{
+		"pda_sentry", "pda_dispenser", "pda_tele_entrance", "pda_tele_exit",
+		"chem_poison", "chem_repulsion", "chem_nitric", "chem_neutral",
+		"b22", "b23", "b24", "b25", "b26", "b27", "b28", "b29",
+	};
+	for ( int i = 0; i < ARRAYSIZE( pszKeys ); ++i )
+	{
+		if ( BlueprintLogName( pszLog, pszKeys[i] ) || BlueprintLogName( pszName, pszKeys[i] ) )
+			return true;
+	}
+	return false;
+}
+
+static bool EngineerLoadoutBuildsMiniSentry( void )
+{
+	CEconItemView *pMelee = TFInventoryManager() ? TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_MELEE ) : NULL;
+	if ( !pMelee || !pMelee->IsValid() )
+		return false;
+	static CSchemaAttributeDefHandle pAttr_MiniSentry( "mod wrench builds minisentry" );
+	float flMiniSentry = 0.f;
+	return FindAttribute_UnsafeBitwiseCast<attrib_value_t>( pMelee, pAttr_MiniSentry, &flMiniSentry ) && flMiniSentry != 0.f;
+}
+
+static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry )
+{
+	if ( BlueprintLogName( pszLog, "pda_sentry" ) || BlueprintLogName( pszLog, "b22" ) )
+	{
+		if ( bMiniSentry )
+		{
+			if ( gHUD.GetIcon( "hud_menu_sentry_build_mini" ) )
+				return "hud_menu_sentry_build_mini";
+			if ( gHUD.GetIcon( "obj_status_sentrygun_1" ) )
+				return "obj_status_sentrygun_1";
+		}
+		return "hud_menu_sentry_build";
+	}
+	if ( BlueprintLogName( pszLog, "pda_dispenser" ) || BlueprintLogName( pszLog, "b23" ) )
+		return "hud_menu_dispenser_build";
+	if ( BlueprintLogName( pszLog, "pda_tele_entrance" ) || BlueprintLogName( pszLog, "b24" ) )
+		return "hud_menu_tele_entrance_build";
+	if ( BlueprintLogName( pszLog, "pda_tele_exit" ) || BlueprintLogName( pszLog, "b25" ) )
+		return "hud_menu_tele_exit_build";
+	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
+		return "d_firedeath";
+	return NULL;
+}
+
+static const char *BlueprintVguiImage( const char *pszLog )
+{
+	if ( BlueprintLogName( pszLog, "chem_poison" ) || BlueprintLogName( pszLog, "b26" ) )
+		return "../vgui/bleed_drop";
+	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" ) )
+		return "../vgui/slowed";
+	if ( BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
+		return "../effects/jarated";
+	return NULL;
+}
+
+static Color BlueprintIconColor( const char *pszLog )
+{
+	if ( BlueprintLogName( pszLog, "chem_poison" ) || BlueprintLogName( pszLog, "b26" ) )
+		return Color( 220, 40, 40, 255 );
+	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
+		return Color( 255, 150, 40, 255 );
+	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" )
+		|| BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
+		return Color( 230, 210, 40, 255 );
+	return Color( 255, 255, 255, 255 );
+}
+
+static const char *BlueprintItemKey( const CEconItemView *pItem )
+{
+	if ( !pItem || !pItem->GetItemDefinition() )
+		return NULL;
+	const char *pszLog = pItem->GetItemDefinition()->GetLogClassname();
+	if ( pszLog && pszLog[0] )
+		return pszLog;
+	return pItem->GetItemDefinition()->GetDefinitionName();
+}
+
+void CItemModelPanel::PositionBlueprintIcon( void )
+{
+	if ( !m_pBlueprintHudIcon && !m_pBlueprintImage )
+		return;
+
+	const int iPanelW = GetWide();
+	const int iPanelH = GetTall();
+	int iIcon = ( iPanelH * 58 ) / 100;
+	const int iMax = ( iPanelW * 58 ) / 100;
+	if ( iIcon > iMax )
+		iIcon = iMax;
+	if ( iIcon < 8 )
+		iIcon = 8;
+	const int x = ( iPanelW - iIcon ) / 2;
+	const int y = ( iPanelH * 6 ) / 100;
+	if ( m_pBlueprintHudIcon )
+		m_pBlueprintHudIcon->SetBounds( x, y, iIcon, iIcon );
+	if ( m_pBlueprintImage )
+		m_pBlueprintImage->SetBounds( x, y, iIcon, iIcon );
+}
+
+void CItemModelPanel::ApplyBlueprintIcon( void )
+{
+	const CEconItemView *pItem = GetItem();
+	const char *pszKey = BlueprintItemKey( pItem );
+	const bool bShow = ItemWantsBlueprintIcon( pItem );
+	m_bBlueprintIconActive = bShow;
+
+	if ( !bShow )
+	{
+		if ( m_pBlueprintHudIcon )
+			m_pBlueprintHudIcon->SetVisible( false );
+		if ( m_pBlueprintImage )
+			m_pBlueprintImage->SetVisible( false );
+		return;
+	}
+
+	SetModelIsHidden( true );
+	if ( m_pLoadingSpinner )
+		m_pLoadingSpinner->SetVisible( false );
+
+	const bool bMini = EngineerLoadoutBuildsMiniSentry();
+	const char *pszHud = BlueprintHudIconName( pszKey, bMini );
+	const char *pszImage = pszHud ? NULL : BlueprintVguiImage( pszKey );
+	Color iconColor = BlueprintIconColor( pszKey );
+	if ( IsGreyedOut() )
+		iconColor = Color( 128, 128, 128, 255 );
+
+	if ( pszHud )
+	{
+		if ( !m_pBlueprintHudIcon )
+		{
+			m_pBlueprintHudIcon = new CIconPanel( this, "BlueprintHudIcon" );
+			KeyValues *pKV = new KeyValues( "IconPanel" );
+			pKV->SetInt( "scaleImage", 1 );
+			m_pBlueprintHudIcon->ApplySettings( pKV );
+			pKV->deleteThis();
+			m_pBlueprintHudIcon->SetMouseInputEnabled( false );
+			m_pBlueprintHudIcon->SetKeyBoardInputEnabled( false );
+			m_pBlueprintHudIcon->SetPaintBackgroundEnabled( false );
+			m_pBlueprintHudIcon->SetZPos( 50 );
+		}
+		m_pBlueprintHudIcon->SetIcon( pszHud );
+		m_pBlueprintHudIcon->SetIconColor( iconColor );
+		m_pBlueprintHudIcon->SetVisible( true );
+		m_pBlueprintHudIcon->MoveToFront();
+		if ( m_pBlueprintImage )
+			m_pBlueprintImage->SetVisible( false );
+	}
+	else if ( pszImage )
+	{
+		if ( !m_pBlueprintImage )
+		{
+			m_pBlueprintImage = new vgui::ImagePanel( this, "BlueprintDebuffIcon" );
+			m_pBlueprintImage->SetShouldScaleImage( true );
+			m_pBlueprintImage->SetMouseInputEnabled( false );
+			m_pBlueprintImage->SetKeyBoardInputEnabled( false );
+			m_pBlueprintImage->SetPaintBackgroundEnabled( false );
+			m_pBlueprintImage->SetZPos( 50 );
+		}
+		m_pBlueprintImage->SetImage( pszImage );
+		m_pBlueprintImage->SetDrawColor( iconColor );
+		m_pBlueprintImage->SetVisible( true );
+		m_pBlueprintImage->MoveToFront();
+		if ( m_pBlueprintHudIcon )
+			m_pBlueprintHudIcon->SetVisible( false );
+	}
+
+	PositionBlueprintIcon();
+}
+
+void CItemModelPanel::RefreshBlueprintIcon( void )
+{
+	ApplyBlueprintIcon();
+}
+#else
+void CItemModelPanel::RefreshBlueprintIcon( void )
+{
+}
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -3389,7 +3614,8 @@ void CItemModelPanel::SetGreyedOut( const char *pszGreyedOutReason )
 	{
 		m_pModelPanel->SetGreyedOut( m_pszGreyedOutReason != NULL );
 	}
-	UpdateEquippedLabel(); 
+	UpdateEquippedLabel();
+	RefreshBlueprintIcon();
 }
 
 //-----------------------------------------------------------------------------

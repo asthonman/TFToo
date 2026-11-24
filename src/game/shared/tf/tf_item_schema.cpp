@@ -517,62 +517,111 @@ bool CTFCraftingRecipeDefinition::CheckSubItemListAgainstBackpack( CUtlVector<CE
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+static char *DupPerClassString( const char *psz )
+{
+	if ( !psz || !psz[0] )
+		return NULL;
+
+	const int nLength = V_strlen( psz ) + 1;
+	char *pszOut = new char[ nLength ];
+	V_strncpy( pszOut, psz, nLength );
+	return pszOut;
+}
+
+// Every non-NULL entry is a string this function allocated. Slots used to
+// alias each other, and the old code freed them with delete instead of
+// delete[]. That corrupted the heap, and the Madcap/Chemist slots (allocated
+// last) were the ones that faulted in UpdateModelToClass.
+static void FreePerClassStrings( const char *(&outputArray)[LOADOUT_COUNT] )
+{
+	for ( int i = 0; i < LOADOUT_COUNT; ++i )
+	{
+		const char *psz = outputArray[i];
+		if ( !psz )
+			continue;
+
+		for ( int j = i; j < LOADOUT_COUNT; ++j )
+		{
+			if ( outputArray[j] == psz )
+				outputArray[j] = NULL;
+		}
+
+		delete[] const_cast<char *>( psz );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 static void InitPerClassStringArray( KeyValues *pPerClassData, const char *(&outputArray)[LOADOUT_COUNT] )
 {
-	if ( pPerClassData )
+	if ( !pPerClassData )
+		return;
+
+	FreePerClassStrings( outputArray );
+
+	const char* pszBaseName = pPerClassData->GetString( "basename", NULL );
+
+	for ( int i = TF_FIRST_NORMAL_CLASS; i < TF_LAST_NORMAL_CLASS; i++ )
 	{
-		const char* pszBaseName = pPerClassData->GetString( "basename", NULL );
+		char* pszOut = NULL;
 
-		for ( int i = TF_FIRST_NORMAL_CLASS; i < TF_LAST_NORMAL_CLASS; i++ )
+		CUtlString strClassString( pPerClassData->GetString( GetItemSchema()->GetClassUsabilityStrings()[i], NULL ) );
+
+		// If there's a class specific string defined, use that
+		if ( !strClassString.IsEmpty() )
 		{
-			if ( outputArray[i] && *outputArray[i] )
+			pszOut = DupPerClassString( strClassString.Get() );
+		}
+		else if ( pszBaseName )
+		{
+			// If we have a basename specified, use that to construct our class-specific string
+			// ( ex. models/badge_%s.mdl turns into models/badge_scout.mdl, etc. )
+
+			// So this is fun.  ClassUsabilityStrings refers to the "Demoman", but the vast majority of his models are whatever_demo.mdl
+			// The RIGHT fix would be to either: 
+			//		1) change all the model and content files to whatever_demoman.mdl
+			//		2) fixup the schema so every reference to "demoman" is changed to "demo" and update GetClassUsabilityStrings
+			//				and fix everything that breaks
+			// But we're not doing that right now.  If this class is the TF_CLASS_DEMOMAN, just force "demo"
+			// Custom classes wear a donor body, so they use that class's mesh
+			// instead of a path that was never authored (items/Chemist/...).
+			const int iModelClass = TF_DisplayModelDonorClass( i );
+			const char *pszToken = "scout";
+			if ( iModelClass >= 0 && iModelClass < LOADOUT_COUNT )
 			{
-				delete outputArray[i];
-				outputArray[i] = NULL;
+				const char *pszClassToken = GetItemSchema()->GetClassUsabilityStrings()[iModelClass];
+				if ( pszClassToken && pszClassToken[0] )
+					pszToken = pszClassToken;
 			}
 
-			char* pszOut = NULL;
-	
-			CUtlString strClassString( pPerClassData->GetString( GetItemSchema()->GetClassUsabilityStrings()[i], NULL ) );
-
-			// If there's a class specific string defined, use that
-			if ( !strClassString.IsEmpty() )
+			CFmtStr fmtStr;
+			if ( iModelClass == TF_CLASS_DEMOMAN )
 			{
-				size_t nLength = strClassString.Length() + 1;
-				pszOut = new char[ nLength ];
-				V_strncpy( pszOut, strClassString, nLength );
+				fmtStr.sprintf( pszBaseName, "demo", "demo", "demo" );
 			}
-			else if ( pszBaseName )
+			else
 			{
-				// If we have a basename specified, use that to construct our class-specific string
-				// ( ex. models/badge_%s.mdl turns into models/badge_scout.mdl, etc. )
-
-				// So this is fun.  ClassUsabilityStrings refers to the "Demoman", but the vast majority of his models are whatever_demo.mdl
-				// The RIGHT fix would be to either: 
-				//		1) change all the model and content files to whatever_demoman.mdl
-				//		2) fixup the schema so every reference to "demoman" is changed to "demo" and update GetClassUsabilityStrings
-				//				and fix everything that breaks
-				// But we're not doing that right now.  If this class is the TF_CLASS_DEMOMAN, just force "demo"
-				CFmtStr fmtStr;
-				if ( i == TF_CLASS_DEMOMAN )
-				{
-					fmtStr.sprintf( pszBaseName, "demo", "demo", "demo" );
-				}
-				else
-				{
-					fmtStr.sprintf( pszBaseName, GetItemSchema()->GetClassUsabilityStrings()[i], GetItemSchema()->GetClassUsabilityStrings()[i], GetItemSchema()->GetClassUsabilityStrings()[i] );
-				}
-
-				int nLength = fmtStr.Length() + 1;
-				pszOut = new char[ nLength ];
-				V_strncpy( pszOut, fmtStr, nLength );
+				fmtStr.sprintf( pszBaseName, pszToken, pszToken, pszToken );
 			}
 
-			outputArray[i] = pszOut;
+			pszOut = DupPerClassString( fmtStr.Get() );
+		}
 
-			if ( outputArray[0] == NULL )
+		outputArray[i] = pszOut;
+	}
+
+	// Class 0 is not a player. Give it its own copy of the first real mesh.
+	// Aliasing this to another slot is what left a dangling pointer after the
+	// next pass freed that slot.
+	if ( outputArray[0] == NULL )
+	{
+		for ( int i = TF_FIRST_NORMAL_CLASS; i < TF_LAST_NORMAL_CLASS; ++i )
+		{
+			if ( outputArray[i] && outputArray[i][0] )
 			{
-				outputArray[0] = outputArray[i];
+				outputArray[0] = DupPerClassString( outputArray[i] );
+				break;
 			}
 		}
 	}
@@ -1582,17 +1631,22 @@ void CTFStyleInfo::GeneratePrecacheModelStringsForStyle( CUtlVector<const char *
 //-----------------------------------------------------------------------------
 const char *CTFStyleInfo::GetPlayerDisplayModel( int iClass, int iTeam ) const
 {
-	Assert( iClass >= 0 );
-	Assert( iClass < ARRAYSIZE( m_pszPlayerDisplayModel[0] ) );
+	if ( iClass < 0 || iClass >= ARRAYSIZE( m_pszPlayerDisplayModel[0] ) )
+		return NULL;
 
-	const char *pszBlueModel = m_pszPlayerDisplayModel[1][iClass];
-	if ( iTeam == TF_TEAM_BLUE && pszBlueModel && *pszBlueModel )
-	{
-		return pszBlueModel;
-	}
+	// Madcap, Witch, and Chemist wear a donor body. Their own style slot was
+	// never a mesh that shipped, and reading it is what faulted in
+	// UpdateModelToClass. Use the donor slot before touching theirs.
+	const int iDonor = TF_DisplayModelDonorClass( iClass );
+	if ( iDonor != iClass && iDonor >= 0 && iDonor < ARRAYSIZE( m_pszPlayerDisplayModel[0] ) )
+		iClass = iDonor;
 
-	// always return red team as default
-	return m_pszPlayerDisplayModel[0][iClass];
+	const int iTeamSlot = ( iTeam == TF_TEAM_BLUE ) ? 1 : 0;
+	const char *pszModel = m_pszPlayerDisplayModel[iTeamSlot][iClass];
+	if ( ( !pszModel || !pszModel[0] ) && iTeamSlot == 1 )
+		pszModel = m_pszPlayerDisplayModel[0][iClass];
+
+	return ( pszModel && pszModel[0] ) ? pszModel : NULL;
 }
 
 //-----------------------------------------------------------------------------

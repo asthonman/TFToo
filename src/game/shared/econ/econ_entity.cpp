@@ -394,6 +394,12 @@ void CEconEntity::UpdateModelToClass( void )
 		return;
 
 	const char *pszModel = NULL;
+	int iClass = m_iOldOwnerClass;
+	if ( iClass < 0 || iClass >= TF_CLASS_COUNT_ALL )
+		iClass = TF_CLASS_SCOUT;
+
+	// Wearables and world models are authored for the donor body.
+	const int iModelClass = TF_DisplayModelDonorClass( iClass );
 
 	// If we attach to hands, we need to use the hand models
 	if ( pItem->GetStaticData()->ShouldAttachToHands() )
@@ -409,7 +415,7 @@ void CEconEntity::UpdateModelToClass( void )
 			nTeam = pPlayer->m_Shared.GetDisguiseTeam();
 		}
 
-		pszModel = pItem->GetPlayerDisplayModel( m_iOldOwnerClass, nTeam );
+		pszModel = pItem->GetPlayerDisplayModel( iModelClass, nTeam );
 	}
 	if ( pszModel && pszModel[0] )
 	{
@@ -419,7 +425,7 @@ void CEconEntity::UpdateModelToClass( void )
 			{
 				modelinfo->RegisterDynamicModel( pszModel, IsClient() );
 
-				const char *pszModelAlt = pItem->GetStaticData()->GetPlayerDisplayModelAlt( m_iOldOwnerClass );
+				const char *pszModelAlt = pItem->GetStaticData()->GetPlayerDisplayModelAlt( iModelClass );
 				if ( pszModelAlt && pszModelAlt[0] )
 				{
 					modelinfo->RegisterDynamicModel( pszModelAlt, IsClient() );
@@ -437,8 +443,13 @@ void CEconEntity::UpdateModelToClass( void )
 
 	if ( GetModelPtr() && pItem->GetStaticData()->UsesPerClassBodygroups( GetTeamNumber() ) )
 	{
-		// Classes start at 1, bodygroups at 0, so we shift them all back 1.
-		SetBodygroup( 1, (m_iOldOwnerClass-1) );
+		// Classes start at 1, bodygroups at 0. Custom classes wear a donor
+		// body, so they use that class's bodygroup instead of walking off
+		// the end of the set.
+		int iBodyClass = TF_DisplayModelDonorClass( m_iOldOwnerClass );
+		if ( iBodyClass < TF_FIRST_NORMAL_CLASS || iBodyClass >= TF_CLASS_COUNT_ALL )
+			iBodyClass = TF_CLASS_SCOUT;
+		SetBodygroup( 1, iBodyClass - 1 );
 	}
 #endif
 }

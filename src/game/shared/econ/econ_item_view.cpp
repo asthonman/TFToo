@@ -927,6 +927,18 @@ const char *CEconItemView::GetPlayerDisplayModel( int iClass, int iTeam ) const
 	if ( !pDef )
 		return NULL;
 
+#if defined( TF_DLL ) || defined( TF_CLIENT_DLL )
+	// Madcap wears the Scout, the Witch the Spy, the Chemist the Engineer.
+	// Resolve that before any per-class slot is read. The custom-class slot
+	// is not a shipped mesh, and a stale pointer there is the class-change crash.
+	if ( iClass >= 0 && iClass < LOADOUT_COUNT )
+	{
+		const int iDonor = TF_DisplayModelDonorClass( iClass );
+		if ( iDonor != iClass && iDonor >= 0 && iDonor < LOADOUT_COUNT )
+			iClass = iDonor;
+	}
+#endif
+
 	// If we have styles, give the style system a chance to change the mesh used for this
 	// player class.
 	if ( pDef->GetNumStyles() )
@@ -939,10 +951,16 @@ const char *CEconItemView::GetPlayerDisplayModel( int iClass, int iTeam ) const
 		if ( pStyle )
 		{
 #if defined( TF_DLL ) || defined( TF_CLIENT_DLL )
-			// TF styles support per-class models.
-			const CTFStyleInfo *pTFStyle = assert_cast<const CTFStyleInfo *>( pStyle );
-			if ( pTFStyle->GetPlayerDisplayModel( iClass, iTeam ) )
-				return pTFStyle->GetPlayerDisplayModel( iClass, iTeam );
+			// TF styles support per-class models. A NULL result means this
+			// style has no mesh for the class; fall through to the item def
+			// so a donor class can still supply one.
+			const CTFStyleInfo *pTFStyle = dynamic_cast<const CTFStyleInfo *>( pStyle );
+			if ( pTFStyle )
+			{
+				const char *pszStyleModel = pTFStyle->GetPlayerDisplayModel( iClass, iTeam );
+				if ( pszStyleModel && pszStyleModel[0] )
+					return pszStyleModel;
+			}
 #endif // defined( TF_DLL ) || defined( TF_CLIENT_DLL )
 
 			if ( pStyle->GetBasePlayerDisplayModel() )

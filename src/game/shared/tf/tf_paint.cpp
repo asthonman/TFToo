@@ -31,6 +31,7 @@
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/imaterial.h"
 #include "texture_group_names.h"
+#include "engine/IStaticPropMgr.h"
 #endif
 
 #include "materialsystem/imaterialvar.h"
@@ -149,22 +150,6 @@ static bool TFPaint_SurfaceBlocksPaint( const trace_t &tr )
 
 	return false;
 }
-
-//-----------------------------------------------------------------------------
-class CTraceFilterNoPlayers : public CTraceFilterSimple
-{
-public:
-	CTraceFilterNoPlayers( const IHandleEntity *pass )
-		: CTraceFilterSimple( pass, COLLISION_GROUP_NONE ) {}
-
-	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask )
-	{
-		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
-		if ( pEnt && pEnt->IsPlayer() )
-			return false;
-		return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
-	}
-};
 
 //-----------------------------------------------------------------------------
 class CTFPaintMap : public CBaseEntity
@@ -745,73 +730,129 @@ private:
 	CBaseEntity *m_pOwner;
 };
 
-// Dynamic props and func_brush stop a bullet, but they are not gel surfaces.
-static bool TFPaint_EntityRejectsPaint( CBaseEntity *pEnt )
+// Decals stick to world brushes and static props. Players, dynamic props,
+// physics props, and func_brush are not surfaces, so the trace goes through them.
+class CTraceFilterPaintDecal : public CTraceFilter
 {
-	if ( !pEnt || pEnt->IsWorld() )
-		return false;
-	const char *cls = pEnt->GetClassname();
-	if ( !cls || !cls[0] )
-		return false;
-	if ( !Q_strnicmp( cls, "prop_dynamic", 12 ) )
-		return true;
-	if ( !Q_stricmp( cls, "func_brush" ) )
-		return true;
-	return false;
+public:
+	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask )
+	{
+		if ( !pHandle )
+			return false;
+		if ( staticpropmgr->IsStaticProp( pHandle ) )
+			return true;
+
+		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
+		if ( !pEnt || pEnt->IsPlayer() )
+			return false;
+		// Worldspawn only. func_brush is a brush entity and is not a gel surface.
+		return pEnt->IsWorld();
+	}
+
+	virtual TraceType_t GetTraceType() const
+	{
+		// Static props are passed through ShouldHitEntity, unlike TRACE_EVERYTHING.
+		return TRACE_EVERYTHING_FILTER_PROPS;
+	}
+};
+
+void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr )
+{
+	CTraceFilterPaintDecal filter;
+	UTIL_TraceHull( start, end, mins, maxs, TF_PAINT_VIS_MASK, &filter, &tr );
 }
 
-// Splash damage uses TF_PAINT_VIS_MASK. A surface that mask does not stop on
-// is bullet-pass, same as a grate between a blast and a player.
-static bool TFPaint_SplashMisses( const Vector &start, const Vector &end, const trace_t &solidHit )
+// A hit is a decal surface only when it is a world brush or a static prop.
+// Players are never a surface, even if a projectile stopped on one.
+static bool TFPaint_TraceIsDecalSurface( const trace_t &tr, bool bForce )
 {
-	if ( solidHit.contents & CONTENTS_GRATE )
-		return true;
-
-	trace_t vis;
-	CTraceFilterNoPlayers filter( NULL );
-	UTIL_TraceLine( start, end, TF_PAINT_VIS_MASK, &filter, &vis );
-	if ( vis.startsolid && vis.m_pEnt == solidHit.m_pEnt )
+	if ( tr.fraction >= 1.f || tr.startsolid )
 		return false;
-	if ( vis.m_pEnt == solidHit.m_pEnt && vis.fraction <= solidHit.fraction + 0.02f )
+	if ( tr.surface.flags & SURF_SKY )
+		return false;
+	if ( tr.contents & CONTENTS_GRATE )
+		return false;
+
+	if ( tr.m_pEnt )
+	{
+		// Static props are not CBaseEntity. Check that before any entity call.
+		if ( staticpropmgr->IsStaticProp( tr.m_pEnt ) )
+		{
+			if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
+				return false;
+			return true;
+		}
+		if ( tr.m_pEnt->IsPlayer() || !tr.m_pEnt->IsWorld() )
+			return false;
+	}
+
+	if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
 		return false;
 	return true;
 }
 
-// bForce still paints over $nodecal (allied buildings). It does not paint a
-// bullet-pass material, a dynamic prop, or a func_brush.
-static bool TFPaint_SpotRejectsPaint( const Vector &pos, const Vector &normal, bool bForce )
+// Find the brush or static prop a splat should stick to. pos may be a player
+// the projectile actually touched; that is not where the decal goes.
+static bool TFPaint_ResolveDecalSurface( const Vector &pos, const Vector &hintNormal, float reach, bool bForce, Vector &outPos, Vector &outNormal )
 {
-	Vector n = normal;
+	if ( reach < 8.f )
+		reach = 8.f;
+
+	CTraceFilterPaintDecal filter;
+	Vector n = hintNormal;
 	if ( n.LengthSqr() < 0.01f )
-		n.Init( 0, 0, 1 );
+		n.Init( 0.f, 0.f, 1.f );
 	VectorNormalize( n );
 
-	const Vector start = pos + n * 2.f;
-	const Vector end = pos - n * 8.f;
+	const Vector along[2] = { -n, n };
+	const float nearReach = ( reach < 24.f ) ? reach : 24.f;
+	const float passes[2] = { nearReach, reach };
+	for ( int pass = 0; pass < 2; ++pass )
+	{
+		if ( pass == 1 && reach <= nearReach + 1.f )
+			break;
+		for ( int i = 0; i < 2; ++i )
+		{
+			const Vector start = pos - along[i] * 2.f;
+			const Vector end = pos + along[i] * passes[pass];
+			trace_t tr;
+			UTIL_TraceLine( start, end, TF_PAINT_VIS_MASK, &filter, &tr );
+			if ( !TFPaint_TraceIsDecalSurface( tr, bForce ) )
+				continue;
+			outPos = tr.endpos;
+			outNormal = tr.plane.normal;
+			if ( outNormal.LengthSqr() < 0.01f )
+				outNormal = -along[i];
+			return true;
+		}
+	}
 
-	trace_t tr;
-	CTraceFilterNoPlayers filter( NULL );
-	UTIL_TraceLine( start, end, MASK_SOLID, &filter, &tr );
-	if ( ( tr.fraction >= 1.f && !tr.startsolid ) || !tr.m_pEnt )
-		return false;
-	if ( TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
-		return true;
-	if ( TFPaint_SplashMisses( start, end, tr ) )
-		return true;
-	if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
-		return true;
-	return false;
-}
-
-static bool TFPaint_HitRejectsPaint( const trace_t &tr, bool bForce )
-{
-	if ( TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
-		return true;
-	if ( tr.contents & CONTENTS_GRATE )
-		return true;
-	if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
-		return true;
-	return false;
+	static const Vector dirs[6] =
+	{
+		Vector( 0, 0, -1 ), Vector( 0, 0, 1 ),
+		Vector( 1, 0, 0 ), Vector( -1, 0, 0 ),
+		Vector( 0, 1, 0 ), Vector( 0, -1, 0 ),
+	};
+	float best = reach;
+	bool found = false;
+	for ( int i = 0; i < 6; ++i )
+	{
+		trace_t tr;
+		UTIL_TraceLine( pos, pos + dirs[i] * reach, TF_PAINT_VIS_MASK, &filter, &tr );
+		if ( !TFPaint_TraceIsDecalSurface( tr, bForce ) )
+			continue;
+		const float dist = tr.fraction * reach;
+		if ( dist < best )
+		{
+			best = dist;
+			outPos = tr.endpos;
+			outNormal = tr.plane.normal;
+			if ( outNormal.LengthSqr() < 0.01f )
+				outNormal = -dirs[i];
+			found = true;
+		}
+	}
+	return found;
 }
 
 void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam, bool bForce )
@@ -833,10 +874,18 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
-	if ( TFPaint_SpotRejectsPaint( pos, n, bForce ) )
+	Vector stampPos = pos;
+	Vector stampN = n;
+	float reach = radius;
+	if ( reach < 24.f )
+		reach = 24.f;
+	if ( reach > 128.f )
+		reach = 128.f;
+	// A player contact is not a decal. Move the splat onto the brush or static prop.
+	if ( !TFPaint_ResolveDecalSurface( pos, n, reach, bForce, stampPos, stampN ) && !bForce )
 		return;
 
-	PushStamp( pos, n, type, radius, flCoatLife, iTeam );
+	PushStamp( stampPos, stampN, type, radius, flCoatLife, iTeam );
 	ReplayStamps();
 }
 
@@ -1006,84 +1055,93 @@ void CTFPaintMap::Think( void )
 
 		const bool bGrease = ( m_flBlobCoatLife[i] > 0.f );
 		trace_t tr;
-		const int mask = bGrease ? ( TF_PAINT_VIS_MASK | CONTENTS_HITBOX ) : TF_PAINT_VIS_MASK;
+		CTraceFilterPaintDecal decalFilter;
+		UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, TF_PAINT_VIS_MASK, &decalFilter, &tr );
+
 		if ( bGrease )
 		{
-			CTraceFilterPaintBlob filter( this, m_hBlobOwner[i].Get() );
-			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, mask, &filter, &tr );
-		}
-		else
-		{
-			CTraceFilterNoPlayers filter( this );
-			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, mask, &filter, &tr );
-		}
-
-		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
-		{
-			CTFPlayer *pVictim = ToTFPlayer( tr.m_pEnt );
-			if ( bGrease && pVictim )
+			trace_t entTr;
+			CTraceFilterPaintBlob entFilter( this, m_hBlobOwner[i].Get() );
+			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SHOT, &entFilter, &entTr );
+			const bool bEntCloser = entTr.fraction < 1.f && ( tr.fraction >= 1.f || entTr.fraction <= tr.fraction + 0.001f );
+			if ( bEntCloser && entTr.m_pEnt && !staticpropmgr->IsStaticProp( entTr.m_pEnt ) )
 			{
-				if ( pVictim->IsAlive() )
+				CTFPlayer *pVictim = ToTFPlayer( entTr.m_pEnt );
+				if ( pVictim )
 				{
-					pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
-					pVictim->m_Shared.AddWet( 10.f );
-					PlaySplatSound( tr.endpos );
+					if ( pVictim->IsAlive() )
+					{
+						pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
+						pVictim->m_Shared.AddWet( 10.f );
+						PlaySplatSound( entTr.endpos );
+					}
+					// The player is not where the decal goes. If this step also
+					// reached a brush or static prop, fall through and stamp that.
+					if ( !TFPaint_TraceIsDecalSurface( tr, false ) )
+					{
+						Vector push = m_vecBlobVel[i];
+						if ( push.NormalizeInPlace() < 0.1f )
+							push = next - m_vecBlobPos[i];
+						VectorNormalize( push );
+						float skip = pVictim->BoundingRadius();
+						if ( skip < 24.f )
+							skip = 24.f;
+						m_vecBlobPos.Set( i, entTr.endpos + push * ( skip + 8.f ) );
+						continue;
+					}
 				}
-				m_nBlobType.Set( i, 0 );
-				m_flBlobCoatLife[i] = 0.f;
-				m_hBlobOwner[i] = NULL;
-				continue;
-			}
-
-			// Bullet-pass, dynamic props, and func_brush are not gel surfaces.
-			// Splash damage does not stop on them either, so the blob keeps going.
-			if ( ( tr.contents & CONTENTS_GRATE ) || TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
-			{
-				Vector push = m_vecBlobVel[i];
-				if ( push.NormalizeInPlace() < 0.1f )
-					push = next - m_vecBlobPos[i];
-				VectorNormalize( push );
-				m_vecBlobPos.Set( i, tr.endpos + push * 24.f );
-				continue;
-			}
-
-			int team = ( packed >> 4 ) & 0x0F;
-			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
-			if ( team < TF_TEAM_RED && pOwner )
-				team = pOwner->GetTeamNumber();
-			int type = ( packed & 0x0F ) - 1;
-
-			// Grease on an allied building has to stick even when the model
-			// suppresses decals, and it has to cover the building, not just the pixel we hit.
-			bool bCoatedBuilding = false;
-			if ( bGrease && tr.m_pEnt && tr.m_pEnt->IsBaseObject() && type == SIXTH_POWER )
-			{
-				if ( team < TF_TEAM_RED || tr.m_pEnt->GetTeamNumber() == team )
+				else if ( entTr.m_pEnt->IsBaseObject() )
 				{
-					const float flLife = m_flBlobCoatLife[i];
-					PaintSphere( tr.m_pEnt->GetAbsOrigin(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
-					PaintSphere( tr.m_pEnt->WorldSpaceCenter(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
-					bCoatedBuilding = true;
+					int team = ( packed >> 4 ) & 0x0F;
+					CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+					if ( team < TF_TEAM_RED && pOwner )
+						team = pOwner->GetTeamNumber();
+					int type = ( packed & 0x0F ) - 1;
+					if ( type == SIXTH_POWER && ( team < TF_TEAM_RED || entTr.m_pEnt->GetTeamNumber() == team ) )
+					{
+						const float flLife = m_flBlobCoatLife[i];
+						PaintSphere( entTr.m_pEnt->GetAbsOrigin(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
+						PaintSphere( entTr.m_pEnt->WorldSpaceCenter(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
+					}
+					if ( tr.fraction >= 1.f )
+					{
+						m_nBlobType.Set( i, 0 );
+						m_flBlobCoatLife[i] = 0.f;
+						m_hBlobOwner[i] = NULL;
+						continue;
+					}
 				}
 			}
+		}
 
-			if ( TFPaint_HitRejectsPaint( tr, bCoatedBuilding ) && !bCoatedBuilding )
-			{
-				m_nBlobType.Set( i, 0 );
-				m_flBlobCoatLife[i] = 0.f;
-				m_hBlobOwner[i] = NULL;
-				continue;
-			}
+		if ( tr.startsolid )
+		{
+			// Inside a brush. Keep the glob moving; do not treat that as a splat,
+			// and do not stick it to a player we started overlapping.
+			m_vecBlobPos.Set( i, next );
+			continue;
+		}
 
-			if ( !TFPaint_HitRejectsPaint( tr, false ) )
+		if ( tr.fraction < 1.f )
+		{
+			if ( TFPaint_TraceIsDecalSurface( tr, false ) )
 			{
+				int team = ( packed >> 4 ) & 0x0F;
+				CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+				if ( team < TF_TEAM_RED && pOwner )
+					team = pOwner->GetTeamNumber();
+				int type = ( packed & 0x0F ) - 1;
+
 				if ( type == NO_POWER )
 					EraseSphere( tr.endpos, splatR );
 				else
 					PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i], team, false );
+
+				PlaySplatSound( tr.endpos );
 			}
 
-			PlaySplatSound( tr.endpos );
+			// Sky, $nodecal, and anything that is not a brush or static prop
+			// do not get a splat. Players were already stepped through above.
 			m_nBlobType.Set( i, 0 );
 			m_flBlobCoatLife[i] = 0.f;
 			m_hBlobOwner[i] = NULL;
@@ -1108,8 +1166,14 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 	if ( n.LengthSqr() < 0.01f )
 		n.Init( 0.f, 0.f, 1.f );
 	VectorNormalize( n );
-	// Same rejects as a blob. bForce only skips $nodecal.
-	if ( TFPaint_SpotRejectsPaint( pos, n, true ) )
+	// The coat's decal is the brush or static prop, not whoever the jar hit.
+	Vector stampPos, stampN;
+	float reach = radius;
+	if ( reach < 48.f )
+		reach = 48.f;
+	if ( reach > 160.f )
+		reach = 160.f;
+	if ( !TFPaint_ResolveDecalSurface( pos, n, reach, false, stampPos, stampN ) )
 		return;
 
 	if ( m_ChemCoats.Count() >= 24 )
@@ -1118,7 +1182,7 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 	}
 
 	ChemCoat_t coat;
-	coat.pos = pos;
+	coat.pos = stampPos;
 	coat.radius = radius;
 	coat.die = gpGlobals->curtime + lifetime;
 	coat.type = type;
@@ -1130,7 +1194,7 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 	int team = 0;
 	if ( pOwner )
 		team = pOwner->GetTeamNumber();
-	PaintSphere( pos, normal, type, radius, lifetime, team, true );
+	PaintSphere( stampPos, stampN, type, radius, lifetime, team, false );
 }
 
 void CTFPaintMap::EraseCoatsNear( const Vector &pos, float radius )
@@ -1830,10 +1894,10 @@ void CPaintSphere::Paint( void )
 	for ( int i = 0; i < 6; ++i )
 	{
 		trace_t tr;
-		CTraceFilterNoPlayers filter( this );
+		CTraceFilterPaintDecal filter;
 		UTIL_TraceHull( GetAbsOrigin(), GetAbsOrigin() + dirs[i] * m_flRad,
-			Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), MASK_SOLID, &filter, &tr );
-		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
+			Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), TF_PAINT_VIS_MASK, &filter, &tr );
+		if ( TFPaint_TraceIsDecalSurface( tr, false ) )
 		{
 			if ( m_nPaintType == NO_POWER )
 				TFPaint_EraseSphere( tr.endpos, rad );

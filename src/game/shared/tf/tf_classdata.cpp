@@ -327,7 +327,8 @@ void CTFPlayerClassDataMgr::LevelInitPostEntity( void )
 //-----------------------------------------------------------------------------
 TFPlayerClassData_t *CTFPlayerClassDataMgr::Get( unsigned int iClass )
 {
-	Assert ( iClass < TF_CLASS_COUNT_ALL );
+	if ( iClass >= TF_CLASS_COUNT_ALL )
+		iClass = TF_CLASS_SCOUT;
 	return &m_aTFPlayerClassData[iClass];
 }
 

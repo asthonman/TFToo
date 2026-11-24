@@ -237,6 +237,19 @@ enum ETFClass
 	TF_CLASS_RANDOM
 };
 
+// Madcap wears the Scout, the Witch wears the Spy, the Chemist wears the
+// Engineer. Per-class item meshes are authored for those bodies.
+inline int TF_DisplayModelDonorClass( int iClass )
+{
+	switch ( iClass )
+	{
+	case TF_CLASS_MADCAP:	return TF_CLASS_SCOUT;
+	case TF_CLASS_WITCH:	return TF_CLASS_SPY;
+	case TF_CLASS_CHEMIST:	return TF_CLASS_ENGINEER;
+	default:				return iClass;
+	}
+}
+
 // Outlines from a shot, spell, ability, voice line, or sentry. Shorter than
 // real hearing so a fight does not light the whole map.
 #define TF_GUARDDOG_NOISE_GLOW_RANGE		2500.0f

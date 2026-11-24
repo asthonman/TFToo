@@ -65,8 +65,9 @@ extern ConVar tf_paint_ice_accel;
 void TFPaint_GetColor( int type, int &r, int &g, int &b, int team = 0 );
 const char *TFPaint_Name( int type );
 
-// Splash damage sees a player with MASK_SHOT and no hitboxes. Gel uses the same
-// mask, so bullet-pass materials (CONTENTS_GRATE) are not a surface.
+// Gel decals stick to world brushes and static props. The trace is MASK_SHOT
+// with no hitboxes, so players and bullet-pass materials (CONTENTS_GRATE)
+// are not a surface. Dynamic props and func_brush are not either.
 #define TF_PAINT_VIS_MASK ( MASK_SHOT & ~( CONTENTS_HITBOX ) )
 
 TFPaintContact_t TFPaint_Query( const Vector &origin, float extra );
@@ -105,6 +106,11 @@ void TFPaint_EraseCoatsNear( const Vector &pos, float radius );
 void TFPaint_IgniteNitricSegment( const Vector &start, const Vector &end );
 // Any impact (bullet, projectile, melee, blast) within extra units of a nitric coat lights it.
 void TFPaint_IgniteNitricAt( const Vector &pos, float extra );
+
+#ifdef GAME_DLL
+// Brushes and static props only. Players, dynamic props, and func_brush are skipped.
+void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr );
+#endif
 
 // Bounce a projectile off repulsion gel instead of its normal surface hit.
 // Speed is kept. nOutward points out of the solid. Returns true if it bounced.

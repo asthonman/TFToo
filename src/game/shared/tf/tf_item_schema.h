@@ -260,8 +260,18 @@ public:
 	bool		CanBeUsedByAllClasses( void ) const;
 	EEquipType_t	GetEquipType( void ) const { return m_eEquipType; }
 	bool		CanBePlacedInSlot( int nSlot ) const;
-	const char	*GetPlayerDisplayModel( int iClass ) const	{ Assert( iClass >= 0 && iClass < LOADOUT_COUNT ); return m_pszPlayerDisplayModel[iClass]; }
-	virtual const char	*GetPlayerDisplayModelAlt( int iClass = 0 ) const	{ Assert( iClass >= 0 && iClass < LOADOUT_COUNT ); return m_pszPlayerDisplayModelAlt[iClass]; }
+	const char	*GetPlayerDisplayModel( int iClass ) const
+	{
+		if ( iClass < 0 || iClass >= LOADOUT_COUNT )
+			return NULL;
+		return m_pszPlayerDisplayModel[iClass];
+	}
+	virtual const char	*GetPlayerDisplayModelAlt( int iClass = 0 ) const
+	{
+		if ( iClass < 0 || iClass >= LOADOUT_COUNT )
+			return NULL;
+		return m_pszPlayerDisplayModelAlt[iClass];
+	}
 
 	int			GetLoadoutSlot( int iLoadoutClass ) const;
 	bool		IsAWearable() const;

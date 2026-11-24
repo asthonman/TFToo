@@ -160,9 +160,28 @@ const char *g_HACK_GunslingerEngineerArmsOverride = "models\\weapons\\c_models\\
 
 const char *CTFPlayerClassShared::GetHandModelName( int iHandIndex = 0 ) const
 {
-	return iHandIndex == 0
-		 ? GetPlayerClassData( m_iClass )->m_szHandModelName
-		 :g_HACK_GunslingerEngineerArmsOverride;				// this is precached in the CTFRobotArm class
+	if ( iHandIndex != 0 )
+		return g_HACK_GunslingerEngineerArmsOverride;
+
+	int iClass = m_iClass;
+	if ( iClass < TF_FIRST_NORMAL_CLASS || iClass >= TF_CLASS_COUNT_ALL )
+		iClass = TF_DisplayModelDonorClass( iClass );
+	if ( iClass < TF_FIRST_NORMAL_CLASS || iClass >= TF_CLASS_COUNT_ALL )
+		iClass = TF_CLASS_SCOUT;
+
+	const char *pszHands = GetPlayerClassData( iClass )->m_szHandModelName;
+	if ( pszHands && pszHands[0] )
+		return pszHands;
+
+	const int iDonor = TF_DisplayModelDonorClass( iClass );
+	if ( iDonor != iClass && iDonor >= TF_FIRST_NORMAL_CLASS && iDonor < TF_CLASS_COUNT_ALL )
+	{
+		pszHands = GetPlayerClassData( iDonor )->m_szHandModelName;
+		if ( pszHands && pszHands[0] )
+			return pszHands;
+	}
+
+	return "models/weapons/c_models/c_engineer_arms.mdl";
 }
 //-----------------------------------------------------------------------------
 // Purpose: Initialize the player class.

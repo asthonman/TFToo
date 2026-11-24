@@ -27,6 +27,7 @@ class CItemModelPanel;
 class CItemMaterialCustomizationIconPanel;
 class CIconRenderReceiver;
 class CEmbeddedItemModelPanel;
+class CIconPanel;
 
 enum itempanel_tooltippos_t
 {
@@ -221,6 +222,8 @@ public:
 	CEconItemView *GetItem( void ) { return ( m_ItemData.IsValid() ? &m_ItemData : NULL ); }
 	bool	ModelIsHidden( void ) const { return m_bHideModel; }
 	void	SetModelIsHidden( bool bHideModel );
+	// Build PDA and chemistry blueprints draw a HUD icon instead of the 3D model.
+	void	RefreshBlueprintIcon( void );
 	virtual void OnTick() OVERRIDE;
 	void	SetNeedsToLoad();
 	bool	LoadData();
@@ -299,8 +302,11 @@ private:
 	int		GetAttribWide( int iMaxWide ) { return (m_iTextWide ? m_iTextWide : (iMaxWide - (ATTRIB_LABEL_INDENT * 2))); }
 
 	void	LoadResFileForCurrentItem( bool bForceLoad );
-
 	void	HideAllModifierIcons();
+#ifdef TF_CLIENT_DLL
+	void	ApplyBlueprintIcon( void );
+	void	PositionBlueprintIcon( void );
+#endif
 
 	enum eLoadingType_t
 	{
@@ -335,6 +341,11 @@ private:
 	vgui::Label			*m_pMatchesLabel;
 	vgui::EditablePanel *m_pMainContentContainer;
 	vgui::ImagePanel	*m_pLoadingSpinner;
+#ifdef TF_CLIENT_DLL
+	CIconPanel			*m_pBlueprintHudIcon;
+	vgui::ImagePanel	*m_pBlueprintImage;
+	bool				m_bBlueprintIconActive;
+#endif
 	CEconItemView		m_ItemData;
 	vgui::HFont			m_pFontNameSmallest;
 	vgui::HFont			m_pFontNameSmall;
