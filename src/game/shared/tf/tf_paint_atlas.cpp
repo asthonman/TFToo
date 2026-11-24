@@ -483,10 +483,11 @@ static void TFPaintShader_Eval( const Vector &world, const Vector &normal, const
 	if ( ndotv < 0.f )
 		ndotv = 0.f;
 
-	// Grazing fade, so the porthole does not hard-clip at a low angle.
-	float fade = ( ndotv - 0.04f ) / 0.28f;
-	if ( fade < 0.f )
-		fade = 0.f;
+	// Keep a solid coat at a low angle. The old fade clipped the whole splat
+	// once the camera was not looking straight at the surface.
+	float fade = ( ndotv - 0.0f ) / 0.22f;
+	if ( fade < 0.62f )
+		fade = 0.62f;
 	if ( fade > 1.f )
 		fade = 1.f;
 
@@ -740,8 +741,6 @@ void CTFPaintAtlas::Draw( const Vector &eye ) const
 				float d2 = toEye.LengthSqr();
 				if ( d2 > maxDist2 )
 					continue;
-				if ( DotProduct( page.normal, toEye ) <= 0.f )
-					continue;
 
 				// Far coats drop to every other luxel, then every fourth.
 				// Grimes shipped a cheaper LOD shader for the same reason.
@@ -754,7 +753,12 @@ void CTFPaintAtlas::Draw( const Vector &eye ) const
 					continue;
 
 				float scale = (float)step;
-				Vector lift = page.normal * 0.45f;
+				// Out of the brush, on the camera side. A normal that points
+				// into the surface was hiding the whole coat.
+				Vector liftN = page.normal;
+				if ( DotProduct( liftN, toEye ) < 0.f )
+					liftN = -liftN;
+				Vector lift = liftN * 1.15f;
 				Vector halfU = page.tangent * ( page.luxel * 0.5f * scale );
 				Vector halfV = page.bitangent * ( page.luxel * 0.5f * scale );
 				Vector c[4];

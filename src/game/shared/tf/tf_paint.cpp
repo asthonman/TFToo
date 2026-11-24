@@ -269,6 +269,7 @@ private:
 	void	ApplyNetworkStamps( void );
 	void	NotePop( const Vector &pos, const Vector &normal, int type );
 	void	DrawDisc( const Vector &pos, const Vector &normal, float radius, int type, int alpha, bool additive );
+	void	DrawStampDecals( const Vector &eye );
 #endif
 };
 
@@ -631,6 +632,54 @@ void CTFPaintMap::DrawDisc( const Vector &pos, const Vector &normal, float radiu
 	pMesh->Draw();
 }
 
+// One soft disc per stamp, pushed out of the surface toward the camera.
+// The luxel atlas is the gameplay coat. This is the decal you actually see,
+// including when the chart faces into the brush.
+void CTFPaintMap::DrawStampDecals( const Vector &eye )
+{
+	int cur = m_nStampCursor;
+	int start = 0;
+	if ( cur > TF_PAINT_STAMP_MAX )
+		start = cur - TF_PAINT_STAMP_MAX;
+
+	for ( int s = start; s < cur; ++s )
+	{
+		const int slot = s % TF_PAINT_STAMP_MAX;
+		const int stored = m_nStampType[slot];
+		if ( stored <= 0 )
+			continue;
+
+		const float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die )
+			continue;
+
+		const int type = stored - 1;
+		if ( type == NO_POWER )
+			continue;
+
+		Vector n = m_vecStampNormal[slot];
+		if ( n.NormalizeInPlace() < 0.1f )
+			continue;
+
+		const Vector pos = m_vecStampPos[slot];
+		if ( ( eye - pos ).LengthSqr() > 1800.f * 1800.f )
+			continue;
+		// Sit on the camera side of the surface, so a downward normal still
+		// paints the floor instead of the quad being clipped inside the brush.
+		if ( DotProduct( n, eye - pos ) < 0.f )
+			n = -n;
+
+		float rad = m_flStampRadius[slot];
+		if ( rad < 8.f )
+			rad = 8.f;
+		if ( rad > 220.f )
+			rad = 220.f;
+
+		const int packed = type | ( ( m_nStampTeam[slot] & 0x0F ) << 4 );
+		DrawDisc( pos + n * 1.35f, n, rad, packed, 220, false );
+	}
+}
+
 int CTFPaintMap::DrawModel( int flags )
 {
 	if ( flags & STUDIO_SHADOWDEPTHTEXTURE )
@@ -649,6 +698,7 @@ int CTFPaintMap::DrawModel( int flags )
 
 	ApplyNetworkStamps();
 	m_Atlas.Draw( eye );
+	DrawStampDecals( eye );
 
 	static IMaterial *s_pBlob = NULL;
 	if ( !s_pBlob )
@@ -1469,7 +1519,9 @@ void TFPaint_SmashEnemies( CBaseEntity *pMover, const Vector &origin, const Vect
 
 void CTFPaintMap::NoteBouncedProp( CBaseEntity *pProp, CBaseEntity *pOwner )
 {
-	const float until = gpGlobals->curtime + 0.6f;
+	// Long enough for the hop to land. Refreshing this every scan was what
+	// kept SetVelocity running and the scrape going.
+	const float until = gpGlobals->curtime + 1.15f;
 	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
 	{
 		if ( m_BouncedProps[i].prop.Get() == pProp )
@@ -1563,6 +1615,20 @@ void CTFPaintMap::ThinkProps( void )
 		if ( !hit.painted || hit.type != BOUNCE_POWER )
 			continue;
 
+		// Already in a hop. SetVelocity every scan pins the prop to the gel
+		// and the physics scrape loops for as long as the coat lasts.
+		bool bHopping = false;
+		for ( int i = 0; i < m_BouncedProps.Count(); ++i )
+		{
+			if ( m_BouncedProps[i].prop.Get() == pEnt && gpGlobals->curtime < m_BouncedProps[i].until )
+			{
+				bHopping = true;
+				break;
+			}
+		}
+		if ( bHopping )
+			continue;
+
 		Vector n = hit.normal;
 		if ( n.NormalizeInPlace() < 0.1f )
 			n.Init( 0.f, 0.f, 1.f );
@@ -1571,17 +1637,21 @@ void CTFPaintMap::ThinkProps( void )
 		AngularImpulse ang;
 		pPhys->GetVelocity( &vel, &ang );
 		const float into = DotProduct( vel, n );
-		if ( into < 120.f )
-		{
-			Vector out = vel - n * into;
-			float away = flMin;
-			if ( into < 0.f && -into > away )
-				away = -into;
-			out += n * away;
-			pPhys->SetVelocity( &out, &ang );
-			pPhys->Wake();
-			pEnt->SetGroundEntity( NULL );
-		}
+		// A landing, or a prop that was sitting still when the gel appeared.
+		// Sliding across the coat is not another bounce.
+		const bool bImpact = ( into < -40.f );
+		const bool bResting = ( vel.LengthSqr() < 90.f * 90.f );
+		if ( !bImpact && !bResting )
+			continue;
+
+		Vector out = vel - n * into;
+		float away = flMin;
+		if ( into < 0.f && -into > away )
+			away = -into;
+		out += n * away;
+		pPhys->SetVelocity( &out, &ang );
+		pPhys->Wake();
+		pEnt->SetGroundEntity( NULL );
 
 		NoteBouncedProp( pEnt, BounceCoatOwnerNear( pEnt->WorldSpaceCenter() ) );
 	}

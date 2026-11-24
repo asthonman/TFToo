@@ -3993,16 +3993,44 @@ void CTFGameMovement::Duck( void )
 //-----------------------------------------------------------------------------
 // Gels. Bounce > speed > adhesion. Duck skips repulsion. Adhesion walks on
 // walls without replacing TF2's whole movement class.
+//
+// CTFGameMovement is one object for every player. Paint contact for the
+// sound has to be remembered per player, or the next command sees the
+// previous player's gel and plays enter/exit again. That retriggers
+// Player.Enter*Paint every tick: a constant grind while anyone is on gel
+// or coated.
 //-----------------------------------------------------------------------------
+struct PaintContactMem_t
+{
+	int		power;
+	float	nextSound;
+};
+
+static PaintContactMem_t s_PaintContactMem[128];
+static bool s_bPaintContactInit = false;
+
 void CTFGameMovement::UpdatePaintContact( void )
 {
-	int prev = m_nPaintPower;
+	if ( !s_bPaintContactInit )
+	{
+		for ( int i = 0; i < 128; ++i )
+			s_PaintContactMem[i].power = NO_POWER;
+		s_bPaintContactInit = true;
+	}
+	int slot = 0;
+	if ( m_pTFPlayer )
+		slot = m_pTFPlayer->entindex();
+	if ( slot < 0 || slot >= 128 )
+		slot = 0;
+
+	const int prev = s_PaintContactMem[slot].power;
 	m_bPainted = false;
 	m_nPaintPower = NO_POWER;
 	m_vecPaintNormal.Init( 0.f, 0.f, 1.f );
 
 	if ( !tf_paint_enabled.GetBool() || !m_pTFPlayer || IsDead() )
 	{
+		s_PaintContactMem[slot].power = NO_POWER;
 		m_nPrevPaintPower = NO_POWER;
 		return;
 	}
@@ -4024,10 +4052,16 @@ void CTFGameMovement::UpdatePaintContact( void )
 		VectorNormalize( m_vecPaintNormal );
 	}
 
+	// A bounce hop leaves the gel for a few frames. That is not an exit.
+	int soundPower = m_nPaintPower;
+	if ( prev == BOUNCE_POWER && m_nPaintPower == NO_POWER && player->GetGroundEntity() == NULL )
+		soundPower = BOUNCE_POWER;
+
 	if ( ( prev == SPEED_POWER || prev == SIXTH_POWER ) && m_nPaintPower == BOUNCE_POWER )
 		m_bPaintLaunch = true;
 
-	if ( prev != m_nPaintPower && gpGlobals->curtime >= m_flSuppressPaintExit )
+	if ( prev != soundPower && gpGlobals->curtime >= m_flSuppressPaintExit
+		&& gpGlobals->curtime >= s_PaintContactMem[slot].nextSound )
 	{
 		if ( prev == BOUNCE_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitBouncePaint" );
@@ -4036,14 +4070,17 @@ void CTFGameMovement::UpdatePaintContact( void )
 		else if ( prev == PORTAL_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitStickPaint" );
 
-		if ( m_nPaintPower == BOUNCE_POWER )
+		if ( soundPower == BOUNCE_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterBouncePaint" );
-		else if ( PaintGivesSpeed( m_nPaintPower, mv->GetAbsOrigin(), player ) )
+		else if ( PaintGivesSpeed( soundPower, mv->GetAbsOrigin(), player ) )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterSpeedPaint" );
-		else if ( m_nPaintPower == PORTAL_POWER )
+		else if ( soundPower == PORTAL_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterStickPaint" );
+
+		s_PaintContactMem[slot].nextSound = gpGlobals->curtime + 0.45f;
 	}
 
+	s_PaintContactMem[slot].power = soundPower;
 	m_nPrevPaintPower = m_nPaintPower;
 }
 
