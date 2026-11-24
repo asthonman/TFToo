@@ -97,7 +97,7 @@
 		"zpos"			"2"
 		"wide"			"40"
 		"tall"			"28"
-		"visible"		"1"
+		"visible"		"0"
 		"enabled"		"1"
 		"labelText"		"0"
 		"textAlignment"	"east"

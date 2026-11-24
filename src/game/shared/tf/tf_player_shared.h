@@ -519,6 +519,8 @@ public:
 	void	SetChemBrewSlot( int slot );
 	int		GetChemUses( int slot ) const;
 	void	SetChemUses( int slot, int uses );
+	float	GetChemCharge( int slot ) const;
+	bool	SpendChemCharge( int slot );
 	float	GetChemBrewDone( void ) const { return m_flChemBrewDone; }
 	bool	IsChemJetting( void ) const { return m_bChemJetting; }
 	void	SetChemJetting( bool bJetting ) { m_bChemJetting = bJetting; }
@@ -527,10 +529,16 @@ public:
 	void	ChemBeginBrew( int slot );
 	void	ChemistBrewThink( void );
 	void	ResetChemist( void );
+	bool	IsPoisoned( void ) const { return m_flPoisonExpire > gpGlobals->curtime; }
+	bool	IsNitricCoated( void ) const { return m_flNitricUntil > gpGlobals->curtime; }
+	bool	IsChemWet( void ) const { return m_flWetUntil > gpGlobals->curtime; }
 #ifdef GAME_DLL
 	void	ApplyPoison( CTFPlayer *pAttacker, float flDuration );
 	void	ClearPoison( void );
-	bool	IsPoisoned( void ) const { return m_flPoisonExpire > gpGlobals->curtime; }
+	void	ApplyNitric( CTFPlayer *pAttacker, float flDuration );
+	void	AddWet( float flSeconds );
+	// A real weapon hit. Lights nitric on this player and on the ground.
+	void	NoteExternalHit( const CTakeDamageInfo &info );
 #endif
 
 	void	UpdateRageBuffsAndRage();
@@ -1136,14 +1144,15 @@ private:
 	// Holding right-click to aim a spell. Teammates draw the arc or circle.
 	CNetworkVar( bool, m_bWitchHoldingCast );
 	CNetworkVar( float, m_flWitchChargeBegin );
-	// Chemist concoctions. Fuel is m_flCloakMeter. Brewing spends nothing.
+	// Chemist concoctions. Fuel is m_flCloakMeter. Each concoction refills on its own.
 	CNetworkVar( int, m_nChemPacked );
 	CNetworkVar( float, m_flChemBrewDone );
+	CNetworkArray( float, m_flChemCharge, 4 );
 	CNetworkVar( bool, m_bChemJetting );
 #ifdef GAME_DLL
-	float	m_flPoisonExpire;
 	float	m_flPoisonNextDamage;
 	EHANDLE	m_hPoisonAttacker;
+	EHANDLE	m_hNitricAttacker;
 #endif
 
 	CNetworkVar( bool, m_bInUpgradeZone );
@@ -1334,6 +1343,9 @@ private:
 
 	CNetworkVar( float, m_flHolsterAnimTime );
 	CNetworkVar( float, m_flIceUntil );
+	CNetworkVar( float, m_flPoisonExpire );
+	CNetworkVar( float, m_flNitricUntil );
+	CNetworkVar( float, m_flWetUntil );
 	CNetworkHandle( CBaseCombatWeapon, m_hSwitchTo );
 };
 

@@ -266,7 +266,7 @@ int CTFPaintAtlas::FindOrAdd( const Vector &pos, const Vector &normal, float rad
 	return m_nPages - 1;
 }
 
-void CTFPaintAtlas::Raster( TFPaintPage_t &page, const Vector &pos, int type, float radius, bool bErase )
+void CTFPaintAtlas::Raster( TFPaintPage_t &page, const Vector &pos, int type, float radius, int team, bool bErase )
 {
 	if ( page.w < 1 || page.h < 1 || page.tex.Count() < page.w * page.h * 2 )
 		return;
@@ -340,17 +340,21 @@ void CTFPaintAtlas::Raster( TFPaintPage_t &page, const Vector &pos, int type, fl
 			if ( cov > 0.82f )
 				ia = 255;
 
-			unsigned char prevType = page.tex[si];
+			unsigned char prev = page.tex[si];
 			unsigned char prevA = page.tex[si + 1];
-			page.tex[si] = (unsigned char)type;
-			if ( prevA > 0 && prevType == (unsigned char)type && prevA > ia )
+			// Low nibble is the gel. High nibble is the painter's team, so grease
+			// can be a different brown for each side without a second atlas.
+			int gel = type & 0x0F;
+			int packed = gel | ( ( team & 0x0F ) << 4 );
+			page.tex[si] = (unsigned char)packed;
+			if ( prevA > 0 && ( prev & 0x0F ) == gel && prevA > ia )
 				ia = prevA;
 			page.tex[si + 1] = (unsigned char)ia;
 		}
 	}
 }
 
-void CTFPaintAtlas::Stamp( const Vector &pos, const Vector &normal, int type, float radius )
+void CTFPaintAtlas::Stamp( const Vector &pos, const Vector &normal, int type, float radius, int team )
 {
 	if ( type == NO_POWER )
 	{
@@ -365,7 +369,7 @@ void CTFPaintAtlas::Stamp( const Vector &pos, const Vector &normal, int type, fl
 	int page = FindOrAdd( pos, normal, radius );
 	if ( page < 0 )
 		return;
-	Raster( m_pPages[page], pos, type, radius, false );
+	Raster( m_pPages[page], pos, type, radius, team, false );
 }
 
 void CTFPaintAtlas::Erase( const Vector &pos, float radius )
@@ -387,7 +391,7 @@ void CTFPaintAtlas::Erase( const Vector &pos, float radius )
 		float planar2 = radius * radius - dist * dist;
 		if ( planar2 <= 0.f )
 			continue;
-		Raster( page, pos, NO_POWER, sqrtf( planar2 ), true );
+		Raster( page, pos, NO_POWER, sqrtf( planar2 ), 0, true );
 	}
 }
 
@@ -435,7 +439,7 @@ TFPaintContact_t CTFPaintAtlas::Query( const Vector &origin, float extra ) const
 				int alpha = page.tex[si + 1];
 				if ( alpha < 48 )
 					continue;
-				int type = page.tex[si];
+				int type = page.tex[si] & 0x0F;
 				int rank = PaintRankAtlas( type );
 				float plane = fabsf( dist );
 				if ( rank > bestRank || ( rank == bestRank && plane < bestPlane ) )

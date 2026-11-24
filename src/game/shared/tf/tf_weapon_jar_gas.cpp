@@ -521,6 +521,21 @@ static void Chemist_SplashNeutral( CTFPlayer *pPlayer, const Vector &pos )
 		pAlly->m_Shared.RemoveCond( TF_COND_GAS );
 		pAlly->m_Shared.ClearPoison();
 	}
+
+	// The splash still hits enemies. They get wet. They are not cleansed.
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pEnemy = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pEnemy || !pEnemy->IsAlive() )
+			continue;
+		if ( pPlayer && pEnemy->GetTeamNumber() == pPlayer->GetTeamNumber() )
+			continue;
+		if ( Chemist_DistSqr( pEnemy, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pEnemy->WorldSpaceCenter() ) )
+			continue;
+		pEnemy->m_Shared.AddWet( 10.f );
+	}
 }
 
 void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal, int slot )
@@ -533,7 +548,7 @@ void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal
 	if ( slot == CHEM_REPULSION )
 		TFPaint_AddTimedCoat( pos, n, BOUNCE_POWER, 80.f, 30.f, false, pPlayer );
 	else if ( slot == CHEM_NITRIC )
-		TFPaint_AddTimedCoat( pos, n, FIFTH_POWER, 80.f, 15.f, true, pPlayer );
+		TFPaint_AddTimedCoat( pos, n, FIFTH_POWER, 80.f, TF_GAS_LIFETIME, true, pPlayer );
 	else if ( slot == CHEM_NEUTRAL )
 	{
 		Chemist_SplashNeutral( pPlayer, pos );
@@ -576,10 +591,12 @@ void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal
 		{
 			if ( pEnemy->m_Shared.IsInvulnerable() || pEnemy->m_Shared.InCond( TF_COND_PHASE ) )
 				continue;
-			pEnemy->m_Shared.Burn( pPlayer, NULL, 5.0f );
+			// Coated like the gas passer (10s). A later weapon hit lights them.
+			pEnemy->m_Shared.ApplyNitric( pPlayer, 10.f );
 		}
 		else if ( slot == CHEM_REPULSION )
 		{
+			pEnemy->m_Shared.AddWet( 10.f );
 			Vector vel = pEnemy->GetAbsVelocity();
 			if ( vel.z < 300.f )
 			{

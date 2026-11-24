@@ -128,7 +128,7 @@ static void FirePaintBlob( CTFPlayer *pOwner, int type, float flCoatLife = 0.f )
 	{
 		trace_t tr;
 		CTraceFilterSimple filter( pOwner, COLLISION_GROUP_NONE );
-		UTIL_TraceLine( pOwner->EyePosition(), pOwner->EyePosition() + forward * MAX_TRACE_LENGTH, MASK_SOLID, &filter, &tr );
+		UTIL_TraceLine( pOwner->EyePosition(), pOwner->EyePosition() + forward * MAX_TRACE_LENGTH, TF_PAINT_VIS_MASK, &filter, &tr );
 		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
 		{
 			float rad = tf_paintgun_rad.GetFloat();

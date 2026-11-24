@@ -7004,6 +7004,33 @@ void C_TFPlayer::ClientThink()
 
 	UpdateIDTarget();
 
+	if ( IsLocalPlayer() )
+	{
+		C_TFPlayer *pView = this;
+		if ( GetObserverMode() == OBS_MODE_IN_EYE )
+		{
+			C_BaseEntity *pTarget = GetObserverTarget();
+			if ( pTarget && pTarget->IsPlayer() )
+				pView = ToTFPlayer( pTarget );
+		}
+
+		IMaterial *pOverlay = view ? view->GetScreenOverlayMaterial() : NULL;
+		const bool bPoisonOverlay = pOverlay && FStrEq( pOverlay->GetName(), "tftoo/paint/poison_haze" );
+		if ( pView && pView->IsAlive() && pView->m_Shared.IsPoisoned() )
+		{
+			if ( !bPoisonOverlay )
+			{
+				IMaterial *pHaze = materials->FindMaterial( "tftoo/paint/poison_haze", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+				if ( pHaze && !pHaze->IsErrorMaterial() )
+					view->SetScreenOverlayMaterial( pHaze );
+			}
+		}
+		else if ( bPoisonOverlay )
+		{
+			view->SetScreenOverlayMaterial( NULL );
+		}
+	}
+
 	UpdateLookAt();
 
 	UpdateOverheadEffects();
@@ -10795,6 +10822,26 @@ void C_TFPlayer::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, f
 {
 	HandleTaunting();
 	BaseClass::CalcView( eyeOrigin, eyeAngles, zNear, zFar, fov );
+
+	if ( !IsLocalPlayer() )
+		return;
+
+	C_TFPlayer *pView = this;
+	if ( GetObserverMode() == OBS_MODE_IN_EYE )
+	{
+		C_BaseEntity *pTarget = GetObserverTarget();
+		if ( pTarget && pTarget->IsPlayer() )
+			pView = ToTFPlayer( pTarget );
+	}
+	if ( !pView || !pView->IsAlive() || !pView->m_Shared.IsPoisoned() )
+		return;
+
+	// Minecraft nausea: a slow roll, a little yaw, and a small fov pulse.
+	const float t = gpGlobals->curtime;
+	eyeAngles.z += sinf( t * 1.05f ) * 7.f + sinf( t * 0.42f ) * 4.f;
+	eyeAngles.y += sinf( t * 0.62f ) * 3.2f;
+	eyeAngles.x += cosf( t * 0.48f ) * 1.6f;
+	fov += sinf( t * 0.7f ) * 2.2f;
 }
 
 void SelectDisguise( int iClass, int iTeam );

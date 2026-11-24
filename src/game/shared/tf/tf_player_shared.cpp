@@ -346,6 +346,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerSharedLocal )
 	RecvPropTime( RECVINFO( m_flNextRageEarnTime ) ),
 	RecvPropBool( RECVINFO( m_bInUpgradeZone ) ),
 	RecvPropArray3( RECVINFO_ARRAY( m_flItemChargeMeter ), RecvPropFloat( RECVINFO( m_flItemChargeMeter[0] ) ) ),
+	RecvPropArray3( RECVINFO_ARRAY( m_flChemCharge ), RecvPropFloat( RECVINFO( m_flChemCharge[0] ) ) ),
 	RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominated ), RecvPropBool( RECVINFO( m_bPlayerDominated[0] ) ) ),
 	RecvPropArray3( RECVINFO_ARRAY( m_bPlayerDominatingMe ), RecvPropBool( RECVINFO( m_bPlayerDominatingMe[0] ) ) ),
 	RecvPropDataTable( RECVINFO_DT(m_ScoreData),0, &REFERENCE_RECV_TABLE(DT_TFPlayerScoringDataExclusive) ),
@@ -450,6 +451,9 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 
 	RecvPropFloat( RECVINFO( m_flHolsterAnimTime ) ),
 	RecvPropFloat( RECVINFO( m_flIceUntil ) ),
+	RecvPropFloat( RECVINFO( m_flPoisonExpire ) ),
+	RecvPropFloat( RECVINFO( m_flNitricUntil ) ),
+	RecvPropFloat( RECVINFO( m_flWetUntil ) ),
 	RecvPropEHandle( RECVINFO( m_hSwitchTo ) ),
 END_RECV_TABLE()
 
@@ -496,7 +500,11 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_askForBallTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flHolsterAnimTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flIceUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flPoisonExpire, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flNitricUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flWetUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_ARRAY( m_flItemChargeMeter, FIELD_FLOAT, LAST_LOADOUT_SLOT_WITH_CHARGE_METER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_ARRAY( m_flChemCharge, FIELD_FLOAT, 4, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_iStunIndex, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bScattergunJump, FIELD_BOOLEAN, 0 ),
 END_PREDICTION_DATA()
@@ -539,6 +547,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerSharedLocal )
 	SendPropTime( SENDINFO( m_flNextRageEarnTime ) ),
 	SendPropBool( SENDINFO( m_bInUpgradeZone ) ),
 	SendPropArray3( SENDINFO_ARRAY3( m_flItemChargeMeter ), SendPropFloat( SENDINFO_ARRAY( m_flItemChargeMeter ), -1, SPROP_NOSCALE ) ),
+	SendPropArray3( SENDINFO_ARRAY3( m_flChemCharge ), SendPropFloat( SENDINFO_ARRAY( m_flChemCharge ), -1, SPROP_NOSCALE ) ),
 	SendPropArray3( SENDINFO_ARRAY3( m_bPlayerDominated ), SendPropBool( SENDINFO_ARRAY( m_bPlayerDominated ) ) ),
 	SendPropArray3( SENDINFO_ARRAY3( m_bPlayerDominatingMe ), SendPropBool( SENDINFO_ARRAY( m_bPlayerDominatingMe ) ) ),
 	SendPropDataTable( SENDINFO_DT(m_ScoreData), &REFERENCE_SEND_TABLE(DT_TFPlayerScoringDataExclusive) ),
@@ -644,6 +653,9 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	
 	SendPropFloat( SENDINFO( m_flHolsterAnimTime ) ),
 	SendPropFloat( SENDINFO( m_flIceUntil ) ),
+	SendPropFloat( SENDINFO( m_flPoisonExpire ) ),
+	SendPropFloat( SENDINFO( m_flNitricUntil ) ),
+	SendPropFloat( SENDINFO( m_flWetUntil ) ),
 	SendPropEHandle( SENDINFO( m_hSwitchTo ) ),
 END_SEND_TABLE()
 
@@ -873,11 +885,16 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flWitchChargeBegin = 0.f;
 	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
 	m_flChemBrewDone = 0.f;
+	for ( int i = 0; i < 4; ++i )
+		m_flChemCharge.Set( i, 0.f );
 	m_bChemJetting = false;
-#ifdef GAME_DLL
 	m_flPoisonExpire = 0.f;
+	m_flNitricUntil = 0.f;
+	m_flWetUntil = 0.f;
+#ifdef GAME_DLL
 	m_flPoisonNextDamage = 0.f;
 	m_hPoisonAttacker = NULL;
+	m_hNitricAttacker = NULL;
 #endif
 
 	m_iItemFindBonus = 0;
@@ -962,6 +979,11 @@ CTFPlayerShared::CTFPlayerShared()
 
 	m_flHolsterAnimTime = 0.f;
 	m_flIceUntil = 0.f;
+	m_flPoisonExpire = 0.f;
+	m_flNitricUntil = 0.f;
+	m_flWetUntil = 0.f;
+	for ( int iChem = 0; iChem < 4; ++iChem )
+		m_flChemCharge.Set( iChem, 0.f );
 	m_hSwitchTo = NULL;
 
 	m_iCYOAPDAAnimState = CYOA_PDA_ANIM_NONE;
@@ -12724,20 +12746,16 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 	case TF_CLASS_CHEMIST:
 		{
 			const int iSlot = m_Shared.GetChemSelected();
-			if ( m_Shared.GetChemUses( iSlot ) <= 0 )
+			if ( m_Shared.GetChemCharge( iSlot ) < 1.f )
 			{
 #ifdef CLIENT_DLL
 				EmitSound( "Player.DenyWeaponSelection" );
 #endif
 				return false;
 			}
+			m_Shared.SpendChemCharge( iSlot );
 #ifdef GAME_DLL
-			const int nLeft = m_Shared.GetChemUses( iSlot ) - 1;
-			m_Shared.SetChemUses( iSlot, nLeft );
 			Chemist_Throw( this, iSlot );
-			// The last prepared charge starts the next brew. No reagent.
-			if ( nLeft <= 0 )
-				m_Shared.ChemBeginBrew( iSlot );
 #endif
 			bDoSkill = true;
 		}
@@ -14676,8 +14694,35 @@ void CTFPlayerShared::SetChemSelected( int slot ) { m_nChemPacked = ChemPack_Set
 int CTFPlayerShared::GetChemPrev( void ) const { return ChemPack_Prev( m_nChemPacked ); }
 int CTFPlayerShared::GetChemBrewSlot( void ) const { return ChemPack_Brew( m_nChemPacked ); }
 void CTFPlayerShared::SetChemBrewSlot( int slot ) { m_nChemPacked = ChemPack_SetBrew( m_nChemPacked, slot ); }
-int CTFPlayerShared::GetChemUses( int slot ) const { return ChemPack_Uses( m_nChemPacked, slot ); }
-void CTFPlayerShared::SetChemUses( int slot, int uses ) { m_nChemPacked = ChemPack_SetUses( m_nChemPacked, slot, uses ); }
+int CTFPlayerShared::GetChemUses( int slot ) const
+{
+	return (int)floorf( GetChemCharge( slot ) + 0.001f );
+}
+void CTFPlayerShared::SetChemUses( int slot, int uses )
+{
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		return;
+	float v = (float)uses;
+	const float mx = (float)ChemUsesPerBrew( slot );
+	if ( v < 0.f )
+		v = 0.f;
+	if ( v > mx )
+		v = mx;
+	m_flChemCharge.Set( slot, v );
+}
+float CTFPlayerShared::GetChemCharge( int slot ) const
+{
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		return 0.f;
+	return m_flChemCharge[slot];
+}
+bool CTFPlayerShared::SpendChemCharge( int slot )
+{
+	if ( GetChemCharge( slot ) < 1.f )
+		return false;
+	m_flChemCharge.Set( slot, GetChemCharge( slot ) - 1.f );
+	return true;
+}
 
 void CTFPlayerShared::ChemSelect( int slot )
 {
@@ -14699,19 +14744,8 @@ void CTFPlayerShared::ChemSelectLast( void )
 
 void CTFPlayerShared::ChemBeginBrew( int slot )
 {
-	if ( !m_pOuter->IsPlayerClass( TF_CLASS_CHEMIST ) || !m_pOuter->IsAlive() )
-		return;
-	if ( slot < 0 || slot >= CHEM_COUNT )
-		return;
-	// Already brewed, or a brew is already running. The next empty one starts
-	// when this one finishes.
-	if ( GetChemUses( slot ) > 0 )
-		return;
-	if ( GetChemBrewSlot() < CHEM_COUNT )
-		return;
-
-	SetChemBrewSlot( slot );
-	m_flChemBrewDone = gpGlobals->curtime + ChemBrewSeconds( slot );
+	// Every empty concoction refills on its own. Nothing queues behind one brew.
+	(void)slot;
 }
 
 void CTFPlayerShared::ChemistBrewThink( void )
@@ -14719,36 +14753,26 @@ void CTFPlayerShared::ChemistBrewThink( void )
 	if ( !m_pOuter->IsPlayerClass( TF_CLASS_CHEMIST ) || !m_pOuter->IsAlive() )
 		return;
 
-	const int iBrew = GetChemBrewSlot();
-	if ( iBrew >= 0 && iBrew < CHEM_COUNT )
-	{
-		if ( gpGlobals->curtime < m_flChemBrewDone )
-			return;
-
-		int nUses = ChemUsesPerBrew( iBrew );
-		if ( nUses > 7 )
-			nUses = 7;
-		SetChemUses( iBrew, nUses );
-		SetChemBrewSlot( CHEM_BREW_NONE );
-	}
-
 	for ( int i = 0; i < CHEM_COUNT; ++i )
 	{
-		if ( GetChemUses( i ) <= 0 )
-		{
-			ChemBeginBrew( i );
-			return;
-		}
+		const float flMax = (float)ChemUsesPerBrew( i );
+		const float flDur = ChemBrewSeconds( i );
+		float flCharge = m_flChemCharge[i];
+		if ( flCharge >= flMax || flDur <= 0.f )
+			continue;
+		flCharge += gpGlobals->frametime / flDur;
+		if ( flCharge > flMax )
+			flCharge = flMax;
+		m_flChemCharge.Set( i, flCharge );
 	}
 }
 
 void CTFPlayerShared::ResetChemist( void )
 {
 	// Spawn with every concoction already brewed.
-	int packed = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
+	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
 	for ( int i = 0; i < CHEM_COUNT; ++i )
-		packed = ChemPack_SetUses( packed, i, ChemUsesPerBrew( i ) );
-	m_nChemPacked = packed;
+		m_flChemCharge.Set( i, (float)ChemUsesPerBrew( i ) );
 	m_flChemBrewDone = 0.f;
 	m_bChemJetting = false;
 #ifdef GAME_DLL
@@ -14775,6 +14799,65 @@ void CTFPlayerShared::ClearPoison( void )
 	m_flPoisonExpire = 0.f;
 	m_flPoisonNextDamage = 0.f;
 	m_hPoisonAttacker = NULL;
+	m_flNitricUntil = 0.f;
+	m_flWetUntil = 0.f;
+	m_hNitricAttacker = NULL;
+}
+
+void CTFPlayerShared::AddWet( float flSeconds )
+{
+	if ( flSeconds <= 0.f || !m_pOuter || !m_pOuter->IsAlive() )
+		return;
+	if ( !m_pOuter->CanGetWet() )
+		return;
+	const float until = gpGlobals->curtime + flSeconds;
+	if ( until > m_flWetUntil )
+		m_flWetUntil = until;
+}
+
+void CTFPlayerShared::ApplyNitric( CTFPlayer *pAttacker, float flDuration )
+{
+	if ( !m_pOuter || !m_pOuter->IsAlive() || flDuration <= 0.f )
+		return;
+	if ( IsInvulnerable() || InCond( TF_COND_PHASE ) )
+		return;
+	const float until = gpGlobals->curtime + flDuration;
+	if ( until > m_flNitricUntil )
+		m_flNitricUntil = until;
+	if ( pAttacker )
+		m_hNitricAttacker = pAttacker;
+	AddWet( flDuration );
+}
+
+void CTFPlayerShared::NoteExternalHit( const CTakeDamageInfo &info )
+{
+	const int bits = info.GetDamageType();
+	if ( info.GetDamage() <= 0.f )
+		return;
+	if ( bits & ( DMG_FALL | DMG_DROWN ) )
+		return;
+	// Poison ticks are weaponless generic damage. They are not a strike.
+	if ( !info.GetWeapon() && ( bits & DMG_GENERIC ) && !( bits & ( DMG_BULLET | DMG_BLAST | DMG_CLUB | DMG_SLASH | DMG_BUCKSHOT | DMG_BURN ) ) )
+		return;
+
+	if ( m_flNitricUntil > gpGlobals->curtime )
+	{
+		CTFPlayer *pAttacker = ToTFPlayer( info.GetAttacker() );
+		if ( !pAttacker )
+			pAttacker = ToTFPlayer( m_hNitricAttacker.Get() );
+		CTFWeaponBase *pWeapon = dynamic_cast< CTFWeaponBase * >( info.GetWeapon() );
+		// Gas passer removes the gas and applies tf_afterburn_max_duration.
+		Burn( pAttacker ? pAttacker : m_pOuter, pWeapon, tf_afterburn_max_duration );
+		m_flNitricUntil = 0.f;
+	}
+
+	Vector pos = info.GetDamagePosition();
+	if ( pos == vec3_origin )
+		pos = m_pOuter->WorldSpaceCenter();
+	TFPaint_IgniteNitricAt( pos, 96.f );
+	TFPaint_IgniteNitricAt( m_pOuter->GetAbsOrigin(), 80.f );
+	if ( info.GetInflictor() )
+		TFPaint_IgniteNitricAt( info.GetInflictor()->GetAbsOrigin(), 64.f );
 }
 #endif
 

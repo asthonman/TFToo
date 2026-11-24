@@ -18,6 +18,7 @@
 	#include <vgui_controls/EditablePanel.h>
 	#include <vgui_controls/Label.h>
 	#include <vgui_controls/ImagePanel.h>
+	#include <vgui_controls/ProgressBar.h>
 	#include <game_controls/IconPanel.h>
 	#include <vgui/tf_controls.h>
 #endif
@@ -313,10 +314,12 @@ private:
 	CExLabel *m_pName[CHEM_COUNT];
 	CExLabel *m_pCount[CHEM_COUNT];
 	vgui::Panel *m_pSelectedBar[CHEM_COUNT];
-	vgui::Panel *m_pBrewMeter[CHEM_COUNT];
+	vgui::ContinuousProgressBar *m_pChunk[CHEM_COUNT][5];
 
-	char m_szDrawnCount[CHEM_COUNT][8];
-	int m_iBrewMeterFullWide[CHEM_COUNT];
+	int m_iChunkX[CHEM_COUNT];
+	int m_iChunkY[CHEM_COUNT];
+	int m_iChunkW[CHEM_COUNT];
+	int m_iChunkH[CHEM_COUNT];
 };
 
 #endif // CLIENT_DLL

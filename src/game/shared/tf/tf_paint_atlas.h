@@ -23,7 +23,7 @@ public:
 	~CTFPaintAtlas();
 
 	void Clear();
-	void Stamp( const Vector &pos, const Vector &normal, int type, float radius );
+	void Stamp( const Vector &pos, const Vector &normal, int type, float radius, int team = 0 );
 	void Erase( const Vector &pos, float radius );
 	TFPaintContact_t Query( const Vector &origin, float extra ) const;
 
@@ -44,7 +44,7 @@ private:
 
 	void Ensure();
 	int FindOrAdd( const Vector &pos, const Vector &normal, float radius );
-	void Raster( struct TFPaintPage_t &page, const Vector &pos, int type, float radius, bool bErase );
+	void Raster( struct TFPaintPage_t &page, const Vector &pos, int type, float radius, int team, bool bErase );
 
 	// Pages own a raw texel buffer. Entities are not copied.
 	CTFPaintAtlas( const CTFPaintAtlas & );

@@ -37,6 +37,9 @@
 #include "util.h"
 #include "cdll_int.h"
 #include "vscript_server.h"
+#ifdef TF_DLL
+#include "tf_paint.h"
+#endif
 
 #ifdef PORTAL
 #include "PortalSimulation.h"
@@ -1380,6 +1383,10 @@ void UTIL_ImpactTrace( trace_t *pTrace, int iDamageType, const char *pCustomImpa
 
 	if ( pTrace->fraction == 1.0 )
 		return;
+
+#ifdef TF_DLL
+	TFPaint_IgniteNitricAt( pTrace->endpos, 48.f );
+#endif
 
 	pEntity->ImpactTrace( pTrace, iDamageType, pCustomImpactName );
 }

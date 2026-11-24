@@ -11,6 +11,8 @@
 #pragma once
 #endif
 
+#include "bspflags.h"
+
 // Same order as emulsion-sdk paint_enum.h. Do not renumber.
 enum PaintPowerType
 {
@@ -60,8 +62,12 @@ extern ConVar tf_paint_ice_time;
 extern ConVar tf_paint_ice_friction;
 extern ConVar tf_paint_ice_accel;
 
-void TFPaint_GetColor( int type, int &r, int &g, int &b );
+void TFPaint_GetColor( int type, int &r, int &g, int &b, int team = 0 );
 const char *TFPaint_Name( int type );
+
+// Splash damage sees a player with MASK_SHOT and no hitboxes. Gel uses the same
+// mask, so bullet-pass materials (CONTENTS_GRATE) are not a surface.
+#define TF_PAINT_VIS_MASK ( MASK_SHOT & ~( CONTENTS_HITBOX ) )
 
 TFPaintContact_t TFPaint_Query( const Vector &origin, float extra );
 

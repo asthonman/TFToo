@@ -64,15 +64,33 @@ static const char *const s_pszPaintSounds[] =
 	"Paint.Splat",
 };
 
-void TFPaint_GetColor( int type, int &r, int &g, int &b )
+void TFPaint_GetColor( int type, int &r, int &g, int &b, int team )
 {
-	switch ( type )
+	int gel = type & 0x0F;
+	if ( team <= 0 )
+		team = ( type >> 4 ) & 0x0F;
+
+	switch ( gel )
 	{
 	case BOUNCE_POWER:	r = 0;   g = 165; b = 255; break;
 	case SPEED_POWER:	r = 255; g = 106; b = 0;   break;
 	case PORTAL_POWER:	r = 0;   g = 200; b = 33;  break;
 	case FIFTH_POWER:	r = 251; g = 255; b = 0;   break;
-	case SIXTH_POWER:	r = 96;  g = 72;  b = 28;  break;	// Grease. Dark yellowish brown.
+	case SIXTH_POWER:
+		// Two browns. One yellow-brown puddle could not be told apart by team.
+		if ( team == TF_TEAM_BLUE )
+		{
+			r = 78; g = 118; b = 40;	// Greenish brown.
+		}
+		else if ( team == TF_TEAM_RED )
+		{
+			r = 186; g = 96; b = 28;	// Orangish brown.
+		}
+		else
+		{
+			r = 120; g = 88; b = 36;
+		}
+		break;
 	case NO_POWER:		r = 16;  g = 16;  b = 16;  break;
 	default:			r = 255; g = 255; b = 255; break;
 	}
@@ -293,7 +311,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampDie ) ), m_flStampDie ),
 	SendPropInt( SENDINFO( m_nStampCursor ), 32, SPROP_UNSIGNED ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecBlobPos ), -1, SPROP_COORD ), m_vecBlobPos ),
-	SendPropArray3( SENDINFO_ARRAY3( m_nBlobType ), SendPropInt( SENDINFO_ARRAY( m_nBlobType ), 4, SPROP_UNSIGNED ) ),
+	SendPropArray3( SENDINFO_ARRAY3( m_nBlobType ), SendPropInt( SENDINFO_ARRAY( m_nBlobType ), 8, SPROP_UNSIGNED ) ),
 #endif
 END_NETWORK_TABLE()
 
@@ -347,7 +365,10 @@ void CTFPaintMap::Spawn( void )
 	for ( int i = 0; i < ARRAYSIZE( s_pszPaintSounds ); ++i )
 		PrecacheScriptSound( s_pszPaintSounds[i] );
 	PrecacheScriptSound( "Weapon_FlameThrower.AirBurstAttack" );
-	PrecacheParticleSystem( "env_fire_medium" );
+	PrecacheParticleSystem( "burningplayer_red" );
+	PrecacheParticleSystem( "burningplayer_blue" );
+	PrecacheParticleSystem( "burningplayer_corpse" );
+	PrecacheParticleSystem( "pyro_blast" );
 
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
@@ -506,9 +527,9 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 			m_Atlas.Erase( pos, radius );
 			continue;
 		}
-		m_Atlas.Stamp( pos, n, type, radius );
+		m_Atlas.Stamp( pos, n, type, radius, m_nStampTeam[slot] );
 		if ( bEffects && s >= prevApplied )
-			NotePop( pos, n, type );
+			NotePop( pos, n, type | ( ( m_nStampTeam[slot] & 0x0F ) << 4 ) );
 	}
 	m_nAppliedCursor = cur;
 }
@@ -533,7 +554,12 @@ void CTFPaintMap::ClientThink( void )
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
 		if ( m_nBlobSeen[i] > 0 && m_nBlobType[i] <= 0 )
-			NotePop( m_vecBlobSeen[i], Vector( 0, 0, 1 ), m_nBlobSeen[i] - 1 );
+		{
+			int packed = m_nBlobSeen[i];
+			int gel = ( packed & 0x0F ) - 1;
+			int team = ( packed >> 4 ) & 0x0F;
+			NotePop( m_vecBlobSeen[i], Vector( 0, 0, 1 ), gel | ( team << 4 ) );
+		}
 		m_nBlobSeen[i] = m_nBlobType[i];
 		m_vecBlobSeen[i] = m_vecBlobPos[i];
 	}
@@ -651,8 +677,11 @@ int CTFPaintMap::DrawModel( int flags )
 		{
 			if ( m_nBlobType[i] <= 0 )
 				continue;
+			int packed = m_nBlobType[i];
+			int gel = ( packed & 0x0F ) - 1;
+			int team = ( packed >> 4 ) & 0x0F;
 			int r, g, b;
-			TFPaint_GetColor( m_nBlobType[i] - 1, r, g, b );
+			TFPaint_GetColor( gel, r, g, b, team );
 			const float rad = 7.f;
 			Vector c = m_vecBlobPos[i];
 			Vector p0 = c - camRight * rad - camUp * rad;
@@ -716,19 +745,73 @@ private:
 	CBaseEntity *m_pOwner;
 };
 
-static bool TFPaint_SpotBlocksPaint( const Vector &pos, const Vector &normal )
+// Dynamic props and func_brush stop a bullet, but they are not gel surfaces.
+static bool TFPaint_EntityRejectsPaint( CBaseEntity *pEnt )
+{
+	if ( !pEnt || pEnt->IsWorld() )
+		return false;
+	const char *cls = pEnt->GetClassname();
+	if ( !cls || !cls[0] )
+		return false;
+	if ( !Q_strnicmp( cls, "prop_dynamic", 12 ) )
+		return true;
+	if ( !Q_stricmp( cls, "func_brush" ) )
+		return true;
+	return false;
+}
+
+// Splash damage uses TF_PAINT_VIS_MASK. A surface that mask does not stop on
+// is bullet-pass, same as a grate between a blast and a player.
+static bool TFPaint_SplashMisses( const Vector &start, const Vector &end, const trace_t &solidHit )
+{
+	if ( solidHit.contents & CONTENTS_GRATE )
+		return true;
+
+	trace_t vis;
+	CTraceFilterNoPlayers filter( NULL );
+	UTIL_TraceLine( start, end, TF_PAINT_VIS_MASK, &filter, &vis );
+	if ( vis.startsolid && vis.m_pEnt == solidHit.m_pEnt )
+		return false;
+	if ( vis.m_pEnt == solidHit.m_pEnt && vis.fraction <= solidHit.fraction + 0.02f )
+		return false;
+	return true;
+}
+
+// bForce still paints over $nodecal (allied buildings). It does not paint a
+// bullet-pass material, a dynamic prop, or a func_brush.
+static bool TFPaint_SpotRejectsPaint( const Vector &pos, const Vector &normal, bool bForce )
 {
 	Vector n = normal;
 	if ( n.LengthSqr() < 0.01f )
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
+	const Vector start = pos + n * 2.f;
+	const Vector end = pos - n * 8.f;
+
 	trace_t tr;
 	CTraceFilterNoPlayers filter( NULL );
-	UTIL_TraceLine( pos + n * 2.f, pos - n * 8.f, MASK_SOLID, &filter, &tr );
-	if ( tr.fraction >= 1.f && !tr.startsolid )
+	UTIL_TraceLine( start, end, MASK_SOLID, &filter, &tr );
+	if ( ( tr.fraction >= 1.f && !tr.startsolid ) || !tr.m_pEnt )
 		return false;
-	return TFPaint_SurfaceBlocksPaint( tr );
+	if ( TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
+		return true;
+	if ( TFPaint_SplashMisses( start, end, tr ) )
+		return true;
+	if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
+		return true;
+	return false;
+}
+
+static bool TFPaint_HitRejectsPaint( const trace_t &tr, bool bForce )
+{
+	if ( TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
+		return true;
+	if ( tr.contents & CONTENTS_GRATE )
+		return true;
+	if ( !bForce && TFPaint_SurfaceBlocksPaint( tr ) )
+		return true;
+	return false;
 }
 
 void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam, bool bForce )
@@ -750,7 +833,7 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
-	if ( !bForce && TFPaint_SpotBlocksPaint( pos, n ) )
+	if ( TFPaint_SpotRejectsPaint( pos, n, bForce ) )
 		return;
 
 	PushStamp( pos, n, type, radius, flCoatLife, iTeam );
@@ -835,7 +918,7 @@ void CTFPaintMap::ReplayStamps( void )
 			m_Atlas.Erase( pos, radius );
 			continue;
 		}
-		m_Atlas.Stamp( pos, n, type, radius );
+		m_Atlas.Stamp( pos, n, type, radius, m_nStampTeam[slot] );
 	}
 
 	m_flNextCoatExpire = flNext;
@@ -861,9 +944,12 @@ void CTFPaintMap::AddBlob( const Vector &pos, const Vector &vel, int type, CBase
 		++m_iBlobCursor;
 	}
 
+	int team = 0;
+	if ( pOwner )
+		team = pOwner->GetTeamNumber();
 	m_vecBlobPos.Set( slot, pos );
 	m_vecBlobVel[slot] = vel;
-	m_nBlobType.Set( slot, type + 1 );
+	m_nBlobType.Set( slot, ( ( type + 1 ) & 0x0F ) | ( ( team & 0x0F ) << 4 ) );
 	m_flBlobDie[slot] = gpGlobals->curtime + 8.0f;
 	m_flBlobCoatLife[slot] = flCoatLife;
 	m_hBlobOwner[slot] = pOwner;
@@ -903,8 +989,8 @@ void CTFPaintMap::Think( void )
 
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
-		int stored = m_nBlobType[i];
-		if ( stored <= 0 )
+		int packed = m_nBlobType[i];
+		if ( ( packed & 0x0F ) <= 0 )
 			continue;
 
 		if ( gpGlobals->curtime > m_flBlobDie[i] || m_vecBlobPos[i].z < -2048.f )
@@ -920,15 +1006,16 @@ void CTFPaintMap::Think( void )
 
 		const bool bGrease = ( m_flBlobCoatLife[i] > 0.f );
 		trace_t tr;
+		const int mask = bGrease ? ( TF_PAINT_VIS_MASK | CONTENTS_HITBOX ) : TF_PAINT_VIS_MASK;
 		if ( bGrease )
 		{
 			CTraceFilterPaintBlob filter( this, m_hBlobOwner[i].Get() );
-			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SOLID | CONTENTS_HITBOX, &filter, &tr );
+			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, mask, &filter, &tr );
 		}
 		else
 		{
 			CTraceFilterNoPlayers filter( this );
-			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SOLID, &filter, &tr );
+			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, mask, &filter, &tr );
 		}
 
 		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
@@ -939,6 +1026,7 @@ void CTFPaintMap::Think( void )
 				if ( pVictim->IsAlive() )
 				{
 					pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
+					pVictim->m_Shared.AddWet( 10.f );
 					PlaySplatSound( tr.endpos );
 				}
 				m_nBlobType.Set( i, 0 );
@@ -947,11 +1035,23 @@ void CTFPaintMap::Think( void )
 				continue;
 			}
 
-			int team = 0;
+			// Bullet-pass, dynamic props, and func_brush are not gel surfaces.
+			// Splash damage does not stop on them either, so the blob keeps going.
+			if ( ( tr.contents & CONTENTS_GRATE ) || TFPaint_EntityRejectsPaint( tr.m_pEnt ) )
+			{
+				Vector push = m_vecBlobVel[i];
+				if ( push.NormalizeInPlace() < 0.1f )
+					push = next - m_vecBlobPos[i];
+				VectorNormalize( push );
+				m_vecBlobPos.Set( i, tr.endpos + push * 24.f );
+				continue;
+			}
+
+			int team = ( packed >> 4 ) & 0x0F;
 			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
-			if ( pOwner )
+			if ( team < TF_TEAM_RED && pOwner )
 				team = pOwner->GetTeamNumber();
-			int type = stored - 1;
+			int type = ( packed & 0x0F ) - 1;
 
 			// Grease on an allied building has to stick even when the model
 			// suppresses decals, and it has to cover the building, not just the pixel we hit.
@@ -967,7 +1067,7 @@ void CTFPaintMap::Think( void )
 				}
 			}
 
-			if ( TFPaint_SurfaceBlocksPaint( tr ) && !bCoatedBuilding )
+			if ( TFPaint_HitRejectsPaint( tr, bCoatedBuilding ) && !bCoatedBuilding )
 			{
 				m_nBlobType.Set( i, 0 );
 				m_flBlobCoatLife[i] = 0.f;
@@ -975,7 +1075,7 @@ void CTFPaintMap::Think( void )
 				continue;
 			}
 
-			if ( !TFPaint_SurfaceBlocksPaint( tr ) )
+			if ( !TFPaint_HitRejectsPaint( tr, false ) )
 			{
 				if ( type == NO_POWER )
 					EraseSphere( tr.endpos, splatR );
@@ -1003,6 +1103,14 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 		return;
 	if ( radius < 16.f )
 		radius = 16.f;
+
+	Vector n = normal;
+	if ( n.LengthSqr() < 0.01f )
+		n.Init( 0.f, 0.f, 1.f );
+	VectorNormalize( n );
+	// Same rejects as a blob. bForce only skips $nodecal.
+	if ( TFPaint_SpotRejectsPaint( pos, n, true ) )
+		return;
 
 	if ( m_ChemCoats.Count() >= 24 )
 	{
@@ -1052,14 +1160,17 @@ void CTFPaintMap::IgniteCoat( ChemCoat_t &coat )
 		return;
 
 	coat.ignited = true;
-	const float flRemain = coat.die - gpGlobals->curtime;
-	coat.die = gpGlobals->curtime + Max( flRemain * 0.5f, 2.f );
+	// Gas passer clouds last TF_GAS_LIFETIME. Don't cut a fresh puddle short,
+	// but a hit in the last moment still has to show fire.
+	if ( coat.die < gpGlobals->curtime + 1.f )
+		coat.die = gpGlobals->curtime + 1.f;
 
 	const Vector vecFire = coat.pos + Vector( 0.f, 0.f, 8.f );
+	DispatchParticleEffect( "pyro_blast", vecFire, vec3_angle );
 	CParticleSystem *pFx = (CParticleSystem *)CreateEntityByName( "info_particle_system" );
 	if ( pFx )
 	{
-		pFx->KeyValue( "effect_name", "env_fire_medium" );
+		pFx->KeyValue( "effect_name", "burningplayer_corpse" );
 		pFx->KeyValue( "start_active", "1" );
 		pFx->SetAbsOrigin( vecFire );
 		DispatchSpawn( pFx );
@@ -1153,6 +1264,11 @@ void CTFPaintMap::ThinkCoats( void )
 		if ( bIgnite && !coat.ignited )
 			IgniteCoat( coat );
 
+		// Unlit nitric does nothing to someone who walks onto it.
+		// Lit nitric only sets them on fire. It does not apply the gas condition.
+		if ( !coat.ignited )
+			continue;
+
 		CTFPlayer *pOwner = ToTFPlayer( coat.owner.Get() );
 		for ( int p = 1; p <= gpGlobals->maxClients; ++p )
 		{
@@ -1165,10 +1281,11 @@ void CTFPaintMap::ThinkCoats( void )
 				continue;
 			if ( pPlayer->m_Shared.IsInvulnerable() )
 				continue;
+			if ( pPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+				continue;
 
-			pPlayer->m_Shared.AddCond( TF_COND_GAS, 1.0f, pOwner ? pOwner : pPlayer );
-			if ( coat.ignited )
-				pPlayer->m_Shared.Burn( pOwner ? pOwner : pPlayer, NULL, 2.0f );
+			// Same afterburn the gas passer uses when its coat is lit (TF_GAS_AFTERBURN_RATE).
+			pPlayer->m_Shared.Burn( pOwner ? pOwner : pPlayer, NULL, 10.f );
 		}
 	}
 }

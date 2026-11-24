@@ -11541,6 +11541,7 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 
 	// Always NULL check this below
 	CTFPlayer *pTFAttacker = ToTFPlayer( info.GetAttacker() );
+	m_Shared.NoteExternalHit( info );
 
 	CTFGameRules::DamageModifyExtras_t outParams;
 	outParams.bIgniting = false;

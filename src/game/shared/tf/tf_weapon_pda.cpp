@@ -1302,6 +1302,12 @@ void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 			if ( pName )
 				pName->SetText( ChemConcoctionName( i ) );
 			ChemMenu_SetDebuffIcon( pStates[s], i );
+			vgui::Panel *pMetal = pStates[s]->FindChildByName( "MetalIcon" );
+			if ( pMetal )
+				pMetal->SetVisible( false );
+			vgui::Panel *pCost = pStates[s]->FindChildByName( "CostLabel" );
+			if ( pCost )
+				pCost->SetVisible( false );
 			CExLabel *pNumber = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "NumberLabel" ) );
 			if ( pNumber )
 				pNumber->SetText( CFmtStr( "%d", i + 1 ) );
@@ -1319,8 +1325,6 @@ void CHudMenuChemistry::UpdateSlots( void )
 		return;
 
 	const int iSelected = pPlayer->m_Shared.GetChemSelected();
-	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
-	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
 
 	vgui::Label *pSelected = dynamic_cast< vgui::Label * >( FindChildByName( "SelectedLabel" ) );
 	if ( pSelected )
@@ -1328,42 +1332,29 @@ void CHudMenuChemistry::UpdateSlots( void )
 
 	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
 	{
-		const int nUses = pPlayer->m_Shared.GetChemUses( i );
-		const bool bThisBrew = bBrewing && iBrew == i;
-		const bool bBuilt = nUses > 0;
+		const float flCharge = pPlayer->m_Shared.GetChemCharge( i );
+		const float flMax = (float)ChemUsesPerBrew( i );
+		const bool bReady = flCharge >= 1.f;
 
 		m_pAvailable[i]->SetVisible( false );
 		m_pCantAfford[i]->SetVisible( false );
-		m_pAlreadyBuilt[i]->SetVisible( bBuilt );
-		m_pUnavailable[i]->SetVisible( !bBuilt );
-
-		if ( bBuilt )
-		{
-			CExLabel *pStatus = dynamic_cast< CExLabel * >( m_pAlreadyBuilt[i]->FindChildByName( "StatusLabel" ) );
-			if ( pStatus )
-				pStatus->SetText( CFmtStr( "%d", nUses ) );
-		}
+		m_pAlreadyBuilt[i]->SetVisible( bReady );
+		m_pUnavailable[i]->SetVisible( !bReady );
 
 		vgui::Panel *pMeter = m_pUnavailable[i]->FindChildByName( "BrewMeter" );
 		if ( pMeter )
 		{
 			pMeter->SetPaintBackgroundEnabled( true );
 			pMeter->SetBgColor( Color( 255, 210, 40, 255 ) );
-			pMeter->SetVisible( bThisBrew );
-			if ( bThisBrew )
+			const bool bFilling = !bReady && flMax > 0.f;
+			pMeter->SetVisible( bFilling );
+			if ( bFilling )
 			{
-				const float flDur = ChemBrewSeconds( i );
-				float flFrac = 1.f;
-				if ( flDur > 0.f )
-				{
-					const float flLeft = pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime;
-					flFrac = 1.f - ( flLeft / flDur );
-				}
+				float flFrac = flCharge / flMax;
 				if ( flFrac < 0.f )
 					flFrac = 0.f;
 				if ( flFrac > 1.f )
 					flFrac = 1.f;
-
 				static int s_iMenuMeterWide = 84;
 				int iWide = (int)( s_iMenuMeterWide * flFrac );
 				if ( iWide < 1 && flFrac > 0.f )
@@ -1435,7 +1426,6 @@ CHudChemStatus::CHudChemStatus( const char *pElementName )
 
 	for ( int i = 0; i < CHEM_COUNT; ++i )
 	{
-		m_szDrawnCount[i][0] = '\0';
 		m_pRow[i] = new EditablePanel( this, "ChemStatusItem" );
 		m_pRow[i]->SetProportional( true );
 		m_pRow[i]->SetPaintBackgroundEnabled( false );
@@ -1444,10 +1434,14 @@ CHudChemStatus::CHudChemStatus( const char *pElementName )
 		m_pDebuff[i] = new vgui::ImagePanel( m_pRow[i], "DebuffIcon" );
 		m_pDebuffHud[i] = new CIconPanel( m_pRow[i], "DebuffHudIcon" );
 		m_pName[i] = new CExLabel( m_pRow[i], "NameLabel", "" );
-		m_pCount[i] = new CExLabel( m_pRow[i], "CountLabel", "0" );
+		m_pCount[i] = new CExLabel( m_pRow[i], "CountLabel", "" );
 		m_pSelectedBar[i] = new Panel( m_pRow[i], "SelectedBar" );
-		m_pBrewMeter[i] = new Panel( m_pRow[i], "BrewMeter" );
-		m_iBrewMeterFullWide[i] = 0;
+		m_iChunkX[i] = 0;
+		m_iChunkY[i] = 0;
+		m_iChunkW[i] = 0;
+		m_iChunkH[i] = 0;
+		for ( int c = 0; c < 5; ++c )
+			m_pChunk[i][c] = NULL;
 	}
 
 	ivgui()->AddTickSignal( GetVPanel() );
@@ -1460,21 +1454,12 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 		m_pRow[i]->LoadControlSettings( "resource/UI/chem_menu/chem_status_item.res" );
 		m_pSelectedBar[i]->SetPaintBackgroundEnabled( true );
 		m_pSelectedBar[i]->SetBgColor( Color( 255, 210, 40, 255 ) );
-		m_pBrewMeter[i]->SetPaintBackgroundEnabled( true );
-		m_pBrewMeter[i]->SetBgColor( Color( 255, 210, 40, 255 ) );
-		m_iBrewMeterFullWide[i] = m_pBrewMeter[i]->GetWide();
-		if ( m_iBrewMeterFullWide[i] < 1 )
-			m_iBrewMeterFullWide[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 156 );
 
 		m_pName[i]->SetVisible( false );
-		const bool bNitric = ( i == CHEM_NITRIC );
-		m_pDebuff[i]->SetVisible( !bNitric );
-		m_pDebuff[i]->SetShouldScaleImage( true );
-		m_pDebuffHud[i]->SetVisible( bNitric );
-		if ( bNitric )
-			m_pDebuffHud[i]->SetIcon( "d_firedeath" );
-		else
-			m_pDebuff[i]->SetImage( ChemDebuffImage( i ) );
+		m_pCount[i]->SetVisible( false );
+		vgui::Panel *pOldMeter = m_pRow[i]->FindChildByName( "BrewMeter" );
+		if ( pOldMeter )
+			pOldMeter->SetVisible( false );
 
 		int w = 0;
 		int h = 0;
@@ -1484,10 +1469,37 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 		if ( h < 1 )
 			h = scheme()->GetProportionalScaledValueEx( GetScheme(), 28 );
 		m_pRow[i]->SetSize( w, h + scheme()->GetProportionalScaledValueEx( GetScheme(), 2 ) );
-	}
 
-	for ( int i = 0; i < CHEM_COUNT; ++i )
-		m_szDrawnCount[i][0] = '\0';
+		m_iChunkX[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 40 );
+		m_iChunkY[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 10 );
+		m_iChunkH[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 8 );
+		m_iChunkW[i] = w - m_iChunkX[i] - scheme()->GetProportionalScaledValueEx( GetScheme(), 8 );
+		if ( m_iChunkW[i] < 40 )
+			m_iChunkW[i] = 40;
+		if ( m_iChunkH[i] < 4 )
+			m_iChunkH[i] = 4;
+
+		for ( int c = 0; c < 5; ++c )
+		{
+			m_pChunk[i][c] = dynamic_cast< vgui::ContinuousProgressBar * >( m_pRow[i]->FindChildByName( CFmtStr( "ChemChunk%d", c ) ) );
+			if ( !m_pChunk[i][c] )
+				m_pChunk[i][c] = new vgui::ContinuousProgressBar( m_pRow[i], CFmtStr( "ChemChunk%d", c ) );
+			m_pChunk[i][c]->SetProgressDirection( vgui::ProgressBar::PROGRESS_EAST );
+			m_pChunk[i][c]->SetFgColor( Color( 255, 210, 40, 255 ) );
+			m_pChunk[i][c]->SetBgColor( Color( 20, 20, 20, 180 ) );
+			m_pChunk[i][c]->SetPaintBorderEnabled( false );
+			m_pChunk[i][c]->SetMouseInputEnabled( false );
+			m_pChunk[i][c]->SetVisible( false );
+		}
+		const bool bNitric = ( i == CHEM_NITRIC );
+		m_pDebuff[i]->SetVisible( !bNitric );
+		m_pDebuff[i]->SetShouldScaleImage( true );
+		m_pDebuffHud[i]->SetVisible( bNitric );
+		if ( bNitric )
+			m_pDebuffHud[i]->SetIcon( "d_firedeath" );
+		else
+			m_pDebuff[i]->SetImage( ChemDebuffImage( i ) );
+	}
 
 	BaseClass::ApplySchemeSettings( pScheme );
 	PlaceRows();
@@ -1496,7 +1508,7 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 bool CHudChemStatus::ShouldDraw( void )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( !pPlayer || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
+	if ( !pPlayer || !pPlayer->IsAlive() || !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) )
 		return false;
 
 	if ( pPlayer->GetObserverMode() == OBS_MODE_FREEZECAM )
@@ -1537,17 +1549,15 @@ void CHudChemStatus::UpdateRows( void )
 		return;
 
 	const int iSelected = pPlayer->m_Shared.GetChemSelected();
-	const int iBrew = pPlayer->m_Shared.GetChemBrewSlot();
-	const bool bBrewing = ( iBrew >= 0 && iBrew < CHEM_COUNT );
 	const bool bRed = pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
 	const char *pszReady = bRed ? "obj_status_background_red" : "obj_status_background_blue";
 
 	for ( int i = 0; i < CHEM_COUNT; ++i )
 	{
-		const int nUses = pPlayer->m_Shared.GetChemUses( i );
+		const float flCharge = pPlayer->m_Shared.GetChemCharge( i );
+		const float flMax = (float)ChemUsesPerBrew( i );
 		const bool bSelected = ( i == iSelected );
-		const bool bThisBrew = bBrewing && ( iBrew == i );
-		const bool bReady = nUses > 0;
+		const bool bReady = flCharge >= 1.f;
 
 		m_pBackground[i]->SetIcon( ( bReady || bSelected ) ? pszReady : "obj_status_background_disabled" );
 		m_pSelectedBar[i]->SetVisible( bSelected );
@@ -1560,55 +1570,44 @@ void CHudChemStatus::UpdateRows( void )
 		else
 			m_pDebuff[i]->SetDrawColor( iconCol );
 
-		float flFrac = 0.f;
-		if ( bThisBrew )
+		int nChunks = (int)flMax;
+		if ( nChunks < 1 )
+			nChunks = 1;
+		if ( nChunks > 5 )
+			nChunks = 5;
+
+		int iGap = scheme()->GetProportionalScaledValueEx( GetScheme(), 2 );
+		if ( iGap < 1 )
+			iGap = 1;
+		const int iFullW = m_iChunkW[i] > 0 ? m_iChunkW[i] : 120;
+		const int iChunkW = ( nChunks == 1 ) ? iFullW : ( iFullW - iGap * ( nChunks - 1 ) ) / nChunks;
+		for ( int c = 0; c < 5; ++c )
 		{
-			const float flDur = ChemBrewSeconds( i );
-			if ( flDur > 0.f )
+			vgui::ContinuousProgressBar *pChunk = m_pChunk[i][c];
+			if ( !pChunk )
+				continue;
+			if ( c >= nChunks )
 			{
-				const float flLeft = pPlayer->m_Shared.GetChemBrewDone() - gpGlobals->curtime;
-				flFrac = 1.f - ( flLeft / flDur );
+				pChunk->SetVisible( false );
+				continue;
 			}
+			const int iWidth = ( c == nChunks - 1 ) ? ( iFullW - c * ( iChunkW + iGap ) ) : iChunkW;
+			pChunk->SetBounds( m_iChunkX[i] + c * ( iChunkW + iGap ), m_iChunkY[i], iWidth, m_iChunkH[i] );
+			pChunk->SetVisible( true );
+
+			float flChunk = 0.f;
+			if ( flMax > 0.f )
+				flChunk = flCharge - (float)c;
+			if ( flChunk < 0.f )
+				flChunk = 0.f;
+			if ( flChunk > 1.f )
+				flChunk = 1.f;
+			pChunk->SetProgress( flChunk );
+			if ( flChunk >= 1.f )
+				pChunk->SetFgColor( Color( 255, 255, 255, 255 ) );
 			else
-			{
-				flFrac = 1.f;
-			}
-			if ( flFrac < 0.f )
-				flFrac = 0.f;
-			if ( flFrac > 1.f )
-				flFrac = 1.f;
+				pChunk->SetFgColor( Color( 255, 210, 40, 255 ) );
 		}
-		m_pBrewMeter[i]->SetVisible( bThisBrew );
-		if ( bThisBrew )
-		{
-			int iFull = m_iBrewMeterFullWide[i];
-			if ( iFull < 1 )
-				iFull = m_pBrewMeter[i]->GetWide();
-			int iWide = (int)( iFull * flFrac );
-			if ( iWide < 1 && flFrac > 0.f )
-				iWide = 1;
-			m_pBrewMeter[i]->SetWide( iWide );
-		}
-
-		char szCount[8];
-		Color countCol;
-		if ( bThisBrew )
-		{
-			Q_snprintf( szCount, sizeof( szCount ), "%d%%", (int)( flFrac * 100.f + 0.5f ) );
-			countCol = Color( 255, 210, 40, 255 );
-		}
-		else
-		{
-			Q_snprintf( szCount, sizeof( szCount ), "%d", nUses );
-			countCol = bSelected ? Color( 255, 210, 40, 255 ) : ( bReady ? Color( 255, 255, 255, 255 ) : Color( 140, 140, 140, 255 ) );
-		}
-
-		if ( Q_strcmp( m_szDrawnCount[i], szCount ) )
-		{
-			Q_strncpy( m_szDrawnCount[i], szCount, sizeof( m_szDrawnCount[i] ) );
-			m_pCount[i]->SetText( szCount );
-		}
-		m_pCount[i]->SetFgColor( countCol );
 	}
 }
 

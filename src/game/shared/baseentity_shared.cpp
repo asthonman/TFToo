@@ -34,6 +34,10 @@
 	#include "te_hl2mp_shotgun_shot.h"
 #endif
 
+#if defined( GAME_DLL ) && defined( TF_DLL )
+	#include "tf_paint.h"
+#endif
+
 	#include "gamestats.h"
 
 #endif
@@ -1845,6 +1849,9 @@ void CBaseEntity::FireBullets( const FireBulletsInfo_t &info )
 		if (tr.fraction != 1.0)
 		{
 #ifdef GAME_DLL
+#if defined( TF_DLL )
+			TFPaint_IgniteNitricAt( tr.endpos, 48.f );
+#endif
 			UpdateShotStatistics( tr );
 
 			// For shots that don't need persistance
@@ -2122,6 +2129,10 @@ void CBaseEntity::DispatchTraceAttack( const CTakeDamageInfo &info, const Vector
 
 void CBaseEntity::TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, trace_t *ptr, CDmgAccumulator *pAccumulator )
 {
+#if defined( GAME_DLL ) && defined( TF_DLL )
+	if ( ptr && ptr->fraction < 1.f )
+		TFPaint_IgniteNitricAt( ptr->endpos, 48.f );
+#endif
 	Vector vecOrigin = ptr->endpos - vecDir * 4;
 
 	if ( m_takedamage )

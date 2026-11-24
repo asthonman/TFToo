@@ -6105,6 +6105,9 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 			if ( pVictim->m_Shared.InCond( TF_COND_URINE ) ||
 				 pVictim->m_Shared.InCond( TF_COND_MAD_MILK ) ||
 				 pVictim->m_Shared.InCond( TF_COND_GAS ) ||
+				 pVictim->m_Shared.InIcePhysics() ||
+				 pVictim->m_Shared.IsNitricCoated() ||
+				 pVictim->m_Shared.IsChemWet() ||
 			   ( pVictim->GetWaterLevel() > WL_NotInWater ) ||
 			   ( ( flWaterExitTime > 0 ) && ( gpGlobals->curtime - flWaterExitTime < 5.0f ) ) ) // or they exited the water in the last few seconds
 			{

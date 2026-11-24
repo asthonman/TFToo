@@ -274,7 +274,7 @@ public:
 	virtual bool ShouldDraw( void ) OVERRIDE
 	{
 		C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-		if ( !pPlayer || !pPlayer->IsAlive() || ( !pPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) && !pPlayer->IsPlayerClass( TF_CLASS_CHEMIST ) ) )
+		if ( !pPlayer || !pPlayer->IsAlive() || !pPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
 		{
 			m_AccountDeltaItems.RemoveAll();
 			return false;

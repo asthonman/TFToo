@@ -697,13 +697,8 @@ void CBaseObject::UpdateRepulsePhysics( void )
 		return;
 	}
 
-	TFPaintStampInfo_t feet = TFPaint_QueryStampInfo( GetAbsOrigin(), BOUNCE_POWER, 72.f );
-	TFPaintStampInfo_t body = TFPaint_QueryStampInfo( WorldSpaceCenter(), BOUNCE_POWER, 72.f );
-	if ( feet.found )
-		NoteEnemyRepulse( feet.team, feet.die );
-	if ( body.found )
-		NoteEnemyRepulse( body.team, body.die );
-
+	// The puddle itself is the same gel for both teams. A thrown splash still
+	// launches an enemy building through NoteEnemyRepulse. Standing on it does not.
 	if ( m_flRepulseUntil > gpGlobals->curtime )
 	{
 		if ( !m_bRepulsePhysics )
