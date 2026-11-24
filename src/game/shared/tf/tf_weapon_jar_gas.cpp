@@ -20,6 +20,7 @@
 #include "soundent.h"
 #include "te_effect_dispatch.h"
 #include "tf_player.h"
+#include "tf_obj.h"
 #include "func_break.h"
 #include "func_nogrenades.h"
 #include "Sprite.h"
@@ -32,6 +33,7 @@
 #include "tf_flame.h"
 #include "dt_utlvector_send.h"
 #include "collisionutils.h"
+#include "recipientfilter.h"
 #endif
 
 
@@ -175,6 +177,9 @@ void CTFProjectile_JarGas::SetCustomPipebombModel()
 //-----------------------------------------------------------------------------
 void CTFProjectile_JarGas::Explode( trace_t *pTrace, int bitsDamageType )
 {
+	if ( m_takedamage == DAMAGE_NO )
+		return;
+
 	BaseClass::Explode( pTrace, bitsDamageType );
 
 	SetModelName( NULL_STRING );//invisible
@@ -188,9 +193,8 @@ void CTFProjectile_JarGas::Explode( trace_t *pTrace, int bitsDamageType )
 		SetAbsOrigin( pTrace->endpos + ( pTrace->plane.normal * 1.0f ) );
 	}
 
-	CTFGasManager *pGasManager = NULL;
 	CTFPlayer *pThrower = ToTFPlayer( GetThrower() );
-	if ( pThrower )
+	if ( pThrower && !m_bPoison )
 	{
 		Vector vecAbsOrigin = GetAbsOrigin();
 		Vector vecManagerPos = vecAbsOrigin + Vector( 0, 0, TF_GAS_POINT_RADIUS * 1.2 );
@@ -201,20 +205,35 @@ void CTFProjectile_JarGas::Explode( trace_t *pTrace, int bitsDamageType )
 		{
 			vecManagerPos = vecAbsOrigin;
 		}
-		if ( m_bPoison )
+		CTFGasManager *pGasManager = CTFGasManager::Create( pThrower, vecManagerPos );
+		if ( pGasManager )
+			pGasManager->AddGas();
+	}
+	else if ( m_bPoison )
+	{
+		if ( pThrower )
 		{
+			Vector vecAbsOrigin = GetAbsOrigin();
+			Vector vecManagerPos = vecAbsOrigin + Vector( 0, 0, TF_GAS_POINT_RADIUS * 1.2 );
+
+			trace_t	tr;
+			UTIL_TraceLine( vecAbsOrigin, vecManagerPos, MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE, &tr );
+			if ( tr.fraction != 1.0f )
+			{
+				vecManagerPos = vecAbsOrigin;
+			}
 			CTFPoisonGas *pPoison = CTFPoisonGas::Create( pThrower, vecManagerPos );
 			if ( pPoison )
 				pPoison->AddGas();
 		}
-		else
-		{
-			pGasManager = CTFGasManager::Create( pThrower, vecManagerPos );
-			if ( pGasManager )
-			{
-				pGasManager->AddGas();
-			}
-		}
+
+		Vector normal = ( pTrace->fraction != 1.0f ) ? pTrace->plane.normal : Vector( 0, 0, 1 );
+		CPVSFilter particleFilter( GetAbsOrigin() );
+		TE_TFParticleEffect( particleFilter, 0.0f, GetImpactEffect(), GetAbsOrigin(), vec3_angle );
+		CBroadcastRecipientFilter soundFilter;
+		Vector vecOrigin = GetAbsOrigin();
+		EmitSound( soundFilter, entindex(), GetExplodeSound(), &vecOrigin );
+		Chemist_Impact( pThrower, GetAbsOrigin(), normal, CHEM_POISON );
 	}
 
 	SetContextThink( &CBaseGrenade::SUB_Remove, gpGlobals->curtime, "RemoveThink" );
@@ -462,10 +481,28 @@ void CTFPoisonGas::OnCollide( CBaseEntity *pEnt, int iPointIndex )
 	(void)iPointIndex;
 }
 
+static bool Chemist_Blocked( const Vector &from, const Vector &to )
+{
+	trace_t tr;
+	UTIL_TraceLine( from, to, MASK_SOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr );
+	return tr.fraction < 1.f;
+}
+
+static float Chemist_DistSqr( CBaseEntity *pEnt, const Vector &pos )
+{
+	const float a = pEnt->GetAbsOrigin().DistToSqr( pos );
+	const float b = pEnt->WorldSpaceCenter().DistToSqr( pos );
+	return ( a < b ) ? a : b;
+}
+
 static void Chemist_SplashNeutral( CTFPlayer *pPlayer, const Vector &pos )
 {
 	TFPaint_EraseCoatsNear( pos, 160.f );
+	if ( !pPlayer )
+		return;
 
+	const Vector src = pos + Vector( 0.f, 0.f, 8.f );
+	const float r2 = 160.f * 160.f;
 	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
 	{
 		CTFPlayer *pAlly = ToTFPlayer( UTIL_PlayerByIndex( i ) );
@@ -473,7 +510,9 @@ static void Chemist_SplashNeutral( CTFPlayer *pPlayer, const Vector &pos )
 			continue;
 		if ( pAlly->GetTeamNumber() != pPlayer->GetTeamNumber() )
 			continue;
-		if ( pAlly->GetAbsOrigin().DistToSqr( pos ) > 160.f * 160.f )
+		if ( Chemist_DistSqr( pAlly, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pAlly->WorldSpaceCenter() ) )
 			continue;
 
 		pAlly->m_Shared.RemoveCond( TF_COND_BURNING );
@@ -484,51 +523,136 @@ static void Chemist_SplashNeutral( CTFPlayer *pPlayer, const Vector &pos )
 	}
 }
 
+void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal, int slot )
+{
+	Vector n = normal;
+	if ( n.LengthSqr() < 0.01f )
+		n.Init( 0.f, 0.f, 1.f );
+	VectorNormalize( n );
+
+	if ( slot == CHEM_REPULSION )
+		TFPaint_AddTimedCoat( pos, n, BOUNCE_POWER, 80.f, 30.f, false, pPlayer );
+	else if ( slot == CHEM_NITRIC )
+		TFPaint_AddTimedCoat( pos, n, FIFTH_POWER, 80.f, 15.f, true, pPlayer );
+	else if ( slot == CHEM_NEUTRAL )
+	{
+		Chemist_SplashNeutral( pPlayer, pos );
+		return;
+	}
+	else if ( slot != CHEM_POISON )
+	{
+		return;
+	}
+
+	if ( !pPlayer )
+		return;
+	if ( TFGameRules() && TFGameRules()->IsTruceActive() )
+		return;
+
+	const float radius = ( slot == CHEM_POISON ) ? 100.f : 80.f;
+	const float r2 = radius * radius;
+	const Vector src = pos + n * 8.f;
+	const int team = pPlayer->GetTeamNumber();
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pEnemy = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pEnemy || !pEnemy->IsAlive() || pEnemy == pPlayer )
+			continue;
+		if ( pEnemy->GetTeamNumber() == team )
+			continue;
+		if ( Chemist_DistSqr( pEnemy, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pEnemy->WorldSpaceCenter() ) )
+			continue;
+
+		if ( slot == CHEM_POISON )
+		{
+			if ( pEnemy->m_Shared.IsInvulnerable() || pEnemy->m_Shared.InCond( TF_COND_PHASE ) || !pEnemy->CanGetWet() )
+				continue;
+			pEnemy->m_Shared.ApplyPoison( pPlayer, 5.0f );
+		}
+		else if ( slot == CHEM_NITRIC )
+		{
+			if ( pEnemy->m_Shared.IsInvulnerable() || pEnemy->m_Shared.InCond( TF_COND_PHASE ) )
+				continue;
+			pEnemy->m_Shared.Burn( pPlayer, NULL, 5.0f );
+		}
+		else if ( slot == CHEM_REPULSION )
+		{
+			Vector vel = pEnemy->GetAbsVelocity();
+			if ( vel.z < 300.f )
+			{
+				vel.z += 450.f;
+				pEnemy->SetAbsVelocity( vel );
+				pEnemy->SetGroundEntity( NULL );
+			}
+		}
+	}
+
+	if ( slot != CHEM_REPULSION )
+		return;
+
+	for ( int o = 0; o < IBaseObjectAutoList::AutoList().Count(); ++o )
+	{
+		CBaseObject *pObj = static_cast< CBaseObject * >( IBaseObjectAutoList::AutoList()[o] );
+		if ( !pObj || !pObj->IsAlive() || pObj->IsPlacing() || pObj->IsCarried() )
+			continue;
+		if ( pObj->GetTeamNumber() == team )
+			continue;
+		if ( Chemist_DistSqr( pObj, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pObj->WorldSpaceCenter() ) )
+			continue;
+		pObj->NoteEnemyRepulse( team, gpGlobals->curtime + 8.f );
+	}
+}
+
 void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 {
 	if ( !pPlayer )
 		return;
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		return;
 
-	Vector vecForward;
-	AngleVectors( pPlayer->EyeAngles(), &vecForward );
+	Vector vecForward, vecRight, vecUp;
+	AngleVectors( pPlayer->EyeAngles(), &vecForward, &vecRight, &vecUp );
 	const Vector vecEye = pPlayer->EyePosition();
 
+	const char *pszWeapon = ( slot == CHEM_POISON ) ? "tf_weapon_jar_gas" : "tf_weapon_jar";
+	WEAPON_FILE_INFO_HANDLE hWpn = LookupWeaponInfoSlot( pszWeapon );
+	if ( hWpn == GetInvalidWeaponInfoHandle() )
+		return;
+	CTFWeaponInfo *pInfo = static_cast< CTFWeaponInfo * >( GetFileWeaponInfoFromHandle( hWpn ) );
+	if ( !pInfo )
+		return;
+
+	Vector vecSrc = vecEye + vecForward * 16.f + vecRight * 8.f + vecUp * -6.f;
+	trace_t trace;
+	CTraceFilterSimple traceFilter( pPlayer, COLLISION_GROUP_NONE );
+	UTIL_TraceHull( vecEye, vecSrc, -Vector( 8, 8, 8 ), Vector( 8, 8, 8 ), MASK_SOLID_BRUSHONLY, &traceFilter, &trace );
+	if ( trace.startsolid )
+		vecSrc = vecEye;
+	else
+		vecSrc = trace.endpos;
+
+	AngularImpulse ang( 300, 0, 0 );
 	if ( slot == CHEM_POISON )
 	{
-		WEAPON_FILE_INFO_HANDLE hWpn = LookupWeaponInfoSlot( "tf_weapon_jar_gas" );
-		if ( hWpn == GetInvalidWeaponInfoHandle() )
-			return;
-		CTFWeaponInfo *pInfo = static_cast< CTFWeaponInfo * >( GetFileWeaponInfoFromHandle( hWpn ) );
-		if ( !pInfo )
-			return;
-
-		AngularImpulse ang( 300, random->RandomFloat( -100.f, 100.f ), 0 );
 		const Vector vecVel = vecForward * TF_GAS_PROJ_SPEED;
-		CTFProjectile_JarGas *pProj = CTFProjectile_JarGas::Create( vecEye + vecForward * 16.f, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
+		CTFProjectile_JarGas *pProj = CTFProjectile_JarGas::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
 		if ( pProj )
 			pProj->m_bPoison = true;
 		return;
 	}
 
-	trace_t tr;
-	CTraceFilterSimple filter( pPlayer, COLLISION_GROUP_NONE );
-	const float flRange = ( slot == CHEM_NEUTRAL ) ? 500.f : 800.f;
-	UTIL_TraceLine( vecEye, vecEye + vecForward * flRange, MASK_SOLID, &filter, &tr );
-	const Vector vecPos = tr.endpos;
-	Vector vecNormal = ( tr.fraction < 1.f ) ? tr.plane.normal : Vector( 0, 0, 1 );
-
-	if ( slot == CHEM_REPULSION )
-	{
-		TFPaint_AddTimedCoat( vecPos, vecNormal, BOUNCE_POWER, 80.f, 30.f, false, pPlayer );
-	}
-	else if ( slot == CHEM_NITRIC )
-	{
-		TFPaint_AddTimedCoat( vecPos, vecNormal, FIFTH_POWER, 80.f, 15.f, true, pPlayer );
-	}
-	else if ( slot == CHEM_NEUTRAL )
-	{
-		Chemist_SplashNeutral( pPlayer, vecPos );
-	}
+	// Same toss as a stock jarate jar.
+	Vector vecVel = ( vecForward * 1000.f ) + ( vecUp * 200.f )
+		+ ( random->RandomFloat( -10.f, 10.f ) * vecRight )
+		+ ( random->RandomFloat( -10.f, 10.f ) * vecUp );
+	CTFProjectile_Jar *pProj = CTFProjectile_Jar::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
+	if ( pProj )
+		pProj->SetChemSlot( slot );
 }
 
 void Chemist_AirblastDispel( CTFPlayer *pPyro )

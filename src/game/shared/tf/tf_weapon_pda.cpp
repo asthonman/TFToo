@@ -1241,6 +1241,53 @@ CHudMenuChemistry::CHudMenuChemistry( const char *pElementName )
 	RegisterForRenderGroup( "mid" );
 }
 
+static const char *ChemDebuffImage( int slot )
+{
+	if ( slot == CHEM_REPULSION )
+		return "../vgui/slowed";
+	if ( slot == CHEM_NEUTRAL )
+		return "../effects/jarated";
+	return "../vgui/bleed_drop";
+}
+
+static Color ChemDebuffColor( int slot )
+{
+	if ( slot == CHEM_POISON )
+		return Color( 220, 40, 40, 255 );
+	if ( slot == CHEM_NITRIC )
+		return Color( 255, 150, 40, 255 );
+	return Color( 230, 210, 40, 255 );
+}
+
+static void ChemMenu_SetDebuffIcon( vgui::Panel *pPanel, int slot )
+{
+	if ( !pPanel )
+		return;
+
+	vgui::ImagePanel *pIcon = dynamic_cast< vgui::ImagePanel * >( pPanel->FindChildByName( "DebuffIcon" ) );
+	CIconPanel *pHud = dynamic_cast< CIconPanel * >( pPanel->FindChildByName( "DebuffHudIcon" ) );
+	const bool bNitric = ( slot == CHEM_NITRIC );
+	if ( pIcon )
+	{
+		pIcon->SetVisible( !bNitric );
+		pIcon->SetShouldScaleImage( true );
+		if ( !bNitric )
+		{
+			pIcon->SetImage( ChemDebuffImage( slot ) );
+			pIcon->SetDrawColor( ChemDebuffColor( slot ) );
+		}
+	}
+	if ( pHud )
+	{
+		pHud->SetVisible( bNitric );
+		if ( bNitric )
+		{
+			pHud->SetIcon( "d_firedeath" );
+			pHud->SetIconColor( ChemDebuffColor( slot ) );
+		}
+	}
+}
+
 void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 {
 	LoadControlSettings( "resource/UI/chem_menu/HudMenuChemistry.res" );
@@ -1254,6 +1301,7 @@ void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 			CExLabel *pName = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "ItemNameLabel" ) );
 			if ( pName )
 				pName->SetText( ChemConcoctionName( i ) );
+			ChemMenu_SetDebuffIcon( pStates[s], i );
 			CExLabel *pNumber = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "NumberLabel" ) );
 			if ( pNumber )
 				pNumber->SetText( CFmtStr( "%d", i + 1 ) );
@@ -1393,6 +1441,8 @@ CHudChemStatus::CHudChemStatus( const char *pElementName )
 		m_pRow[i]->SetPaintBackgroundEnabled( false );
 		m_pRow[i]->SetMouseInputEnabled( false );
 		m_pBackground[i] = new CIconPanel( m_pRow[i], "Background" );
+		m_pDebuff[i] = new vgui::ImagePanel( m_pRow[i], "DebuffIcon" );
+		m_pDebuffHud[i] = new CIconPanel( m_pRow[i], "DebuffHudIcon" );
 		m_pName[i] = new CExLabel( m_pRow[i], "NameLabel", "" );
 		m_pCount[i] = new CExLabel( m_pRow[i], "CountLabel", "0" );
 		m_pSelectedBar[i] = new Panel( m_pRow[i], "SelectedBar" );
@@ -1416,15 +1466,15 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 		if ( m_iBrewMeterFullWide[i] < 1 )
 			m_iBrewMeterFullWide[i] = scheme()->GetProportionalScaledValueEx( GetScheme(), 156 );
 
-		wchar_t wszName[64];
-		const wchar_t *pszLoc = g_pVGuiLocalize ? g_pVGuiLocalize->Find( ChemConcoctionName( i ) ) : NULL;
-		if ( pszLoc )
-			m_pName[i]->SetText( pszLoc );
-		else if ( g_pVGuiLocalize )
-		{
-			g_pVGuiLocalize->ConvertANSIToUnicode( ChemConcoctionName( i ), wszName, sizeof( wszName ) );
-			m_pName[i]->SetText( wszName );
-		}
+		m_pName[i]->SetVisible( false );
+		const bool bNitric = ( i == CHEM_NITRIC );
+		m_pDebuff[i]->SetVisible( !bNitric );
+		m_pDebuff[i]->SetShouldScaleImage( true );
+		m_pDebuffHud[i]->SetVisible( bNitric );
+		if ( bNitric )
+			m_pDebuffHud[i]->SetIcon( "d_firedeath" );
+		else
+			m_pDebuff[i]->SetImage( ChemDebuffImage( i ) );
 
 		int w = 0;
 		int h = 0;
@@ -1502,8 +1552,13 @@ void CHudChemStatus::UpdateRows( void )
 		m_pBackground[i]->SetIcon( ( bReady || bSelected ) ? pszReady : "obj_status_background_disabled" );
 		m_pSelectedBar[i]->SetVisible( bSelected );
 
-		const Color nameCol = bSelected ? Color( 255, 255, 255, 255 ) : ( bReady ? Color( 235, 226, 202, 255 ) : Color( 150, 150, 150, 255 ) );
-		m_pName[i]->SetFgColor( nameCol );
+		Color iconCol = ChemDebuffColor( i );
+		if ( !bReady && !bSelected )
+			iconCol = Color( 140, 140, 140, 255 );
+		if ( i == CHEM_NITRIC )
+			m_pDebuffHud[i]->SetIconColor( iconCol );
+		else
+			m_pDebuff[i]->SetDrawColor( iconCol );
 
 		float flFrac = 0.f;
 		if ( bThisBrew )

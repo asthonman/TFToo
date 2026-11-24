@@ -85,6 +85,8 @@ public:
 	virtual void	BaseObjectThink( void );
 	//virtual void	LostPowerThink( void );
 	virtual CTFPlayer *GetOwner( void );
+	// Enemy repulsion gel. team is the painter. die is an absolute time.
+	void	NoteEnemyRepulse( int team, float die );
 
 	// Creation
 	virtual void	Precache();
@@ -518,7 +520,6 @@ private:
 	void	StartRepulsePhysics( void );
 	void	StopRepulsePhysics( bool bDropToGround );
 	void	RepulsePhysicsThink( void );
-	void	NoteEnemyRepulse( int team, float die );
 
 	float	m_flRepulseUntil;
 	Vector	m_vecRepulseVel;

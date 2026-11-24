@@ -168,7 +168,8 @@ public:
 	virtual void		OnHit( CBaseEntity *pOther )				{}
 	virtual void		OnHitWorld( void )							{}
 	virtual void		Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE;
-	
+	// Chemist jars (0..CHEM_COUNT-1) splash a concoction instead of jarate.
+	void				SetChemSlot( int slot ) { m_nChemSlot = slot; }
 
 	virtual void		PipebombTouch( CBaseEntity *pOther ) OVERRIDE;
 	virtual void		VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE;
@@ -186,8 +187,11 @@ public:
 	virtual const char* GetExplodeSound() { return TF_WEAPON_PEEJAR_EXPLODE_SOUND; }
 
 protected:
+	virtual bool		ShouldJarateOnExplode( void ) { return true; }
+
 	Vector		m_vCollisionVelocity;
 	int			m_iProjectileType;
+	int			m_nChemSlot;
 #endif
 
 };

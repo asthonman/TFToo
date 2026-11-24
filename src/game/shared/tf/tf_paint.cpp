@@ -24,6 +24,8 @@
 #define CTFPaintMap C_TFPaintMap
 #else
 #include "tf_player.h"
+#include "tf_obj.h"
+#include "physics_shared.h"
 #include "recipientfilter.h"
 #include "particle_system.h"
 #include "materialsystem/imaterialsystem.h"
@@ -233,6 +235,18 @@ private:
 	void	ThinkCoats( void );
 	void	IgniteCoat( ChemCoat_t &coat );
 	void	RemoveCoat( int index );
+
+	struct BouncedProp_t
+	{
+		EHANDLE prop;
+		EHANDLE owner;
+		float until;
+	};
+	CUtlVector< BouncedProp_t > m_BouncedProps;
+	float	m_flNextPropScan;
+	void	ThinkProps( void );
+	void	NoteBouncedProp( CBaseEntity *pProp, CBaseEntity *pOwner );
+	CBaseEntity *BounceCoatOwnerNear( const Vector &pos );
 #endif
 
 #ifdef CLIENT_DLL
@@ -306,6 +320,7 @@ CTFPaintMap::CTFPaintMap()
 	m_iBlobCursor = 0;
 	m_flNextSplatSound = 0.f;
 	m_flNextCoatExpire = 0.f;
+	m_flNextPropScan = 0.f;
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
 		m_vecBlobVel[i].Init();
@@ -979,6 +994,7 @@ void CTFPaintMap::Think( void )
 	}
 
 	ThinkCoats();
+	ThinkProps();
 }
 
 void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner )
@@ -1154,6 +1170,239 @@ void CTFPaintMap::ThinkCoats( void )
 			if ( coat.ignited )
 				pPlayer->m_Shared.Burn( pOwner ? pOwner : pPlayer, NULL, 2.0f );
 		}
+	}
+}
+
+static float TFPaint_SpeedDamage( float flSpeed )
+{
+	// gDefaultPlayerImpactDamageTable linear steps. First entry is the minimum.
+	static const float flMin2[6] = {
+		150.f * 150.f, 250.f * 250.f, 450.f * 450.f,
+		550.f * 550.f, 700.f * 700.f, 1000.f * 1000.f
+	};
+	static const float flDmg[6] = { 5.f, 10.f, 20.f, 50.f, 100.f, 500.f };
+	const float s2 = flSpeed * flSpeed;
+	if ( s2 < flMin2[0] )
+		return 0.f;
+	if ( s2 >= flMin2[5] )
+		return flDmg[5];
+	for ( int i = 0; i < 5; ++i )
+	{
+		if ( s2 < flMin2[i + 1] )
+		{
+			const float t = ( s2 - flMin2[i] ) / ( flMin2[i + 1] - flMin2[i] );
+			return flDmg[i] + ( flDmg[i + 1] - flDmg[i] ) * t;
+		}
+	}
+	return flDmg[5];
+}
+
+struct TFPaintSmashPair_t
+{
+	EHANDLE mover;
+	EHANDLE victim;
+	float next;
+};
+static CUtlVector< TFPaintSmashPair_t > s_SmashPairs;
+
+static bool TFPaint_SmashCooling( CBaseEntity *pMover, CBaseEntity *pVictim )
+{
+	for ( int i = s_SmashPairs.Count() - 1; i >= 0; --i )
+	{
+		TFPaintSmashPair_t &rec = s_SmashPairs[i];
+		if ( !rec.mover.Get() || gpGlobals->curtime >= rec.next )
+		{
+			s_SmashPairs.FastRemove( i );
+			continue;
+		}
+		if ( rec.mover.Get() == pMover && rec.victim.Get() == pVictim )
+			return true;
+	}
+	return false;
+}
+
+void TFPaint_SmashEnemies( CBaseEntity *pMover, const Vector &origin, const Vector &velocity, float radius, CBaseEntity *pAttacker )
+{
+	if ( !pMover || radius <= 0.f )
+		return;
+	if ( !pAttacker )
+		pAttacker = pMover;
+
+	const float dmg = TFPaint_SpeedDamage( velocity.Length() );
+	if ( dmg < 1.f )
+		return;
+
+	int team = pAttacker->GetTeamNumber();
+	if ( team < TF_TEAM_RED )
+		team = pMover->GetTeamNumber();
+
+	const float r2 = radius * radius;
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer || !pPlayer->IsAlive() || pPlayer == pMover )
+			continue;
+		if ( pPlayer->m_Shared.IsInvulnerable() )
+			continue;
+		if ( team >= TF_TEAM_RED && pPlayer->GetTeamNumber() == team )
+			continue;
+		if ( pPlayer->WorldSpaceCenter().DistToSqr( origin ) > r2 && pPlayer->GetAbsOrigin().DistToSqr( origin ) > r2 )
+			continue;
+		if ( TFPaint_SmashCooling( pMover, pPlayer ) )
+			continue;
+
+		CTakeDamageInfo info( pMover, pAttacker, dmg, DMG_CRUSH );
+		pPlayer->TakeDamage( info );
+
+		TFPaintSmashPair_t rec;
+		rec.mover = pMover;
+		rec.victim = pPlayer;
+		rec.next = gpGlobals->curtime + 0.35f;
+		s_SmashPairs.AddToTail( rec );
+	}
+
+	for ( int o = 0; o < IBaseObjectAutoList::AutoList().Count(); ++o )
+	{
+		CBaseObject *pObj = static_cast< CBaseObject * >( IBaseObjectAutoList::AutoList()[o] );
+		if ( !pObj || pObj == pMover || !pObj->IsAlive() || pObj->IsPlacing() || pObj->IsCarried() )
+			continue;
+		if ( pObj->m_takedamage == DAMAGE_NO )
+			continue;
+		if ( team >= TF_TEAM_RED && pObj->GetTeamNumber() == team )
+			continue;
+		if ( pObj->WorldSpaceCenter().DistToSqr( origin ) > r2 && pObj->GetAbsOrigin().DistToSqr( origin ) > r2 )
+			continue;
+		if ( TFPaint_SmashCooling( pMover, pObj ) )
+			continue;
+
+		CTakeDamageInfo info( pMover, pAttacker, dmg, DMG_CRUSH );
+		pObj->TakeDamage( info );
+
+		TFPaintSmashPair_t rec;
+		rec.mover = pMover;
+		rec.victim = pObj;
+		rec.next = gpGlobals->curtime + 0.35f;
+		s_SmashPairs.AddToTail( rec );
+	}
+}
+
+void CTFPaintMap::NoteBouncedProp( CBaseEntity *pProp, CBaseEntity *pOwner )
+{
+	const float until = gpGlobals->curtime + 0.6f;
+	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
+	{
+		if ( m_BouncedProps[i].prop.Get() == pProp )
+		{
+			m_BouncedProps[i].until = until;
+			if ( pOwner )
+				m_BouncedProps[i].owner = pOwner;
+			return;
+		}
+	}
+
+	BouncedProp_t rec;
+	rec.prop = pProp;
+	rec.owner = pOwner;
+	rec.until = until;
+	m_BouncedProps.AddToTail( rec );
+}
+
+CBaseEntity *CTFPaintMap::BounceCoatOwnerNear( const Vector &pos )
+{
+	CBaseEntity *pBest = NULL;
+	float best = 1.0e12f;
+	for ( int i = 0; i < m_ChemCoats.Count(); ++i )
+	{
+		const ChemCoat_t &coat = m_ChemCoats[i];
+		if ( coat.type != BOUNCE_POWER )
+			continue;
+		const float lim = coat.radius + 64.f;
+		const float d2 = coat.pos.DistToSqr( pos );
+		if ( d2 > lim * lim || d2 >= best )
+			continue;
+		best = d2;
+		pBest = coat.owner.Get();
+	}
+	return pBest;
+}
+
+void CTFPaintMap::ThinkProps( void )
+{
+	for ( int i = m_BouncedProps.Count() - 1; i >= 0; --i )
+	{
+		CBaseEntity *pProp = m_BouncedProps[i].prop.Get();
+		if ( !pProp || gpGlobals->curtime >= m_BouncedProps[i].until )
+		{
+			m_BouncedProps.FastRemove( i );
+			continue;
+		}
+
+		IPhysicsObject *pPhys = pProp->VPhysicsGetObject();
+		if ( !pPhys )
+			continue;
+
+		Vector vel;
+		AngularImpulse ang;
+		pPhys->GetVelocity( &vel, &ang );
+		CBaseEntity *pAttacker = m_BouncedProps[i].owner.Get();
+		if ( !pAttacker )
+			pAttacker = pProp;
+
+		const Vector size = pProp->WorldAlignMaxs() - pProp->WorldAlignMins();
+		float rad = size.Length() * 0.35f;
+		if ( rad < 48.f )
+			rad = 48.f;
+		if ( rad > 120.f )
+			rad = 120.f;
+		TFPaint_SmashEnemies( pProp, pProp->WorldSpaceCenter(), vel, rad, pAttacker );
+	}
+
+	if ( gpGlobals->curtime < m_flNextPropScan )
+		return;
+	m_flNextPropScan = gpGlobals->curtime + 0.05f;
+	if ( !tf_paint_enabled.GetBool() )
+		return;
+
+	const float flMin = tf_paint_bounce_min.GetFloat();
+	CBaseEntity *pEnt = NULL;
+	while ( ( pEnt = gEntList.FindEntityByClassname( pEnt, "prop_physics*" ) ) != NULL )
+	{
+		if ( pEnt->GetMoveType() != MOVETYPE_VPHYSICS )
+			continue;
+
+		IPhysicsObject *pPhys = pEnt->VPhysicsGetObject();
+		if ( !pPhys || !pPhys->IsMoveable() )
+			continue;
+		if ( pPhys->GetGameFlags() & FVPHYSICS_PLAYER_HELD )
+			continue;
+
+		TFPaintContact_t hit = TFPaint_Query( pEnt->WorldSpaceCenter(), 28.f );
+		if ( !hit.painted || hit.type != BOUNCE_POWER )
+			hit = TFPaint_Query( pEnt->GetAbsOrigin(), 36.f );
+		if ( !hit.painted || hit.type != BOUNCE_POWER )
+			continue;
+
+		Vector n = hit.normal;
+		if ( n.NormalizeInPlace() < 0.1f )
+			n.Init( 0.f, 0.f, 1.f );
+
+		Vector vel;
+		AngularImpulse ang;
+		pPhys->GetVelocity( &vel, &ang );
+		const float into = DotProduct( vel, n );
+		if ( into < 120.f )
+		{
+			Vector out = vel - n * into;
+			float away = flMin;
+			if ( into < 0.f && -into > away )
+				away = -into;
+			out += n * away;
+			pPhys->SetVelocity( &out, &ang );
+			pPhys->Wake();
+			pEnt->SetGroundEntity( NULL );
+		}
+
+		NoteBouncedProp( pEnt, BounceCoatOwnerNear( pEnt->WorldSpaceCenter() ) );
 	}
 }
 

@@ -104,4 +104,10 @@ void TFPaint_IgniteNitricAt( const Vector &pos, float extra );
 // Speed is kept. nOutward points out of the solid. Returns true if it bounced.
 bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward );
 
+#ifdef GAME_DLL
+// HL2DM player linear impact table, interpolated by speed squared. Min 150 ups.
+// Damages enemies of pAttacker. Cooldown is per mover and victim.
+void TFPaint_SmashEnemies( CBaseEntity *pMover, const Vector &origin, const Vector &velocity, float radius, CBaseEntity *pAttacker );
+#endif
+
 #endif // TF_PAINT_H

@@ -68,6 +68,8 @@ const char *ChemConcoctionName( int slot );
 
 #ifdef GAME_DLL
 void	Chemist_Throw( CTFPlayer *pPlayer, int slot );
+// Paint plus a splash. Neutralizing cleanses allies. The others coat enemies.
+void	Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal, int slot );
 void	Chemist_AirblastDispel( CTFPlayer *pPyro );
 #endif
 

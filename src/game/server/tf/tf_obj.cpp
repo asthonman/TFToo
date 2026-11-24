@@ -678,9 +678,14 @@ void CBaseObject::NoteEnemyRepulse( int team, float die )
 {
 	if ( team < TF_TEAM_RED || team == GetTeamNumber() )
 		return;
+	if ( IsPlacing() || IsCarried() || m_bDying || !IsAlive() )
+		return;
 	const float until = ( die > gpGlobals->curtime ) ? die : gpGlobals->curtime + 8.f;
 	if ( until > m_flRepulseUntil )
 		m_flRepulseUntil = until;
+	// Splash calls this off the object think. Launch now instead of waiting.
+	if ( !m_bRepulsePhysics && !GetMoveParent() )
+		StartRepulsePhysics();
 }
 
 void CBaseObject::UpdateRepulsePhysics( void )
@@ -796,6 +801,11 @@ void CBaseObject::RepulsePhysicsThink( void )
 
 		if ( impact > 220.f )
 		{
+			CBaseEntity *pAttacker = GetOwner();
+			if ( !pAttacker )
+				pAttacker = this;
+			TFPaint_SmashEnemies( this, WorldSpaceCenter(), m_vecRepulseVel, 72.f, pAttacker );
+
 			CTakeDamageInfo info( this, (CBaseEntity *)NULL, impact * 0.08f, DMG_FALL );
 			TakeDamage( info );
 			if ( !IsAlive() )
@@ -821,6 +831,14 @@ void CBaseObject::RepulsePhysicsThink( void )
 
 	if ( IPhysicsObject *pPhys = VPhysicsGetObject() )
 		pPhys->SetPosition( GetAbsOrigin(), GetAbsAngles(), true );
+
+	if ( IsAlive() )
+	{
+		CBaseEntity *pAttacker = GetOwner();
+		if ( !pAttacker )
+			pAttacker = this;
+		TFPaint_SmashEnemies( this, WorldSpaceCenter(), m_vecRepulseVel, 72.f, pAttacker );
+	}
 }
 
 void CBaseObject::ResetPlacement( void )

@@ -308,6 +308,8 @@ private:
 
 	vgui::EditablePanel *m_pRow[CHEM_COUNT];
 	CIconPanel *m_pBackground[CHEM_COUNT];
+	vgui::ImagePanel *m_pDebuff[CHEM_COUNT];
+	CIconPanel *m_pDebuffHud[CHEM_COUNT];
 	CExLabel *m_pName[CHEM_COUNT];
 	CExLabel *m_pCount[CHEM_COUNT];
 	vgui::Panel *m_pSelectedBar[CHEM_COUNT];

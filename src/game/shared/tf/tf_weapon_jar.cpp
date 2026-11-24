@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "tf_weapon_jar.h"
 #include "tf_paint.h"
+#include "tf_chemist.h"
 #include "decals.h"
 
 // Client specific.
@@ -242,6 +243,7 @@ CTFProjectile_Jar::CTFProjectile_Jar()
 {
 	m_vCollisionVelocity = Vector( 0,0,0 );
 	m_iProjectileType = TF_PROJECTILE_JAR;
+	m_nChemSlot = -1;
 }
 
 //-----------------------------------------------------------------------------
@@ -480,6 +482,10 @@ void JarExplode( int iEntIndex, CTFPlayer *pAttacker, CBaseEntity *pOriginalWeap
 //-----------------------------------------------------------------------------
 void CTFProjectile_Jar::Explode( trace_t *pTrace, int bitsDamageType )
 {
+	// Touch and the vphysics think can both reach this. Splash once.
+	if ( m_takedamage == DAMAGE_NO )
+		return;
+
 	SetModelName( NULL_STRING );//invisible
 	AddSolidFlags( FSOLID_NOT_SOLID );
 
@@ -492,7 +498,20 @@ void CTFProjectile_Jar::Explode( trace_t *pTrace, int bitsDamageType )
 	}
 
 	CTFPlayer *pThrower = ToTFPlayer( GetThrower() );
-	JarExplode( entindex(), pThrower, GetOriginalLauncher(), GetLauncher(), GetAbsOrigin(), GetTeamNumber(), GetDamageRadius(), GetEffectCondition(), 10.f, GetImpactEffect(), GetExplodeSound() );
+	if ( m_nChemSlot >= 0 && m_nChemSlot < CHEM_COUNT )
+	{
+		Vector normal = ( pTrace->fraction != 1.0f ) ? pTrace->plane.normal : Vector( 0, 0, 1 );
+		CPVSFilter particleFilter( GetAbsOrigin() );
+		TE_TFParticleEffect( particleFilter, 0.0f, GetImpactEffect(), GetAbsOrigin(), vec3_angle );
+		CBroadcastRecipientFilter soundFilter;
+		Vector vecOrigin = GetAbsOrigin();
+		EmitSound( soundFilter, entindex(), GetExplodeSound(), &vecOrigin );
+		Chemist_Impact( pThrower, GetAbsOrigin(), normal, m_nChemSlot );
+	}
+	else if ( ShouldJarateOnExplode() )
+	{
+		JarExplode( entindex(), pThrower, GetOriginalLauncher(), GetLauncher(), GetAbsOrigin(), GetTeamNumber(), GetDamageRadius(), GetEffectCondition(), 10.f, GetImpactEffect(), GetExplodeSound() );
+	}
 
 	// Debug radius draw.
 	//DrawRadius( GetDamageRadius() );
@@ -555,10 +574,17 @@ void CTFProjectile_Jar::PipebombTouch( CBaseEntity *pOther )
 
 	TFPaint_IgniteNitricAt( ( pTrace.fraction < 1.0f ) ? pTrace.endpos : GetAbsOrigin(), 48.f );
 
-	// A jar that hits repulsion gel bounces. A later hit on a player still splashes.
-	if ( !pOther->IsPlayer() )
+	// A jar that hits repulsion gel bounces. Neutralizing agent does not.
+	// A later hit on a player still splashes. Already leaving the surface still
+	// counts as gel, so the vphysics think cannot explode the bounce away.
+	if ( !pOther->IsPlayer() && m_nChemSlot != CHEM_NEUTRAL )
 	{
-		if ( TFPaint_ReflectProjectile( this, pTrace.endpos, pTrace.plane.normal ) )
+		const Vector vecHit = ( pTrace.fraction < 1.0f ) ? pTrace.endpos : GetAbsOrigin();
+		if ( TFPaint_ReflectProjectile( this, vecHit, pTrace.plane.normal ) )
+			return;
+
+		TFPaintContact_t contact = TFPaint_Query( vecHit, 16.f );
+		if ( contact.painted && contact.type == BOUNCE_POWER )
 			return;
 	}
 
@@ -619,6 +645,22 @@ void CTFProjectile_Jar::VPhysicsCollision( int index, gamevcollisionevent_t *pEv
 	bool bIsDynamicProp = ( NULL != dynamic_cast<CDynamicProp *>( pHitEntity ) );
 	if ( ExplodesOnHit() && pHitEntity && ( pHitEntity->IsWorld() || bIsDynamicProp ) )
 	{
+		// Gel already bounced us in the touch, or this callback is the only hit
+		// (a prop). Do not schedule the explode or the bounce is undone.
+		// Neutralizing agent is the one jar that splashes on gel.
+		if ( m_nChemSlot != CHEM_NEUTRAL )
+		{
+			TFPaintContact_t contact = TFPaint_Query( GetAbsOrigin(), 24.f );
+			if ( contact.painted && contact.type == BOUNCE_POWER )
+			{
+				Vector n = contact.normal;
+				if ( n.LengthSqr() < 0.01f )
+					n.Init( 0.f, 0.f, 1.f );
+				TFPaint_ReflectProjectile( this, GetAbsOrigin(), n );
+				return;
+			}
+		}
+
 		// Explode immediately next frame. (Can't explode in the collision callback.)
 		m_vCollisionVelocity = pEvent->preVelocity[index];
 		SetContextThink( &CTFProjectile_Jar::VPhysicsCollisionThink, gpGlobals->curtime, "JarCollisionThink" );

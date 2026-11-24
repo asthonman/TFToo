@@ -269,6 +269,51 @@ static void ApplyRepulseImpactDamage( CTFPlayer *pPlayer, float flImpact )
 #endif
 }
 
+#ifdef GAME_DLL
+// CTFGameMovement is one object for every player, so the smash window cannot
+// live on it. A bounce keeps hurting enemies for a short hop after the gel.
+struct PaintSmashWindow_t
+{
+	EHANDLE player;
+	float until;
+};
+static CUtlVector< PaintSmashWindow_t > s_PaintSmashWindows;
+
+static void NotePaintSmashWindow( CBasePlayer *pPlayer )
+{
+	if ( !pPlayer )
+		return;
+	const float until = gpGlobals->curtime + 0.45f;
+	for ( int i = 0; i < s_PaintSmashWindows.Count(); ++i )
+	{
+		if ( s_PaintSmashWindows[i].player.Get() == pPlayer )
+		{
+			s_PaintSmashWindows[i].until = until;
+			return;
+		}
+	}
+	PaintSmashWindow_t rec;
+	rec.player = pPlayer;
+	rec.until = until;
+	s_PaintSmashWindows.AddToTail( rec );
+}
+
+static bool InPaintSmashWindow( CBasePlayer *pPlayer )
+{
+	for ( int i = s_PaintSmashWindows.Count() - 1; i >= 0; --i )
+	{
+		if ( !s_PaintSmashWindows[i].player.Get() || gpGlobals->curtime >= s_PaintSmashWindows[i].until )
+		{
+			s_PaintSmashWindows.FastRemove( i );
+			continue;
+		}
+		if ( s_PaintSmashWindows[i].player.Get() == pPlayer )
+			return true;
+	}
+	return false;
+}
+#endif
+
 //----------------------------------------------------------------------------------------
 // Purpose: moves the player
 //----------------------------------------------------------------------------------------
@@ -347,6 +392,13 @@ void CTFGameMovement::PlayerMove()
 	{
 		m_pTFPlayer->m_Shared.EndCharge();
 	}
+
+#ifdef GAME_DLL
+	// m_bPaintBounced is cleared at the start of the next command, so the
+	// smash window has to outlive this move. Enemies only, not the self fall.
+	if ( m_pTFPlayer && InPaintSmashWindow( m_pTFPlayer ) )
+		TFPaint_SmashEnemies( m_pTFPlayer, m_pTFPlayer->WorldSpaceCenter(), mv->m_vecVelocity, 48.f, m_pTFPlayer );
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -4081,6 +4133,9 @@ void CTFGameMovement::ApplyPaintBounce( float flMin, float flImpactOverride )
 	m_flNextPaintBounce = gpGlobals->curtime + 0.12f;
 	m_bPaintBounced = true;
 	m_flSuppressPaintExit = gpGlobals->curtime + 0.25f;
+#ifdef GAME_DLL
+	NotePaintSmashWindow( player );
+#endif
 	TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );
 }
 
@@ -4125,6 +4180,9 @@ void CTFGameMovement::PaintWallBounce( void )
 	m_flNextPaintBounce = gpGlobals->curtime + 0.12f;
 	m_bPaintBounced = true;
 	m_flSuppressPaintExit = gpGlobals->curtime + 0.25f;
+#ifdef GAME_DLL
+	NotePaintSmashWindow( player );
+#endif
 	if ( !bEnemy )
 		player->m_Local.m_flFallVelocity = 0.f;
 	TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );

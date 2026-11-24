@@ -84,6 +84,8 @@ public:
 	virtual const char* GetExplodeSound() OVERRIDE { return TF_WEAPON_JARGAS_EXPLODE_SOUND; }
 
 	virtual void Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE;
+	// Chemist poison uses the gas-can projectile but must not also jarate.
+	virtual bool ShouldJarateOnExplode( void ) OVERRIDE { return !m_bPoison; }
 #endif
 
 	virtual int GetWeaponID( void ) const OVERRIDE { return TF_WEAPON_GRENADE_JAR_GAS; }
