@@ -147,7 +147,7 @@ public:
 	virtual void HandleDuckingSpeedCrop( void );
 	void		UpdateMadcapPMeter( void );
 	void		UpdatePaintContact( void );
-	void		ApplyPaintBounce( float flMin );
+	void		ApplyPaintBounce( float flMin, float flImpactOverride = -1.f );
 	void		PaintWallBounce( void );
 	void		PaintStickMove( void );
 	bool		PaintStickTrace( void );
@@ -234,6 +234,39 @@ static bool PaintGivesSpeed( int power, const Vector &origin, CBasePlayer *pPlay
 		return false;
 	const int team = TFPaint_QueryStampTeam( origin, SIXTH_POWER );
 	return team < TF_TEAM_RED || team == pPlayer->GetTeamNumber();
+}
+
+static TFPaintStampInfo_t BounceStampAtFeet( const Vector &origin )
+{
+	TFPaintStampInfo_t hit = TFPaint_QueryStampInfo( origin, BOUNCE_POWER );
+	if ( !hit.found )
+		hit = TFPaint_QueryStampInfo( origin + Vector( 0.f, 0.f, -8.f ), BOUNCE_POWER );
+	return hit;
+}
+
+static bool BounceStampIsEnemy( const TFPaintStampInfo_t &hit, CBasePlayer *pPlayer )
+{
+	if ( !hit.found || !pPlayer )
+		return false;
+	if ( hit.team < TF_TEAM_RED )
+		return false;
+	return hit.team != pPlayer->GetTeamNumber();
+}
+
+static void ApplyRepulseImpactDamage( CTFPlayer *pPlayer, float flImpact )
+{
+#ifdef GAME_DLL
+	if ( !pPlayer || !pPlayer->IsAlive() || flImpact < 220.f )
+		return;
+	const float dmg = ( flImpact - 180.f ) * 0.06f;
+	if ( dmg < 1.f )
+		return;
+	CTakeDamageInfo info( pPlayer, (CBaseEntity *)NULL, dmg, DMG_FALL );
+	pPlayer->TakeDamage( info );
+#else
+	(void)pPlayer;
+	(void)flImpact;
+#endif
 }
 
 //----------------------------------------------------------------------------------------
@@ -2924,7 +2957,13 @@ void CTFGameMovement::CheckWaterJump( void )
 //-----------------------------------------------------------------------------
 void CTFGameMovement::CheckFalling( void )
 {
-	if ( m_bPaintBounced )
+	const TFPaintStampInfo_t gel = BounceStampAtFeet( mv->GetAbsOrigin() );
+	const bool bEnemy = BounceStampIsEnemy( gel, player );
+	const bool bFriend = gel.found && !bEnemy;
+	const float flFall = player->m_Local.m_flFallVelocity;
+
+	// Friendly repulsion eats the landing. Enemy gel does not.
+	if ( bFriend || ( m_bPaintBounced && !bEnemy ) )
 		player->m_Local.m_flFallVelocity = 0.f;
 
 	// if we landed on the ground
@@ -2947,6 +2986,15 @@ void CTFGameMovement::CheckFalling( void )
 	}
 
 	BaseClass::CheckFalling();
+
+	// Landed on enemy gel from the air. Vanilla fall damage already ran.
+	// Bounce anyway, duck or not, and add the impact.
+	if ( bEnemy && player->GetGroundEntity() != NULL && !m_bPaintBounced
+		&& m_pTFPlayer && m_pTFPlayer->IsAlive()
+		&& gpGlobals->curtime >= m_flNextPaintBounce )
+	{
+		ApplyPaintBounce( tf_paint_bounce_min.GetFloat(), flFall );
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -3091,10 +3139,19 @@ void CTFGameMovement::FullWalkMove()
 	const bool bGuardDogJet = GuardDogJetCharge();
 	if ( !bGuardDogJet && player->GetGroundEntity() != NULL )
 	{
-		bool bGelBounce = tf_paint_enabled.GetBool() && m_nPaintPower == BOUNCE_POWER
+		const TFPaintStampInfo_t gel = BounceStampAtFeet( mv->GetAbsOrigin() );
+		const bool bEnemyGel = BounceStampIsEnemy( gel, player );
+		const bool bOnBounce = tf_paint_enabled.GetBool() && ( m_nPaintPower == BOUNCE_POWER || gel.found );
+		// Enemy gel launches you every time you touch it. Ducking does not stick you down.
+		if ( bEnemyGel && gpGlobals->curtime >= m_flNextPaintBounce )
+		{
+			m_bPaintLaunch = false;
+			ApplyPaintBounce( tf_paint_bounce_min.GetFloat() );
+			AirMove();
+		}
+		else if ( bOnBounce && !bEnemyGel
 			&& !( mv->m_nButtons & IN_DUCK ) && gpGlobals->curtime >= m_flNextPaintBounce
-			&& ( m_bPaintLaunch || player->m_Local.m_flFallVelocity > 200.f );
-		if ( bGelBounce )
+			&& ( m_bPaintLaunch || player->m_Local.m_flFallVelocity > 200.f ) )
 		{
 			m_bPaintLaunch = false;
 			ApplyPaintBounce( tf_paint_bounce_min.GetFloat() );
@@ -3994,7 +4051,7 @@ void CTFGameMovement::UpdatePaintContact( void )
 	m_nPrevPaintPower = m_nPaintPower;
 }
 
-void CTFGameMovement::ApplyPaintBounce( float flMin )
+void CTFGameMovement::ApplyPaintBounce( float flMin, float flImpactOverride )
 {
 	Vector n = m_vecPaintNormal;
 	if ( n.z < 0.15f )
@@ -4002,7 +4059,17 @@ void CTFGameMovement::ApplyPaintBounce( float flMin )
 	else
 		VectorNormalize( n );
 
-	float incoming = Max( (float)player->m_Local.m_flFallVelocity, -mv->m_vecVelocity.z );
+	float incoming = ( flImpactOverride >= 0.f ) ? flImpactOverride : Max( (float)player->m_Local.m_flFallVelocity, -mv->m_vecVelocity.z );
+	const TFPaintStampInfo_t gel = BounceStampAtFeet( mv->GetAbsOrigin() );
+	const bool bEnemy = BounceStampIsEnemy( gel, player );
+	if ( bEnemy )
+	{
+		flMin = Max( flMin, tf_paint_bounce_min.GetFloat() * 1.1f );
+		ApplyRepulseImpactDamage( m_pTFPlayer, incoming );
+		if ( m_pTFPlayer && !m_pTFPlayer->IsAlive() )
+			return;
+	}
+
 	float bounce = Max( flMin, incoming );
 	Vector vel = mv->m_vecVelocity;
 	vel -= n * DotProduct( vel, n );
@@ -4023,8 +4090,6 @@ void CTFGameMovement::PaintWallBounce( void )
 		return;
 	if ( gpGlobals->curtime < m_flNextPaintBounce )
 		return;
-	if ( mv->m_nButtons & IN_DUCK )
-		return;
 
 	Vector vel = mv->m_vecVelocity;
 	if ( vel.LengthSqr() < 150.f * 150.f )
@@ -4039,22 +4104,29 @@ void CTFGameMovement::PaintWallBounce( void )
 	if ( tr.plane.normal.z > 0.7f )
 		return;
 
-	TFPaintContact_t hit = TFPaint_Query( tr.endpos, tf_paint_trace_radius.GetFloat() );
-	if ( hit.type != BOUNCE_POWER )
+	TFPaintStampInfo_t hit = TFPaint_QueryStampInfo( tr.endpos, BOUNCE_POWER );
+	if ( !hit.found )
+		return;
+
+	const bool bEnemy = BounceStampIsEnemy( hit, player );
+	if ( !bEnemy && ( mv->m_nButtons & IN_DUCK ) )
 		return;
 
 	float into = -DotProduct( vel, tr.plane.normal );
 	if ( into < 80.f )
 		return;
 
-	float bounce = Max( into, tf_paint_bounce_wall.GetFloat() );
+	float bounce = Max( into, bEnemy ? tf_paint_bounce_min.GetFloat() * 1.1f : tf_paint_bounce_wall.GetFloat() );
+	if ( bEnemy )
+		ApplyRepulseImpactDamage( m_pTFPlayer, into );
 	Vector out = vel - tr.plane.normal * DotProduct( vel, tr.plane.normal );
 	out += tr.plane.normal * bounce;
 	mv->m_vecVelocity = out;
 	m_flNextPaintBounce = gpGlobals->curtime + 0.12f;
 	m_bPaintBounced = true;
 	m_flSuppressPaintExit = gpGlobals->curtime + 0.25f;
-	player->m_Local.m_flFallVelocity = 0.f;
+	if ( !bEnemy )
+		player->m_Local.m_flFallVelocity = 0.f;
 	TFPaint_PlaySound( m_pTFPlayer, "Player.JumpPowerUse" );
 }
 

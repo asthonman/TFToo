@@ -412,6 +412,7 @@ public:
 	void	DetermineDisguiseWearables();
 	void	RemoveDisguiseWearables();
 	void	Heal( CBaseEntity *pHealer, float flAmount, float flOverhealBonus, float flOverhealDecayMult, bool bDispenserHeal = false, CTFPlayer *pHealScorer = NULL );
+	void	SetHealerAmount( CBaseEntity *pHealer, float flAmount );
 	float	StopHealing( CBaseEntity *pHealer );
 	void	TestAndExpireChargeEffect( medigun_charge_types iCharge );
 	void	RecalculateChargeEffects( bool bInstantRemove = false );

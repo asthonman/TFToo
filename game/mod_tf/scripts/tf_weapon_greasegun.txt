@@ -17,7 +17,7 @@
 	"primary_ammo"		"TF_AMMO_METAL"
 	"secondary_ammo"	"None"
 	"clip_size"			"-1"
-	"default_clip"		"100"
+	"default_clip"		"200"
 
 	"bucket"			"1"
 	"bucket_position"	"0"

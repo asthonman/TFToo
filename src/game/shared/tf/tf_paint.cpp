@@ -174,7 +174,7 @@ public:
 	}
 #else
 	virtual void Think( void );
-	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam );
+	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam, bool bForce );
 	void EraseSphere( const Vector &pos, float radius );
 	void AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife );
 	void ReplayStamps( void );
@@ -186,6 +186,7 @@ public:
 
 	TFPaintContact_t Query( const Vector &origin, float extra );
 	int StampTeamNear( const Vector &origin, int type );
+	TFPaintStampInfo_t StampInfoNear( const Vector &origin, int type, float extra );
 
 	static CTFPaintMap *Get() { return s_pMap; }
 
@@ -390,10 +391,21 @@ TFPaintContact_t CTFPaintMap::Query( const Vector &origin, float extra )
 
 int CTFPaintMap::StampTeamNear( const Vector &origin, int type )
 {
+	return StampInfoNear( origin, type, 28.f ).team;
+}
+
+TFPaintStampInfo_t CTFPaintMap::StampInfoNear( const Vector &origin, int type, float extra )
+{
+	TFPaintStampInfo_t info;
+#ifdef CLIENT_DLL
+	ApplyNetworkStamps();
+#endif
+	if ( extra < 0.f )
+		extra = 0.f;
+
 	int cur = m_nStampCursor;
 	int start = ( cur > TF_PAINT_STAMP_MAX ) ? ( cur - TF_PAINT_STAMP_MAX ) : 0;
 	const int want = type + 1;
-	int bestTeam = 0;
 	float best = 1.0e12f;
 	for ( int s = start; s < cur; ++s )
 	{
@@ -403,14 +415,16 @@ int CTFPaintMap::StampTeamNear( const Vector &origin, int type )
 		float die = m_flStampDie[slot];
 		if ( die > 0.f && gpGlobals->curtime >= die )
 			continue;
-		float rad = m_flStampRadius[slot] + 28.f;
+		float rad = m_flStampRadius[slot] + extra;
 		float d2 = ( origin - m_vecStampPos[slot] ).LengthSqr();
 		if ( d2 > rad * rad || d2 >= best )
 			continue;
 		best = d2;
-		bestTeam = m_nStampTeam[slot];
+		info.found = true;
+		info.team = m_nStampTeam[slot];
+		info.die = die;
 	}
-	return bestTeam;
+	return info;
 }
 
 #ifdef CLIENT_DLL
@@ -702,7 +716,7 @@ static bool TFPaint_SpotBlocksPaint( const Vector &pos, const Vector &normal )
 	return TFPaint_SurfaceBlocksPaint( tr );
 }
 
-void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam )
+void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam, bool bForce )
 {
 	if ( !tf_paint_enabled.GetBool() )
 		return;
@@ -721,7 +735,7 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 		n.Init( 0, 0, 1 );
 	VectorNormalize( n );
 
-	if ( TFPaint_SpotBlocksPaint( pos, n ) )
+	if ( !bForce && TFPaint_SpotBlocksPaint( pos, n ) )
 		return;
 
 	PushStamp( pos, n, type, radius, flCoatLife, iTeam );
@@ -918,7 +932,27 @@ void CTFPaintMap::Think( void )
 				continue;
 			}
 
-			if ( TFPaint_SurfaceBlocksPaint( tr ) )
+			int team = 0;
+			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+			if ( pOwner )
+				team = pOwner->GetTeamNumber();
+			int type = stored - 1;
+
+			// Grease on an allied building has to stick even when the model
+			// suppresses decals, and it has to cover the building, not just the pixel we hit.
+			bool bCoatedBuilding = false;
+			if ( bGrease && tr.m_pEnt && tr.m_pEnt->IsBaseObject() && type == SIXTH_POWER )
+			{
+				if ( team < TF_TEAM_RED || tr.m_pEnt->GetTeamNumber() == team )
+				{
+					const float flLife = m_flBlobCoatLife[i];
+					PaintSphere( tr.m_pEnt->GetAbsOrigin(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
+					PaintSphere( tr.m_pEnt->WorldSpaceCenter(), Vector( 0.f, 0.f, 1.f ), type, 96.f, flLife, team, true );
+					bCoatedBuilding = true;
+				}
+			}
+
+			if ( TFPaint_SurfaceBlocksPaint( tr ) && !bCoatedBuilding )
 			{
 				m_nBlobType.Set( i, 0 );
 				m_flBlobCoatLife[i] = 0.f;
@@ -926,15 +960,13 @@ void CTFPaintMap::Think( void )
 				continue;
 			}
 
-			int type = stored - 1;
-			int team = 0;
-			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
-			if ( pOwner )
-				team = pOwner->GetTeamNumber();
-			if ( type == NO_POWER )
-				EraseSphere( tr.endpos, splatR );
-			else
-				PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i], team );
+			if ( !TFPaint_SurfaceBlocksPaint( tr ) )
+			{
+				if ( type == NO_POWER )
+					EraseSphere( tr.endpos, splatR );
+				else
+					PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i], team, false );
+			}
 
 			PlaySplatSound( tr.endpos );
 			m_nBlobType.Set( i, 0 );
@@ -974,7 +1006,7 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 	int team = 0;
 	if ( pOwner )
 		team = pOwner->GetTeamNumber();
-	PaintSphere( pos, normal, type, radius, lifetime, team );
+	PaintSphere( pos, normal, type, radius, lifetime, team, true );
 }
 
 void CTFPaintMap::EraseCoatsNear( const Vector &pos, float radius )
@@ -1163,6 +1195,14 @@ int TFPaint_QueryStampTeam( const Vector &origin, int type )
 	return pMap->StampTeamNear( origin, type );
 }
 
+TFPaintStampInfo_t TFPaint_QueryStampInfo( const Vector &origin, int type, float extra )
+{
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( !pMap )
+		return TFPaintStampInfo_t();
+	return pMap->StampInfoNear( origin, type, extra );
+}
+
 void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife )
 {
 #ifdef GAME_DLL
@@ -1174,14 +1214,14 @@ void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntit
 #endif
 }
 
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam )
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam, bool bForce )
 {
 #ifdef GAME_DLL
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )
-		pMap->PaintSphere( pos, normal, type, radius, flCoatLife, iTeam );
+		pMap->PaintSphere( pos, normal, type, radius, flCoatLife, iTeam, bForce );
 #else
-	(void)pos; (void)normal; (void)type; (void)radius; (void)flCoatLife; (void)iTeam;
+	(void)pos; (void)normal; (void)type; (void)radius; (void)flCoatLife; (void)iTeam; (void)bForce;
 #endif
 }
 

@@ -17,6 +17,7 @@
 #include "tf_gamestats.h"
 #include "tf_halloween_souls_pickup.h"
 #include "tf_fx.h"
+#include "tf_paint.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -596,7 +597,7 @@ void CObjectDispenser::RefillThink( void )
 	if ( IsCarried() )
 		return;
 
-	SetContextThink( &CObjectDispenser::RefillThink, gpGlobals->curtime + 6, REFILL_CONTEXT );
+	SetContextThink( &CObjectDispenser::RefillThink, gpGlobals->curtime + ( HasAllyGel( SIXTH_POWER ) ? 3.f : 6.f ), REFILL_CONTEXT );
 
 	if ( IsDisabled() )
 	{
@@ -638,12 +639,19 @@ void CObjectDispenser::DispenseThink( void )
 		return;
 	}
 	
-	if ( GetOwner() )
+	if ( GetOwner() && m_hTouchTrigger.Get() )
 	{
 		float flRadius = GetDispenserRadius();
-		if ( ( flRadius != m_flPrevRadius ) && m_hTouchTrigger.Get() )
+		// The heal volume is created at the feet, not parented. Follow the building
+		// when repulsion gel throws it, but don't shift it up onto the center.
+		if ( m_iszCustomTouchTrigger == NULL_STRING )
 		{
-			m_hTouchTrigger->SetAbsOrigin( WorldSpaceCenter() );
+			const Vector org = GetAbsOrigin();
+			if ( m_hTouchTrigger->GetAbsOrigin() != org )
+				m_hTouchTrigger->SetAbsOrigin( org );
+		}
+		if ( flRadius != m_flPrevRadius )
+		{
 			UTIL_SetSize( m_hTouchTrigger.Get(), Vector( -flRadius, -flRadius, -flRadius ), Vector( flRadius, flRadius, flRadius ) );
 			m_flPrevRadius = flRadius;
 		}
@@ -696,7 +704,14 @@ void CObjectDispenser::DispenseThink( void )
 				// if we can see them, add to healing list	
 				// does nothing if we are healing them already
 				StartHealing( pEnt );
-			}	
+			}
+
+			if ( IsHealingTarget( pEnt ) )
+			{
+				CTFPlayer *pHealPlayer = ToTFPlayer( pEnt );
+				if ( pHealPlayer )
+					pHealPlayer->m_Shared.SetHealerAmount( this, GetHealRate() );
+			}
 
 			// handle ammo
 			if ( bDispenseAmmo && bValidHealTarget )
@@ -713,7 +728,7 @@ void CObjectDispenser::DispenseThink( void )
 	{
 		// Try to dispense more often when no players are around so we 
 		// give it as soon as possible when a new player shows up
-		float flNextAmmoDelay = 1.0;
+		float flNextAmmoDelay = HasAllyGel( SIXTH_POWER ) ? 0.5f : 1.0f;
 		m_flNextAmmoDispense = gpGlobals->curtime + ( bPlayerReceivedAmmo ? flNextAmmoDelay : 0.1 );
 	}
 
@@ -836,6 +851,8 @@ float CObjectDispenser::GetHealRate() const
 {
 	float flHealRate = g_flDispenserHealRates[GetUpgradeLevel()];
 	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetBuilder(), flHealRate, mult_dispenser_rate );
+	if ( HasAllyGel( SIXTH_POWER ) )
+		flHealRate *= 2.f;
 
 	return flHealRate;
 }

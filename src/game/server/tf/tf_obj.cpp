@@ -44,6 +44,8 @@
 #include "tf_weapon_wrench.h"
 #include "tf_weapon_grenade_pipebomb.h"
 #include "tf_weapon_builder.h"
+#include "tf_paint.h"
+#include "movevars_shared.h"
 
 #include "player_vs_environment/tf_population_manager.h"
 
@@ -261,6 +263,10 @@ CBaseObject::CBaseObject()
 	m_flBuildDistance = 0.0f;
 
 	m_bForceQuickBuild = false;
+
+	m_flRepulseUntil = 0.f;
+	m_vecRepulseVel.Init();
+	m_bRepulsePhysics = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -650,6 +656,171 @@ void CBaseObject::BaseObjectThink( void )
 			}
 		}
 	}
+
+	UpdateRepulsePhysics();
+}
+
+//-----------------------------------------------------------------------------
+// Repulsion gel on an enemy building. The building is simulated here, not by
+// vphysics, so sv_turbophysics and phys_pushscale cannot turn it off.
+//-----------------------------------------------------------------------------
+bool CBaseObject::HasAllyGel( int type ) const
+{
+	const int team = GetTeamNumber();
+	TFPaintStampInfo_t feet = TFPaint_QueryStampInfo( GetAbsOrigin(), type, 72.f );
+	if ( feet.found && ( feet.team < TF_TEAM_RED || feet.team == team ) )
+		return true;
+	TFPaintStampInfo_t body = TFPaint_QueryStampInfo( WorldSpaceCenter(), type, 72.f );
+	return body.found && ( body.team < TF_TEAM_RED || body.team == team );
+}
+
+void CBaseObject::NoteEnemyRepulse( int team, float die )
+{
+	if ( team < TF_TEAM_RED || team == GetTeamNumber() )
+		return;
+	const float until = ( die > gpGlobals->curtime ) ? die : gpGlobals->curtime + 8.f;
+	if ( until > m_flRepulseUntil )
+		m_flRepulseUntil = until;
+}
+
+void CBaseObject::UpdateRepulsePhysics( void )
+{
+	if ( IsPlacing() || IsCarried() || GetMoveParent() || m_bDying || !IsAlive() )
+	{
+		if ( m_bRepulsePhysics )
+			StopRepulsePhysics( false );
+		return;
+	}
+
+	TFPaintStampInfo_t feet = TFPaint_QueryStampInfo( GetAbsOrigin(), BOUNCE_POWER, 72.f );
+	TFPaintStampInfo_t body = TFPaint_QueryStampInfo( WorldSpaceCenter(), BOUNCE_POWER, 72.f );
+	if ( feet.found )
+		NoteEnemyRepulse( feet.team, feet.die );
+	if ( body.found )
+		NoteEnemyRepulse( body.team, body.die );
+
+	if ( m_flRepulseUntil > gpGlobals->curtime )
+	{
+		if ( !m_bRepulsePhysics )
+			StartRepulsePhysics();
+	}
+	else if ( m_bRepulsePhysics )
+	{
+		StopRepulsePhysics( true );
+	}
+}
+
+void CBaseObject::StartRepulsePhysics( void )
+{
+	m_bRepulsePhysics = true;
+	m_vecRepulseVel.Init( RandomFloat( -120.f, 120.f ), RandomFloat( -120.f, 120.f ), 480.f );
+	SetGroundEntity( NULL );
+	if ( IPhysicsObject *pPhys = VPhysicsGetObject() )
+		pPhys->EnableMotion( false );
+	SetContextThink( &CBaseObject::RepulsePhysicsThink, gpGlobals->curtime, "RepulsePhysicsThink" );
+}
+
+void CBaseObject::StopRepulsePhysics( bool bDropToGround )
+{
+	m_bRepulsePhysics = false;
+	m_vecRepulseVel.Init();
+	m_flRepulseUntil = 0.f;
+	SetContextThink( NULL, 0, "RepulsePhysicsThink" );
+
+	if ( bDropToGround && !IsCarried() && !GetMoveParent() && IsAlive() )
+	{
+		const Vector start = GetAbsOrigin();
+		trace_t tr;
+		UTIL_TraceHull( start, start - Vector( 0.f, 0.f, 512.f ), WorldAlignMins(), WorldAlignMaxs(), MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+		if ( !tr.startsolid && tr.fraction < 1.f )
+			SetAbsOrigin( tr.endpos );
+	}
+
+	if ( IPhysicsObject *pPhys = VPhysicsGetObject() )
+	{
+		pPhys->EnableMotion( false );
+		pPhys->SetPosition( GetAbsOrigin(), GetAbsAngles(), true );
+	}
+}
+
+void CBaseObject::RepulsePhysicsThink( void )
+{
+	if ( !m_bRepulsePhysics )
+		return;
+
+	if ( m_bDying || !IsAlive() || IsCarried() || GetMoveParent() || gpGlobals->curtime >= m_flRepulseUntil )
+	{
+		StopRepulsePhysics( IsAlive() && !IsCarried() && !GetMoveParent() );
+		return;
+	}
+
+	SetContextThink( &CBaseObject::RepulsePhysicsThink, gpGlobals->curtime + 0.05f, "RepulsePhysicsThink" );
+
+	const float dt = 0.05f;
+	m_vecRepulseVel.z -= GetCurrentGravity() * dt;
+	const float flSpeed = m_vecRepulseVel.Length();
+	if ( flSpeed > 850.f )
+		m_vecRepulseVel *= 850.f / flSpeed;
+
+	const Vector start = GetAbsOrigin();
+	const Vector end = start + m_vecRepulseVel * dt;
+	trace_t tr;
+	UTIL_TraceHull( start, end, WorldAlignMins(), WorldAlignMaxs(), MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+
+	if ( tr.startsolid )
+	{
+		m_vecRepulseVel.z = fabsf( m_vecRepulseVel.z ) + 200.f;
+		SetAbsOrigin( start + Vector( 0.f, 0.f, 4.f ) );
+	}
+	else if ( tr.surface.flags & SURF_SKY )
+	{
+		CTakeDamageInfo info( this, (CBaseEntity *)NULL, 10000.f, DMG_FALL );
+		TakeDamage( info );
+		m_bRepulsePhysics = false;
+		return;
+	}
+	else if ( tr.fraction < 1.f )
+	{
+		Vector n = tr.plane.normal;
+		VectorNormalize( n );
+		const float into = DotProduct( m_vecRepulseVel, n );
+		const float impact = -into;
+		Vector out = m_vecRepulseVel - ( 2.f * into ) * n;
+		if ( n.z > 0.7f && out.z < 380.f )
+			out.z = 380.f;
+		const float flOut = out.Length();
+		if ( flOut > 850.f )
+			out *= 850.f / flOut;
+		m_vecRepulseVel = out;
+		SetAbsOrigin( tr.endpos + n * 2.f );
+
+		if ( impact > 220.f )
+		{
+			CTakeDamageInfo info( this, (CBaseEntity *)NULL, impact * 0.08f, DMG_FALL );
+			TakeDamage( info );
+			if ( !IsAlive() )
+			{
+				m_bRepulsePhysics = false;
+				return;
+			}
+			TFPaint_PlaySound( this, "Player.JumpPowerUse" );
+		}
+	}
+	else
+	{
+		SetAbsOrigin( end );
+	}
+
+	if ( GetAbsOrigin().z < -2000.f )
+	{
+		CTakeDamageInfo info( this, (CBaseEntity *)NULL, 10000.f, DMG_FALL );
+		TakeDamage( info );
+		m_bRepulsePhysics = false;
+		return;
+	}
+
+	if ( IPhysicsObject *pPhys = VPhysicsGetObject() )
+		pPhys->SetPosition( GetAbsOrigin(), GetAbsAngles(), true );
 }
 
 void CBaseObject::ResetPlacement( void )

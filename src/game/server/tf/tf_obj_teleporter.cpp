@@ -21,6 +21,7 @@
 #include "tf_objective_resource.h"
 #include "rtime.h"
 #include "tf_logic_player_destruction.h"
+#include "tf_paint.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -1057,6 +1058,17 @@ void CObjectTeleporter::TeleporterThink( void )
 			ShowDirectionArrow( false );
 		}
 		return;
+	}
+
+	// Grease halves the recharge. Each think is 0.05s, so shaving another 0.05s
+	// off the deadline makes the clock run twice as fast.
+	if ( GetState() == TELEPORTER_STATE_RECHARGING && HasAllyGel( SIXTH_POWER ) )
+	{
+		const float flStep = BUILD_TELEPORTER_NEXT_THINK;
+		if ( m_flRechargeTime > gpGlobals->curtime )
+			m_flRechargeTime = Max( gpGlobals->curtime, m_flRechargeTime - flStep );
+		if ( m_flMyNextThink > gpGlobals->curtime )
+			m_flMyNextThink = Max( gpGlobals->curtime, m_flMyNextThink - flStep );
 	}
 
 	if ( m_flMyNextThink && m_flMyNextThink > gpGlobals->curtime )

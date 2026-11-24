@@ -129,6 +129,8 @@ public:
 	virtual bool	IsUpgrading( void ) const { return false; }
 	bool			MustBeBuiltOnAttachmentPoint( void ) const;
 	bool			IsCarried( void ) const { return m_bCarried; }
+	// True when an allied coat of this paint type covers the building. Team 0 counts.
+	bool			HasAllyGel( int type ) const;
 	virtual void	OnEndBeingCarried( CBaseEntity *pBuilder ) {}
 
 	// Returns information about the various control panels
@@ -511,6 +513,16 @@ private:
 	float	m_flBuildDistance;
 
 	bool	m_bForceQuickBuild;
+
+	void	UpdateRepulsePhysics( void );
+	void	StartRepulsePhysics( void );
+	void	StopRepulsePhysics( bool bDropToGround );
+	void	RepulsePhysicsThink( void );
+	void	NoteEnemyRepulse( int team, float die );
+
+	float	m_flRepulseUntil;
+	Vector	m_vecRepulseVel;
+	bool	m_bRepulsePhysics;
 };
 
 extern short g_sModelIndexFireball;		// holds the index for the fireball

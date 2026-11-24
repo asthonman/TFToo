@@ -25,6 +25,7 @@
 #include "tf_weapon_knife.h"
 #include "tf_logic_robot_destruction.h"
 #include "tf_target_dummy.h"
+#include "tf_paint.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -1285,6 +1286,9 @@ void CObjectSentrygun::Attack()
 			m_flFireRate *= 0.4f;
 		}
 
+		if ( HasAllyGel( SIXTH_POWER ) )
+			m_flFireRate *= 0.55f;
+
 		if ( m_iUpgradeLevel == 1 )
 		{
 			// Level 1 sentries fire slower
@@ -1368,12 +1372,12 @@ bool CObjectSentrygun::FireRocket()
 		if ( m_bPlayerControlled )
 		{
 			AddGesture( ACT_RANGE_ATTACK2, 2.25, true );
-			m_flNextRocketAttack = gpGlobals->curtime + 2.25;
+			m_flNextRocketAttack = gpGlobals->curtime + ( HasAllyGel( SIXTH_POWER ) ? 1.25f : 2.25f );
 		}
 		else
 		{
 			AddGesture( ACT_RANGE_ATTACK2 );
-			m_flNextRocketAttack = gpGlobals->curtime + 3;
+			m_flNextRocketAttack = gpGlobals->curtime + ( HasAllyGel( SIXTH_POWER ) ? 1.65f : 3.f );
 		}
 
 		if ( !tf_sentrygun_ammocheat.GetBool() && !HasSpawnFlags( SF_SENTRY_INFINITE_AMMO ) )
@@ -1828,6 +1832,9 @@ bool CObjectSentrygun::MoveTurret( void )
 	{
 		iBaseTurnRate *= 1.35f;
 	}
+
+	if ( HasAllyGel( SIXTH_POWER ) )
+		iBaseTurnRate = (int)( iBaseTurnRate * 1.75f );
 
 	// any x movement?
 	if ( m_vecCurAngles.x != m_vecGoalAngles.x )

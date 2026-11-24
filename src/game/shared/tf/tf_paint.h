@@ -68,11 +68,28 @@ TFPaintContact_t TFPaint_Query( const Vector &origin, float extra );
 // Team that painted the nearest stamp of this type covering origin. 0 if none.
 int TFPaint_QueryStampTeam( const Vector &origin, int type );
 
+struct TFPaintStampInfo_t
+{
+	bool	found;
+	int		team;
+	float	die;		// absolute time, 0 = until erased
+
+	TFPaintStampInfo_t()
+	{
+		found = false;
+		team = 0;
+		die = 0.f;
+	}
+};
+
+// extra is added to the stamp radius. 28 matches QueryStampTeam.
+TFPaintStampInfo_t TFPaint_QueryStampInfo( const Vector &origin, int type, float extra = 28.f );
+
 // flCoatLife is how long the splat stays. 0 lasts until something erases it.
 // Grease gun passes tf_paint_grease_lifetime. pOwner is who fired the blob.
 // iTeam is stored on the stamp so grease can speed allies and ice enemies.
 void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner = NULL, float flCoatLife = 0.f );
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f, int iTeam = 0 );
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f, int iTeam = 0, bool bForce = false );
 void TFPaint_EraseSphere( const Vector &pos, float radius );
 void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
 

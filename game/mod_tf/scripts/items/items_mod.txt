@@ -569,7 +569,7 @@
 				}
 			}
 		}
-		// Madcap stock secondary. Propulsion gel, 100 ammo (metal, so the
+		// Madcap stock secondary. Grease, 200 ammo (metal, so the
 		// missile unlock keeps its one charge on TF_AMMO_SECONDARY).
 		"b15"
 		{
