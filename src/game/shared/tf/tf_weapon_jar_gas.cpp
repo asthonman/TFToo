@@ -519,7 +519,7 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 
 	if ( slot == CHEM_REPULSION )
 	{
-		TFPaint_AddTimedCoat( vecPos, vecNormal, BOUNCE_POWER, 80.f, 15.f, false, pPlayer );
+		TFPaint_AddTimedCoat( vecPos, vecNormal, BOUNCE_POWER, 80.f, 30.f, false, pPlayer );
 	}
 	else if ( slot == CHEM_NITRIC )
 	{

@@ -36,6 +36,10 @@
 #include "c_props.h"
 #include "c_basedoor.h"
 
+#ifdef TF_CLIENT_DLL
+#include "tf_paint.h"
+#endif
+
 // NOTE: Always include this last!
 #include "tier0/memdbgon.h"
 
@@ -536,11 +540,36 @@ bool C_LocalTempEntity::Frame( float frametime, int framenumber )
 				// If we've hit the world, just stop moving
 				if ( trace.DidHitWorld() && !( trace.surface.flags & SURF_SKY ) )
 				{
-					m_vecTempEntVelocity = vec3_origin;
-					m_vecTempEntAcceleration = vec3_origin;
+#ifdef TF_CLIENT_DLL
+					// Nail tempents stick to the world before bounceFactor is used.
+					// Repulsion gel sends them back at the same speed instead.
+					bool bGelBounce = false;
+					TFPaintContact_t gel = TFPaint_Query( trace.endpos, 16.f );
+					if ( gel.painted && gel.type == BOUNCE_POWER )
+					{
+						Vector n = traceNormal;
+						if ( n.NormalizeInPlace() < 0.1f )
+						{
+							n = trace.plane.normal;
+							VectorNormalize( n );
+						}
+						float proj = DotProduct( (Vector)m_vecTempEntVelocity, n );
+						if ( proj < -10.f )
+						{
+							VectorMA( m_vecTempEntVelocity, -proj * 2.f, n, m_vecTempEntVelocity );
+							SetLocalOrigin( trace.endpos + n * 2.f );
+							bGelBounce = true;
+						}
+					}
+					if ( !bGelBounce )
+#endif
+					{
+						m_vecTempEntVelocity = vec3_origin;
+						m_vecTempEntAcceleration = vec3_origin;
 
-					// Remove movement flags so we don't keep tracing
-					flags &= ~(FTENT_COLLIDEALL | FTENT_COLLIDEWORLD);
+						// Remove movement flags so we don't keep tracing
+						flags &= ~(FTENT_COLLIDEALL | FTENT_COLLIDEWORLD);
+					}
 				}
 				else
 				{

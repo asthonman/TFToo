@@ -148,6 +148,7 @@
 #include "passtime_convars.h"
 
 #include "tier3/tier3.h"
+#include "tf_paint.h"
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -5694,6 +5695,10 @@ public:
 //-----------------------------------------------------------------------------
 void CTFGameRules::RadiusDamage( CTFRadiusDamageInfo &info )
 {
+	// A blast is an impact. Nitric coats inside the radius catch fire.
+	if ( info.flRadius > 0.f )
+		TFPaint_IgniteNitricAt( info.vecSrc, info.flRadius );
+
 	float flRadSqr = (info.flRadius * info.flRadius);
 
 	int iDamageEnemies = 0;

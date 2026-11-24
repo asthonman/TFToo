@@ -10,6 +10,7 @@
 #include "effect_dispatch_data.h"
 #include "tf_gamerules.h"
 #include "in_buttons.h"
+#include "tf_paint.h"
 
 // Server specific.
 #if !defined( CLIENT_DLL )
@@ -765,6 +766,17 @@ void CTFWeaponBaseMelee::Smack( void )
 			{
 				DoMeleeDamage( GetTFPlayerOwner(), trace, 0.5f );
 			}
+		}
+	}
+
+	if ( trace.fraction < 1.0f )
+		TFPaint_IgniteNitricAt( trace.endpos, 32.f );
+	if ( bCleave )
+	{
+		for ( int i = 0; i < targetTraceVector.Count(); ++i )
+		{
+			if ( targetTraceVector[i].fraction < 1.0f )
+				TFPaint_IgniteNitricAt( targetTraceVector[i].endpos, 32.f );
 		}
 	}
 

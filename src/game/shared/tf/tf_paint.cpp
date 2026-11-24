@@ -25,12 +25,14 @@
 #else
 #include "tf_player.h"
 #include "recipientfilter.h"
+#include "particle_system.h"
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/imaterial.h"
 #include "texture_group_names.h"
 #endif
 
 #include "materialsystem/imaterialvar.h"
+#include "particle_parse.h"
 #include "tier0/memdbgon.h"
 
 ConVar tf_paint_enabled( "tf_paint_enabled", "1", FCVAR_REPLICATED, "Mobility gels affect movement and can be fired." );
@@ -68,6 +70,7 @@ void TFPaint_GetColor( int type, int &r, int &g, int &b )
 	case SPEED_POWER:	r = 255; g = 106; b = 0;   break;
 	case PORTAL_POWER:	r = 0;   g = 200; b = 33;  break;
 	case FIFTH_POWER:	r = 251; g = 255; b = 0;   break;
+	case SIXTH_POWER:	r = 96;  g = 72;  b = 28;  break;	// Grease. Dark yellowish brown.
 	case NO_POWER:		r = 16;  g = 16;  b = 16;  break;
 	default:			r = 255; g = 255; b = 255; break;
 	}
@@ -81,6 +84,7 @@ const char *TFPaint_Name( int type )
 	case SPEED_POWER:	return "Propulsion gel";
 	case PORTAL_POWER:	return "Adhesion gel";
 	case FIFTH_POWER:	return "Yellow gel";
+	case SIXTH_POWER:	return "Grease";
 	case NO_POWER:		return "Cleansing gel";
 	default:			return "Gel";
 	}
@@ -170,16 +174,18 @@ public:
 	}
 #else
 	virtual void Think( void );
-	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife );
+	void PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam );
 	void EraseSphere( const Vector &pos, float radius );
 	void AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife );
 	void ReplayStamps( void );
 	void AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
 	void EraseCoatsNear( const Vector &pos, float radius );
 	void IgniteNitricSegment( const Vector &start, const Vector &end );
+	void IgniteNitricAt( const Vector &pos, float extra );
 #endif
 
 	TFPaintContact_t Query( const Vector &origin, float extra );
+	int StampTeamNear( const Vector &origin, int type );
 
 	static CTFPaintMap *Get() { return s_pMap; }
 
@@ -189,6 +195,7 @@ private:
 	CNetworkArray( Vector, m_vecStampPos, TF_PAINT_STAMP_MAX );
 	CNetworkArray( Vector, m_vecStampNormal, TF_PAINT_STAMP_MAX );
 	CNetworkArray( int, m_nStampType, TF_PAINT_STAMP_MAX );
+	CNetworkArray( int, m_nStampTeam, TF_PAINT_STAMP_MAX );
 	CNetworkArray( float, m_flStampRadius, TF_PAINT_STAMP_MAX );
 	// 0 means the splat lasts until erased. Grease gun stamps store an absolute time.
 	CNetworkArray( float, m_flStampDie, TF_PAINT_STAMP_MAX );
@@ -207,7 +214,7 @@ private:
 	int		m_iBlobCursor;
 	float	m_flNextSplatSound;
 	float	m_flNextCoatExpire;
-	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife );
+	void	PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam );
 	void	PlaySplatSound( const Vector &pos );
 
 	struct ChemCoat_t
@@ -219,9 +226,12 @@ private:
 		bool	nitric;
 		bool	ignited;
 		EHANDLE	owner;
+		EHANDLE	fx;
 	};
 	CUtlVector< ChemCoat_t > m_ChemCoats;
 	void	ThinkCoats( void );
+	void	IgniteCoat( ChemCoat_t &coat );
+	void	RemoveCoat( int index );
 #endif
 
 #ifdef CLIENT_DLL
@@ -253,6 +263,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampPos[0] ) ), m_vecStampPos ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecStampNormal[0] ) ), m_vecStampNormal ),
 	RecvPropArray3( RECVINFO_ARRAY( m_nStampType ), RecvPropInt( RECVINFO( m_nStampType[0] ) ) ),
+	RecvPropArray3( RECVINFO_ARRAY( m_nStampTeam ), RecvPropInt( RECVINFO( m_nStampTeam[0] ) ) ),
 	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampRadius[0] ) ), m_flStampRadius ),
 	RecvPropArray( RecvPropFloat( RECVINFO( m_flStampDie[0] ) ), m_flStampDie ),
 	RecvPropInt( RECVINFO( m_nStampCursor ) ),
@@ -262,6 +273,7 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampPos ), -1, SPROP_COORD ), m_vecStampPos ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampNormal ), -1, SPROP_NOSCALE ), m_vecStampNormal ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nStampType ), SendPropInt( SENDINFO_ARRAY( m_nStampType ), 4, SPROP_UNSIGNED ) ),
+	SendPropArray3( SENDINFO_ARRAY3( m_nStampTeam ), SendPropInt( SENDINFO_ARRAY( m_nStampTeam ), 4, SPROP_UNSIGNED ) ),
 	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampRadius ), 10, SPROP_ROUNDDOWN, 0.0f, 256.0f ), m_flStampRadius ),
 	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flStampDie ) ), m_flStampDie ),
 	SendPropInt( SENDINFO( m_nStampCursor ), 32, SPROP_UNSIGNED ),
@@ -318,6 +330,8 @@ void CTFPaintMap::Spawn( void )
 
 	for ( int i = 0; i < ARRAYSIZE( s_pszPaintSounds ); ++i )
 		PrecacheScriptSound( s_pszPaintSounds[i] );
+	PrecacheScriptSound( "Weapon_FlameThrower.AirBurstAttack" );
+	PrecacheParticleSystem( "env_fire_medium" );
 
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
@@ -335,6 +349,7 @@ void CTFPaintMap::Spawn( void )
 		m_vecStampPos.Set( i, vec3_origin );
 		m_vecStampNormal.Set( i, Vector( 0, 0, 1 ) );
 		m_nStampType.Set( i, 0 );
+		m_nStampTeam.Set( i, 0 );
 		m_flStampRadius.Set( i, 0.f );
 		m_flStampDie.Set( i, 0.f );
 	}
@@ -371,6 +386,31 @@ TFPaintContact_t CTFPaintMap::Query( const Vector &origin, float extra )
 	ApplyNetworkStamps();
 #endif
 	return m_Atlas.Query( origin, extra );
+}
+
+int CTFPaintMap::StampTeamNear( const Vector &origin, int type )
+{
+	int cur = m_nStampCursor;
+	int start = ( cur > TF_PAINT_STAMP_MAX ) ? ( cur - TF_PAINT_STAMP_MAX ) : 0;
+	const int want = type + 1;
+	int bestTeam = 0;
+	float best = 1.0e12f;
+	for ( int s = start; s < cur; ++s )
+	{
+		int slot = s % TF_PAINT_STAMP_MAX;
+		if ( m_nStampType[slot] != want )
+			continue;
+		float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die )
+			continue;
+		float rad = m_flStampRadius[slot] + 28.f;
+		float d2 = ( origin - m_vecStampPos[slot] ).LengthSqr();
+		if ( d2 > rad * rad || d2 >= best )
+			continue;
+		best = d2;
+		bestTeam = m_nStampTeam[slot];
+	}
+	return bestTeam;
 }
 
 #ifdef CLIENT_DLL
@@ -662,7 +702,7 @@ static bool TFPaint_SpotBlocksPaint( const Vector &pos, const Vector &normal )
 	return TFPaint_SurfaceBlocksPaint( tr );
 }
 
-void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
+void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam )
 {
 	if ( !tf_paint_enabled.GetBool() )
 		return;
@@ -684,11 +724,11 @@ void CTFPaintMap::PaintSphere( const Vector &pos, const Vector &normal, int type
 	if ( TFPaint_SpotBlocksPaint( pos, n ) )
 		return;
 
-	PushStamp( pos, n, type, radius, flCoatLife );
+	PushStamp( pos, n, type, radius, flCoatLife, iTeam );
 	ReplayStamps();
 }
 
-void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
+void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam )
 {
 	int cursor = m_nStampCursor;
 	int slot = cursor % TF_PAINT_STAMP_MAX;
@@ -707,9 +747,15 @@ void CTFPaintMap::PushStamp( const Vector &pos, const Vector &normal, int type, 
 	if ( flCoatLife > 0.f )
 		die = gpGlobals->curtime + flCoatLife;
 
+	if ( iTeam < 0 )
+		iTeam = 0;
+	if ( iTeam > 15 )
+		iTeam = 15;
+
 	m_vecStampPos.Set( slot, pos );
 	m_vecStampNormal.Set( slot, normal );
 	m_nStampType.Set( slot, stored );
+	m_nStampTeam.Set( slot, iTeam );
 	m_flStampRadius.Set( slot, r );
 	m_flStampDie.Set( slot, die );
 	m_nStampCursor = cursor + 1;
@@ -724,7 +770,7 @@ void CTFPaintMap::EraseSphere( const Vector &pos, float radius )
 		r2 = 250.f;
 	// An erase is an event. Zeroing an old slot would delete it from the log
 	// and the client would replay the gel that was supposed to be gone.
-	PushStamp( pos, vec3_origin, NO_POWER, r2, 0.f );
+	PushStamp( pos, vec3_origin, NO_POWER, r2, 0.f, 0 );
 	ReplayStamps();
 }
 
@@ -881,10 +927,14 @@ void CTFPaintMap::Think( void )
 			}
 
 			int type = stored - 1;
+			int team = 0;
+			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+			if ( pOwner )
+				team = pOwner->GetTeamNumber();
 			if ( type == NO_POWER )
 				EraseSphere( tr.endpos, splatR );
 			else
-				PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i] );
+				PaintSphere( tr.endpos, tr.plane.normal, type, splatR, m_flBlobCoatLife[i], team );
 
 			PlaySplatSound( tr.endpos );
 			m_nBlobType.Set( i, 0 );
@@ -908,8 +958,7 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 
 	if ( m_ChemCoats.Count() >= 24 )
 	{
-		EraseSphere( m_ChemCoats[0].pos, m_ChemCoats[0].radius );
-		m_ChemCoats.Remove( 0 );
+		RemoveCoat( 0 );
 	}
 
 	ChemCoat_t coat;
@@ -920,8 +969,12 @@ void CTFPaintMap::AddTimedCoat( const Vector &pos, const Vector &normal, int typ
 	coat.nitric = bNitric;
 	coat.ignited = false;
 	coat.owner = pOwner;
+	coat.fx = NULL;
 	m_ChemCoats.AddToTail( coat );
-	PaintSphere( pos, normal, type, radius, lifetime );
+	int team = 0;
+	if ( pOwner )
+		team = pOwner->GetTeamNumber();
+	PaintSphere( pos, normal, type, radius, lifetime, team );
 }
 
 void CTFPaintMap::EraseCoatsNear( const Vector &pos, float radius )
@@ -930,12 +983,50 @@ void CTFPaintMap::EraseCoatsNear( const Vector &pos, float radius )
 	for ( int i = m_ChemCoats.Count() - 1; i >= 0; --i )
 	{
 		if ( m_ChemCoats[i].pos.DistToSqr( pos ) <= r2 )
-		{
-			EraseSphere( m_ChemCoats[i].pos, m_ChemCoats[i].radius );
-			m_ChemCoats.Remove( i );
-		}
+			RemoveCoat( i );
 	}
 	EraseSphere( pos, radius );
+}
+
+void CTFPaintMap::RemoveCoat( int index )
+{
+	if ( index < 0 || index >= m_ChemCoats.Count() )
+		return;
+	if ( m_ChemCoats[index].fx.Get() )
+		UTIL_Remove( m_ChemCoats[index].fx );
+	EraseSphere( m_ChemCoats[index].pos, m_ChemCoats[index].radius );
+	m_ChemCoats.Remove( index );
+}
+
+void CTFPaintMap::IgniteCoat( ChemCoat_t &coat )
+{
+	if ( !coat.nitric || coat.ignited )
+		return;
+
+	coat.ignited = true;
+	const float flRemain = coat.die - gpGlobals->curtime;
+	coat.die = gpGlobals->curtime + Max( flRemain * 0.5f, 2.f );
+
+	const Vector vecFire = coat.pos + Vector( 0.f, 0.f, 8.f );
+	CParticleSystem *pFx = (CParticleSystem *)CreateEntityByName( "info_particle_system" );
+	if ( pFx )
+	{
+		pFx->KeyValue( "effect_name", "env_fire_medium" );
+		pFx->KeyValue( "start_active", "1" );
+		pFx->SetAbsOrigin( vecFire );
+		DispatchSpawn( pFx );
+		pFx->Activate();
+		pFx->StartParticleSystem();
+		coat.fx = pFx;
+	}
+
+	CPASAttenuationFilter sndFilter( vecFire, SNDLVL_NORM );
+	EmitSound_t ep;
+	ep.m_pSoundName = "Weapon_FlameThrower.AirBurstAttack";
+	ep.m_flVolume = 0.8f;
+	ep.m_SoundLevel = SNDLVL_NORM;
+	ep.m_pOrigin = &vecFire;
+	EmitSound( sndFilter, entindex(), ep );
 }
 
 void CTFPaintMap::IgniteNitricSegment( const Vector &start, const Vector &end )
@@ -961,9 +1052,23 @@ void CTFPaintMap::IgniteNitricSegment( const Vector &start, const Vector &end )
 		if ( closest.DistToSqr( coat.pos ) > ( coat.radius + 32.f ) * ( coat.radius + 32.f ) )
 			continue;
 
-		coat.ignited = true;
-		const float flRemain = coat.die - gpGlobals->curtime;
-		coat.die = gpGlobals->curtime + flRemain * 0.5f;
+		IgniteCoat( coat );
+	}
+}
+
+void CTFPaintMap::IgniteNitricAt( const Vector &pos, float extra )
+{
+	if ( extra < 0.f )
+		extra = 0.f;
+	for ( int i = 0; i < m_ChemCoats.Count(); ++i )
+	{
+		ChemCoat_t &coat = m_ChemCoats[i];
+		if ( !coat.nitric || coat.ignited )
+			continue;
+		const float lim = coat.radius + extra;
+		if ( coat.pos.DistToSqr( pos ) > lim * lim )
+			continue;
+		IgniteCoat( coat );
 	}
 }
 
@@ -977,8 +1082,7 @@ void CTFPaintMap::ThinkCoats( void )
 		ChemCoat_t &coat = m_ChemCoats[i];
 		if ( gpGlobals->curtime >= coat.die )
 		{
-			EraseSphere( coat.pos, coat.radius );
-			m_ChemCoats.Remove( i );
+			RemoveCoat( i );
 			continue;
 		}
 
@@ -999,11 +1103,7 @@ void CTFPaintMap::ThinkCoats( void )
 		}
 
 		if ( bIgnite && !coat.ignited )
-		{
-			coat.ignited = true;
-			const float flRemain = coat.die - gpGlobals->curtime;
-			coat.die = gpGlobals->curtime + flRemain * 0.5f;
-		}
+			IgniteCoat( coat );
 
 		CTFPlayer *pOwner = ToTFPlayer( coat.owner.Get() );
 		for ( int p = 1; p <= gpGlobals->maxClients; ++p )
@@ -1055,6 +1155,14 @@ TFPaintContact_t TFPaint_Query( const Vector &origin, float extra )
 	return pMap->Query( origin, extra );
 }
 
+int TFPaint_QueryStampTeam( const Vector &origin, int type )
+{
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( !pMap )
+		return 0;
+	return pMap->StampTeamNear( origin, type );
+}
+
 void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner, float flCoatLife )
 {
 #ifdef GAME_DLL
@@ -1066,14 +1174,14 @@ void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntit
 #endif
 }
 
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife )
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife, int iTeam )
 {
 #ifdef GAME_DLL
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )
-		pMap->PaintSphere( pos, normal, type, radius, flCoatLife );
+		pMap->PaintSphere( pos, normal, type, radius, flCoatLife, iTeam );
 #else
-	(void)pos; (void)normal; (void)type; (void)radius; (void)flCoatLife;
+	(void)pos; (void)normal; (void)type; (void)radius; (void)flCoatLife; (void)iTeam;
 #endif
 }
 
@@ -1121,6 +1229,17 @@ void TFPaint_IgniteNitricSegment( const Vector &start, const Vector &end )
 #endif
 }
 
+void TFPaint_IgniteNitricAt( const Vector &pos, float extra )
+{
+#ifdef GAME_DLL
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( pMap )
+		pMap->IgniteNitricAt( pos, extra );
+#else
+	(void)pos; (void)extra;
+#endif
+}
+
 bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward )
 {
 	if ( !pEnt || !tf_paint_enabled.GetBool() )
@@ -1143,19 +1262,22 @@ bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const V
 		pPhys->GetVelocity( &vel, &ang );
 
 	const float into = DotProduct( vel, n );
-	if ( into > -50.f )
+	// Already leaving the surface. A second check after a bounce must not reverse it again.
+	if ( into >= -1.f )
 		return false;
 
 	const float flSpeed = vel.Length();
 	Vector out = vel - 2.f * into * n;
-	if ( out.Length() < flSpeed * 0.85f )
+	const float flOut = out.Length();
+	if ( flSpeed > 1.f )
 	{
-		Vector dir = out;
-		if ( dir.NormalizeInPlace() < 0.1f )
-			dir = n;
-		out = dir * flSpeed;
+		if ( flOut > 1.f )
+			out *= flSpeed / flOut;
+		else
+			out = n * flSpeed;
 	}
 
+	pEnt->SetGroundEntity( NULL );
 	pEnt->SetAbsOrigin( hitPos + n * 8.f );
 	pEnt->SetAbsVelocity( out );
 	if ( pPhys )

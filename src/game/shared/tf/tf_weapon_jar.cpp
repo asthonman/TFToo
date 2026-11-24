@@ -553,6 +553,8 @@ void CTFProjectile_Jar::PipebombTouch( CBaseEntity *pOther )
 		return;
 	}
 
+	TFPaint_IgniteNitricAt( ( pTrace.fraction < 1.0f ) ? pTrace.endpos : GetAbsOrigin(), 48.f );
+
 	// A jar that hits repulsion gel bounces. A later hit on a player still splashes.
 	if ( !pOther->IsPlayer() )
 	{

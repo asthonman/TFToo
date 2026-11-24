@@ -290,7 +290,7 @@ void CTFWeaponGreasegun::PrimaryAttack( void )
 	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
 
 #ifdef GAME_DLL
-	FirePaintBlob( pOwner, SPEED_POWER, tf_paint_grease_lifetime.GetFloat() );
+	FirePaintBlob( pOwner, SIXTH_POWER, tf_paint_grease_lifetime.GetFloat() );
 #endif
 	WeaponSound( SINGLE );
 

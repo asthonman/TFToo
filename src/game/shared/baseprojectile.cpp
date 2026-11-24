@@ -13,6 +13,9 @@
 #ifdef GAME_DLL
 	#include "iscorer.h"
 	#include "physics_shared.h"
+#if defined( TF_DLL )
+	#include "tf_paint.h"
+#endif
 #endif
 
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseProjectile, DT_BaseProjectile )
@@ -278,6 +281,17 @@ void CBaseProjectile::ResolveFlyCollisionCustom( trace_t &trace, Vector &vecVelo
 		FlyThroughBoundingBoxHit( trace, vecVelocity );
 		return;
 	}
+
+#if defined( GAME_DLL ) && defined( TF_DLL )
+	// Repulsion gel already turned this around. The stock floor resolver would
+	// plant the projectile on the ground and eat the bounce.
+	if ( !( trace.surface.flags & SURF_SKY ) )
+	{
+		TFPaintContact_t gel = TFPaint_Query( trace.endpos, 16.f );
+		if ( gel.painted && gel.type == BOUNCE_POWER )
+			return;
+	}
+#endif
 
 	BaseClass::ResolveFlyCollisionCustom( trace, vecVelocity );
 }

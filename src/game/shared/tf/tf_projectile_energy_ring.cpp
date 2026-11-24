@@ -24,6 +24,7 @@
 #include "halloween/merasmus/merasmus_trick_or_treat_prop.h"
 #include "tf_robot_destruction_robot.h"
 #include "tf_generic_bomb.h"
+#include "tf_paint.h"
 #endif
 
 #define ENERGY_RING_DISPATCH_EFFECT			"ClientProjectile_EnergyRing"
@@ -247,6 +248,9 @@ void CTFProjectile_EnergyRing::ProjectileTouch( CBaseEntity *pOther )
 	if ( !ShouldTouchNonWorldSolid( pOther, pTrace ) )
 		return;
 
+	// Players standing in nitric, and the puddle itself, both count as a hit.
+	TFPaint_IgniteNitricAt( pTrace->endpos, 36.f );
+
 	// The stuff we collide with
 	bool bCombatEntity = pOther->IsPlayer() || 
 						 pOther->IsBaseObject() || 
@@ -294,6 +298,11 @@ void CTFProjectile_EnergyRing::ProjectileTouch( CBaseEntity *pOther )
 		return;
 	}
 
+	// Repulsion gel keeps the ring's speed. Nitric lights from the impact either way.
+	TFPaint_IgniteNitricAt( pTrace->endpos, 36.f );
+	if ( TFPaint_ReflectProjectile( this, pTrace->endpos, pTrace->plane.normal ) )
+		return;
+
 	if ( pOther->IsWorld() )
 	{
 		SetAbsVelocity( vec3_origin	);
@@ -321,6 +330,15 @@ void CTFProjectile_EnergyRing::ResolveFlyCollisionCustom( trace_t &trace, Vector
 		UTIL_Remove( this );
 		return;
 	}
+
+	// A bounce from PhysicsMark already turned the velocity around, so a second
+	// reflect returns false. The ring still has to survive that call.
+	TFPaint_IgniteNitricAt( trace.endpos, 36.f );
+	if ( TFPaint_ReflectProjectile( this, trace.endpos, trace.plane.normal ) )
+		return;
+	TFPaintContact_t gel = TFPaint_Query( trace.endpos, 16.f );
+	if ( gel.painted && gel.type == BOUNCE_POWER )
+		return;
 
 	PlayImpactEffects( trace.endpos, false );
 	UTIL_Remove( this );

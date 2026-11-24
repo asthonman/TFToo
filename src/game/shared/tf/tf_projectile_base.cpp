@@ -8,6 +8,7 @@
 #include "effect_dispatch_data.h"
 #include "tf_shareddefs.h"
 #include "tf_gamerules.h"
+#include "tf_paint.h"
 
 #ifdef GAME_DLL
 #include "te_effect_dispatch.h"
@@ -413,6 +414,18 @@ void CTFBaseProjectile::ProjectileTouch( CBaseEntity *pOther )
 		// Projectile shields
 		if ( InSameTeam( pOther ) && pOther->IsCombatItem() )
 			return;
+	}
+
+	// Repulsion gel. Nails, syringes, and anything else on this touch.
+	if ( !pOther->IsPlayer() && !pOther->IsBaseObject() )
+	{
+		TFPaint_IgniteNitricAt( pTrace->endpos, 36.f );
+		if ( TFPaint_ReflectProjectile( this, pTrace->endpos, pTrace->plane.normal ) )
+			return;
+	}
+	else
+	{
+		TFPaint_IgniteNitricAt( pTrace->endpos, 36.f );
 	}
 
 	if ( pOther->IsWorld() )

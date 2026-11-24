@@ -20,6 +20,10 @@
 #include "tier1/callqueue.h"
 #include "baseprojectile.h"
 
+#if defined( GAME_DLL ) && defined( TF_DLL )
+#include "tf_paint.h"
+#endif
+
 #ifdef PORTAL
 	#include "portal_util_shared.h"
 #endif
@@ -1053,6 +1057,18 @@ const trace_t &CBaseEntity::GetTouchTrace( void )
 //-----------------------------------------------------------------------------
 void CBaseEntity::PhysicsMarkEntitiesAsTouching( CBaseEntity *other, trace_t &trace )
 {
+#if defined( GAME_DLL ) && defined( TF_DLL )
+	// Every projectile. Repulsion gel keeps the incoming speed. Nitric lights from the hit.
+	if ( IsBaseProjectile() )
+	{
+		TFPaint_IgniteNitricAt( trace.endpos, 36.f );
+		if ( other && !other->IsPlayer() && !other->IsBaseObject() && !( trace.surface.flags & SURF_SKY ) )
+		{
+			if ( TFPaint_ReflectProjectile( this, trace.endpos, trace.plane.normal ) )
+				return;
+		}
+	}
+#endif
 	g_TouchTrace = trace;
 	PhysicsMarkEntityAsTouched( other );
 	other->PhysicsMarkEntityAsTouched( this );

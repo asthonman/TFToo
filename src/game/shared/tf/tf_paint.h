@@ -65,10 +65,14 @@ const char *TFPaint_Name( int type );
 
 TFPaintContact_t TFPaint_Query( const Vector &origin, float extra );
 
+// Team that painted the nearest stamp of this type covering origin. 0 if none.
+int TFPaint_QueryStampTeam( const Vector &origin, int type );
+
 // flCoatLife is how long the splat stays. 0 lasts until something erases it.
 // Grease gun passes tf_paint_grease_lifetime. pOwner is who fired the blob.
+// iTeam is stored on the stamp so grease can speed allies and ice enemies.
 void TFPaint_AddBlob( const Vector &pos, const Vector &vel, int type, CBaseEntity *pOwner = NULL, float flCoatLife = 0.f );
-void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f );
+void TFPaint_PaintSphere( const Vector &pos, const Vector &normal, int type, float radius, float flCoatLife = 0.f, int iTeam = 0 );
 void TFPaint_EraseSphere( const Vector &pos, float radius );
 void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
 
@@ -76,9 +80,11 @@ void TFPaint_PlaySound( CBaseEntity *pEnt, const char *pszSound );
 void TFPaint_AddTimedCoat( const Vector &pos, const Vector &normal, int type, float radius, float lifetime, bool bNitric, CBaseEntity *pOwner );
 void TFPaint_EraseCoatsNear( const Vector &pos, float radius );
 void TFPaint_IgniteNitricSegment( const Vector &start, const Vector &end );
+// Any impact (bullet, projectile, melee, blast) within extra units of a nitric coat lights it.
+void TFPaint_IgniteNitricAt( const Vector &pos, float extra );
 
 // Bounce a projectile off repulsion gel instead of its normal surface hit.
-// nOutward is the surface normal pointing out of the solid. Returns true if it bounced.
+// Speed is kept. nOutward points out of the solid. Returns true if it bounced.
 bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward );
 
 #endif // TF_PAINT_H

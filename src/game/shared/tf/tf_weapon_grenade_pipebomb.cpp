@@ -857,6 +857,9 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 	if ( !pHitEntity )
 		return;
 
+	// A sticky that sits on the ground never explodes, but it still struck the puddle.
+	TFPaint_IgniteNitricAt( GetAbsOrigin(), 48.f );
+
 	if ( m_bWallShatter )
 	{
 		Fizzle();

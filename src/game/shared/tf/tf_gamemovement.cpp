@@ -223,6 +223,20 @@ CTFGameMovement::CTFGameMovement()
 }
 
 //----------------------------------------------------------------------------------------
+// Grease (SIXTH_POWER) speeds the painter's team. An unowned coat does too.
+// Propulsion gel (SPEED_POWER) speeds everyone.
+//----------------------------------------------------------------------------------------
+static bool PaintGivesSpeed( int power, const Vector &origin, CBasePlayer *pPlayer )
+{
+	if ( power == SPEED_POWER )
+		return true;
+	if ( power != SIXTH_POWER || !pPlayer )
+		return false;
+	const int team = TFPaint_QueryStampTeam( origin, SIXTH_POWER );
+	return team < TF_TEAM_RED || team == pPlayer->GetTeamNumber();
+}
+
+//----------------------------------------------------------------------------------------
 // Purpose: moves the player
 //----------------------------------------------------------------------------------------
 void CTFGameMovement::PlayerMove()
@@ -235,10 +249,16 @@ void CTFGameMovement::PlayerMove()
 	UpdatePaintContact();
 	if ( tf_paint_enabled.GetBool() && player->GetGroundEntity() != NULL )
 	{
-		if ( m_nPaintPower == SPEED_POWER )
+		if ( PaintGivesSpeed( m_nPaintPower, mv->GetAbsOrigin(), player ) )
 		{
 			mv->m_flMaxSpeed = tf_paint_speed.GetFloat();
 			mv->m_flClientMaxSpeed = tf_paint_speed.GetFloat();
+		}
+		else if ( m_nPaintPower == SIXTH_POWER )
+		{
+			// Enemy grease. Refresh while a foot is on it, then a short slide after.
+			if ( m_pTFPlayer )
+				m_pTFPlayer->m_Shared.AddIcePhysics( 0.35f );
 		}
 		else if ( m_nPaintPower == PORTAL_POWER )
 		{
@@ -2107,7 +2127,7 @@ void CTFGameMovement::WalkMove( void )
 	mv->m_vecVelocity.z = 0;
 
 	float flAccelerate = sv_accelerate.GetFloat();
-	if ( m_nPaintPower == SPEED_POWER && flWishSpeed > 0.f )
+	if ( PaintGivesSpeed( m_nPaintPower, mv->GetAbsOrigin(), player ) && flWishSpeed > 0.f )
 	{
 		flAccelerate = tf_paint_speed_accel.GetFloat();
 		const float flInput = sqrtf( ( flForwardMove * flForwardMove ) + ( flSideMove * flSideMove ) );
@@ -3084,7 +3104,7 @@ void CTFGameMovement::FullWalkMove()
 		{
 			m_bPaintLaunch = false;
 			mv->m_vecVelocity[2] = 0.0;
-			if ( m_nPaintPower == SPEED_POWER )
+			if ( PaintGivesSpeed( m_nPaintPower, mv->GetAbsOrigin(), player ) )
 				player->m_surfaceFriction *= tf_paint_speed_friction.GetFloat();
 			Friction();
 			WalkMove();
@@ -3951,21 +3971,21 @@ void CTFGameMovement::UpdatePaintContact( void )
 		VectorNormalize( m_vecPaintNormal );
 	}
 
-	if ( prev == SPEED_POWER && m_nPaintPower == BOUNCE_POWER )
+	if ( ( prev == SPEED_POWER || prev == SIXTH_POWER ) && m_nPaintPower == BOUNCE_POWER )
 		m_bPaintLaunch = true;
 
 	if ( prev != m_nPaintPower && gpGlobals->curtime >= m_flSuppressPaintExit )
 	{
 		if ( prev == BOUNCE_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitBouncePaint" );
-		else if ( prev == SPEED_POWER )
+		else if ( prev == SPEED_POWER || prev == SIXTH_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitSpeedPaint" );
 		else if ( prev == PORTAL_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.ExitStickPaint" );
 
 		if ( m_nPaintPower == BOUNCE_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterBouncePaint" );
-		else if ( m_nPaintPower == SPEED_POWER )
+		else if ( PaintGivesSpeed( m_nPaintPower, mv->GetAbsOrigin(), player ) )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterSpeedPaint" );
 		else if ( m_nPaintPower == PORTAL_POWER )
 			TFPaint_PlaySound( m_pTFPlayer, "Player.EnterStickPaint" );

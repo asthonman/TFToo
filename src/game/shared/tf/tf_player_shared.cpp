@@ -34,6 +34,7 @@
 #include "tf_weapon_passtime_gun.h"
 #include "tf_weapon_rocketpack.h"
 #include "tf_chemist.h"
+#include "tf_paint.h"
 #include <functional>
 
 // Client specific.
@@ -10417,10 +10418,22 @@ static void UTIL_PlayerBulletTrace( const Vector& vecStart, const Vector& vecEnd
 //-----------------------------------------------------------------------------
 void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, bool bDoEffects, int nDamageType, int nCustomDamageType /*= TF_DMG_CUSTOM_NONE*/ )
 {
-	// Fire a bullet (ignoring the shooter).
+	// Fire a bullet (ignoring the shooter). Up to four ricochets off repulsion gel.
+	// Damage is the final segment. vecPath is the visual, so a muzzle override
+	// cannot move the ray the penetration test uses.
+	Vector vecShotDir = info.m_vecDirShooting;
+	if ( vecShotDir.NormalizeInPlace() < 0.001f )
+		vecShotDir.Init( 1.f, 0.f, 0.f );
+
+	float flRemain = info.m_flDistance;
 	Vector vecStart = info.m_vecSrc;
-	Vector vecEnd = vecStart + info.m_vecDirShooting * info.m_flDistance;
+	Vector vecEnd = vecStart + vecShotDir * flRemain;
 	trace_t trace;
+#ifdef CLIENT_DLL
+	Vector vecPath[6];
+	int nPath = 0;
+	vecPath[nPath++] = vecStart;
+#endif
 
 	ETFDmgCustom ePenetrateType = pWpn ? pWpn->GetPenetrateType() : TF_DMG_CUSTOM_NONE;
 	if ( ePenetrateType == TF_DMG_CUSTOM_NONE )
@@ -10428,17 +10441,61 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 		ePenetrateType = (ETFDmgCustom)nCustomDamageType;
 	}
 
-	// Ignore teammates and their (physical) upgrade items when shooting in MvM
-	if ( TFGameRules() && TFGameRules()->GameModeUsesUpgrades() )
+	for ( int iBounce = 0; ; ++iBounce )
 	{
-		CTraceFilterIgnoreFriendlyCombatItems traceFilter( this, COLLISION_GROUP_NONE, GetTeamNumber() );
-		UTIL_PlayerBulletTrace( vecStart, vecEnd, info.m_vecDirShooting, MASK_SOLID, &traceFilter, &trace );
+		vecEnd = vecStart + vecShotDir * flRemain;
+
+		// Ignore teammates and their (physical) upgrade items when shooting in MvM
+		if ( TFGameRules() && TFGameRules()->GameModeUsesUpgrades() )
+		{
+			CTraceFilterIgnoreFriendlyCombatItems traceFilter( this, COLLISION_GROUP_NONE, GetTeamNumber() );
+			UTIL_PlayerBulletTrace( vecStart, vecEnd, vecShotDir, MASK_SOLID, &traceFilter, &trace );
+		}
+		else
+		{
+			CTraceFilterSimple traceFilter( this, COLLISION_GROUP_NONE );
+			UTIL_PlayerBulletTrace( vecStart, vecEnd, vecShotDir, MASK_SOLID, &traceFilter, &trace );
+		}
+
+		if ( trace.fraction < 1.0f )
+			TFPaint_IgniteNitricAt( trace.endpos, 32.f );
+
+		if ( trace.fraction >= 1.0f || trace.fraction <= 0.f || iBounce >= 4 )
+			break;
+
+		CBaseEntity *pHit = trace.m_pEnt;
+		if ( !pHit || pHit->IsPlayer() || pHit->IsBaseObject() )
+			break;
+		if ( trace.surface.flags & SURF_SKY )
+			break;
+
+		TFPaintContact_t gel = TFPaint_Query( trace.endpos, 16.f );
+		if ( !gel.painted || gel.type != BOUNCE_POWER )
+			break;
+
+		flRemain *= ( 1.0f - trace.fraction );
+		if ( flRemain <= 16.f )
+			break;
+
+		Vector n = trace.plane.normal;
+		if ( n.NormalizeInPlace() < 0.1f )
+			break;
+		const float into = DotProduct( vecShotDir, n );
+		if ( into >= 0.f )
+			break;
+
+		vecShotDir -= n * ( 2.f * into );
+		vecShotDir.NormalizeInPlace();
+#ifdef CLIENT_DLL
+		if ( nPath < 5 )
+			vecPath[nPath++] = trace.endpos;
+#endif
+		vecStart = trace.endpos + n * 2.f;
 	}
-	else
-	{
-		CTraceFilterSimple traceFilter( this, COLLISION_GROUP_NONE );
-		UTIL_PlayerBulletTrace( vecStart, vecEnd, info.m_vecDirShooting, MASK_SOLID, &traceFilter, &trace );
-	}
+#ifdef CLIENT_DLL
+	if ( nPath < 6 )
+		vecPath[nPath++] = trace.endpos;
+#endif
 
 #ifndef CLIENT_DLL
 	CUtlVector<CBaseEntity *> vecTracedEntities;
@@ -10539,7 +10596,7 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 			}
 
 			CTargetOnlyFilter penetrateFilter( this, pTarget );
-			UTIL_PlayerBulletTrace( vecStart, vecEnd, info.m_vecDirShooting, MASK_SOLID, &penetrateFilter, pTraceToUse );
+			UTIL_PlayerBulletTrace( vecStart, vecEnd, vecShotDir, MASK_SOLID, &penetrateFilter, pTraceToUse );
 
 			if ( pTraceToUse->m_pEnt == pTarget )
 			{
@@ -10557,9 +10614,9 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 				}
 
 				ModifyDamageInfo( &dmgInfo, pTarget );
-				CalculateBulletDamageForce( &dmgInfo, info.m_iAmmoType, info.m_vecDirShooting, pTraceToUse->endpos, 1.0 );
+				CalculateBulletDamageForce( &dmgInfo, info.m_iAmmoType, vecShotDir, pTraceToUse->endpos, 1.0 );
 				dmgInfo.SetPlayerPenetrationCount( iPenetratedPlayerCount );
-				pTarget->DispatchTraceAttack( dmgInfo, info.m_vecDirShooting, pTraceToUse, GetActiveWeapon() ? GetActiveWeapon()->GetDmgAccumulator() : NULL );
+				pTarget->DispatchTraceAttack( dmgInfo, vecShotDir, pTraceToUse, GetActiveWeapon() ? GetActiveWeapon()->GetDmgAccumulator() : NULL );
 
 				const bool bIsPenetratingPlayer = pTargetPlayer != NULL;
 				if ( bIsPenetratingPlayer )
@@ -10600,8 +10657,8 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 		if ( trace.m_pEnt )
 		{
 			ModifyDamageInfo( &dmgInfo, trace.m_pEnt );
-			CalculateBulletDamageForce( &dmgInfo, info.m_iAmmoType, info.m_vecDirShooting, trace.endpos, 1.0 );
-			trace.m_pEnt->DispatchTraceAttack( dmgInfo, info.m_vecDirShooting, &trace );
+			CalculateBulletDamageForce( &dmgInfo, info.m_iAmmoType, vecShotDir, trace.endpos, 1.0 );
+			trace.m_pEnt->DispatchTraceAttack( dmgInfo, vecShotDir, &trace );
 			if ( trace.m_pEnt->IsPlayer() && OnOpposingTFTeams( GetTeamNumber(), trace.m_pEnt->GetTeamNumber() ) )
 			{
 				iEnemyPlayersHit++;
@@ -10700,13 +10757,13 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 
 				bool bInToolRecordingMode = clienttools->IsInRecordingMode();
 
-				// If we're using a viewmodel, override vecStart with the muzzle of that - just for the visual effect, not gameplay.
+				// If we're using a viewmodel, start the tracer at that muzzle. The shot itself already used vecStart.
 				if ( ( pLocalPlayer != NULL ) && !pLocalPlayer->ShouldDrawThisPlayer() && !bInToolRecordingMode && pWpn )
 				{
 					C_BaseAnimating *pAttachEnt = pWpn->GetAppropriateWorldOrViewModel();
 					if ( pAttachEnt != NULL )
 					{
-						pAttachEnt->GetAttachment( iAttachment, vecStart );
+						pAttachEnt->GetAttachment( iAttachment, vecPath[0] );
 					}
 				}
 				else if ( !IsDormant() )
@@ -10723,7 +10780,7 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 							pWeapon->SetModelIndex( nWorldModelIndex );
 						}
 
-						pWeapon->GetAttachment( iAttachment, vecStart );
+						pWeapon->GetAttachment( iAttachment, vecPath[0] );
 
 						if ( bInToolRecordingMode && nModelIndex != nWorldModelIndex )
 						{
@@ -10744,12 +10801,14 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 							pszTracerEffect = szTracerEffect;
 						}
 
-						UTIL_ParticleTracer( pszTracerEffect, vecStart, trace.endpos, entindex(), iUseAttachment, true );
+						for ( int iSeg = 0; iSeg < nPath - 1; ++iSeg )
+							UTIL_ParticleTracer( pszTracerEffect, vecPath[iSeg], vecPath[iSeg + 1], entindex(), iUseAttachment, true );
 					}
 				}
 				else
 				{
-					UTIL_Tracer( vecStart, trace.endpos, entindex(), iUseAttachment, 5000, true, GetTracerType() );
+					for ( int iSeg = 0; iSeg < nPath - 1; ++iSeg )
+						UTIL_Tracer( vecPath[iSeg], vecPath[iSeg + 1], entindex(), iUseAttachment, 5000, true, GetTracerType() );
 				}
 			}
 #endif
