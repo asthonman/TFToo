@@ -673,6 +673,11 @@ bool CTFInventoryManager::SlotContainsBaseItems( EEquipType_t eType, int iSlot )
 		if ( TFGameRules() && TFGameRules()->IsUsingGrapplingHook() )
 			return true;
 	}
+
+	// PDA blueprints always have a stock item. Don't offer an empty slot.
+	if ( IsPdaBlueprintSlot( iSlot ) )
+		return true;
+
 	// Normal game
 	return iSlot < LOADOUT_POSITION_HEAD;
 }
@@ -729,7 +734,7 @@ CEconItemView *CTFInventoryManager::GetBaseItemForClass( int iClass, int iSlot )
 		}
 	}
 
-	if ( iSlot >= LOADOUT_POSITION_HEAD )
+	if ( iSlot >= LOADOUT_POSITION_HEAD && !IsPdaBlueprintSlot( iSlot ) )
 		return m_pDefaultItem;
 
 	// Traverse List

@@ -20631,6 +20631,10 @@ void CTFPlayer::ModifyOrAppendCriteria( AI_CriteriaSet& criteriaSet )
 			"loadout_slot_taunt6",		// LOADOUT_POSITION_TAUNT6
 			"loadout_slot_taunt7",		// LOADOUT_POSITION_TAUNT7
 			"loadout_slot_taunt8",		// LOADOUT_POSITION_TAUNT8
+			"loadout_slot_pda_slot1",	// LOADOUT_POSITION_PDA_SLOT1
+			"loadout_slot_pda_slot2",	// LOADOUT_POSITION_PDA_SLOT2
+			"loadout_slot_pda_slot3",	// LOADOUT_POSITION_PDA_SLOT3
+			"loadout_slot_pda_slot4",	// LOADOUT_POSITION_PDA_SLOT4
 		};
 		COMPILE_TIME_ASSERT( ARRAYSIZE(kSlotCriteriaName) == CLASS_LOADOUT_POSITION_COUNT );
 		CEconItemView *pItem = NULL;

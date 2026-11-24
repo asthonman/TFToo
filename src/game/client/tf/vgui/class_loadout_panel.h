@@ -97,6 +97,8 @@ public:
 	CEquipSlotItemSelectionPanel	*GetItemSelectionPanel() { return m_pSelectionPanel; }
 
 	bool		IsEditingTauntSlots() const { return m_bInTauntLoadoutMode; }
+	bool		IsInPdaLoadout() const { return m_bInPdaLoadoutMode; }
+	void		ClosePdaLoadout();
 
 	enum classloadoutpage_t
 	{
@@ -119,6 +121,7 @@ protected:
 	int						m_iCurrentSlotIndex;
 	bool					m_bLoadoutHasChanged;
 	bool					m_bInTauntLoadoutMode;
+	bool					m_bInPdaLoadoutMode;
 	CTFPlayerModelPanel		*m_pPlayerModelPanel;
 	CEquipSlotItemSelectionPanel	*m_pSelectionPanel;
 	vgui::Label				*m_pTauntHintLabel;

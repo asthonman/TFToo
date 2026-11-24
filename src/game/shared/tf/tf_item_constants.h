@@ -77,6 +77,12 @@ enum loadout_positions_t
 	LOADOUT_POSITION_TAUNT7,
 	LOADOUT_POSITION_TAUNT8,
 
+	// Blueprints inside the construction PDA and the chemistry set. Hidden on
+	// the class page. Those two PDAs open a second page that shows these.
+	LOADOUT_POSITION_PDA_SLOT1,
+	LOADOUT_POSITION_PDA_SLOT2,
+	LOADOUT_POSITION_PDA_SLOT3,
+	LOADOUT_POSITION_PDA_SLOT4,
 
 	CLASS_LOADOUT_POSITION_COUNT,
 };
@@ -126,6 +132,12 @@ inline bool IsTauntSlot( int iSlot )
 		|| iSlot == LOADOUT_POSITION_TAUNT6
 		|| iSlot == LOADOUT_POSITION_TAUNT7
 		|| iSlot == LOADOUT_POSITION_TAUNT8;
+}
+
+// Sentry, dispenser, and the two teleporters, or the chemist's four concoctions.
+inline bool IsPdaBlueprintSlot( int iSlot )
+{
+	return iSlot >= LOADOUT_POSITION_PDA_SLOT1 && iSlot <= LOADOUT_POSITION_PDA_SLOT4;
 }
 
 inline bool IsWearableSlot( int iSlot ) 

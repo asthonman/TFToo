@@ -49,6 +49,10 @@ const char *g_szEquipSlotHeader[] =
 	"#ItemSel_TAUNT",		// LOADOUT_POSITION_TAUNT6
 	"#ItemSel_TAUNT",		// LOADOUT_POSITION_TAUNT7
 	"#ItemSel_TAUNT",		// LOADOUT_POSITION_TAUNT8
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT1
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT2
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT3
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT4
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_szEquipSlotHeader ) == CLASS_LOADOUT_POSITION_COUNT );
 
@@ -689,7 +693,24 @@ void CEquipSlotItemSelectionPanel::ApplySchemeSettings( vgui::IScheme *pScheme )
 
 	if ( m_pWeaponLabel )
 	{
-		m_pWeaponLabel->SetText( g_szEquipSlotHeader[m_iSlot] );
+		const char *pszHeader = g_szEquipSlotHeader[m_iSlot];
+		// The slot name is shared by every class. The stock blueprint's own
+		// name is what the player is picking (Sentry Gun, Poison Gas, ...).
+		if ( IsPdaBlueprintSlot( m_iSlot ) )
+		{
+			if ( m_iClass == TF_CLASS_ENGINEER &&
+				 ( m_iSlot == LOADOUT_POSITION_PDA_SLOT3 || m_iSlot == LOADOUT_POSITION_PDA_SLOT4 ) )
+			{
+				pszHeader = "#TF_Blueprint_Teleporter";
+			}
+			else
+			{
+				CEconItemView *pBaseItem = TFInventoryManager()->GetBaseItemForClass( m_iClass, m_iSlot );
+				if ( pBaseItem && pBaseItem->IsValid() && pBaseItem->GetStaticData() && pBaseItem->GetStaticData()->GetItemBaseName() )
+					pszHeader = pBaseItem->GetStaticData()->GetItemBaseName();
+			}
+		}
+		m_pWeaponLabel->SetText( pszHeader );
 	}
 }
 

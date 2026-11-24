@@ -2831,6 +2831,14 @@ protected:
 			m_unAccoutClassIndex = m_unLastValidClass + 1;
 	}
 
+	// items_game.txt last_valid_item_slot stops at the last vanilla slot.
+	// Blueprint slots past that fail Equip() until this is raised.
+	void ExtendLastValidItemSlot( equipped_slot_t unSlot )
+	{
+		if ( unSlot != INVALID_EQUIPPED_SLOT && unSlot > m_unLastValidClassItemSlot )
+			m_unLastValidClassItemSlot = unSlot;
+	}
+
 	virtual void Reset( void );
 
 	virtual bool BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors = NULL );

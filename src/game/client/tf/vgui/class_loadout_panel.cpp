@@ -102,6 +102,21 @@ bool IsTauntPanelPosition( int iButtonPos )
 	return iButtonPos >= 9 && iButtonPos <= 16;
 }
 
+static bool ClassOpensPdaBlueprintPage( int iClass )
+{
+	return iClass == TF_CLASS_ENGINEER || iClass == TF_CLASS_CHEMIST;
+}
+
+// The two teleporter slots are one choice. The entrance slot is the one stored.
+static int BlueprintSelectionSlot( int iClass, int iSlot )
+{
+	if ( iClass == TF_CLASS_ENGINEER &&
+		 ( iSlot == LOADOUT_POSITION_PDA_SLOT3 || iSlot == LOADOUT_POSITION_PDA_SLOT4 ) )
+		return LOADOUT_POSITION_PDA_SLOT3;
+
+	return iSlot;
+}
+
 const LoadoutPanelPositioningInstance g_DefaultLoadoutPanelPositioning =
 {
 	{
@@ -124,6 +139,10 @@ const LoadoutPanelPositioningInstance g_DefaultLoadoutPanelPositioning =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 
 	}
 };
@@ -150,6 +169,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Spy =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -175,6 +198,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Engineer =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -200,6 +227,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Resupply =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -225,6 +256,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Brick =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -250,6 +285,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Witch =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -275,6 +314,10 @@ const LoadoutPanelPositioningInstance g_LoadoutPanelPositioning_Chemist =
 		14,	// LOADOUT_POSITION_TAUNT6,
 		15,	// LOADOUT_POSITION_TAUNT7,
 		16,	// LOADOUT_POSITION_TAUNT8,
+		0,	// LOADOUT_POSITION_PDA_SLOT1,
+		0,	// LOADOUT_POSITION_PDA_SLOT2,
+		0,	// LOADOUT_POSITION_PDA_SLOT3,
+		0,	// LOADOUT_POSITION_PDA_SLOT4,
 	}
 };
 
@@ -540,6 +583,7 @@ CClassLoadoutPanel::CClassLoadoutPanel( vgui::Panel *parent )
 	m_pTauntLoadoutButton = NULL;
 
 	m_bInTauntLoadoutMode = false;
+	m_bInPdaLoadoutMode = false;
 
 	g_pClassLoadoutPanel = this;
 
@@ -664,6 +708,15 @@ void CClassLoadoutPanel::PerformLayout( void )
 		UpdatePageButtonColor( m_pTauntLoadoutButton, m_bInTauntLoadoutMode );
 	}
 
+	if ( m_pCharacterLoadoutButton )
+		m_pCharacterLoadoutButton->SetVisible( !m_bInPdaLoadoutMode );
+	if ( m_pTauntLoadoutButton )
+		m_pTauntLoadoutButton->SetVisible( !m_bInPdaLoadoutMode );
+	if ( m_pLoadoutPresetPanel )
+		m_pLoadoutPresetPanel->SetVisible( !m_bInPdaLoadoutMode );
+	if ( m_pBuildablesButton )
+		m_pBuildablesButton->SetVisible( !m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER );
+
 	FOR_EACH_VEC( m_vecItemOptionButtons, i )
 	{
 		m_vecItemOptionButtons[i]->SetVisible( false );
@@ -685,7 +738,11 @@ void CClassLoadoutPanel::PerformLayout( void )
 		}
 
 		bool bIsVisible = false;
-		if ( iButtonPos > 0 )
+		if ( m_bInPdaLoadoutMode )
+		{
+			bIsVisible = ( i == LOADOUT_POSITION_PDA || IsPdaBlueprintSlot( i ) );
+		}
+		else if ( iButtonPos > 0 )
 		{
 			bIsVisible = m_bInTauntLoadoutMode ? IsTauntPanelPosition( iButtonPos ) : !IsTauntPanelPosition( iButtonPos );
 		}
@@ -693,6 +750,31 @@ void CClassLoadoutPanel::PerformLayout( void )
 
 		if ( bIsVisible )
 		{
+			m_pItemModelPanels[i]->SetNoItemText( ItemSystem()->GetItemSchema()->GetLoadoutStringsForDisplay( EEquipType_t::EQUIP_TYPE_CLASS )[i] );
+
+			if ( m_bInPdaLoadoutMode )
+			{
+				const int iWide = m_pItemModelPanels[i]->GetWide();
+				const int iCenter = GetWide() / 2;
+				const int iGap = ( iWide > 10 ) ? ( iWide / 10 ) : 8;
+				if ( i == LOADOUT_POSITION_PDA )
+				{
+					m_pItemModelPanels[i]->SetPos( iCenter - ( iWide / 2 ), m_iItemYPos );
+				}
+				else
+				{
+					const int iBlueprint = i - LOADOUT_POSITION_PDA_SLOT1;
+					const int iRowWide = ( iWide * 4 ) + ( iGap * 3 );
+					const int iX = iCenter - ( iRowWide / 2 ) + ( iBlueprint * ( iWide + iGap ) );
+					const int iY = m_iItemYPos + ( m_iItemYDelta > 0 ? m_iItemYDelta * 3 : m_pItemModelPanels[i]->GetTall() * 3 );
+					m_pItemModelPanels[i]->SetPos( iX, iY );
+				}
+
+				if ( i < m_vecItemOptionButtons.Count() )
+					m_vecItemOptionButtons[i]->SetVisible( false );
+			}
+			else
+			{
 			if ( m_bInTauntLoadoutMode )
 			{
 				iButtonPos -= g_VisibleLoadoutSlotsPerClass[m_iCurrentClassIndex]->m_iPos[LOADOUT_POSITION_TAUNT];
@@ -732,6 +814,7 @@ void CClassLoadoutPanel::PerformLayout( void )
 				pItemOptionsPanel->SetVisible( !m_bInTauntLoadoutMode && AnyOptionsAvailableForItem( pItemData ) );
 				pItemOptionsPanel->SetCommand( CFmtStr( "options%d", i ) );
 			}
+			}
 		}
 
 		m_pItemModelPanels[ i ]->SetSelected( false );
@@ -751,8 +834,8 @@ void CClassLoadoutPanel::PerformLayout( void )
 //-----------------------------------------------------------------------------
 void CClassLoadoutPanel::OnKeyCodePressed( vgui::KeyCode code )
 {
-	// See if the preset control uses this key
-	if( m_pLoadoutPresetPanel->HandlePresetKeyPressed( code ) )
+	// See if the preset control uses this key. The PDA page has no presets.
+	if( !m_bInPdaLoadoutMode && m_pLoadoutPresetPanel->HandlePresetKeyPressed( code ) )
 	{
 		return;
 	}
@@ -905,6 +988,9 @@ void CClassLoadoutPanel::PostShowPanel( bool bVisible )
 //-----------------------------------------------------------------------------
 void CClassLoadoutPanel::SetClass( int iClass )
 {
+	if ( m_iCurrentClassIndex != iClass )
+		m_bInPdaLoadoutMode = false;
+
 	m_iCurrentClassIndex = iClass;
 	TF_SetItemDescriptionClass( iClass );
 
@@ -995,12 +1081,20 @@ void CClassLoadoutPanel::UpdateModelPanels( void )
 	for ( int i = 0; i < m_pItemModelPanels.Count(); i++ )
 	{
 		CEconItemView *pItemData = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, i );
+		// Engineer teleporters are one choice. An unlock in the entrance slot
+		// is what both slots show. Stock stays entrance on one and exit on the other.
+		if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && i == LOADOUT_POSITION_PDA_SLOT4 )
+		{
+			CEconItemView *pPaired = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT3 );
+			if ( pPaired && pPaired->IsValid() && pPaired->GetStaticData() && !pPaired->GetStaticData()->IsBaseItem() )
+				pItemData = pPaired;
+		}
 		m_pItemModelPanels[i]->SetItem( pItemData );
 		m_pItemModelPanels[i]->SetShowQuantity( true );
 		m_pItemModelPanels[i]->SetSelected( false );
 		SetBorderForItem( m_pItemModelPanels[i], false );
 
-		if ( m_pPlayerModelPanel && pItemData && pItemData->IsValid() )
+		if ( m_pPlayerModelPanel && pItemData && pItemData->IsValid() && !IsPdaBlueprintSlot( i ) )
 		{
 			m_pPlayerModelPanel->AddCarriedItem( pItemData );
 		}
@@ -1012,6 +1106,11 @@ void CClassLoadoutPanel::UpdateModelPanels( void )
 	}
 
 	SetDialogVariable( "loadoutclass", g_pVGuiLocalize->Find( pData->m_szLocalizableName ) );
+	if ( m_bInPdaLoadoutMode )
+	{
+		const char *pszPdaTitle = ( m_iCurrentClassIndex == TF_CLASS_ENGINEER ) ? "#TF_Loadout_ConstructionPDA" : "#TF_Weapon_ChemistrySet";
+		SetDialogVariable( "loadoutclass", g_pVGuiLocalize->Find( pszPdaTitle ) );
+	}
 
 	UpdatePassiveAttributes();
 
@@ -1058,6 +1157,12 @@ void CClassLoadoutPanel::OnSelectionReturned( KeyValues *data )
 		{
 			TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, m_iCurrentSlotIndex, ulIndex );
 
+			// Teleporter entrance and exit are the same choice. The entrance slot
+			// is the one that is stored, so the exit slot stays on its stock item
+			// unless an unlock is showing in both.
+			if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && m_iCurrentSlotIndex == LOADOUT_POSITION_PDA_SLOT3 )
+				TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+
 			m_bLoadoutHasChanged = true;
 
 			UpdateModelPanels();
@@ -1080,8 +1185,9 @@ void CClassLoadoutPanel::OnSelectionReturned( KeyValues *data )
 	CItemModelPanel *pSelection = GetFirstSelectedItemModelPanel( true );
 	if( !pSelection )
 	{
-		m_pItemModelPanels[0]->SetSelected( true );
-		pSelection = m_pItemModelPanels[0];
+		const int iFallback = ( m_bInPdaLoadoutMode && LOADOUT_POSITION_PDA < m_pItemModelPanels.Count() ) ? LOADOUT_POSITION_PDA : 0;
+		m_pItemModelPanels[iFallback]->SetSelected( true );
+		pSelection = m_pItemModelPanels[iFallback];
 	}
 
 	pSelection->RequestFocus();
@@ -1264,6 +1370,7 @@ bool CClassLoadoutPanel::AnyOptionsAvailableForItem( const CEconItemView *pItem 
 void CClassLoadoutPanel::SetLoadoutPage( classloadoutpage_t loadoutPage )
 {
 	ClearItemOptionsMenu();
+	m_bInPdaLoadoutMode = false;
 	switch ( loadoutPage )
 	{
 		case CHARACTER_LOADOUT_PAGE:
@@ -1283,6 +1390,18 @@ void CClassLoadoutPanel::SetLoadoutPage( classloadoutpage_t loadoutPage )
 		}
 	}
 	InvalidateLayout();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Leave the PDA blueprint page and return to the class loadout.
+//-----------------------------------------------------------------------------
+void CClassLoadoutPanel::ClosePdaLoadout( void )
+{
+	if ( !m_bInPdaLoadoutMode )
+		return;
+
+	m_bInPdaLoadoutMode = false;
+	UpdateModelPanels();
 }
 
 
@@ -1309,13 +1428,30 @@ void CClassLoadoutPanel::OnCommand( const char *command )
 			int iSlot = atoi(pszNum);
 			if ( iSlot >= 0 && iSlot < CLASS_LOADOUT_POSITION_COUNT && m_iCurrentClassIndex != TF_CLASS_UNDEFINED )
 			{
-				if ( m_iCurrentSlotIndex != iSlot )
+				// The construction PDA and the chemistry set open a page of
+				// their blueprints. Clicking the PDA on that page still opens
+				// the filtered backpack, which is the normal "change" path.
+				if ( iSlot == LOADOUT_POSITION_PDA && !m_bInPdaLoadoutMode && ClassOpensPdaBlueprintPage( m_iCurrentClassIndex ) )
 				{
-					m_iCurrentSlotIndex = iSlot;
+					m_bInPdaLoadoutMode = true;
+					ClearItemOptionsMenu();
+					UpdateModelPanels();
+					if ( LOADOUT_POSITION_PDA < m_pItemModelPanels.Count() && m_pItemModelPanels[LOADOUT_POSITION_PDA] )
+					{
+						m_pItemModelPanels[LOADOUT_POSITION_PDA]->SetSelected( true );
+						SetBorderForItem( m_pItemModelPanels[LOADOUT_POSITION_PDA], false );
+					}
+					return;
+				}
+
+				const int iSelectSlot = BlueprintSelectionSlot( m_iCurrentClassIndex, iSlot );
+				if ( m_iCurrentSlotIndex != iSelectSlot )
+				{
+					m_iCurrentSlotIndex = iSelectSlot;
 				}
 
 				// Create the selection screen. It removes itself on close.
-				m_pSelectionPanel = new CEquipSlotItemSelectionPanel( this, m_iCurrentClassIndex, iSlot );
+				m_pSelectionPanel = new CEquipSlotItemSelectionPanel( this, m_iCurrentClassIndex, iSelectSlot );
 				m_pSelectionPanel->ShowPanel( 0, true );
 
 				if ( m_pPlayerModelPanel )

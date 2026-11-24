@@ -1683,6 +1683,11 @@ void CTFItemDefinition::FilloutSlotUsage( CBitVec<LOADOUT_COUNT> *pBV ) const
 		if ( m_iLoadoutSlots[i] == LOADOUT_POSITION_INVALID )
 			continue;
 
+		// The bit vector is sized for classes, which is smaller than the slot
+		// list once blueprint slots exist. Crafting never asks about those.
+		if ( m_iLoadoutSlots[i] < 0 || m_iLoadoutSlots[i] >= LOADOUT_COUNT )
+			continue;
+
 		pBV->Set( m_iLoadoutSlots[i] );
 	}
 }
@@ -1874,7 +1879,11 @@ const char *g_szLoadoutStrings[] =
 	"",				// LOADOUT_POSITION_TAUNT5
 	"",				// LOADOUT_POSITION_TAUNT6
 	"",				// LOADOUT_POSITION_TAUNT7
-	"",				// LOADOUT_POSITION_TAUNT8
+	"",				// LOADOUT_POSITION_TAUNT8,
+	"pda_slot1",	// LOADOUT_POSITION_PDA_SLOT1,
+	"pda_slot2",	// LOADOUT_POSITION_PDA_SLOT2,
+	"pda_slot3",	// LOADOUT_POSITION_PDA_SLOT3,
+	"pda_slot4",	// LOADOUT_POSITION_PDA_SLOT4,
 
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_szLoadoutStrings ) <= CLASS_LOADOUT_POSITION_COUNT );	// we don't support mapping directly to slots like "misc2", "taunt2-8", etc.
@@ -1905,6 +1914,10 @@ const char *g_szLoadoutStringsForDisplay[] =
 	"#LoadoutSlot_Taunt6",		// LOADOUT_POSITION_TAUNT6,
 	"#LoadoutSlot_Taunt7",		// LOADOUT_POSITION_TAUNT7,
 	"#LoadoutSlot_Taunt8",		// LOADOUT_POSITION_TAUNT8,
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT1,
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT2,
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT3,
+	"#TF_Loadout_Blueprint",	// LOADOUT_POSITION_PDA_SLOT4,
 
 };
 COMPILE_TIME_ASSERT( ARRAYSIZE( g_szLoadoutStringsForDisplay ) == CLASS_LOADOUT_POSITION_COUNT );
@@ -2074,6 +2087,7 @@ bool CTFItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlStr
 	// on 16. That index is now Chemist. ExtendLastValidClass moves the
 	// account index if a class lands on it. items_game.txt is updated too.
 	ExtendLastValidClass( TF_CLASS_CHEMIST );
+	ExtendLastValidItemSlot( (equipped_slot_t)( CLASS_LOADOUT_POSITION_COUNT - 1 ) );
 
 	KeyValues *pKVMvmMaps = pKVRawDefinition->FindKey( "mvm_maps" );
 	SCHEMA_INIT_SUBSTEP( BInitMvmMissions( pKVMvmMaps, pVecErrors ) );

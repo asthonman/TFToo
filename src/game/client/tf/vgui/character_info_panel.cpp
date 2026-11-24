@@ -312,6 +312,11 @@ void CCharacterInfoPanel::OnCommand( const char *command )
 		{
 			m_pLoadoutPanel->GetClassLoadoutPanel()->GetItemSelectionPanel()->OnBackPressed();
 		}
+		// Blueprint page for the construction PDA or the chemistry set.
+		else if ( iShowingPanel == CHAP_LOADOUT && m_pLoadoutPanel->GetClassLoadoutPanel() && m_pLoadoutPanel->GetClassLoadoutPanel()->IsInPdaLoadout() )
+		{
+			m_pLoadoutPanel->GetClassLoadoutPanel()->ClosePdaLoadout();
+		}
 		// In any other panel, just go back.
 		else
 		{
