@@ -18,6 +18,8 @@
 #include <vgui/VGUI.h>
 #include "vgui_controls/CheckButton.h"
 
+class CIconPanel;
+
 #define NUM_ITEM_PANELS_IN_LOADOUT		CLASS_LOADOUT_POSITION_COUNT
 
 class CLoadoutPresetPanel;
@@ -115,6 +117,7 @@ protected:
 	void			ClearItemOptionsMenu( void );
 	void			SetOptionsButtonText( int nIndex, const char* pszText );
 	static bool		AnyOptionsAvailableForItem( const CEconItemView *pItem );
+	void			UpdateEngineerBlueprintIcons( void );
 
 	int						m_iCurrentClassIndex;
 	int						m_iCurrentTeamIndex;
@@ -153,6 +156,10 @@ private:
 		DEFAULT = 0, ARMED, DEPRESSED
 	};
 	Color					m_aDefaultColors[2][2][3];	// [LOADED|NOTLOADED][FG|BG][DEFAULT|ARMED|DEPRESSED]
+
+	// Build-PDA icons drawn over the engineer blueprint slots.
+	CIconPanel				*m_pBlueprintIcons[4];
+	bool					m_bMiniSentryNameOverride;
 };
 
 extern CClassLoadoutPanel *g_pClassLoadoutPanel;

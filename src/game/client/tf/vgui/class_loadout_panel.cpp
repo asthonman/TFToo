@@ -17,6 +17,8 @@
 #include "item_style_select_dialog.h"
 #include "vgui/IInput.h"
 #include "vgui_controls/PanelListPanel.h"
+#include "IconPanel.h"
+#include "hud.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
@@ -107,14 +109,44 @@ static bool ClassOpensPdaBlueprintPage( int iClass )
 	return iClass == TF_CLASS_ENGINEER || iClass == TF_CLASS_CHEMIST;
 }
 
-// The two teleporter slots are one choice. The entrance slot is the one stored.
-static int BlueprintSelectionSlot( int iClass, int iSlot )
+// Build menu icons. The mini-sentry has no PDA art of its own in this SDK.
+static const char *s_pszEngineerBlueprintIcons[4] =
 {
-	if ( iClass == TF_CLASS_ENGINEER &&
-		 ( iSlot == LOADOUT_POSITION_PDA_SLOT3 || iSlot == LOADOUT_POSITION_PDA_SLOT4 ) )
-		return LOADOUT_POSITION_PDA_SLOT3;
+	"hud_menu_sentry_build",
+	"hud_menu_dispenser_build",
+	"hud_menu_tele_entrance_build",
+	"hud_menu_tele_exit_build",
+};
 
-	return iSlot;
+static bool LoadoutWrenchBuildsMiniSentry( int iClass )
+{
+	if ( iClass != TF_CLASS_ENGINEER )
+		return false;
+
+	CEconItemView *pMelee = TFInventoryManager()->GetItemInLoadoutForClass( iClass, LOADOUT_POSITION_MELEE );
+	if ( !pMelee || !pMelee->IsValid() )
+		return false;
+
+	// The Gunslinger, or any other melee that builds a mini-sentry.
+	static CSchemaAttributeDefHandle pAttr_MiniSentry( "mod wrench builds minisentry" );
+	float flMiniSentry = 0.f;
+	return FindAttribute_UnsafeBitwiseCast<attrib_value_t>( pMelee, pAttr_MiniSentry, &flMiniSentry ) && flMiniSentry != 0.f;
+}
+
+static const char *EngineerBlueprintIconName( int iBlueprint, bool bMiniSentry )
+{
+	if ( iBlueprint == 0 && bMiniSentry )
+	{
+		if ( gHUD.GetIcon( "hud_menu_sentry_build_mini" ) )
+			return "hud_menu_sentry_build_mini";
+		if ( gHUD.GetIcon( "obj_status_sentrygun_1" ) )
+			return "obj_status_sentrygun_1";
+	}
+
+	if ( iBlueprint < 0 || iBlueprint >= 4 )
+		return s_pszEngineerBlueprintIcons[0];
+
+	return s_pszEngineerBlueprintIcons[iBlueprint];
 }
 
 const LoadoutPanelPositioningInstance g_DefaultLoadoutPanelPositioning =
@@ -584,6 +616,11 @@ CClassLoadoutPanel::CClassLoadoutPanel( vgui::Panel *parent )
 
 	m_bInTauntLoadoutMode = false;
 	m_bInPdaLoadoutMode = false;
+	m_bMiniSentryNameOverride = false;
+	for ( int i = 0; i < 4; i++ )
+	{
+		m_pBlueprintIcons[i] = NULL;
+	}
 
 	g_pClassLoadoutPanel = this;
 
@@ -826,8 +863,99 @@ void CClassLoadoutPanel::PerformLayout( void )
 	}
 
 	LinkModelPanelControllerNavigation( true );
+	UpdateEngineerBlueprintIcons();
 }
 
+
+//-----------------------------------------------------------------------------
+// Purpose: Engineer blueprint slots use the build PDA icons. The exit is locked.
+//-----------------------------------------------------------------------------
+void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
+{
+	const bool bEngineerPage = m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER;
+	const bool bMiniSentry = bEngineerPage && LoadoutWrenchBuildsMiniSentry( m_iCurrentClassIndex );
+
+	if ( m_pItemModelPanels.Count() <= LOADOUT_POSITION_PDA_SLOT4 )
+		return;
+
+	for ( int i = 0; i < 4; i++ )
+	{
+		const int iSlot = LOADOUT_POSITION_PDA_SLOT1 + i;
+		CItemModelPanel *pItem = m_pItemModelPanels[iSlot];
+		if ( !pItem )
+			continue;
+
+		if ( !m_pBlueprintIcons[i] )
+		{
+			CIconPanel *pIcon = new CIconPanel( this, CFmtStr( "EngineerBlueprintIcon%d", i ) );
+			KeyValues *pKV = new KeyValues( "IconPanel" );
+			pKV->SetInt( "scaleImage", 1 );
+			pIcon->ApplySettings( pKV );
+			pKV->deleteThis();
+			pIcon->SetMouseInputEnabled( false );
+			pIcon->SetKeyBoardInputEnabled( false );
+			pIcon->SetPaintBackgroundEnabled( false );
+			pIcon->SetZPos( 200 );
+			pIcon->SetVisible( false );
+			m_pBlueprintIcons[i] = pIcon;
+		}
+
+		CIconPanel *pIcon = m_pBlueprintIcons[i];
+		const bool bShow = bEngineerPage && pItem->IsVisible();
+		// The entrance keeps the exit on the stock teleporter. The slot is not a choice.
+		const bool bLockedExit = bShow && ( iSlot == LOADOUT_POSITION_PDA_SLOT4 );
+
+		pItem->SetModelIsHidden( bShow );
+		pItem->SetActAsButton( !bLockedExit, !bLockedExit );
+		pItem->SetGreyedOut( bLockedExit ? "" : NULL );
+
+		if ( iSlot == LOADOUT_POSITION_PDA_SLOT1 )
+		{
+			CExLabel *pName = pItem->GetNameLabel();
+			if ( pName )
+			{
+				if ( bMiniSentry )
+				{
+					const wchar_t *pszMini = g_pVGuiLocalize->Find( "#TF_Blueprint_MiniSentry" );
+					pName->SetText( pszMini ? pszMini : L"Mini-Sentry" );
+					m_bMiniSentryNameOverride = true;
+				}
+				else if ( m_bMiniSentryNameOverride && pItem->HasItem() && pItem->GetItem() )
+				{
+					// The label no longer tracks %itemname% after the override, so keep writing the real name.
+					const wchar_t *pszName = pItem->GetItem()->GetItemName();
+					if ( pszName )
+						pName->SetText( pszName );
+				}
+			}
+		}
+
+		if ( !bShow )
+		{
+			pIcon->SetVisible( false );
+			continue;
+		}
+
+		pIcon->SetIcon( EngineerBlueprintIconName( i, bMiniSentry ) );
+		pIcon->SetIconColor( bLockedExit ? Color( 128, 128, 128, 255 ) : Color( 255, 255, 255, 255 ) );
+
+		int iX = 0;
+		int iY = 0;
+		pItem->GetPos( iX, iY );
+		const int iPanelW = pItem->GetWide();
+		const int iPanelH = pItem->GetTall();
+		int iIcon = ( iPanelH * 58 ) / 100;
+		const int iMax = ( iPanelW * 58 ) / 100;
+		if ( iIcon > iMax )
+			iIcon = iMax;
+		if ( iIcon < 8 )
+			iIcon = 8;
+
+		pIcon->SetBounds( iX + ( iPanelW - iIcon ) / 2, iY + ( iPanelH * 6 ) / 100, iIcon, iIcon );
+		pIcon->SetVisible( true );
+		pIcon->MoveToFront();
+	}
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -1077,17 +1205,25 @@ void CClassLoadoutPanel::UpdateModelPanels( void )
 		m_pPlayerModelPanel->SetTeam( m_iCurrentTeamIndex );
 	}
 
+	// The exit blueprint is not selectable. An entrance always leaves it on the stock exit.
+	if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER )
+	{
+		CEconItemView *pExit = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4 );
+		if ( pExit && pExit->IsValid() && pExit->GetStaticData() && !pExit->GetStaticData()->IsBaseItem() )
+		{
+			TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+		}
+	}
+
 	// For now, fill them out with the local player's currently wielded items
 	for ( int i = 0; i < m_pItemModelPanels.Count(); i++ )
 	{
 		CEconItemView *pItemData = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, i );
-		// Engineer teleporters are one choice. An unlock in the entrance slot
-		// is what both slots show. Stock stays entrance on one and exit on the other.
-		if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && i == LOADOUT_POSITION_PDA_SLOT4 )
+		// Hide the blueprint model before SetItem so the panel keeps its name and skips the spinner.
+		if ( IsPdaBlueprintSlot( i ) )
 		{
-			CEconItemView *pPaired = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT3 );
-			if ( pPaired && pPaired->IsValid() && pPaired->GetStaticData() && !pPaired->GetStaticData()->IsBaseItem() )
-				pItemData = pPaired;
+			const bool bUseBuildIcon = m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER;
+			m_pItemModelPanels[i]->SetModelIsHidden( bUseBuildIcon );
 		}
 		m_pItemModelPanels[i]->SetItem( pItemData );
 		m_pItemModelPanels[i]->SetShowQuantity( true );
@@ -1157,9 +1293,7 @@ void CClassLoadoutPanel::OnSelectionReturned( KeyValues *data )
 		{
 			TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, m_iCurrentSlotIndex, ulIndex );
 
-			// Teleporter entrance and exit are the same choice. The entrance slot
-			// is the one that is stored, so the exit slot stays on its stock item
-			// unless an unlock is showing in both.
+			// Choosing an entrance puts the exit back on the stock teleporter.
 			if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && m_iCurrentSlotIndex == LOADOUT_POSITION_PDA_SLOT3 )
 				TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
 
@@ -1444,14 +1578,17 @@ void CClassLoadoutPanel::OnCommand( const char *command )
 					return;
 				}
 
-				const int iSelectSlot = BlueprintSelectionSlot( m_iCurrentClassIndex, iSlot );
-				if ( m_iCurrentSlotIndex != iSelectSlot )
+				// The entrance locks the exit. It stays the stock teleporter exit.
+				if ( m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER && iSlot == LOADOUT_POSITION_PDA_SLOT4 )
+					return;
+
+				if ( m_iCurrentSlotIndex != iSlot )
 				{
-					m_iCurrentSlotIndex = iSelectSlot;
+					m_iCurrentSlotIndex = iSlot;
 				}
 
 				// Create the selection screen. It removes itself on close.
-				m_pSelectionPanel = new CEquipSlotItemSelectionPanel( this, m_iCurrentClassIndex, iSelectSlot );
+				m_pSelectionPanel = new CEquipSlotItemSelectionPanel( this, m_iCurrentClassIndex, iSlot );
 				m_pSelectionPanel->ShowPanel( 0, true );
 
 				if ( m_pPlayerModelPanel )
