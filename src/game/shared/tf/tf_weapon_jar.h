@@ -194,7 +194,7 @@ protected:
 #endif
 
 	// -1 is a stock jar. 0..CHEM_COUNT-1 is a chemist concoction.
-	int			m_nChemSlot;
+	CNetworkVar( int, m_nChemSlot );
 };
 
 // *************************************************************************************************************************

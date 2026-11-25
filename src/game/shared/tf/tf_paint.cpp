@@ -643,7 +643,7 @@ void CTFPaintMap::ProjectRepulsionDecals( void )
 				continue;
 
 			Vector dir = center - live[i].pos;
-			if ( dir.Normalize() < 0.1f )
+			if ( dir.NormalizeInPlace() < 0.1f )
 				dir.Init( 0.f, 0.f, 1.f );
 			const Vector start = center - dir * ( bounds + 16.f );
 			const Vector end = center + dir * 8.f;
