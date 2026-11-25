@@ -1,0 +1,349 @@
+<!-- dmx encoding keyvalues2 1 format pcf 1 -->
+"DmElement"
+{
+	"id" "elementid" "b1e0a001-0001-4000-8000-000000000001"
+	"name" "string" "untitled"
+	"particleSystemDefinitions" "element_array"
+	[
+		"DmeParticleSystemDefinition"
+		{
+			"id" "elementid" "b1e0a001-0001-4000-8000-000000000010"
+			"name" "string" "grease_paint_blob"
+			"material" "string" "particle/paintblobs/paint_blob_sheet_1.vmt"
+			"max_particles" "int" "4"
+			"initial_particles" "int" "0"
+			"bounding_box_min" "vector3" "-32 -32 -32"
+			"bounding_box_max" "vector3" "32 32 32"
+			"radius" "float" "8"
+			"color" "color" "120 88 36 255"
+			"Sort particles" "bool" "0"
+			"batch particle systems" "bool" "0"
+			"renderers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000011"
+					"name" "string" "render_blobs"
+					"functionName" "string" "render_blobs"
+					"cube_width" "float" "1"
+					"cutoff_radius" "float" "3.3"
+					"render_radius" "float" "8"
+				}
+			]
+			"operators" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000012"
+					"name" "string" "Movement Lock to Control Point"
+					"functionName" "string" "Movement Lock to Control Point"
+					"control_point_number" "int" "0"
+					"lock rotation" "bool" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000013"
+					"name" "string" "Lifespan Decay"
+					"functionName" "string" "Lifespan Decay"
+				}
+			]
+			"initializers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000014"
+					"name" "string" "Position Within Sphere Random"
+					"functionName" "string" "Position Within Sphere Random"
+					"distance_min" "float" "0"
+					"distance_max" "float" "0"
+					"speed_min" "float" "0"
+					"speed_max" "float" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000015"
+					"name" "string" "Lifetime Random"
+					"functionName" "string" "Lifetime Random"
+					"lifetime_min" "float" "60"
+					"lifetime_max" "float" "60"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000016"
+					"name" "string" "Radius Random"
+					"functionName" "string" "Radius Random"
+					"radius_min" "float" "7"
+					"radius_max" "float" "9"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000017"
+					"name" "string" "Alpha Random"
+					"functionName" "string" "Alpha Random"
+					"alpha_min" "int" "255"
+					"alpha_max" "int" "255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000018"
+					"name" "string" "Color Random"
+					"functionName" "string" "Color Random"
+					"color1" "color" "120 88 36 255"
+					"color2" "color" "120 88 36 255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000019"
+					"name" "string" "Sequence Random"
+					"functionName" "string" "Sequence Random"
+					"sequence_min" "int" "0"
+					"sequence_max" "int" "3"
+				}
+			]
+			"emitters" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-00000000001a"
+					"name" "string" "emit_instantaneously"
+					"functionName" "string" "emit_instantaneously"
+					"num_to_emit" "int" "1"
+					"maximum emission per frame" "int" "1"
+				}
+			]
+			"forces" "element_array"
+			[
+			]
+			"constraints" "element_array"
+			[
+			]
+			"children" "element_array"
+			[
+			]
+		},
+		"DmeParticleSystemDefinition"
+		{
+			"id" "elementid" "b1e0a001-0001-4000-8000-000000000020"
+			"name" "string" "grease_paint_blob_red"
+			"material" "string" "particle/paintblobs/paint_blob_sheet_1.vmt"
+			"max_particles" "int" "4"
+			"initial_particles" "int" "0"
+			"bounding_box_min" "vector3" "-32 -32 -32"
+			"bounding_box_max" "vector3" "32 32 32"
+			"radius" "float" "8"
+			"color" "color" "186 96 28 255"
+			"Sort particles" "bool" "0"
+			"batch particle systems" "bool" "0"
+			"renderers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000021"
+					"name" "string" "render_blobs"
+					"functionName" "string" "render_blobs"
+					"render_radius" "float" "8"
+				}
+			]
+			"operators" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000022"
+					"name" "string" "Movement Lock to Control Point"
+					"functionName" "string" "Movement Lock to Control Point"
+					"control_point_number" "int" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000023"
+					"name" "string" "Lifespan Decay"
+					"functionName" "string" "Lifespan Decay"
+				}
+			]
+			"initializers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000024"
+					"name" "string" "Position Within Sphere Random"
+					"functionName" "string" "Position Within Sphere Random"
+					"distance_min" "float" "0"
+					"distance_max" "float" "0"
+					"speed_min" "float" "0"
+					"speed_max" "float" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000025"
+					"name" "string" "Lifetime Random"
+					"functionName" "string" "Lifetime Random"
+					"lifetime_min" "float" "60"
+					"lifetime_max" "float" "60"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000026"
+					"name" "string" "Radius Random"
+					"functionName" "string" "Radius Random"
+					"radius_min" "float" "7"
+					"radius_max" "float" "9"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000027"
+					"name" "string" "Alpha Random"
+					"functionName" "string" "Alpha Random"
+					"alpha_min" "int" "255"
+					"alpha_max" "int" "255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000028"
+					"name" "string" "Color Random"
+					"functionName" "string" "Color Random"
+					"color1" "color" "186 96 28 255"
+					"color2" "color" "186 96 28 255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000029"
+					"name" "string" "Sequence Random"
+					"functionName" "string" "Sequence Random"
+					"sequence_min" "int" "0"
+					"sequence_max" "int" "3"
+				}
+			]
+			"emitters" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-00000000002a"
+					"name" "string" "emit_instantaneously"
+					"functionName" "string" "emit_instantaneously"
+					"num_to_emit" "int" "1"
+				}
+			]
+			"forces" "element_array"
+			[
+			]
+			"constraints" "element_array"
+			[
+			]
+			"children" "element_array"
+			[
+			]
+		},
+		"DmeParticleSystemDefinition"
+		{
+			"id" "elementid" "b1e0a001-0001-4000-8000-000000000030"
+			"name" "string" "grease_paint_blob_blue"
+			"material" "string" "particle/paintblobs/paint_blob_sheet_1.vmt"
+			"max_particles" "int" "4"
+			"initial_particles" "int" "0"
+			"bounding_box_min" "vector3" "-32 -32 -32"
+			"bounding_box_max" "vector3" "32 32 32"
+			"radius" "float" "8"
+			"color" "color" "78 118 40 255"
+			"Sort particles" "bool" "0"
+			"batch particle systems" "bool" "0"
+			"renderers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000031"
+					"name" "string" "render_blobs"
+					"functionName" "string" "render_blobs"
+					"render_radius" "float" "8"
+				}
+			]
+			"operators" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000032"
+					"name" "string" "Movement Lock to Control Point"
+					"functionName" "string" "Movement Lock to Control Point"
+					"control_point_number" "int" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000033"
+					"name" "string" "Lifespan Decay"
+					"functionName" "string" "Lifespan Decay"
+				}
+			]
+			"initializers" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000034"
+					"name" "string" "Position Within Sphere Random"
+					"functionName" "string" "Position Within Sphere Random"
+					"distance_min" "float" "0"
+					"distance_max" "float" "0"
+					"speed_min" "float" "0"
+					"speed_max" "float" "0"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000035"
+					"name" "string" "Lifetime Random"
+					"functionName" "string" "Lifetime Random"
+					"lifetime_min" "float" "60"
+					"lifetime_max" "float" "60"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000036"
+					"name" "string" "Radius Random"
+					"functionName" "string" "Radius Random"
+					"radius_min" "float" "7"
+					"radius_max" "float" "9"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000037"
+					"name" "string" "Alpha Random"
+					"functionName" "string" "Alpha Random"
+					"alpha_min" "int" "255"
+					"alpha_max" "int" "255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000038"
+					"name" "string" "Color Random"
+					"functionName" "string" "Color Random"
+					"color1" "color" "78 118 40 255"
+					"color2" "color" "78 118 40 255"
+				},
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-000000000039"
+					"name" "string" "Sequence Random"
+					"functionName" "string" "Sequence Random"
+					"sequence_min" "int" "0"
+					"sequence_max" "int" "3"
+				}
+			]
+			"emitters" "element_array"
+			[
+				"DmeParticleOperator"
+				{
+					"id" "elementid" "b1e0a001-0001-4000-8000-00000000003a"
+					"name" "string" "emit_instantaneously"
+					"functionName" "string" "emit_instantaneously"
+					"num_to_emit" "int" "1"
+				}
+			]
+			"forces" "element_array"
+			[
+			]
+			"constraints" "element_array"
+			[
+			]
+			"children" "element_array"
+			[
+			]
+		}
+	]
+}

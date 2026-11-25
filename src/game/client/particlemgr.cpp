@@ -1083,6 +1083,12 @@ bool CParticleMgr::Init(unsigned long count, IMaterialSystem *pMaterials)
 	// tell particle mgr to add the default simulation + rendering ops
 	g_pParticleSystemMgr->AddBuiltinSimulationOperators();
 	g_pParticleSystemMgr->AddBuiltinRenderingOperators();
+#ifdef TF_CLIENT_DLL
+	// Stock TF2 particles.a is built without USE_BLOBULATOR, so render_blobs
+	// is not in the builtin set. Register it before the manifests are parsed.
+	extern void AddTFBlobRenderer( void );
+	AddTFBlobRenderer();
+#endif
 
 	// Send true to load the sheets
 	ParseParticleEffects( true, false );

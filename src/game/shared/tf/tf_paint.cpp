@@ -25,6 +25,8 @@
 #include "texture_group_names.h"
 #include "cliententitylist.h"
 #include "iefx.h"
+#include "particle_parse.h"
+#include "particles_new.h"
 #define CTFPaintMap C_TFPaintMap
 #else
 #include "tf_player.h"
@@ -275,6 +277,10 @@ private:
 	void	DrawDisc( const Vector &pos, const Vector &normal, float radius, int type, int alpha, bool additive );
 	void	DrawStampDecals( const Vector &eye );
 	void	ProjectRepulsionDecals( void );
+	void	UpdateGreaseBlobs( void );
+	void	KillGreaseBlob( int slot, bool bSplat );
+	CNewParticleEffect *m_pGreaseFx[TF_PAINT_BLOB_MAX];
+	Vector	m_vecGreaseAnchor[TF_PAINT_BLOB_MAX];
 	struct PropPaintRec_t
 	{
 		EHANDLE ent;
@@ -329,6 +335,8 @@ CTFPaintMap::CTFPaintMap()
 	{
 		m_nBlobSeen[i] = 0;
 		m_vecBlobSeen[i].Init();
+		m_pGreaseFx[i] = NULL;
+		m_vecGreaseAnchor[i].Init();
 	}
 	for ( int i = 0; i < 16; ++i )
 	{
@@ -352,6 +360,10 @@ CTFPaintMap::CTFPaintMap()
 
 CTFPaintMap::~CTFPaintMap()
 {
+#ifdef CLIENT_DLL
+	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
+		KillGreaseBlob( i, false );
+#endif
 	if ( s_pMap == this )
 		s_pMap = NULL;
 }
@@ -370,6 +382,10 @@ void CTFPaintMap::Spawn( void )
 	PrecacheParticleSystem( "burningplayer_blue" );
 	PrecacheParticleSystem( "burningplayer_corpse" );
 	PrecacheParticleSystem( "pyro_blast" );
+	PrecacheParticleSystem( "grease_paint_blob" );
+	PrecacheParticleSystem( "grease_paint_blob_red" );
+	PrecacheParticleSystem( "grease_paint_blob_blue" );
+	PrecacheParticleSystem( "paint_splat_bounce_01_B" );
 
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
@@ -674,6 +690,7 @@ void CTFPaintMap::ClientThink( void )
 			m_vecBlobSeen[i] = m_vecBlobPos[i];
 		}
 		m_bHaveSeen = true;
+		UpdateGreaseBlobs();
 		return;
 	}
 
@@ -685,11 +702,14 @@ void CTFPaintMap::ClientThink( void )
 			int gel = ( packed & 0x0F ) - 1;
 			int team = ( packed >> 4 ) & 0x0F;
 			NotePop( m_vecBlobSeen[i], Vector( 0, 0, 1 ), gel | ( team << 4 ) );
+			if ( gel == SIXTH_POWER )
+				KillGreaseBlob( i, true );
 		}
 		m_nBlobSeen[i] = m_nBlobType[i];
 		m_vecBlobSeen[i] = m_vecBlobPos[i];
 	}
 
+	UpdateGreaseBlobs();
 	ProjectRepulsionDecals();
 }
 
@@ -859,6 +879,9 @@ int CTFPaintMap::DrawModel( int flags )
 			int packed = m_nBlobType[i];
 			int gel = ( packed & 0x0F ) - 1;
 			int team = ( packed >> 4 ) & 0x0F;
+			// Grease is the sprite-sheet blob. Keep the flat quad only if that effect failed to spawn.
+			if ( gel == SIXTH_POWER && m_pGreaseFx[i] && m_pGreaseFx[i]->m_nActiveParticles > 0 )
+				continue;
 			int r, g, b;
 			TFPaint_GetColor( gel, r, g, b, team );
 			const float rad = 7.f;
@@ -894,6 +917,64 @@ int CTFPaintMap::DrawModel( int flags )
 	}
 
 	return 1;
+}
+
+static const char *GreaseBlobParticle( int team )
+{
+	if ( team == TF_TEAM_RED )
+		return "grease_paint_blob_red";
+	if ( team == TF_TEAM_BLUE )
+		return "grease_paint_blob_blue";
+	return "grease_paint_blob";
+}
+
+void CTFPaintMap::KillGreaseBlob( int slot, bool bSplat )
+{
+	if ( slot < 0 || slot >= TF_PAINT_BLOB_MAX )
+		return;
+
+	if ( m_pGreaseFx[slot] )
+	{
+		ParticleProp()->StopEmissionAndDestroyImmediately( m_pGreaseFx[slot] );
+		m_pGreaseFx[slot] = NULL;
+	}
+
+	if ( bSplat )
+		DispatchParticleEffect( "paint_splat_bounce_01_B", m_vecBlobSeen[slot], vec3_angle );
+}
+
+void CTFPaintMap::UpdateGreaseBlobs( void )
+{
+	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
+	{
+		const int packed = m_nBlobType[i];
+		const int gel = ( packed & 0x0F ) - 1;
+		const int team = ( packed >> 4 ) & 0x0F;
+		if ( packed <= 0 || gel != SIXTH_POWER )
+		{
+			KillGreaseBlob( i, false );
+			continue;
+		}
+
+		const Vector pos = m_vecBlobPos[i];
+		const char *pszName = GreaseBlobParticle( team );
+		const bool bJump = m_pGreaseFx[i] && ( pos - m_vecGreaseAnchor[i] ).LengthSqr() > ( 128.f * 128.f );
+		if ( bJump )
+			KillGreaseBlob( i, false );
+
+		if ( !m_pGreaseFx[i] )
+		{
+			if ( !g_pParticleSystemMgr->FindParticleSystem( pszName ) )
+				continue;
+			m_pGreaseFx[i] = ParticleProp()->Create( pszName, PATTACH_CUSTOMORIGIN );
+			if ( !m_pGreaseFx[i] )
+				continue;
+		}
+
+		m_pGreaseFx[i]->SetControlPoint( 0, pos );
+		m_pGreaseFx[i]->SetSortOrigin( pos );
+		m_vecGreaseAnchor[i] = pos;
+	}
 }
 
 #else // GAME_DLL

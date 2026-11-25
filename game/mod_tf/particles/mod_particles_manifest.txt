@@ -6,4 +6,6 @@ particles_manifest
 	"file"		"particles/effects_mobster_indev.pcf"
 	"file"		"particles/building_jumppad.pcf"
 	"file"		"particles/boot_particles.pcf"
+	"file"		"particles/paint_splats_fx.pcf"
+	"file"		"particles/grease_blob.pcf"
 }
