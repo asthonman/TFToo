@@ -327,7 +327,7 @@ CStudioHdr *C_ObjectTeleporter::OnNewModel( void )
 
 	// Same walkable box the server uses. Prediction traces the client entity, and
 	// a freshly loaded jumppad hull is 24 units (too tall to step onto).
-	UTIL_SetSize( this, TELEPORTER_MINS, TELEPORTER_MAXS );
+	SetSize( TELEPORTER_MINS, TELEPORTER_MAXS );
 
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
 
@@ -339,7 +339,7 @@ CStudioHdr *C_ObjectTeleporter::OnNewModel( void )
 //-----------------------------------------------------------------------------
 void C_ObjectTeleporter::ClientThink( void )
 {
-	UTIL_SetSize( this, TELEPORTER_MINS, TELEPORTER_MAXS );
+	SetSize( TELEPORTER_MINS, TELEPORTER_MAXS );
 
 	if ( m_iState >= TELEPORTER_STATE_READY )
 	{
