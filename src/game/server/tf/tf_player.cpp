@@ -37,6 +37,7 @@
 #include "team_control_point_master.h"
 #include "tf_weapon_pda.h"
 #include "tf_chemist.h"
+#include "tf_item_inventory.h"
 #include "sceneentity.h"
 #include "AI_ResponseSystem.h"
 #include "fmtstr.h"
@@ -8599,6 +8600,17 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 
 			if ( bArgsChecked )
 			{
+				if ( iBuilding == OBJ_TELEPORTER )
+				{
+					CEconItemView *pSlot3 = GetLoadoutItem( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+					CEconItemView *pSlot4 = GetLoadoutItem( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT4 );
+					int iAllowed3 = MODE_TELEPORTER_ENTRANCE;
+					int iAllowed4 = MODE_TELEPORTER_EXIT;
+					ResolveEngineerBlueprintModes( pSlot3, pSlot4, iAllowed3, iAllowed4 );
+					if ( iMode != iAllowed3 && iMode != iAllowed4 )
+						return true;
+				}
+
 				StartBuildingObjectOfType( iBuilding, iMode );
 			}
 			else

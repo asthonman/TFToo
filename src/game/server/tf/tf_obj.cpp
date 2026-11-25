@@ -180,7 +180,7 @@ IMPLEMENT_SERVERCLASS_ST(CBaseObject, DT_BaseObject)
 	SendPropInt( SENDINFO(m_iUpgradeMetal), 10 ),
 	SendPropInt( SENDINFO(m_iUpgradeMetalRequired), 10 ),
 	SendPropInt( SENDINFO(m_iHighestUpgradeLevel), 3 ),
-	SendPropInt( SENDINFO(m_iObjectMode), 2, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO(m_iObjectMode), 3, SPROP_UNSIGNED ),
 	SendPropBool( SENDINFO( m_bDisposableBuilding ) ),
 	SendPropBool( SENDINFO( m_bWasMapPlaced ) ),
 	SendPropBool( SENDINFO( m_bPlasmaDisable ) ),

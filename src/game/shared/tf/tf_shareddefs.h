@@ -1594,7 +1594,28 @@ enum
 {
 	MODE_TELEPORTER_ENTRANCE=0,
 	MODE_TELEPORTER_EXIT,
+	// Speed pads and jump pads replace the teleporter. Two of the same pad
+	// need two modes so both can exist at once (one object per mode).
+	MODE_TELEPORTER_SPEED,
+	MODE_TELEPORTER_SPEED2,
+	MODE_TELEPORTER_JUMP,
+	MODE_TELEPORTER_JUMP2,
 };
+
+inline bool TeleporterModeIsSpeedPad( int iMode )
+{
+	return iMode == MODE_TELEPORTER_SPEED || iMode == MODE_TELEPORTER_SPEED2;
+}
+
+inline bool TeleporterModeIsJumpPad( int iMode )
+{
+	return iMode == MODE_TELEPORTER_JUMP || iMode == MODE_TELEPORTER_JUMP2;
+}
+
+inline bool TeleporterModeIsPad( int iMode )
+{
+	return TeleporterModeIsSpeedPad( iMode ) || TeleporterModeIsJumpPad( iMode );
+}
 
 enum
 {
@@ -1841,7 +1862,8 @@ bool IsObjectADefensiveBuilding( int iObjectType );
 class CHudTexture;
 
 #define OBJECT_MAX_GIB_MODELS	9
-#define OBJECT_MAX_MODES		3
+// 3 networked bits on m_iObjectMode (0-7). Teleporter pads use 2-5.
+#define OBJECT_MAX_MODES		8
 
 // This should be moved into its own header.
 class CObjectInfo

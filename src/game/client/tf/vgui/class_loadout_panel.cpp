@@ -12,6 +12,8 @@
 #include "econ_gcmessages.h"
 #include "gc_clientsystem.h"
 #include "tf_item_system.h"
+#include "tf_item_inventory.h"
+#include "newitemdefinitions.h"
 #include "loadout_preset_panel.h"
 #include "econ_item_description.h"
 #include "item_style_select_dialog.h"
@@ -850,6 +852,8 @@ void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 {
 	const bool bEngineerPage = m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER;
 	const bool bMiniSentry = bEngineerPage && LoadoutWrenchBuildsMiniSentry( m_iCurrentClassIndex );
+	CEconItemView *pSlot3 = ( bEngineerPage && TFInventoryManager() ) ? TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 ) : NULL;
+	const bool bSlot3IsPad = EngineerBlueprintItemIsPad( pSlot3 );
 
 	if ( m_pItemModelPanels.Count() <= LOADOUT_POSITION_PDA_SLOT4 )
 		return;
@@ -864,7 +868,8 @@ void CClassLoadoutPanel::UpdateEngineerBlueprintIcons( void )
 		if ( !pItem )
 			continue;
 
-		const bool bLockedExit = bEngineerPage && pItem->IsVisible() && ( iSlot == LOADOUT_POSITION_PDA_SLOT4 );
+		// The stock teleporter exit stays locked. A pad in slot 3 opens slot 4.
+		const bool bLockedExit = bEngineerPage && pItem->IsVisible() && ( iSlot == LOADOUT_POSITION_PDA_SLOT4 ) && !bSlot3IsPad;
 		pItem->SetActAsButton( !bLockedExit, !bLockedExit );
 		pItem->SetGreyedOut( bLockedExit ? "" : NULL );
 
@@ -1140,13 +1145,26 @@ void CClassLoadoutPanel::UpdateModelPanels( void )
 		m_pPlayerModelPanel->SetTeam( m_iCurrentTeamIndex );
 	}
 
-	// The exit blueprint is not selectable. An entrance always leaves it on the stock exit.
-	if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER )
+	// A teleporter entrance keeps the exit locked on the stock exit.
+	// A speed pad or jump pad in slot 3 opens slot 4. If that slot is still
+	// the teleporter exit, drop a matching second pad in so it isn't empty.
+	if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && TFInventoryManager() )
 	{
-		CEconItemView *pExit = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4 );
-		if ( pExit && pExit->IsValid() && pExit->GetStaticData() && !pExit->GetStaticData()->IsBaseItem() )
+		CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT3 );
+		CEconItemView *pSlot4 = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4 );
+		const bool bPad3 = EngineerBlueprintItemIsPad( pSlot3 );
+		const bool bPad4 = EngineerBlueprintItemIsPad( pSlot4 );
+		if ( !bPad3 )
 		{
-			TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+			if ( pSlot4 && pSlot4->IsValid() && pSlot4->GetStaticData() && ( !pSlot4->GetStaticData()->IsBaseItem() || bPad4 ) )
+				TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+		}
+		else if ( !bPad4 )
+		{
+			const bool bJump = TeleporterModeIsJumpPad( BlueprintTeleporterModeFromItem( pSlot3 ) );
+			CEconItemView *pSecond = NewItem_AlwaysOwnedViewForLogName( bJump ? "pda_jump_pad_2" : "pda_speed_pad_2" );
+			if ( pSecond && pSecond->GetItemID() != INVALID_ITEM_ID && pSecond->GetItemID() != 0 )
+				TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, pSecond->GetItemID() );
 		}
 	}
 
@@ -1228,9 +1246,14 @@ void CClassLoadoutPanel::OnSelectionReturned( KeyValues *data )
 		{
 			TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, m_iCurrentSlotIndex, ulIndex );
 
-			// Choosing an entrance puts the exit back on the stock teleporter.
+			// Choosing the stock entrance puts the exit back. Choosing a pad
+			// opens slot 4; UpdateModelPanels fills it if it is still an exit.
 			if ( m_iCurrentClassIndex == TF_CLASS_ENGINEER && m_iCurrentSlotIndex == LOADOUT_POSITION_PDA_SLOT3 )
-				TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+			{
+				CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT3 );
+				if ( !EngineerBlueprintItemIsPad( pSlot3 ) )
+					TFInventoryManager()->EquipItemInLoadout( m_iCurrentClassIndex, LOADOUT_POSITION_PDA_SLOT4, INVALID_ITEM_ID );
+			}
 
 			m_bLoadoutHasChanged = true;
 
@@ -1513,9 +1536,13 @@ void CClassLoadoutPanel::OnCommand( const char *command )
 					return;
 				}
 
-				// The entrance locks the exit. It stays the stock teleporter exit.
+				// The stock teleporter locks the exit. A pad in slot 3 does not.
 				if ( m_bInPdaLoadoutMode && m_iCurrentClassIndex == TF_CLASS_ENGINEER && iSlot == LOADOUT_POSITION_PDA_SLOT4 )
-					return;
+				{
+					CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+					if ( !EngineerBlueprintItemIsPad( pSlot3 ) )
+						return;
+				}
 
 				if ( m_iCurrentSlotIndex != iSlot )
 				{

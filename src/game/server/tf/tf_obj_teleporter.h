@@ -101,6 +101,9 @@ public:
 	int				GetTeleporterType( void ) { return m_iTeleportType; }
 	bool			IsEntrance( void ) { return m_iTeleportType == TTYPE_ENTRANCE; }
 	bool			IsExit( void ) { return m_iTeleportType == TTYPE_EXIT; }
+	bool			IsSpeedPad( void ) const { return TeleporterModeIsSpeedPad( GetObjectMode() ); }
+	bool			IsJumpPad( void ) const { return TeleporterModeIsJumpPad( GetObjectMode() ); }
+	bool			IsPad( void ) const { return IsSpeedPad() || IsJumpPad(); }
 
 	virtual void	MakeCarriedObject( CTFPlayer *pCarrier );
 
@@ -110,7 +113,7 @@ public:
 
 	virtual int		GetUpgradeMetalRequired();
 
-	void SetTeleportWhere( const CUtlStringList& teleportWhereName )
+	void			SetTeleportWhere( const CUtlStringList& teleportWhereName )
 	{
 		// deep copy strings
 		for ( int i=0; i<teleportWhereName.Count(); ++i )
@@ -165,6 +168,7 @@ private:
 
 	void UpdateMaxHealth( int nHealth, bool bForce = false );
 	void SpawnBread( const CTFPlayer* pTeleportingPlayer );
+	void PadTouch( CTFPlayer *pPlayer );
 
 	CUtlStringList m_teleportWhereName;
 };

@@ -92,6 +92,28 @@ static int flagSlots[NUM_ENGY_BUILDINGS] =
 	0x08
 };
 
+void EngyMenu_ApplyPadPresentation( vgui::EditablePanel *pPanel, int iObjectMode, bool bUseStatusIcon )
+{
+	if ( !pPanel || !TeleporterModeIsPad( iObjectMode ) )
+		return;
+
+	const bool bJump = TeleporterModeIsJumpPad( iObjectMode );
+	const char *pszName = bJump ? "#TF_Blueprint_JumpPad" : "#TF_Blueprint_SpeedPad";
+	// ItemBackground is the card plate. The picture is BuildingIcon.
+	// Destroy cards use the small status icon; build cards use the blueprint.
+	const char *pszIcon = bUseStatusIcon
+		? ( bJump ? "obj_status_tele_exit" : "obj_status_tele_entrance" )
+		: ( bJump ? "hud_menu_tele_exit_build" : "hud_menu_tele_entrance_build" );
+
+	vgui::Label *pLabel = dynamic_cast<vgui::Label *>( pPanel->FindChildByName( "ItemNameLabel" ) );
+	if ( pLabel )
+		pLabel->SetText( pszName );
+
+	CIconPanel *pIcon = dynamic_cast<CIconPanel *>( pPanel->FindChildByName( "BuildingIcon" ) );
+	if ( pIcon )
+		pIcon->SetIcon( pszIcon );
+}
+
 
 
 //======================================
@@ -180,6 +202,14 @@ void CHudMenuEngyBuild::ApplySchemeSettings( IScheme *pScheme )
 		m_pUnavailableObjects[2]->LoadControlSettings( "resource/UI/build_menu/tele_entrance_unavailable.res" );
 		m_pUnavailableObjects[3]->LoadControlSettings( "resource/UI/build_menu/tele_exit_unavailable.res" );	
 
+		for ( int i = 0; i < NUM_ENGY_BUILDINGS; ++i )
+		{
+			EngyMenu_ApplyPadPresentation( m_pAvailableObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pAlreadyBuiltObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pCantAffordObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pUnavailableObjects[i], m_Buildings[i].m_iMode, false );
+		}
+
 		m_pActiveSelection = dynamic_cast< CIconPanel * >( FindChildByName( "active_selection_bg" ) );
 
 		m_pBuildLabelBright = dynamic_cast< CExLabel * >( FindChildByName( "BuildHintLabel_Bright" ) );
@@ -242,6 +272,11 @@ void CHudMenuEngyBuild::ApplySchemeSettings( IScheme *pScheme )
 			{
 				pNumberLabel->SetText( VarArgs( "%d", i+1 ) );
 			}
+
+			EngyMenu_ApplyPadPresentation( m_pAvailableObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pAlreadyBuiltObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pCantAffordObjects[i], m_Buildings[i].m_iMode, false );
+			EngyMenu_ApplyPadPresentation( m_pUnavailableObjects[i], m_Buildings[i].m_iMode, false );
 		}
 
 		m_pActiveSelection = NULL;
@@ -697,7 +732,7 @@ void CHudMenuEngyBuild::UpdateHintLabels( void )
 	{
 		int iBuilding, iMode;
 		GetBuildingIDAndModeFromSlot( m_iSelectedItem, iBuilding, iMode, m_Buildings );
-		C_BaseObject *pObj = pLocalPlayer->GetObjectOfType( iBuilding );
+		C_BaseObject *pObj = pLocalPlayer->GetObjectOfType( iBuilding, iMode );
 
 		bool bDestroyLabelBright = false;
 		bool bBuildLabelBright = false;
@@ -815,6 +850,24 @@ void CHudMenuEngyBuild::ReplaceBuildings( EngyConstructBuilding_t (&targetBuildi
 		iDisabledSlots |= iDisablingSlots;
 		bReplaced = true;
 	}
+
+	// Slots 3 and 4 follow the equipped blueprints. A pad in slot 3 makes
+	// slot 4 a second pad instead of the teleporter exit.
+	int iMode3 = MODE_TELEPORTER_ENTRANCE;
+	int iMode4 = MODE_TELEPORTER_EXIT;
+	if ( TFInventoryManager() )
+	{
+		CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+		CEconItemView *pSlot4 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT4 );
+		ResolveEngineerBlueprintModes( pSlot3, pSlot4, iMode3, iMode4 );
+	}
+	targetBuildings[2].m_iObjectType = OBJ_TELEPORTER;
+	targetBuildings[2].m_iMode = iMode3;
+	targetBuildings[2].m_bEnabled = true;
+	targetBuildings[3].m_iObjectType = OBJ_TELEPORTER;
+	targetBuildings[3].m_iMode = iMode4;
+	targetBuildings[3].m_bEnabled = true;
+	(void)bReplaced;
 }
 
 

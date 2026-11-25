@@ -247,7 +247,7 @@ void CObjectTeleporter::Spawn()
 
 	m_flYawToExit = 0;
 
-	if ( IsEntrance() )
+	if ( IsEntrance() || IsSpeedPad() )
 	{
 		SetModel( TELEPORTER_MODEL_ENTRANCE_PLACEMENT );
 	}
@@ -298,9 +298,14 @@ void CObjectTeleporter::SetObjectMode( int iVal )
 	{
 		SetTeleporterType( TTYPE_ENTRANCE );
 	}
-	else
+	else if ( iVal == MODE_TELEPORTER_EXIT )
 	{
 		SetTeleporterType( TTYPE_EXIT );
+	}
+	else
+	{
+		// Pads are not an entrance or an exit. They must not pair up.
+		SetTeleporterType( TTYPE_NONE );
 	}
 
 	BaseClass::SetObjectMode( iVal );
@@ -369,13 +374,13 @@ bool CObjectTeleporter::StartBuilding( CBaseEntity *pBuilder )
 {
 	SetStartBuildingModel();
 
-	if ( GetTeleporterType() == TTYPE_NONE )
+	if ( GetTeleporterType() == TTYPE_NONE && !IsPad() )
 	{
 		if ( GetObjectMode() == MODE_TELEPORTER_ENTRANCE )
 		{
 			SetTeleporterType( TTYPE_ENTRANCE );
 		}
-		else
+		else if ( GetObjectMode() == MODE_TELEPORTER_EXIT )
 		{
 			SetTeleporterType( TTYPE_EXIT );
 		}
@@ -574,6 +579,13 @@ void CObjectTeleporter::EndTouch( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 void CObjectTeleporter::TeleporterTouch( CBaseEntity *pOther )
 {
+	if ( IsPad() )
+	{
+		if ( !IsDisabled() && !IsBuilding() && !IsPlacing() && pOther && pOther->IsPlayer() )
+			PadTouch( ToTFPlayer( pOther ) );
+		return;
+	}
+
 	if ( IsDisabled() )
 	{
 		return;
@@ -1042,12 +1054,84 @@ void CObjectTeleporter::RecieveTeleportingPlayer( CTFPlayer* pTeleportingPlayer 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
+void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
+{
+	if ( !pPlayer || !pPlayer->IsAlive() )
+		return;
+
+	Vector vecForward;
+	AngleVectors( GetAbsAngles(), &vecForward );
+	vecForward.z = 0.f;
+	if ( vecForward.LengthSqr() < 0.01f )
+		vecForward = Vector( 1.f, 0.f, 0.f );
+	VectorNormalize( vecForward );
+
+	const int iLevel = clamp( GetUpgradeLevel(), 1, 3 );
+
+	if ( IsSpeedPad() )
+	{
+		// Shove them along the pad, then leave a short speed boost so they
+		// keep the pace after they step off.
+		const float flTarget = 420.f + ( 90.f * ( iLevel - 1 ) );
+		Vector vel = pPlayer->GetAbsVelocity();
+		const float flAlong = vel.Dot( vecForward );
+		if ( flAlong < flTarget )
+		{
+			vel += vecForward * ( flTarget - flAlong );
+			pPlayer->SetAbsVelocity( vel );
+		}
+		pPlayer->m_Shared.AddCond( TF_COND_SPEED_BOOST, 0.6f );
+		return;
+	}
+
+	// Already on the way up. Landing clears the cond, so they can bounce again.
+	if ( pPlayer->GetAbsVelocity().z > 80.f || pPlayer->m_Shared.InCond( TF_COND_KNOCKED_INTO_AIR ) )
+		return;
+
+	const float flForward = 280.f + ( 40.f * ( iLevel - 1 ) );
+	const float flUp = 680.f + ( 90.f * ( iLevel - 1 ) );
+	Vector vel = vecForward * flForward;
+	vel.z = flUp;
+
+	pPlayer->RemoveFlag( FL_ONGROUND );
+	pPlayer->SetGroundEntity( NULL );
+	pPlayer->SetAbsVelocity( vel );
+	pPlayer->m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR, 0.75f );
+	pPlayer->EmitSound( "Building_Teleporter.Send" );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
 void CObjectTeleporter::TeleporterThink( void )
 {
 	if ( IsCarried() )
 		return;
 
 	SetContextThink( &CObjectTeleporter::TeleporterThink, gpGlobals->curtime + BUILD_TELEPORTER_NEXT_THINK, TELEPORTER_THINK_CONTEXT );
+
+	if ( IsPad() )
+	{
+		if ( IsBuilding() || IsPlacing() || IsUpgrading() )
+		{
+			ShowDirectionArrow( false );
+			return;
+		}
+
+		if ( IsDisabled() )
+		{
+			ShowDirectionArrow( false );
+			if ( GetState() != TELEPORTER_STATE_IDLE )
+				SetState( TELEPORTER_STATE_IDLE );
+			return;
+		}
+
+		// The arrow is the launch direction. Pads have no partner to point at.
+		ShowDirectionArrow( true );
+		if ( GetState() != TELEPORTER_STATE_READY )
+			SetState( TELEPORTER_STATE_READY );
+		return;
+	}
 
 	// At any point, if our match is not ready, revert to IDLE
 	if ( IsDisabled() || IsMatchingTeleporterReady() == false )

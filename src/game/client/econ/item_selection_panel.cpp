@@ -698,8 +698,11 @@ void CEquipSlotItemSelectionPanel::ApplySchemeSettings( vgui::IScheme *pScheme )
 		// name is what the player is picking (Sentry Gun, Poison Gas, ...).
 		if ( IsPdaBlueprintSlot( m_iSlot ) )
 		{
-			if ( m_iClass == TF_CLASS_ENGINEER &&
-				 ( m_iSlot == LOADOUT_POSITION_PDA_SLOT3 || m_iSlot == LOADOUT_POSITION_PDA_SLOT4 ) )
+			if ( m_iClass == TF_CLASS_ENGINEER && m_iSlot == LOADOUT_POSITION_PDA_SLOT4 )
+			{
+				pszHeader = "#TF_Blueprint_SecondPad";
+			}
+			else if ( m_iClass == TF_CLASS_ENGINEER && m_iSlot == LOADOUT_POSITION_PDA_SLOT3 )
 			{
 				pszHeader = "#TF_Blueprint_Teleporter";
 			}
@@ -964,8 +967,11 @@ CEquippableItemsForSlotGenerator::CEquippableItemsForSlotGenerator( int iClass, 
 
 	// Always leave a base item in the list. We don't have to worry about level changes or other weird overlaps
 	// for base weapons. If we don't have an equipped item, this must be the equipped item.
+	// Slot 4's stock item is the locked teleporter exit. Once a pad opens that
+	// slot the list is only the other pads.
 	CEconItemView *pBaseItem = TFInventoryManager()->GetBaseItemForClass( iClass, iSlot );
-	if ( pBaseItem && pBaseItem->IsValid() )
+	const bool bHideTeleExit = ( iClass == TF_CLASS_ENGINEER && iSlot == LOADOUT_POSITION_PDA_SLOT4 );
+	if ( pBaseItem && pBaseItem->IsValid() && !bHideTeleExit )
 	{
 		if ( !pEquippedItem )
 		{

@@ -112,7 +112,7 @@ void C_ObjectTeleporter::StartActiveEffects()
 
 	Q_snprintf( szEffect, sizeof(szEffect), "teleporter_%s_%s_level%d", 
 		( GetTeamNumber() == TF_TEAM_RED ) ? "red" : "blue",
-		GetObjectMode() == MODE_TELEPORTER_ENTRANCE ? "entrance" : "exit",
+		( GetObjectMode() == MODE_TELEPORTER_ENTRANCE || TeleporterModeIsSpeedPad( GetObjectMode() ) ) ? "entrance" : "exit",
 		GetUpgradeLevel() );
 
 	Assert( m_hDirectionEffect.m_pObject == NULL );
@@ -352,7 +352,7 @@ void C_ObjectTeleporter::GetTargetIDDataString( OUT_Z_BYTECAP(iMaxLenInBytes) wc
 			1,
 			wszRecharging );
 	}	
-	else if ( m_iState == TELEPORTER_STATE_IDLE )
+	else if ( m_iState == TELEPORTER_STATE_IDLE && !TeleporterModeIsPad( GetObjectMode() ) )
 	{
 		g_pVGuiLocalize->ConstructString( sDataString, iMaxLenInBytes, g_pVGuiLocalize->Find("#TF_playerid_teleporter_nomatch" ), 0 );
 	}

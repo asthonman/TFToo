@@ -122,6 +122,7 @@ public:
 	virtual bool IsRealObject( void ) { return true; }
 
 	void SetObject( C_BaseObject *pObj );
+	void SetRepresentativeObjectMode( int iMode );
 
 	bool IsActive( void ) { return m_bActive; }
 
@@ -343,6 +344,7 @@ public:
 
 	void UpdateAllBuildings( void );
 	void OnBuildingChanged( int iBuildingType, int iBuildingMode, bool bBuildingIsDead );
+	void UpdateEquippedTeleporterModes( void );
 
 	void RepositionObjectPanels();
 

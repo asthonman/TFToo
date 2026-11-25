@@ -685,6 +685,72 @@ bool CTFInventoryManager::SlotContainsBaseItems( EEquipType_t eType, int iSlot )
 //-----------------------------------------------------------------------------
 // Purpose: Returns the item data for the base item in the loadout slot for a given class
 //-----------------------------------------------------------------------------
+const char *TFInventoryItemLogName( const CEconItemView *pItem )
+{
+	if ( !pItem || !pItem->IsValid() || !pItem->GetItemDefinition() )
+		return NULL;
+
+	const char *pszLog = pItem->GetItemDefinition()->GetLogClassname();
+	if ( pszLog && pszLog[0] )
+		return pszLog;
+
+	return pItem->GetItemDefinition()->GetDefinitionName();
+}
+
+int BlueprintTeleporterModeFromName( const char *psz )
+{
+	if ( !psz || !psz[0] )
+		return -1;
+
+	if ( !Q_stricmp( psz, "pda_tele_entrance" ) || !Q_stricmp( psz, "b24" ) )
+		return MODE_TELEPORTER_ENTRANCE;
+	if ( !Q_stricmp( psz, "pda_tele_exit" ) || !Q_stricmp( psz, "b25" ) )
+		return MODE_TELEPORTER_EXIT;
+	if ( !Q_stricmp( psz, "pda_speed_pad" ) || !Q_stricmp( psz, "b30" ) )
+		return MODE_TELEPORTER_SPEED;
+	if ( !Q_stricmp( psz, "pda_jump_pad" ) || !Q_stricmp( psz, "b31" ) )
+		return MODE_TELEPORTER_JUMP;
+	if ( !Q_stricmp( psz, "pda_speed_pad_2" ) || !Q_stricmp( psz, "b32" ) )
+		return MODE_TELEPORTER_SPEED2;
+	if ( !Q_stricmp( psz, "pda_jump_pad_2" ) || !Q_stricmp( psz, "b33" ) )
+		return MODE_TELEPORTER_JUMP2;
+
+	return -1;
+}
+
+int BlueprintTeleporterModeFromItem( const CEconItemView *pItem )
+{
+	return BlueprintTeleporterModeFromName( TFInventoryItemLogName( pItem ) );
+}
+
+bool EngineerBlueprintItemIsPad( const CEconItemView *pItem )
+{
+	return TeleporterModeIsPad( BlueprintTeleporterModeFromItem( pItem ) );
+}
+
+void ResolveEngineerBlueprintModes( const CEconItemView *pSlot3, const CEconItemView *pSlot4, int &iMode3, int &iMode4 )
+{
+	int iSlot3 = BlueprintTeleporterModeFromItem( pSlot3 );
+	int iSlot4 = BlueprintTeleporterModeFromItem( pSlot4 );
+	if ( iSlot3 < 0 )
+		iSlot3 = MODE_TELEPORTER_ENTRANCE;
+
+	iMode3 = iSlot3;
+	if ( !TeleporterModeIsPad( iMode3 ) )
+	{
+		iMode4 = MODE_TELEPORTER_EXIT;
+		return;
+	}
+
+	// Slot 4 is its own building. A second speed pad is SPEED2, a second jump
+	// pad is JUMP2. If that slot is still the stock exit, match the first pad.
+	const bool bJump = TeleporterModeIsJumpPad( iSlot4 ) || ( !TeleporterModeIsPad( iSlot4 ) && TeleporterModeIsJumpPad( iMode3 ) );
+	iMode4 = bJump ? MODE_TELEPORTER_JUMP2 : MODE_TELEPORTER_SPEED2;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Returns the item data for the base item in the loadout slot for a given class
+//-----------------------------------------------------------------------------
 CEconItemView *CTFInventoryManager::GetBaseItemForClass( int iClass, int iSlot )
 {
 	// There is no base account item

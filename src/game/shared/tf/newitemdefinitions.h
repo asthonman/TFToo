@@ -80,6 +80,7 @@ inline bool IsNewItemDefinitionIndex( item_definition_index_t iIndex )
 // New-schema items are not backpack items. The player always owns them.
 CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex );
 CEconItemView *NewItem_ViewForFakeItemID( itemid_t id );
+CEconItemView *NewItem_AlwaysOwnedViewForLogName( const char *pszLogOrName );
 void NewItem_AddStockItemsForSlot( int iClass, int iSlot, CUtlVector<CEconItemView *> *pList );
 
 #endif // NEWITEMDEFINITIONS_H
