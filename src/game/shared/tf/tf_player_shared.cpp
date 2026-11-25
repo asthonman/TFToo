@@ -8038,6 +8038,12 @@ bool CTFPlayerShared::CanFallStomp( void )
 	if ( InCond( TF_COND_ROCKETPACK ) )
 		return true;
 
+#ifdef GAME_DLL
+	// A jump pad launch stomps on the way down, same as the thermal thruster.
+	if ( m_pOuter->HasJumpPadFallResist() )
+		return true;
+#endif
+
 	// The class lands like the Mantreads, whichever weapon is out.
 	if ( m_pOuter->IsPlayerClass( TF_CLASS_BRICK ) )
 		return true;
@@ -11803,6 +11809,7 @@ int CTFPlayerShared::CalculateObjectCost( CTFPlayer* pBuilder, int iObjectType )
 
 	if ( iObjectType == OBJ_TELEPORTER )
 	{
+		// Pads are teleporters, so the Eureka Effect's cheaper metal applies to them.
 		float flCostMod = 1.f;
 		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pBuilder, flCostMod, mod_teleporter_cost );
 		if ( flCostMod != 1.f )

@@ -2980,6 +2980,12 @@ void CTFGameMovement::CheckFalling( void )
 	if ( m_bPaintBounced )
 		player->m_Local.m_flFallVelocity = 0.f;
 
+#ifdef GAME_DLL
+	// Captured before the base class zeroes it. Fall damage may already consume the launch.
+	const float flJumpPadFallVelocity = player->m_Local.m_flFallVelocity;
+	const bool bJumpPadLanding = m_pTFPlayer->IsAlive() && m_pTFPlayer->HasJumpPadFallResist() && player->GetGroundEntity() != NULL;
+#endif
+
 	// if we landed on the ground
 	if ( player->GetGroundEntity() != NULL && !IsDead() )
 	{
@@ -3000,6 +3006,12 @@ void CTFGameMovement::CheckFalling( void )
 	}
 
 	BaseClass::CheckFalling();
+
+#ifdef GAME_DLL
+	// No fall damage this landing, so the resist is still armed.
+	if ( bJumpPadLanding && m_pTFPlayer->HasJumpPadFallResist() )
+		m_pTFPlayer->ApplyJumpPadLanding( flJumpPadFallVelocity );
+#endif
 }
 
 //-----------------------------------------------------------------------------

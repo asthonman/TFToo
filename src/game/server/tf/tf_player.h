@@ -546,6 +546,10 @@ public:
 	void					ThinkAthleticGrow( void );
 	bool					IsBrickGrown( void ) const { return m_bBrickGrown; }
 	bool					IsBrickGrowDucking( void ) const { return m_bBrickGrowDuck; }
+	// Set on a jump-pad launch. Cleared on the landing, which is also the blast.
+	void					SetJumpPadFallResist( bool bEnable ) { m_bJumpPadFallResist = bEnable; }
+	bool					HasJumpPadFallResist( void ) const { return m_bJumpPadFallResist; }
+	void					ApplyJumpPadLanding( float flFallVelocity );
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float					GetPMeter( void ) const { return Madcap_AdrenalineFromCombatTime( m_flPMeter, m_flMadcapCombatTime, gpGlobals->curtime ); }
 	// Stores the peak. GetPMeter applies the hold and fade.
@@ -1511,6 +1515,7 @@ private:
 	// Wrenchmotron teleport
 	CountdownTimer		m_teleportHomeFlashTimer;
 	eEurekaTeleportTargets	m_eEurekaTeleportTarget;
+	bool				m_bJumpPadFallResist;
 
 	float				m_accumulatedSentryGunDamageDealt;	// for Sentry Buster missions in MvM
 	int					m_accumulatedSentryGunKillCount;	// for Sentry Buster missions in MvM

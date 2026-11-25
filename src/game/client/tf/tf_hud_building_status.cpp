@@ -1073,10 +1073,9 @@ void CBuildingStatusItem_TeleporterEntrance::PerformLayout( void )
 	}
 
 	bool bRecharging = ( pTeleporter->GetState() == TELEPORTER_STATE_RECHARGING );
-	const bool bPad = TeleporterModeIsPad( pTeleporter->GetObjectMode() );
 
-	m_pChargingPanel->SetVisible( !bPad && bRecharging );
-	m_pFullyChargedPanel->SetVisible( !bPad && !bRecharging );
+	m_pChargingPanel->SetVisible( bRecharging );
+	m_pFullyChargedPanel->SetVisible( !bRecharging );
 
 	// How many times has this teleporter been used?
 	m_pFullyChargedPanel->SetDialogVariable( "timesused", pTeleporter->GetTimesUsed() );		
@@ -1103,6 +1102,33 @@ CBuildingStatusItem( parent, "resource/UI/hud_obj_tele_exit.res", OBJ_TELEPORTER
 {
 	m_pUpgradeProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Upgrade" );
 	m_pUpgradeIcon = new CIconPanel( GetRunningPanel(), "UpgradeIcon" );
+
+	// Same spot as the entrance "Recharge" bar. Only shown for a pad.
+	m_pPadRecharge = new vgui::ContinuousProgressBar( GetRunningPanel(), "PadRecharge" );
+	m_pPadRecharge->SetVisible( false );
+	m_pPadRecharge->SetBounds( 58, 18, 34, 6 );
+	m_pPadRecharge->SetZPos( 5 );
+	m_pPadRecharge->SetFgColor( Color( 255, 255, 255, 255 ) );
+	m_pPadRecharge->SetBgColor( Color( 0, 0, 0, 128 ) );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBuildingStatusItem_TeleporterExit::OnTick( void )
+{
+	C_ObjectTeleporter *pTeleporter = static_cast<C_ObjectTeleporter*>(GetRepresentativeObject());
+
+	if ( pTeleporter && IsActive() && m_pPadRecharge && TeleporterModeIsPad( pTeleporter->GetObjectMode() )
+		&& pTeleporter->GetState() == TELEPORTER_STATE_RECHARGING )
+	{
+		float flMaxRecharge = pTeleporter->GetCurrentRechargeDuration();
+		float flChargeTime = pTeleporter->GetChargeTime();
+		if ( flMaxRecharge > 0.f )
+			m_pPadRecharge->SetProgress( 1.0f - ( flChargeTime / flMaxRecharge ) );
+	}
+
+	BaseClass::OnTick();
 }
 
 //-----------------------------------------------------------------------------
@@ -1117,6 +1143,8 @@ void CBuildingStatusItem_TeleporterExit::PerformLayout( void )
 
 	if ( !IsActive() || !pTeleporter )
 	{
+		if ( m_pPadRecharge )
+			m_pPadRecharge->SetVisible( false );
 		return;
 	}
 
@@ -1133,6 +1161,10 @@ void CBuildingStatusItem_TeleporterExit::PerformLayout( void )
 	// upgrade label only in 1 or 2
 	m_pUpgradeIcon->SetVisible( iUpgradeLevel < 3 );
 	m_pUpgradeProgress->SetVisible( iUpgradeLevel < 3 );
+
+	const bool bPadRecharging = TeleporterModeIsPad( pTeleporter->GetObjectMode() )
+		&& ( pTeleporter->GetState() == TELEPORTER_STATE_RECHARGING );
+	m_pPadRecharge->SetVisible( bPadRecharging );
 }
 
 

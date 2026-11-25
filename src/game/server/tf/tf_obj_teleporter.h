@@ -169,6 +169,7 @@ private:
 	void UpdateMaxHealth( int nHealth, bool bForce = false );
 	void SpawnBread( const CTFPlayer* pTeleportingPlayer );
 	void PadTouch( CTFPlayer *pPlayer );
+	void StartPadRecharge( void );
 
 	CUtlStringList m_teleportWhereName;
 };

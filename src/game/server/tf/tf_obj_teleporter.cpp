@@ -324,6 +324,7 @@ int CObjectTeleporter::GetUpgradeMetalRequired()
 
 	int nCost = GetObjectInfo( GetType() )->m_UpgradeCost;
 
+	// Same Eureka Effect discount as a teleporter. Pads upgrade through this too.
 	float flCostMod = 1.f;
 	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetBuilder(), flCostMod, mod_teleporter_cost );
 	if ( flCostMod != 1.f )
@@ -1080,6 +1081,13 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 	if ( !pPlayer || !pPlayer->IsAlive() )
 		return;
 
+	// One use, then the pad has to recharge. Enemies do not start that clock.
+	if ( GetState() != TELEPORTER_STATE_READY )
+		return;
+
+	if ( !PlayerCanBeTeleported( pPlayer ) )
+		return;
+
 	Vector vecForward;
 	AngleVectors( GetAbsAngles(), &vecForward );
 	vecForward.z = 0.f;
@@ -1091,8 +1099,7 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 
 	if ( IsSpeedPad() )
 	{
-		// Shove them along the pad, then leave a short speed boost so they
-		// keep the pace after they step off.
+		// Shove them along the pad. The boost keeps going after they step off.
 		const float flTarget = 420.f + ( 90.f * ( iLevel - 1 ) );
 		Vector vel = pPlayer->GetAbsVelocity();
 		const float flAlong = vel.Dot( vecForward );
@@ -1101,27 +1108,43 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 			vel += vecForward * ( flTarget - flAlong );
 			pPlayer->SetAbsVelocity( vel );
 		}
-		pPlayer->m_Shared.AddCond( TF_COND_SPEED_BOOST, 0.6f );
-		return;
+		// 3s, 5s, 10s.
+		static const float s_flBoostDuration[4] = { 0.f, 3.f, 5.f, 10.f };
+		pPlayer->m_Shared.AddCond( TF_COND_SPEED_BOOST, s_flBoostDuration[iLevel] );
+	}
+	else
+	{
+		const float flForward = 280.f + ( 40.f * ( iLevel - 1 ) );
+		const float flUp = 680.f + ( 90.f * ( iLevel - 1 ) );
+		Vector vel = vecForward * flForward;
+		vel.z = flUp;
+
+		pPlayer->RemoveFlag( FL_ONGROUND );
+		pPlayer->SetGroundEntity( NULL );
+		pPlayer->SetAbsVelocity( vel );
+		pPlayer->SetJumpPadFallResist( true );
+		pPlayer->EmitSound( "Building_JumpPad.Launch" );
+
+		const char *pszPuff = ( GetTeamNumber() == TF_TEAM_RED ) ? "jumppad_jump_puff_red" : "jumppad_jump_puff_blue";
+		DispatchParticleEffect( pszPuff, GetAbsOrigin(), GetAbsAngles() );
 	}
 
-	// Already on the way up. Landing clears the cond, so they can bounce again.
-	if ( pPlayer->GetAbsVelocity().z > 80.f || pPlayer->m_Shared.InCond( TF_COND_KNOCKED_INTO_AIR ) )
-		return;
+	StartPadRecharge();
+}
 
-	const float flForward = 280.f + ( 40.f * ( iLevel - 1 ) );
-	const float flUp = 680.f + ( 90.f * ( iLevel - 1 ) );
-	Vector vel = vecForward * flForward;
-	vel.z = flUp;
+//-----------------------------------------------------------------------------
+// Purpose: Half a teleporter. 10/5/3 becomes 5 / 2.5 / 1.5.
+//-----------------------------------------------------------------------------
+void CObjectTeleporter::StartPadRecharge( void )
+{
+	static const float s_flRecharge[4] = { 0.f, 5.f, 2.5f, 1.5f };
+	const int iLevel = clamp( GetUpgradeLevel(), 1, 3 );
+	const float flRecharge = s_flRecharge[iLevel];
 
-	pPlayer->RemoveFlag( FL_ONGROUND );
-	pPlayer->SetGroundEntity( NULL );
-	pPlayer->SetAbsVelocity( vel );
-	pPlayer->m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR, 0.75f );
-	pPlayer->EmitSound( "Building_JumpPad.Launch" );
-
-	const char *pszPuff = ( GetTeamNumber() == TF_TEAM_RED ) ? "jumppad_jump_puff_red" : "jumppad_jump_puff_blue";
-	DispatchParticleEffect( pszPuff, GetAbsOrigin(), GetAbsAngles() );
+	m_flCurrentRechargeDuration = flRecharge;
+	m_flRechargeTime = gpGlobals->curtime + flRecharge;
+	m_iTimesUsed++;
+	SetState( TELEPORTER_STATE_RECHARGING );
 }
 
 //-----------------------------------------------------------------------------
@@ -1145,18 +1168,29 @@ void CObjectTeleporter::TeleporterThink( void )
 		if ( IsDisabled() )
 		{
 			ShowDirectionArrow( false );
-			if ( GetState() != TELEPORTER_STATE_IDLE )
+			// Leave a recharge running. Time still passes, but the pad cannot fire.
+			if ( GetState() != TELEPORTER_STATE_IDLE && GetState() != TELEPORTER_STATE_RECHARGING )
 				SetState( TELEPORTER_STATE_IDLE );
 			return;
 		}
 
 		// The arrow is the launch direction. Pads have no partner to point at.
 		ShowDirectionArrow( true );
+
+		if ( GetState() == TELEPORTER_STATE_RECHARGING )
+		{
+			if ( gpGlobals->curtime < m_flRechargeTime )
+				return;
+
+			SetState( TELEPORTER_STATE_READY );
+			EmitSound( IsJumpPad() ? "Building_JumpPad.Reload" : "Building_Teleporter.Ready" );
+			return;
+		}
+
 		if ( GetState() != TELEPORTER_STATE_READY )
 		{
 			SetState( TELEPORTER_STATE_READY );
-			if ( IsJumpPad() )
-				EmitSound( "Building_JumpPad.Reload" );
+			EmitSound( IsJumpPad() ? "Building_JumpPad.Reload" : "Building_Teleporter.Ready" );
 		}
 		return;
 	}

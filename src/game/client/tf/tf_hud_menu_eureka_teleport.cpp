@@ -15,6 +15,7 @@
 #include <vgui/IVGui.h>
 #include "c_baseobject.h"
 #include "inputsystem/iinputsystem.h"
+#include "tf_item_inventory.h"
 
 #include "tf_hud_menu_eureka_teleport.h"
 
@@ -394,7 +395,15 @@ void CHudEurekaEffectTeleportMenu::OnTick( void )
 	m_pAvilableTargets[ EUREKA_TELEPORT_HOME ]->SetVisible( true );
 	m_pUnavailableTargets[ EUREKA_TELEPORT_HOME ]->SetVisible( false );
 
-	const C_BaseObject *pObj = pLocalPlayer->GetObjectOfType( OBJ_TELEPORTER, MODE_TELEPORTER_EXIT );
+	// A pad in the teleporter slot replaces the exit. Eureka can only go home.
+	bool bPadsInstead = false;
+	if ( TFInventoryManager() )
+	{
+		CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+		bPadsInstead = EngineerBlueprintItemIsPad( pSlot3 );
+	}
+
+	const C_BaseObject *pObj = bPadsInstead ? NULL : pLocalPlayer->GetObjectOfType( OBJ_TELEPORTER, MODE_TELEPORTER_EXIT );
 	bool bTeleAvailable = pObj 
 					    && !pObj->IsBuilding()
 					    && !pObj->IsPlacing()
