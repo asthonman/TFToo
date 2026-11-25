@@ -1244,10 +1244,10 @@ CHudMenuChemistry::CHudMenuChemistry( const char *pElementName )
 static const char *ChemDebuffImage( int slot )
 {
 	if ( slot == CHEM_REPULSION )
-		return "../vgui/slowed";
+		return "slowed";
 	if ( slot == CHEM_NEUTRAL )
-		return "../effects/jarated";
-	return "../vgui/bleed_drop";
+		return "tftoo_jarate";
+	return "bleed_drop";
 }
 
 static Color ChemDebuffColor( int slot )
@@ -1256,6 +1256,8 @@ static Color ChemDebuffColor( int slot )
 		return Color( 220, 40, 40, 255 );
 	if ( slot == CHEM_NITRIC )
 		return Color( 255, 150, 40, 255 );
+	if ( slot == CHEM_NEUTRAL )
+		return Color( 255, 255, 255, 255 );
 	return Color( 230, 210, 40, 255 );
 }
 

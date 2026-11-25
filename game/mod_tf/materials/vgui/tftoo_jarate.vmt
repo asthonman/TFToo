@@ -1,0 +1,13 @@
+// Static copy of the colorblind Jarate marker (effects/jarated).
+// The stock material is a world sprite, so it does not draw in VGUI and
+// it is not tied to tf_colorblindassist.
+"UnlitGeneric"
+{
+	"$basetexture"		"effects/jarated"
+	"$translucent"		"1"
+	"$vertexcolor"		"1"
+	"$vertexalpha"		"1"
+	"$ignorez"			"1"
+	"$no_fullbright"	"1"
+	"$nolod"			"1"
+}

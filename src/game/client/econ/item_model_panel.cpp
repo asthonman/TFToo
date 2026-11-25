@@ -3461,12 +3461,15 @@ static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry )
 
 static const char *BlueprintVguiImage( const char *pszLog )
 {
+	// Scheme GetImage() always prepends "vgui/", so these are materials/vgui/<name>.
+	// "../effects/jarated" is the colorblind peejar sprite (Sprite shader). It draws
+	// broken in an ImagePanel and is not gated on tf_colorblindassist here.
 	if ( BlueprintLogName( pszLog, "chem_poison" ) || BlueprintLogName( pszLog, "b26" ) )
-		return "../vgui/bleed_drop";
+		return "bleed_drop";
 	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" ) )
-		return "../vgui/slowed";
+		return "slowed";
 	if ( BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
-		return "../effects/jarated";
+		return "tftoo_jarate";
 	return NULL;
 }
 
@@ -3476,9 +3479,11 @@ static Color BlueprintIconColor( const char *pszLog )
 		return Color( 220, 40, 40, 255 );
 	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
 		return Color( 255, 150, 40, 255 );
-	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" )
-		|| BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
+	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" ) )
 		return Color( 230, 210, 40, 255 );
+	// Neutralizing uses the jar texture's own yellow. Don't multiply it again.
+	if ( BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
+		return Color( 255, 255, 255, 255 );
 	return Color( 255, 255, 255, 255 );
 }
 
@@ -3520,8 +3525,10 @@ void CItemModelPanel::ApplyBlueprintIcon( void )
 	const bool bShow = ItemWantsBlueprintIcon( pItem );
 	m_bBlueprintIconActive = bShow;
 
-	if ( !bShow )
+	if ( !bShow || m_bIsMouseOverPanel )
 	{
+		// The hover panel is also an item panel. A blueprint icon there sits on
+		// top of the name and attribute text.
 		if ( m_pBlueprintHudIcon )
 			m_pBlueprintHudIcon->SetVisible( false );
 		if ( m_pBlueprintImage )
@@ -3552,7 +3559,7 @@ void CItemModelPanel::ApplyBlueprintIcon( void )
 			m_pBlueprintHudIcon->SetMouseInputEnabled( false );
 			m_pBlueprintHudIcon->SetKeyBoardInputEnabled( false );
 			m_pBlueprintHudIcon->SetPaintBackgroundEnabled( false );
-			m_pBlueprintHudIcon->SetZPos( 50 );
+			m_pBlueprintHudIcon->SetZPos( 20 );
 		}
 		m_pBlueprintHudIcon->SetIcon( pszHud );
 		m_pBlueprintHudIcon->SetIconColor( iconColor );
@@ -3569,11 +3576,14 @@ void CItemModelPanel::ApplyBlueprintIcon( void )
 			m_pBlueprintImage->SetShouldScaleImage( true );
 			m_pBlueprintImage->SetMouseInputEnabled( false );
 			m_pBlueprintImage->SetKeyBoardInputEnabled( false );
-			m_pBlueprintImage->SetPaintBackgroundEnabled( false );
-			m_pBlueprintImage->SetZPos( 50 );
+			// ImagePanel draws the texture in PaintBackground. Disabling that
+			// is why only the fire HUD icon showed up on the loadout.
+			m_pBlueprintImage->SetPaintBackgroundEnabled( true );
+			m_pBlueprintImage->SetZPos( 20 );
 		}
 		m_pBlueprintImage->SetImage( pszImage );
 		m_pBlueprintImage->SetDrawColor( iconColor );
+		m_pBlueprintImage->SetPaintBackgroundEnabled( true );
 		m_pBlueprintImage->SetVisible( true );
 		m_pBlueprintImage->MoveToFront();
 		if ( m_pBlueprintHudIcon )
@@ -4150,6 +4160,8 @@ void CItemModelPanelToolTip::PerformLayout()
 			}
 
 			m_pMouseOverItemPanel->SetPos( iXPos, iYPos );
+			m_pMouseOverItemPanel->SetZPos( 100 );
+			m_pMouseOverItemPanel->MoveToFront();
 			m_pMouseOverItemPanel->SetVisible( true );			
 		}
 	}
