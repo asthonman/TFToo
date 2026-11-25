@@ -2094,14 +2094,14 @@ public:
 		CTFProjectile_Jar *pJar = dynamic_cast< CTFProjectile_Jar * >( pEntity );
 		if ( pJar )
 		{
-			// poison.vmt, repulsion_gel.vmt, nitric puddle, healing_salve.vmt.
-			// Nitric's VMT was [0 0 0], which blacks out this white fluid.
+			// poison, repulsion, nitric, neutralizer.
+			// Nitric matches the puddle (black). Neutralizer is white.
 			static const int s_rgb[CHEM_COUNT][3] =
 			{
 				{ 179, 0, 226 },
 				{ 0, 0, 255 },
-				{ 251, 255, 0 },
-				{ 0, 255, 0 },
+				{ 0, 0, 0 },
+				{ 255, 255, 255 },
 			};
 			const int slot = pJar->GetChemSlot();
 			if ( slot >= 0 && slot < CHEM_COUNT )

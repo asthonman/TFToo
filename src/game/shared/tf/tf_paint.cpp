@@ -3,8 +3,10 @@
 // Game-side replacement for Emulsion's engine paintmap and blob stream.
 // Stamps are a networked log (80 events). The coat itself is a luxel atlas,
 // one chart per plane, shaded with the Grimes GDC 2011 surface shader into
-// vertex colors on tftoo/paint/gel. Portal 2's lightmappedpaint shader is
-// not used; TF2 cannot link it. Blobs and pops still use the soft discs.
+// vertex colors on the Portal bridge masks (paint/bridge_paint_*). Those
+// textures are black with the shape in alpha, so the VMTs are unlit masks.
+// Portal 2's lightmappedpaint shader is not used; TF2 cannot link it.
+// Blobs and pops still use the soft discs.
 //
 //=============================================================================
 #include "cbase.h"
@@ -21,6 +23,8 @@
 #include "materialsystem/imesh.h"
 #include "materialsystem/imaterial.h"
 #include "texture_group_names.h"
+#include "cliententitylist.h"
+#include "iefx.h"
 #define CTFPaintMap C_TFPaintMap
 #else
 #include "tf_player.h"
@@ -76,7 +80,7 @@ void TFPaint_GetColor( int type, int &r, int &g, int &b, int team )
 	case BOUNCE_POWER:	r = 0;   g = 165; b = 255; break;
 	case SPEED_POWER:	r = 255; g = 106; b = 0;   break;
 	case PORTAL_POWER:	r = 0;   g = 200; b = 33;  break;
-	case FIFTH_POWER:	r = 251; g = 255; b = 0;   break;
+	case FIFTH_POWER:	r = 0;   g = 0;   b = 0;   break;
 	case SIXTH_POWER:
 		// Two browns. One yellow-brown puddle could not be told apart by team.
 		if ( team == TF_TEAM_BLUE )
@@ -104,7 +108,7 @@ const char *TFPaint_Name( int type )
 	case BOUNCE_POWER:	return "Repulsion gel";
 	case SPEED_POWER:	return "Propulsion gel";
 	case PORTAL_POWER:	return "Adhesion gel";
-	case FIFTH_POWER:	return "Yellow gel";
+	case FIFTH_POWER:	return "Nitric fluid";
 	case SIXTH_POWER:	return "Grease";
 	case NO_POWER:		return "Cleansing gel";
 	default:			return "Gel";
@@ -270,6 +274,15 @@ private:
 	void	NotePop( const Vector &pos, const Vector &normal, int type );
 	void	DrawDisc( const Vector &pos, const Vector &normal, float radius, int type, int alpha, bool additive );
 	void	DrawStampDecals( const Vector &eye );
+	void	ProjectRepulsionDecals( void );
+	struct PropPaintRec_t
+	{
+		EHANDLE ent;
+		int serial;
+	};
+	CUtlVector< PropPaintRec_t > m_PropPaint;
+	float	m_flNextPropPaint;
+	int		m_nPropPaintCursor;
 #endif
 };
 
@@ -310,6 +323,8 @@ CTFPaintMap::CTFPaintMap()
 	m_iPop = 0;
 	m_bHaveSeen = false;
 	m_nAppliedCursor = 0;
+	m_flNextPropPaint = 0.f;
+	m_nPropPaintCursor = -1;
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
 	{
 		m_nBlobSeen[i] = 0;
@@ -520,6 +535,131 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 	m_nAppliedCursor = cur;
 }
 
+void CTFPaintMap::ProjectRepulsionDecals( void )
+{
+	if ( !tf_paint_enabled.GetBool() )
+		return;
+
+	const int cur = m_nStampCursor;
+	const int start = ( cur > TF_PAINT_STAMP_MAX ) ? ( cur - TF_PAINT_STAMP_MAX ) : 0;
+
+	for ( int i = m_PropPaint.Count() - 1; i >= 0; --i )
+	{
+		if ( !m_PropPaint[i].ent.Get() || m_PropPaint[i].serial < start )
+			m_PropPaint.Remove( i );
+	}
+
+	// Walking onto an old puddle still needs a pass. A new stamp scans immediately.
+	if ( gpGlobals->curtime < m_flNextPropPaint && m_nPropPaintCursor == cur )
+		return;
+	m_flNextPropPaint = gpGlobals->curtime + 0.1f;
+	m_nPropPaintCursor = cur;
+
+	static int s_decal = -1;
+	static float s_nextLookup = 0.f;
+	if ( s_decal < 0 )
+	{
+		if ( gpGlobals->curtime < s_nextLookup )
+			return;
+		s_nextLookup = gpGlobals->curtime + 1.f;
+		const int idx = effects->Draw_DecalIndexFromName( (char *)"paint/prop_paint_blue" );
+		const char *pszName = ( idx >= 0 ) ? effects->Draw_DecalNameFromIndex( idx ) : NULL;
+		if ( !pszName || !Q_stristr( pszName, "prop_paint_blue" ) )
+			return;
+		s_decal = idx;
+	}
+
+	struct Live_t
+	{
+		Vector pos;
+		float rad;
+		int serial;
+	};
+	Live_t live[TF_PAINT_STAMP_MAX];
+	int nLive = 0;
+	for ( int s = start; s < cur; ++s )
+	{
+		const int slot = s % TF_PAINT_STAMP_MAX;
+		const int stored = m_nStampType[slot];
+		if ( stored - 1 != BOUNCE_POWER )
+			continue;
+		const float die = m_flStampDie[slot];
+		if ( die > 0.f && gpGlobals->curtime >= die )
+			continue;
+		float rad = m_flStampRadius[slot];
+		if ( rad < 8.f )
+			rad = 8.f;
+		live[nLive].pos = m_vecStampPos[slot];
+		live[nLive].rad = rad;
+		live[nLive].serial = s;
+		++nLive;
+	}
+	if ( nLive <= 0 )
+		return;
+
+	int budget = 4;
+	C_BaseEntityIterator it;
+	for ( C_BaseEntity *pEnt = it.Next(); pEnt && budget > 0; pEnt = it.Next() )
+	{
+		if ( pEnt == this || pEnt->entindex() <= 0 )
+			continue;
+		if ( !pEnt->GetModel() || modelinfo->GetModelType( pEnt->GetModel() ) != mod_studio )
+			continue;
+		if ( pEnt->IsEffectActive( EF_NODRAW ) )
+			continue;
+
+		const char *pszClass = pEnt->GetClassname();
+		C_TFPlayer *pPlayer = ToTFPlayer( pEnt );
+		const bool bProp = pszClass && ( !Q_strnicmp( pszClass, "prop_physics", 12 ) || !Q_strnicmp( pszClass, "prop_dynamic", 12 ) || !Q_strnicmp( pszClass, "prop_ragdoll", 12 ) || !Q_strnicmp( pszClass, "tf_ragdoll", 10 ) );
+		if ( !pPlayer && !pEnt->IsBaseObject() && !bProp )
+			continue;
+		// C_TFPlayer::AddDecal bails on these. Don't record the skip, and don't ricochet ubers.
+		if ( pPlayer && ( pPlayer->m_Shared.IsStealthed() || pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) || pPlayer->IsMiniBoss() || pPlayer->m_Shared.IsInvulnerable() ) )
+			continue;
+
+		const Vector origin = pEnt->GetAbsOrigin();
+		const Vector center = pEnt->WorldSpaceCenter();
+		float bounds = pEnt->BoundingRadius();
+		if ( bounds < 24.f )
+			bounds = 24.f;
+
+		for ( int i = 0; i < nLive && budget > 0; ++i )
+		{
+			const float reach = live[i].rad + bounds;
+			const float r2 = reach * reach;
+			if ( origin.DistToSqr( live[i].pos ) > r2 && center.DistToSqr( live[i].pos ) > r2 )
+				continue;
+
+			bool bHave = false;
+			for ( int r = 0; r < m_PropPaint.Count(); ++r )
+			{
+				if ( m_PropPaint[r].serial == live[i].serial && m_PropPaint[r].ent.Get() == pEnt )
+				{
+					bHave = true;
+					break;
+				}
+			}
+			if ( bHave )
+				continue;
+
+			Vector dir = center - live[i].pos;
+			if ( dir.Normalize() < 0.1f )
+				dir.Init( 0.f, 0.f, 1.f );
+			const Vector start = center - dir * ( bounds + 16.f );
+			const Vector end = center + dir * 8.f;
+			trace_t tr;
+			memset( &tr, 0, sizeof( tr ) );
+			pEnt->AddDecal( start, end, live[i].pos, 0, s_decal, true, tr );
+
+			PropPaintRec_t rec;
+			rec.ent = pEnt;
+			rec.serial = live[i].serial;
+			m_PropPaint.AddToTail( rec );
+			--budget;
+		}
+	}
+}
+
 void CTFPaintMap::ClientThink( void )
 {
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
@@ -549,6 +689,8 @@ void CTFPaintMap::ClientThink( void )
 		m_nBlobSeen[i] = m_nBlobType[i];
 		m_vecBlobSeen[i] = m_vecBlobPos[i];
 	}
+
+	ProjectRepulsionDecals();
 }
 
 void CTFPaintMap::OnDataChanged( DataUpdateType_t updateType )
@@ -572,7 +714,9 @@ void CTFPaintMap::DrawDisc( const Vector &pos, const Vector &normal, float radiu
 	static IMaterial *s_pBlob = NULL;
 	if ( !s_pSplat )
 	{
-		s_pSplat = materials->FindMaterial( "tftoo/paint/splat", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+		s_pSplat = materials->FindMaterial( "paint/bridge_paint_single", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+		if ( !s_pSplat || s_pSplat->IsErrorMaterial() )
+			s_pSplat = materials->FindMaterial( "tftoo/paint/splat", TEXTURE_GROUP_CLIENT_EFFECTS, false );
 		s_pBlob = materials->FindMaterial( "tftoo/paint/blob", TEXTURE_GROUP_CLIENT_EFFECTS, false );
 	}
 	IMaterial *pMat = additive ? s_pBlob : s_pSplat;
@@ -1673,6 +1817,12 @@ class CTFPaintSystem : public CAutoGameSystem
 {
 public:
 	CTFPaintSystem() : CAutoGameSystem( "TFPaint" ) {}
+	virtual void LevelInitPreEntity( void )
+	{
+		// Not listed in scripts/decals_subrect.txt. Precache puts the material
+		// on the engine decal table so studio decals can resolve it by name.
+		engine->PrecacheDecal( "paint/prop_paint_blue", true );
+	}
 	virtual void LevelInitPostEntity( void ) { TFPaint_Ensure(); }
 };
 static CTFPaintSystem s_TFPaintSystem;

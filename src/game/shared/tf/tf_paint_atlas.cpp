@@ -19,8 +19,8 @@
 //   5. Fade the coat at grazing angles.
 //   6. Clip before the bubble work when coverage is under the threshold.
 // Reflections are a fresnel added in the same function. TF2 cannot bind
-// this as a real paintmap sampler, so the result is vertex color on
-// tftoo/paint/gel.
+// this as a real paintmap sampler, so the result is vertex color on the
+// bridge tile mask (paint/bridge_paint_tile).
 //
 //=============================================================================
 #include "cbase.h"
@@ -632,7 +632,7 @@ static void GelFlush( CMatRenderContextPtr &ctx, IMaterial *mat, GelVert_t *vert
 	quads = 0;
 }
 
-static void GelQuad( CMatRenderContextPtr &ctx, IMaterial *mat, GelVert_t *verts, int &quads, const Vector c[4], const int rgba[4][4] )
+static void GelQuad( CMatRenderContextPtr &ctx, IMaterial *mat, GelVert_t *verts, int &quads, const Vector c[4], const int rgba[4][4], const float uv[4][2] )
 {
 	if ( !mat )
 		return;
@@ -659,8 +659,8 @@ static void GelQuad( CMatRenderContextPtr &ctx, IMaterial *mat, GelVert_t *verts
 		v.c[1] = (unsigned char)rgba[i][1];
 		v.c[2] = (unsigned char)rgba[i][2];
 		v.c[3] = (unsigned char)rgba[i][3];
-		v.u = ( i == 1 || i == 2 ) ? 1.f : 0.f;
-		v.v = ( i >= 2 ) ? 1.f : 0.f;
+		v.u = uv[i][0];
+		v.v = uv[i][1];
 	}
 	++quads;
 }
@@ -672,7 +672,11 @@ void CTFPaintAtlas::Draw( const Vector &eye ) const
 
 	static IMaterial *s_pGel = NULL;
 	if ( !s_pGel )
-		s_pGel = materials->FindMaterial( "tftoo/paint/gel", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+	{
+		s_pGel = materials->FindMaterial( "paint/bridge_paint_tile", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+		if ( !s_pGel || s_pGel->IsErrorMaterial() )
+			s_pGel = materials->FindMaterial( "tftoo/paint/gel", TEXTURE_GROUP_CLIENT_EFFECTS, false );
+	}
 	if ( !s_pGel || s_pGel->IsErrorMaterial() )
 		return;
 
@@ -783,7 +787,24 @@ void CTFPaintAtlas::Draw( const Vector &eye ) const
 				if ( !any )
 					continue;
 
-				GelQuad( ctx, s_pGel, s_verts, quads, c, rgba );
+				// Tile the bridge mask in tangent space. 0-1 per luxel would stamp
+				// the whole texture onto every cell.
+				const float flTile = 128.f;
+				const float cu = ( (float)page.u0 + (float)x ) + 0.5f;
+				const float cv = ( (float)page.v0 + (float)y ) + 0.5f;
+				const float halfLux = 0.5f * scale;
+				const float u0 = ( ( cu - halfLux ) * page.luxel ) / flTile;
+				const float u1 = ( ( cu + halfLux ) * page.luxel ) / flTile;
+				const float v0 = ( ( cv - halfLux ) * page.luxel ) / flTile;
+				const float v1 = ( ( cv + halfLux ) * page.luxel ) / flTile;
+				const float uv[4][2] =
+				{
+					{ u0, v0 },
+					{ u1, v0 },
+					{ u1, v1 },
+					{ u0, v1 },
+				};
+				GelQuad( ctx, s_pGel, s_verts, quads, c, rgba, uv );
 				--budget;
 			}
 		}
