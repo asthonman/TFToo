@@ -1383,17 +1383,26 @@ void CObjectTeleporter::ShowDirectionArrow( bool bShow )
 
 		if ( bShow )
 		{
-			CObjectTeleporter *pMatch = GetMatchingTeleporter();
+			// Pads launch along their own forward. Pose 180 is straight ahead
+			// on the teleporter arrow, and there is no partner to aim at.
+			if ( IsPad() )
+			{
+				m_flYawToExit = 180.f;
+			}
+			else
+			{
+				CObjectTeleporter *pMatch = GetMatchingTeleporter();
+				if ( pMatch )
+				{
+					Vector vecToOwner = pMatch->GetAbsOrigin() - GetAbsOrigin();
+					QAngle angleToExit;
+					VectorAngles( vecToOwner, Vector(0,0,1), angleToExit );
+					angleToExit -= GetAbsAngles();
 
-			Assert( pMatch );
-
-			Vector vecToOwner = pMatch->GetAbsOrigin() - GetAbsOrigin();
-			QAngle angleToExit;
-			VectorAngles( vecToOwner, Vector(0,0,1), angleToExit );
-			angleToExit -= GetAbsAngles();
-
-			// pose param is flipped and backwards, adjust.
-			m_flYawToExit = anglemod( -angleToExit.y + 180 );
+					// pose param is flipped and backwards, adjust.
+					m_flYawToExit = anglemod( -angleToExit.y + 180 );
+				}
+			}
 		}
 	}
 }
