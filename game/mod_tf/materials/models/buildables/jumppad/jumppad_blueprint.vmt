@@ -1,0 +1,5 @@
+VertexLitGeneric
+{
+	"$basetexture"	"models/buildables/jumppad/jumppad_blueprint"
+	"$surfaceprop"	"no_decal"
+}

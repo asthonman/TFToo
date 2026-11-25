@@ -1,0 +1,9 @@
+"Patch"
+{
+	include "materials/models/buildables/jumppad/jumppad.vmt"
+	
+	insert
+	{
+		"$basetexture"	"models/buildables/jumppad/jumppad_blue"
+	}
+}
