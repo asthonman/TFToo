@@ -651,7 +651,7 @@
 				"guarddog"		"1"
 			}
 		}
-		// Chemist stock melee. Frying pan mesh until a spatula exists.
+		// Chemist stock melee.
 		"b19"
 		{
 			"name"				"b19"
@@ -671,8 +671,8 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"1"
-			"model_player"		"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
-			"model_world"		"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
+			"model_player"		"models/weapons/chemist/lab_spatula/lab_spatula.mdl"
+			"model_world"		"models/weapons/chemist/lab_spatula/lab_spatula.mdl"
 			"image_inventory"	"backpack/weapons/c_models/c_frying_pan/c_frying_pan"
 			"image_inventory_size_w"	"128"
 			"image_inventory_size_h"	"82"
@@ -681,7 +681,7 @@
 				"chemist"		"1"
 			}
 		}
-		// Chemist PDA. Same backpack icon as the crafting chemistry set.
+		// Chemist PDA. Backpack icon is the chemistry set recipe (construction kit).
 		"b20"
 		{
 			"name"				"b20"
@@ -702,9 +702,9 @@
 			"act_as_weapon"		"1"
 			"attach_to_hands"	"0"
 			"model_player"		"models/weapons/w_models/w_pda_engineer.mdl"
-			"image_inventory"	"backpack/crafting/chemistry_set"
+			"image_inventory"	"backpack/player/items/crafting/construction_kit"
 			"image_inventory_size_w"	"128"
-			"image_inventory_size_h"	"128"
+			"image_inventory_size_h"	"96"
 			"used_by_classes"
 			{
 				"chemist"		"1"

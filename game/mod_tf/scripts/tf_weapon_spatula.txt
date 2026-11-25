@@ -1,4 +1,4 @@
-// Chemist spatula. Stock shovel damage and swing. Frying pan mesh until a spatula exists.
+// Chemist spatula. Stock shovel damage and swing.
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Spatula"
@@ -25,8 +25,8 @@
 	"HasTeamSkins_Viewmodel"	"0"
 	"HasTeamSkins_Worldmodel"	"0"
 
-	"viewmodel"			"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
-	"playermodel"		"models/weapons/c_models/c_frying_pan/c_frying_pan.mdl"
+	"viewmodel"			"models/weapons/chemist/lab_spatula/lab_spatula.mdl"
+	"playermodel"		"models/weapons/chemist/lab_spatula/lab_spatula.mdl"
 	"anim_prefix"		"shotgun"
 
 	"WeaponSound"

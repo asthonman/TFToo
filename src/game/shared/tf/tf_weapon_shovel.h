@@ -108,7 +108,7 @@ private:
 	CTFBroomstick( const CTFBroomstick & ) {}
 };
 
-// Chemist spatula. Frying pan mesh until the spatula model exists.
+// Chemist spatula. Stock shovel swing, lab spatula mesh.
 class CTFSpatula : public CTFShovel
 {
 public:
