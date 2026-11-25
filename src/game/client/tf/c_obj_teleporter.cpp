@@ -80,6 +80,9 @@ void C_ObjectTeleporter::OnPreDataChanged( DataUpdateType_t updateType )
 
 void C_ObjectTeleporter::StartBuildingEffects()
 {
+	if ( TeleporterModeIsJumpPad( GetObjectMode() ) )
+		return;
+
 	StopBuildingEffects();
 	char szEffect[128];
 
@@ -95,6 +98,9 @@ void C_ObjectTeleporter::StartBuildingEffects()
 
 void C_ObjectTeleporter::StartChargedEffects()
 {
+	if ( TeleporterModeIsJumpPad( GetObjectMode() ) )
+		return;
+
 	StopChargedEffects();
 	char szEffect[128];
 
@@ -108,6 +114,14 @@ void C_ObjectTeleporter::StartChargedEffects()
 void C_ObjectTeleporter::StartActiveEffects()
 {
 	StopActiveEffects();
+
+	if ( TeleporterModeIsJumpPad( GetObjectMode() ) )
+	{
+		const char *pszEffect = ( GetTeamNumber() == TF_TEAM_RED ) ? "jumppad_fan_air_red" : "jumppad_fan_air_blue";
+		m_hDirectionEffect = ParticleProp()->Create( pszEffect, PATTACH_ABSORIGIN_FOLLOW );
+		return;
+	}
+
 	char szEffect[128];
 
 	Q_snprintf( szEffect, sizeof(szEffect), "teleporter_%s_%s_level%d", 

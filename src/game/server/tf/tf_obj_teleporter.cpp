@@ -31,6 +31,9 @@
 #define TELEPORTER_MODEL_EXIT_PLACEMENT		"models/buildables/teleporter_blueprint_exit.mdl"
 #define TELEPORTER_MODEL_BUILDING			"models/buildables/teleporter.mdl"
 #define TELEPORTER_MODEL_LIGHT				"models/buildables/teleporter_light.mdl"
+#define JUMPPAD_MODEL_PLACEMENT				"models/buildables/jumppad_blueprint.mdl"
+#define JUMPPAD_MODEL_BUILDING				"models/buildables/jumppad.mdl"
+#define JUMPPAD_MODEL_LIGHT					"models/buildables/jumppad_light.mdl"
 
 #define TELEPORTER_MINS			Vector( -24, -24, 0)
 #define TELEPORTER_MAXS			Vector( 24, 24, 12)	
@@ -247,7 +250,11 @@ void CObjectTeleporter::Spawn()
 
 	m_flYawToExit = 0;
 
-	if ( IsEntrance() || IsSpeedPad() )
+	if ( IsJumpPad() )
+	{
+		SetModel( JUMPPAD_MODEL_PLACEMENT );
+	}
+	else if ( IsEntrance() || IsSpeedPad() )
 	{
 		SetModel( TELEPORTER_MODEL_ENTRANCE_PLACEMENT );
 	}
@@ -393,7 +400,7 @@ void CObjectTeleporter::SetStartBuildingModel( void )
 {
 	SetState( TELEPORTER_STATE_BUILDING );
 
-	SetModel( TELEPORTER_MODEL_BUILDING );
+	SetModel( IsJumpPad() ? JUMPPAD_MODEL_BUILDING : TELEPORTER_MODEL_BUILDING );
 }
 
 //-----------------------------------------------------------------------------
@@ -428,7 +435,7 @@ void CObjectTeleporter::OnGoActive( void )
 {
 	Assert( GetBuilder() || m_bWasMapPlaced );
 
-	SetModel( TELEPORTER_MODEL_LIGHT );
+	SetModel( IsJumpPad() ? JUMPPAD_MODEL_LIGHT : TELEPORTER_MODEL_LIGHT );
 	SetActivity( ACT_OBJ_IDLE );
 
 	SetContextThink( &CObjectTeleporter::TeleporterThink, gpGlobals->curtime + 0.1, TELEPORTER_THINK_CONTEXT );
@@ -463,12 +470,19 @@ void CObjectTeleporter::Precache()
 	int iModelIndex;
 
 	PrecacheModel( TELEPORTER_MODEL_ENTRANCE_PLACEMENT );
-	PrecacheModel( TELEPORTER_MODEL_EXIT_PLACEMENT );	
+	PrecacheModel( TELEPORTER_MODEL_EXIT_PLACEMENT );
+	PrecacheModel( JUMPPAD_MODEL_PLACEMENT );
 
 	iModelIndex = PrecacheModel( TELEPORTER_MODEL_BUILDING );
 	PrecacheGibsForModel( iModelIndex );
 
 	iModelIndex = PrecacheModel( TELEPORTER_MODEL_LIGHT );
+	PrecacheGibsForModel( iModelIndex );
+
+	iModelIndex = PrecacheModel( JUMPPAD_MODEL_BUILDING );
+	PrecacheGibsForModel( iModelIndex );
+
+	iModelIndex = PrecacheModel( JUMPPAD_MODEL_LIGHT );
 	PrecacheGibsForModel( iModelIndex );
 
 	// Bread models
@@ -488,6 +502,13 @@ void CObjectTeleporter::Precache()
 	PrecacheScriptSound( "Building_Teleporter.SpinLevel1" );
 	PrecacheScriptSound( "Building_Teleporter.SpinLevel2" );
 	PrecacheScriptSound( "Building_Teleporter.SpinLevel3" );
+	PrecacheScriptSound( "Building_JumpPad.Launch" );
+	PrecacheScriptSound( "Building_JumpPad.Reload" );
+
+	PrecacheParticleSystem( "jumppad_fan_air_red" );
+	PrecacheParticleSystem( "jumppad_fan_air_blue" );
+	PrecacheParticleSystem( "jumppad_jump_puff_red" );
+	PrecacheParticleSystem( "jumppad_jump_puff_blue" );
 
 	PrecacheParticleSystem( "teleporter_red_charged" );
 	PrecacheParticleSystem( "teleporter_blue_charged" );
@@ -1097,7 +1118,10 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 	pPlayer->SetGroundEntity( NULL );
 	pPlayer->SetAbsVelocity( vel );
 	pPlayer->m_Shared.AddCond( TF_COND_KNOCKED_INTO_AIR, 0.75f );
-	pPlayer->EmitSound( "Building_Teleporter.Send" );
+	pPlayer->EmitSound( "Building_JumpPad.Launch" );
+
+	const char *pszPuff = ( GetTeamNumber() == TF_TEAM_RED ) ? "jumppad_jump_puff_red" : "jumppad_jump_puff_blue";
+	DispatchParticleEffect( pszPuff, GetAbsOrigin(), GetAbsAngles() );
 }
 
 //-----------------------------------------------------------------------------
@@ -1129,7 +1153,11 @@ void CObjectTeleporter::TeleporterThink( void )
 		// The arrow is the launch direction. Pads have no partner to point at.
 		ShowDirectionArrow( true );
 		if ( GetState() != TELEPORTER_STATE_READY )
+		{
 			SetState( TELEPORTER_STATE_READY );
+			if ( IsJumpPad() )
+				EmitSound( "Building_JumpPad.Reload" );
+		}
 		return;
 	}
 

@@ -101,9 +101,22 @@ void EngyMenu_ApplyPadPresentation( vgui::EditablePanel *pPanel, int iObjectMode
 	const char *pszName = bJump ? "#TF_Blueprint_JumpPad" : "#TF_Blueprint_SpeedPad";
 	// ItemBackground is the card plate. The picture is BuildingIcon.
 	// Destroy cards use the small status icon; build cards use the blueprint.
-	const char *pszIcon = bUseStatusIcon
-		? ( bJump ? "obj_status_tele_exit" : "obj_status_tele_entrance" )
-		: ( bJump ? "hud_menu_tele_exit_build" : "hud_menu_tele_entrance_build" );
+	const char *pszIcon;
+	if ( bJump )
+	{
+		if ( bUseStatusIcon )
+			pszIcon = "obj_status_jumppad";
+		else
+			pszIcon = ( iObjectMode == MODE_TELEPORTER_JUMP2 ) ? "hud_menu_jumppad_b_build" : "hud_menu_jumppad_a_build";
+	}
+	else if ( bUseStatusIcon )
+	{
+		pszIcon = "obj_status_tele_entrance";
+	}
+	else
+	{
+		pszIcon = "hud_menu_tele_entrance_build";
+	}
 
 	vgui::Label *pLabel = dynamic_cast<vgui::Label *>( pPanel->FindChildByName( "ItemNameLabel" ) );
 	if ( pLabel )

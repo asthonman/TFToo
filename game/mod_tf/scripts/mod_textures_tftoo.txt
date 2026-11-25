@@ -1,0 +1,30 @@
+"mod_textures_tftoo"
+{
+	"TextureData"
+	{
+		"hud_menu_jumppad_a_build"
+		{
+			"file"		"hud/eng_build_jumppad_a_blueprint"
+			"x"			"0"
+			"y"			"0"
+			"width"		"128"
+			"height"	"128"
+		}
+		"hud_menu_jumppad_b_build"
+		{
+			"file"		"hud/eng_build_jumppad_b_blueprint"
+			"x"			"0"
+			"y"			"0"
+			"width"		"128"
+			"height"	"128"
+		}
+		"obj_status_jumppad"
+		{
+			"file"		"hud/hud_obj_status_jumppad"
+			"x"			"0"
+			"y"			"0"
+			"width"		"128"
+			"height"	"128"
+		}
+	}
+}

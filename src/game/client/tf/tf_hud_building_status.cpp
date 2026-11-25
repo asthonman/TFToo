@@ -183,7 +183,7 @@ static void ApplyTeleporterStatusPresentation( CBuildingStatusItem *pItem, int i
 	if ( TeleporterModeIsJumpPad( iMode ) )
 	{
 		pszNotBuilt = "#Building_hud_jumppad_not_built";
-		pszIcon = "obj_status_tele_exit";
+		pszIcon = "obj_status_jumppad";
 	}
 	else if ( TeleporterModeIsSpeedPad( iMode ) )
 	{

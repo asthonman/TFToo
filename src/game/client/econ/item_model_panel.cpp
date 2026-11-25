@@ -3459,8 +3459,10 @@ static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry )
 	// Pads borrow the teleporter icons until they have their own art.
 	if ( BlueprintLogName( pszLog, "pda_speed_pad" ) || BlueprintLogName( pszLog, "pda_speed_pad_2" ) || BlueprintLogName( pszLog, "b30" ) || BlueprintLogName( pszLog, "b32" ) )
 		return "hud_menu_tele_entrance_build";
-	if ( BlueprintLogName( pszLog, "pda_jump_pad" ) || BlueprintLogName( pszLog, "pda_jump_pad_2" ) || BlueprintLogName( pszLog, "b31" ) || BlueprintLogName( pszLog, "b33" ) )
-		return "hud_menu_tele_exit_build";
+	if ( BlueprintLogName( pszLog, "pda_jump_pad" ) || BlueprintLogName( pszLog, "b31" ) )
+		return "hud_menu_jumppad_a_build";
+	if ( BlueprintLogName( pszLog, "pda_jump_pad_2" ) || BlueprintLogName( pszLog, "b33" ) )
+		return "hud_menu_jumppad_b_build";
 	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
 		return "d_firedeath";
 	return NULL;

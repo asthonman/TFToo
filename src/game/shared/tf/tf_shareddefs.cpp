@@ -1853,14 +1853,13 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 	{
 		CObjectInfo *pTele = &g_ObjectInfos[OBJ_TELEPORTER];
 		const char *pszEnterIcon = pTele->m_pIconMenu ? pTele->m_pIconMenu : "";
-		const char *pszExitIcon = pTele->m_AltModes[MODE_TELEPORTER_EXIT].pszIconMenu ? pTele->m_AltModes[MODE_TELEPORTER_EXIT].pszIconMenu : pszEnterIcon;
 		struct PadMode_t { int iMode; const char *pszName; const char *pszIcon; };
 		const PadMode_t pads[] =
 		{
 			{ MODE_TELEPORTER_SPEED, "#TF_Object_SpeedPad", pszEnterIcon },
 			{ MODE_TELEPORTER_SPEED2, "#TF_Object_SpeedPad", pszEnterIcon },
-			{ MODE_TELEPORTER_JUMP, "#TF_Object_JumpPad", pszExitIcon },
-			{ MODE_TELEPORTER_JUMP2, "#TF_Object_JumpPad", pszExitIcon },
+			{ MODE_TELEPORTER_JUMP, "#TF_Object_JumpPad", "obj_status_jumppad" },
+			{ MODE_TELEPORTER_JUMP2, "#TF_Object_JumpPad", "obj_status_jumppad" },
 		};
 		for ( int i = 0; i < ARRAYSIZE( pads ); ++i )
 		{

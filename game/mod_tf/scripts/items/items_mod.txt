@@ -892,8 +892,8 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"0"
 			"attach_to_hands"	"0"
-			"model_player"		"models/buildables/teleporter_blueprint_exit.mdl"
-			"model_world"		"models/buildables/teleporter_blueprint_exit.mdl"
+			"model_player"		"models/buildables/jumppad_blueprint.mdl"
+			"model_world"		"models/buildables/jumppad_blueprint.mdl"
 			"used_by_classes"
 			{
 				"engineer"		"1"
@@ -946,8 +946,8 @@
 			"max_ilevel"		"1"
 			"act_as_weapon"		"0"
 			"attach_to_hands"	"0"
-			"model_player"		"models/buildables/teleporter_blueprint_exit.mdl"
-			"model_world"		"models/buildables/teleporter_blueprint_exit.mdl"
+			"model_player"		"models/buildables/jumppad_blueprint.mdl"
+			"model_world"		"models/buildables/jumppad_blueprint.mdl"
 			"used_by_classes"
 			{
 				"engineer"		"1"
