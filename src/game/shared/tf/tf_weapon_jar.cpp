@@ -65,6 +65,12 @@ PRECACHE_WEAPON_REGISTER( tf_weapon_cleaver );
 // Projectile tables.
 IMPLEMENT_NETWORKCLASS_ALIASED( TFProjectile_Jar, DT_TFProjectile_Jar )
 BEGIN_NETWORK_TABLE( CTFProjectile_Jar, DT_TFProjectile_Jar )
+#ifdef CLIENT_DLL
+	RecvPropInt( RECVINFO( m_nChemSlot ) ),
+#else
+	// Signed so -1 (a stock jar) fits. Chemist slots are 0..3.
+	SendPropInt( SENDINFO( m_nChemSlot ), 4 ),
+#endif
 END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( tf_projectile_jar, CTFProjectile_Jar );
@@ -83,6 +89,18 @@ END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( tf_projectile_cleaver, CTFProjectile_Cleaver );
 PRECACHE_WEAPON_REGISTER( tf_projectile_cleaver );
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+CTFProjectile_Jar::CTFProjectile_Jar()
+{
+	m_nChemSlot = -1;
+#ifdef GAME_DLL
+	m_vCollisionVelocity = Vector( 0, 0, 0 );
+	m_iProjectileType = TF_PROJECTILE_JAR;
+#endif
+}
 
 #define TF_JAR_LAUNCH_SPEED		1000.f
 #define TF_CLEAVER_LAUNCH_SPEED		7000.f
@@ -239,21 +257,12 @@ void CTFJar::GetProjectileEntityName( CAttribute_String *attrProjectileEntityNam
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Jar::CTFProjectile_Jar()
-{
-	m_vCollisionVelocity = Vector( 0,0,0 );
-	m_iProjectileType = TF_PROJECTILE_JAR;
-	m_nChemSlot = -1;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
 void CTFProjectile_Jar::Precache()
 {
 	PrecacheModel( TF_WEAPON_PEEJAR_MODEL );
 	PrecacheModel( TF_WEAPON_FESTIVE_PEEJAR_MODEL );
 	PrecacheModel( "models/weapons/c_models/c_breadmonster/c_breadmonster.mdl" );
+	PrecacheModel( TF_WEAPON_CHEMIST_VIAL_MODEL );
 
 	PrecacheScriptSound( TF_WEAPON_PEEJAR_EXPLODE_SOUND );
 	BaseClass::Precache();

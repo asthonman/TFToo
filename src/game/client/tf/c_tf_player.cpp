@@ -68,6 +68,8 @@
 #include "tf_item_wearable.h"
 #include "cam_thirdperson.h"
 #include "c_tf_projectile_arrow.h"
+#include "tf_weapon_jar.h"
+#include "tf_chemist.h"
 #include "econ_entity.h"
 #include "ihasowner.h"
 #include "tf_hud_itemeffectmeter.h"
@@ -2074,6 +2076,47 @@ public:
 };
 
 EXPOSE_INTERFACE( CProxyUrineLevel, IMaterialProxy, "YellowLevel" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Tints the chemist vial liquid to the concoction in the projectile.
+// The per-skin VMTs used these same RGB values as $color.
+//-----------------------------------------------------------------------------
+class CProxyChemistFluidColor : public CResultProxy
+{
+public:
+	void OnBind( void *pC_BaseEntity )
+	{
+		Assert( m_pResult );
+
+		Vector vResult( 1.f, 1.f, 1.f );
+		C_BaseEntity *pEntity = BindArgToEntity( pC_BaseEntity );
+		CTFProjectile_Jar *pJar = dynamic_cast< CTFProjectile_Jar * >( pEntity );
+		if ( pJar )
+		{
+			// poison.vmt, repulsion_gel.vmt, nitric puddle, healing_salve.vmt.
+			// Nitric's VMT was [0 0 0], which blacks out this white fluid.
+			static const int s_rgb[CHEM_COUNT][3] =
+			{
+				{ 179, 0, 226 },
+				{ 0, 0, 255 },
+				{ 251, 255, 0 },
+				{ 0, 255, 0 },
+			};
+			const int slot = pJar->GetChemSlot();
+			if ( slot >= 0 && slot < CHEM_COUNT )
+			{
+				vResult.x = s_rgb[slot][0] * ( 1.f / 255.f );
+				vResult.y = s_rgb[slot][1] * ( 1.f / 255.f );
+				vResult.z = s_rgb[slot][2] * ( 1.f / 255.f );
+			}
+		}
+
+		m_pResult->SetVecValue( vResult.x, vResult.y, vResult.z );
+	}
+};
+
+EXPOSE_INTERFACE( CProxyChemistFluidColor, IMaterialProxy, "ChemistFluidColor" IMATERIAL_PROXY_INTERFACE_VERSION );
 
 
 //-----------------------------------------------------------------------------

@@ -2,7 +2,8 @@
 {
 	"$basetexture"	"models\weapons\chemist\vial\flask_nitric_fluid"
 
-	$color "[ 0 0 0 ]"
+	// Overwritten by ChemistFluidColor from the concoction in the jar.
+	$color "[ 1 1 1 ]"
 
 	///////////////////////////////////////////////////////////////////////////////
 	//					phong.
@@ -72,6 +73,10 @@
 		{
 			"srcVar1" "$yellow"
 			"resultVar" "$color2"
+		}
+		"ChemistFluidColor"
+		{
+			"resultVar" "$color"
 		}
 	}
 }

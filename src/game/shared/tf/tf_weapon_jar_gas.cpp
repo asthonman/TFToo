@@ -133,6 +133,7 @@ float CTFJarGas::GetProjectileSpeed( void )
 void CTFProjectile_JarGas::Precache()
 {
 	PrecacheModel( TF_WEAPON_JAR_GAS_JAR_MODEL );
+	PrecacheModel( TF_WEAPON_CHEMIST_VIAL_MODEL );
 	PrecacheParticleSystem( "gas_can_blue" );
 	PrecacheParticleSystem( "gas_can_red" );
 	PrecacheScriptSound( TF_WEAPON_JARGAS_EXPLODE_SOUND );
@@ -659,7 +660,12 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 		const Vector vecVel = vecForward * TF_GAS_PROJ_SPEED;
 		CTFProjectile_JarGas *pProj = CTFProjectile_JarGas::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
 		if ( pProj )
+		{
 			pProj->m_bPoison = true;
+			pProj->SetChemSlot( CHEM_POISON );
+			pProj->SetModel( TF_WEAPON_CHEMIST_VIAL_MODEL );
+			pProj->m_nSkin = 0;
+		}
 		return;
 	}
 
@@ -669,7 +675,11 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 		+ ( random->RandomFloat( -10.f, 10.f ) * vecUp );
 	CTFProjectile_Jar *pProj = CTFProjectile_Jar::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
 	if ( pProj )
+	{
 		pProj->SetChemSlot( slot );
+		pProj->SetModel( TF_WEAPON_CHEMIST_VIAL_MODEL );
+		pProj->m_nSkin = 0;
+	}
 }
 
 void Chemist_AirblastDispel( CTFPlayer *pPyro )

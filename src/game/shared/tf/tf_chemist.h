@@ -20,6 +20,9 @@ enum
 	CHEM_COUNT
 };
 
+// Thrown vial. One skin; the liquid tint is a material proxy of the concoction.
+#define TF_WEAPON_CHEMIST_VIAL_MODEL	"models/weapons/chemist/vial/flask_chemist.mdl"
+
 // Brew slot value when nothing is brewing. Fits in 3 bits.
 #define CHEM_BREW_NONE 7
 

@@ -145,13 +145,15 @@ public:
 	DECLARE_CLASS( CTFProjectile_Jar, CTFGrenadePipebombProjectile );
 	DECLARE_NETWORKCLASS();
 
+	CTFProjectile_Jar();
+	int GetChemSlot( void ) const { return m_nChemSlot; }
+	void SetChemSlot( int slot ) { m_nChemSlot = slot; }
+
 #ifdef CLIENT_DLL
 	virtual const char*			GetTrailParticleName( void );
 #endif
 
 #ifdef GAME_DLL
-	CTFProjectile_Jar();
-
 	static CTFProjectile_Jar *Create( const Vector &position, const QAngle &angles, const Vector &velocity, 
 	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
 
@@ -168,8 +170,6 @@ public:
 	virtual void		OnHit( CBaseEntity *pOther )				{}
 	virtual void		OnHitWorld( void )							{}
 	virtual void		Explode( trace_t *pTrace, int bitsDamageType ) OVERRIDE;
-	// Chemist jars (0..CHEM_COUNT-1) splash a concoction instead of jarate.
-	void				SetChemSlot( int slot ) { m_nChemSlot = slot; }
 
 	virtual void		PipebombTouch( CBaseEntity *pOther ) OVERRIDE;
 	virtual void		VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) OVERRIDE;
@@ -191,9 +191,10 @@ protected:
 
 	Vector		m_vCollisionVelocity;
 	int			m_iProjectileType;
-	int			m_nChemSlot;
 #endif
 
+	// -1 is a stock jar. 0..CHEM_COUNT-1 is a chemist concoction.
+	int			m_nChemSlot;
 };
 
 // *************************************************************************************************************************
