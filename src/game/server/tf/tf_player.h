@@ -550,6 +550,9 @@ public:
 	void					SetJumpPadFallResist( bool bEnable ) { m_bJumpPadFallResist = bEnable; }
 	bool					HasJumpPadFallResist( void ) const { return m_bJumpPadFallResist; }
 	void					ApplyJumpPadLanding( float flFallVelocity );
+	// Touch runs inside ProcessImpacts, which restores the pre-touch velocity
+	// when it returns. Queue the pad shove and apply it in PostThink.
+	void					QueuePadVelocity( const Vector &vel );
 	float					GetBrickGrowMeter( void ) const { return m_flBrickGrowMeter; }
 	float					GetPMeter( void ) const { return Madcap_AdrenalineFromCombatTime( m_flPMeter, m_flMadcapCombatTime, gpGlobals->curtime ); }
 	// Stores the peak. GetPMeter applies the hold and fade.
@@ -1516,6 +1519,8 @@ private:
 	CountdownTimer		m_teleportHomeFlashTimer;
 	eEurekaTeleportTargets	m_eEurekaTeleportTarget;
 	bool				m_bJumpPadFallResist;
+	bool				m_bQueuedPadVelocity;
+	Vector				m_vecQueuedPadVelocity;
 
 	float				m_accumulatedSentryGunDamageDealt;	// for Sentry Buster missions in MvM
 	int					m_accumulatedSentryGunKillCount;	// for Sentry Buster missions in MvM

@@ -1106,7 +1106,7 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 		if ( flAlong < flTarget )
 		{
 			vel += vecForward * ( flTarget - flAlong );
-			pPlayer->SetAbsVelocity( vel );
+			pPlayer->QueuePadVelocity( vel );
 		}
 		// 3s, 5s, 10s.
 		static const float s_flBoostDuration[4] = { 0.f, 3.f, 5.f, 10.f };
@@ -1121,7 +1121,7 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 
 		pPlayer->RemoveFlag( FL_ONGROUND );
 		pPlayer->SetGroundEntity( NULL );
-		pPlayer->SetAbsVelocity( vel );
+		pPlayer->QueuePadVelocity( vel );
 		pPlayer->SetJumpPadFallResist( true );
 		pPlayer->EmitSound( "Building_JumpPad.Launch" );
 

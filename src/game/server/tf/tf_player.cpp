@@ -988,6 +988,7 @@ CTFPlayer::CTFPlayer()
 	m_bHudClassAutoKill = false;
 	m_bMedigunAutoHeal = false;
 	m_bJumpPadFallResist = false;
+	m_bQueuedPadVelocity = false;
 
 	m_vecLastDeathPosition = Vector( FLT_MAX, FLT_MAX, FLT_MAX );
 
@@ -3443,6 +3444,17 @@ void CTFPlayer::PostThink()
 {
 	BaseClass::PostThink();
 
+	if ( m_bQueuedPadVelocity )
+	{
+		m_bQueuedPadVelocity = false;
+		if ( IsAlive() )
+		{
+			RemoveFlag( FL_ONGROUND );
+			SetGroundEntity( NULL );
+			SetAbsVelocity( m_vecQueuedPadVelocity );
+		}
+	}
+
 	// CBasePlayer::PostThink just stamped the global 82/62 hull.
 	if ( IsAlive() && IsPlayerClass( TF_CLASS_GUARDDOG ) )
 	{
@@ -4576,6 +4588,7 @@ void CTFPlayer::Spawn()
 	m_bBrickGrown = false;
 	m_bBrickGrowDuck = false;
 	m_bJumpPadFallResist = false;
+	m_bQueuedPadVelocity = false;
 	UpdateModel();
 
 	SetMoveType( MOVETYPE_WALK );
@@ -9801,6 +9814,12 @@ static float PlayerBlastJumpDmgScale( CTFPlayer *pPlayer )
 // we want to ship this...do not remove
 ConVar tf_debug_damage( "tf_debug_damage", "0", FCVAR_CHEAT );
 
+void CTFPlayer::QueuePadVelocity( const Vector &vel )
+{
+	m_vecQueuedPadVelocity = vel;
+	m_bQueuedPadVelocity = true;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Thermal thruster landing, without the wrench attribute or the stun.
 // 75% of the fall damage was already applied by the caller.
@@ -9811,6 +9830,7 @@ void CTFPlayer::ApplyJumpPadLanding( float flFallVelocity )
 		return;
 
 	m_bJumpPadFallResist = false;
+	m_bQueuedPadVelocity = false;
 
 	float flPushAmount = RemapValClamped( flFallVelocity, 100.f, 1000.f, tf_rocketpack_impact_push_min.GetFloat(), tf_rocketpack_impact_push_max.GetFloat() );
 	float flPushRadius = RemapValClamped( flFallVelocity, 100.f, 1000.f, 150.f, 220.f );
