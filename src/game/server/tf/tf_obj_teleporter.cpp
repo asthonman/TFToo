@@ -338,12 +338,25 @@ int CObjectTeleporter::GetUpgradeMetalRequired()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CObjectTeleporter::ApplyTeleporterBounds( void )
+{
+	// jumppad.mdl's studio hull is 24 units, which is above sv_stepsize (18), so a
+	// player cannot walk onto it. Stock teleporters stay walkable because this box
+	// is 12 units tall. SetCollisionBoundsFromModel runs again when a model finishes
+	// loading and would put the tall hull back, so re-apply after every model set.
+	UTIL_SetSize( this, TELEPORTER_MINS, TELEPORTER_MAXS );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CObjectTeleporter::SetModel( const char *pModel )
 {
 	BaseClass::SetModel( pModel );
 
-	// Reset this after model change
-	UTIL_SetSize( this, TELEPORTER_MINS, TELEPORTER_MAXS );
+	// Reset this after model change. OnNewModel covers the late dynamic-load path,
+	// which calls SetCollisionBoundsFromModel after SetModel has returned.
+	ApplyTeleporterBounds();
 
 	CreateBuildPoints();
 
@@ -356,6 +369,18 @@ void CObjectTeleporter::SetModel( const char *pModel )
 	{
 		SetBodygroup( m_iBlurBodygroup, 0 );
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Model load (including a late dynamic load) calls SetCollisionBoundsFromModel
+// before this. Put the walkable teleporter box back or jumppad.mdl stays 24 units
+// tall and players have to jump onto it.
+//-----------------------------------------------------------------------------
+CStudioHdr *CObjectTeleporter::OnNewModel( void )
+{
+	CStudioHdr *hdr = BaseClass::OnNewModel();
+	ApplyTeleporterBounds();
+	return hdr;
 }
 
 void CObjectTeleporter::InitializeMapPlacedObject( void )
@@ -840,6 +865,11 @@ CObjectTeleporter *CObjectTeleporter::GetMatchingTeleporter( void )
 
 void CObjectTeleporter::DeterminePlaybackRate( void )
 {
+	// Keep the 12-unit box on while building too. BaseObjectThink does not run
+	// TeleporterThink until the pad is active, and that is when players stand
+	// on it to wrench it.
+	ApplyTeleporterBounds();
+
 	float flPlaybackRate = GetPlaybackRate();
 
 	bool bWasBelowFullSpeed = ( flPlaybackRate < 1.0f );

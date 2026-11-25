@@ -2374,9 +2374,12 @@ void CBaseObject::OnConstructionHit( CTFPlayer *pPlayer, CTFWrench *pWrench, Vec
 	if ( index == m_ConstructorList.InvalidIndex() )
 	{
 		index = m_ConstructorList.Insert( iPlayerIndex );
-		m_ConstructorList[index].flValue = pWrench->GetConstructionValue();
 	}
 
+	// Refresh every hit so the wrench actually in hand (stock 1.5x, Jag 1.3x on
+	// top of that) is what speeds construction. The first hit used to stick until
+	// the boost expired, which dropped the Jag's bonus if anything else swung first.
+	m_ConstructorList[index].flValue = pWrench->GetConstructionValue();
 	m_ConstructorList[index].flHitTime = flRepairExpireTime;
 
 	// Play a construction hit effect.

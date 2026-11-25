@@ -14,6 +14,7 @@
 #include "tf_obj.h"
 #include "GameEventListener.h"
 
+class CStudioHdr;
 class CTFPlayer;
 
 enum 
@@ -47,6 +48,7 @@ public:
 	virtual int		DrawDebugTextOverlays(void) ;
 	virtual bool	IsPlacementPosValid( void );
 	virtual void	SetModel( const char *pModel );
+	virtual CStudioHdr	*OnNewModel( void );
 	virtual void	InitializeMapPlacedObject( void );
 
 	virtual void	FinishedBuilding( void );
@@ -170,6 +172,7 @@ private:
 	void SpawnBread( const CTFPlayer* pTeleportingPlayer );
 	void PadTouch( CTFPlayer *pPlayer );
 	void StartPadRecharge( void );
+	void ApplyTeleporterBounds( void );
 
 	CUtlStringList m_teleportWhereName;
 };
