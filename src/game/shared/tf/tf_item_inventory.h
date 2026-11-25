@@ -334,5 +334,11 @@ public:
 };
 #endif
 
+class CEconItemView;
+const char *TFInventoryItemLogName( const CEconItemView *pItem );
+int BlueprintTeleporterModeFromItem( const CEconItemView *pItem );
+bool EngineerBlueprintItemIsPad( const CEconItemView *pItem );
+void ResolveEngineerBlueprintModes( const CEconItemView *pSlot3, const CEconItemView *pSlot4, int &iMode3, int &iMode4 );
+
 
 #endif // TF_ITEM_INVENTORY_H

@@ -306,7 +306,13 @@ CHudTexture const *C_TFWeaponBuilder::GetSpriteInactive( void ) const
 //-----------------------------------------------------------------------------
 const char *C_TFWeaponBuilder::GetPrintName( void ) const
 {
-	return GetObjectInfo( m_iObjectType )->m_AltModes[m_iObjectMode].pszStatusName;
+	const CObjectInfo *pInfo = GetObjectInfo( m_iObjectType );
+	int iMode = (int)m_iObjectMode;
+	if ( !pInfo || iMode < 0 || iMode >= OBJECT_MAX_MODES || !pInfo->m_AltModes[iMode].pszStatusName )
+		iMode = 0;
+	if ( !pInfo || !pInfo->m_AltModes[iMode].pszStatusName )
+		return "";
+	return pInfo->m_AltModes[iMode].pszStatusName;
 }
 
 //-----------------------------------------------------------------------------

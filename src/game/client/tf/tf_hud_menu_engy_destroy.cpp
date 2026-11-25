@@ -133,6 +133,10 @@ void CHudMenuEngyDestroy::ApplySchemeSettings( IScheme *pScheme )
 		{
 			pNumberLabel->SetText( VarArgs( "%d", i + 1 ) );
 		}
+
+		EngyMenu_ApplyPadPresentation( m_pActiveItems[i], m_Buildings[i].m_iMode, true );
+		EngyMenu_ApplyPadPresentation( m_pInactiveItems[i], m_Buildings[i].m_iMode, true );
+		EngyMenu_ApplyPadPresentation( m_pUnavailableItems[i], m_Buildings[i].m_iMode, true );
 	}
 
 	for ( int i = 0; i < NUM_ENGY_BUILDINGS; ++i )

@@ -27,6 +27,7 @@
 
 #include "tf_gamerules.h"
 #include "tf_logic_halloween_2014.h"
+#include "tf_item_inventory.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -172,6 +173,37 @@ void CBuildingStatusItem::ApplySchemeSettings( IScheme *pScheme )
 //-----------------------------------------------------------------------------
 // Purpose: Calc visibility of subpanels
 //-----------------------------------------------------------------------------
+static void ApplyTeleporterStatusPresentation( CBuildingStatusItem *pItem, int iMode )
+{
+	if ( !pItem )
+		return;
+
+	const char *pszNotBuilt = "#Building_hud_tele_enter_not_built_360";
+	const char *pszIcon = "obj_status_tele_entrance";
+	if ( TeleporterModeIsJumpPad( iMode ) )
+	{
+		pszNotBuilt = "#Building_hud_jumppad_not_built";
+		pszIcon = "obj_status_jumppad";
+	}
+	else if ( TeleporterModeIsSpeedPad( iMode ) )
+	{
+		pszNotBuilt = "#Building_hud_speedpad_not_built";
+	}
+	else if ( iMode == MODE_TELEPORTER_EXIT )
+	{
+		pszNotBuilt = "#Building_hud_tele_exit_not_built_360";
+		pszIcon = "obj_status_tele_exit";
+	}
+
+	vgui::Label *pLabel = dynamic_cast<vgui::Label *>( pItem->FindChildByName( "NotBuiltLabel", true ) );
+	if ( pLabel )
+		pLabel->SetText( pszNotBuilt );
+
+	CIconPanel *pIcon = dynamic_cast<CIconPanel *>( pItem->FindChildByName( "Icon", true ) );
+	if ( pIcon )
+		pIcon->SetIcon( pszIcon );
+}
+
 void CBuildingStatusItem::PerformLayout( void )
 {
 	BaseClass::PerformLayout();
@@ -231,6 +263,9 @@ void CBuildingStatusItem::PerformLayout( void )
 			m_pSapperIcon->SetVisible( false );
 		}
 	}
+
+	if ( m_iObjectType == OBJ_TELEPORTER )
+		ApplyTeleporterStatusPresentation( this, m_iObjectMode );
 }
 
 
@@ -259,6 +294,19 @@ void CBuildingStatusItem::SetObject( C_BaseObject *pObj )
 		m_pSapperIcon->SetVisible( false );
 		m_pAlertTray->SetAlertType( BUILDING_HUD_ALERT_NONE );
 	}
+}
+
+void CBuildingStatusItem::SetRepresentativeObjectMode( int iMode )
+{
+	if ( m_iObjectMode == iMode )
+		return;
+
+	m_iObjectMode = iMode;
+
+	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
+	C_BaseObject *pObj = pLocalPlayer ? pLocalPlayer->GetObjectOfType( m_iObjectType, iMode ) : NULL;
+	SetObject( pObj );
+	InvalidateLayout( true );
 }
 
 //-----------------------------------------------------------------------------
@@ -1025,9 +1073,10 @@ void CBuildingStatusItem_TeleporterEntrance::PerformLayout( void )
 	}
 
 	bool bRecharging = ( pTeleporter->GetState() == TELEPORTER_STATE_RECHARGING );
+	const bool bPad = TeleporterModeIsPad( pTeleporter->GetObjectMode() );
 
-	m_pChargingPanel->SetVisible( bRecharging );
-	m_pFullyChargedPanel->SetVisible( !bRecharging );
+	m_pChargingPanel->SetVisible( !bPad && bRecharging );
+	m_pFullyChargedPanel->SetVisible( !bPad && !bRecharging );
 
 	// How many times has this teleporter been used?
 	m_pFullyChargedPanel->SetDialogVariable( "timesused", pTeleporter->GetTimesUsed() );		
@@ -1223,6 +1272,8 @@ bool CHudBuildingStatusContainer_Engineer::ShouldDraw( void )
 void CHudBuildingStatusContainer_Engineer::OnTick()
 {
 	BaseClass::OnTick();
+
+	UpdateEquippedTeleporterModes();
 	
 	if ( !ShouldDraw() )
 		return;
@@ -1420,8 +1471,35 @@ void CHudBuildingStatusContainer::UpdateAllBuildings( void )
 }
 
 
+void CHudBuildingStatusContainer::UpdateEquippedTeleporterModes( void )
+{
+	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if ( !pLocalPlayer || !pLocalPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) || !TFInventoryManager() )
+		return;
+
+	int iMode3 = MODE_TELEPORTER_ENTRANCE;
+	int iMode4 = MODE_TELEPORTER_EXIT;
+	CEconItemView *pSlot3 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+	CEconItemView *pSlot4 = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT4 );
+	ResolveEngineerBlueprintModes( pSlot3, pSlot4, iMode3, iMode4 );
+
+	for ( int i = 0; i < m_BuildingPanels.Count(); ++i )
+	{
+		CBuildingStatusItem *pItem = m_BuildingPanels.Element( i );
+		if ( !pItem || pItem->GetRepresentativeObjectType() != OBJ_TELEPORTER )
+			continue;
+
+		if ( dynamic_cast<CBuildingStatusItem_TeleporterEntrance *>( pItem ) )
+			pItem->SetRepresentativeObjectMode( iMode3 );
+		else if ( dynamic_cast<CBuildingStatusItem_TeleporterExit *>( pItem ) )
+			pItem->SetRepresentativeObjectMode( iMode4 );
+	}
+}
+
 void CHudBuildingStatusContainer::OnBuildingChanged( int iBuildingType, int iBuildingMode, bool bBuildingIsDead )
 {
+	UpdateEquippedTeleporterModes();
+
 	bool bFound = false;
 	for ( int i = 0; i < m_BuildingPanels.Count() && !bFound; i++ )
 	{
@@ -1467,9 +1545,6 @@ void CHudBuildingStatusContainer::RepositionObjectPanels( void )
 	float flXPos = XRES(9);
 	float flYPos = YRES(9);
 
-	float flTeleEntranceY = YRES(9);
-	float flTeleExitY = YRES(9);
-
 	// Regular Panels
 	for ( int i = 0; i < m_BuildingPanels.Count(); i++ )
 	{
@@ -1484,17 +1559,7 @@ void CHudBuildingStatusContainer::RepositionObjectPanels( void )
 			// OBJ_TELEPORTER, MODE_TELEPORTER_SPEED
 			if ( pItem->GetRepresentativeObjectType() == OBJ_TELEPORTER )
 			{
-				switch ( pItem->GetRepresentativeObjectMode() )
-				{
-					case MODE_TELEPORTER_ENTRANCE:
-						flTeleEntranceY = flYPos;
-						flYPos += pItem->GetTall();
-						break;
-					case MODE_TELEPORTER_EXIT:
-						flTeleExitY = flYPos;
-						flYPos += pItem->GetTall();
-						break;
-				}
+				flYPos += pItem->GetTall();
 			}
 			else
 			{

@@ -409,27 +409,12 @@ void CTFWeaponPDAExpansion_Teleporter::Equip( CBasePlayer *pOwner )
 	CTFPlayer *pPlayer = ToTFPlayer( pOwner );
 	if ( pPlayer )
 	{
-		// Detonate entrance and exit
-		CBaseObject *pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 0 );
-		if ( pObject )
+		// Entrance, exit, and both pad modes. A jump pad is not mode 0-3.
+		for ( int iMode = MODE_TELEPORTER_ENTRANCE; iMode <= MODE_TELEPORTER_JUMP2; ++iMode )
 		{
-			pObject->DetonateObject();
-		}
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 1 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
-		}
-
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 2 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
-		}
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 3 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
+			CBaseObject *pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, iMode );
+			if ( pObject )
+				pObject->DetonateObject();
 		}
 	}
 #endif
@@ -442,27 +427,11 @@ void CTFWeaponPDAExpansion_Teleporter::UnEquip( CBasePlayer *pOwner )
 	CTFPlayer *pPlayer = ToTFPlayer( pOwner );
 	if ( pPlayer )
 	{
-		// Detonate entrance and exit
-		CBaseObject *pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 0 );
-		if ( pObject )
+		for ( int iMode = MODE_TELEPORTER_ENTRANCE; iMode <= MODE_TELEPORTER_JUMP2; ++iMode )
 		{
-			pObject->DetonateObject();
-		}
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 1 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
-		}
-
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 2 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
-		}
-		pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, 3 );
-		if ( pObject )
-		{
-			pObject->DetonateObject();
+			CBaseObject *pObject = pPlayer->GetObjectOfType( OBJ_TELEPORTER, iMode );
+			if ( pObject )
+				pObject->DetonateObject();
 		}
 	}
 #endif

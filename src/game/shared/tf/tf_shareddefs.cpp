@@ -1654,6 +1654,7 @@ CObjectInfo::CObjectInfo( const char *pObjectName )
 	m_iBuildCount = 0;
 	m_iNumAltModes = 0;
 	m_bRequiresOwnBuilder = false;
+	V_memset( m_AltModes, 0, sizeof( m_AltModes ) );
 }
 
 
@@ -1845,6 +1846,35 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 		// Alternate mode 0 always matches the defaults.
 		pInfo->m_AltModes[0].pszStatusName = pInfo->m_pStatusName;
 		pInfo->m_AltModes[0].pszIconMenu   = pInfo->m_pIconMenu;
+	}
+
+	// Speed pads and jump pads are teleporter modes. objects.txt only knows
+	// the entrance and the exit, so the extra modes are filled in here.
+	{
+		CObjectInfo *pTele = &g_ObjectInfos[OBJ_TELEPORTER];
+		const char *pszEnterIcon = pTele->m_pIconMenu ? pTele->m_pIconMenu : "";
+		struct PadMode_t { int iMode; const char *pszName; const char *pszIcon; };
+		const PadMode_t pads[] =
+		{
+			{ MODE_TELEPORTER_SPEED, "#TF_Object_SpeedPad", pszEnterIcon },
+			{ MODE_TELEPORTER_SPEED2, "#TF_Object_SpeedPad", pszEnterIcon },
+			{ MODE_TELEPORTER_JUMP, "#TF_Object_JumpPad", "obj_status_jumppad" },
+			{ MODE_TELEPORTER_JUMP2, "#TF_Object_JumpPad", "obj_status_jumppad" },
+		};
+		for ( int i = 0; i < ARRAYSIZE( pads ); ++i )
+		{
+			const int iMode = pads[i].iMode;
+			if ( iMode < 0 || iMode >= OBJECT_MAX_MODES )
+				continue;
+
+			// These pointers are not freed (the object-info destructor does
+			// not free alt-mode strings). Literals are fine.
+			pTele->m_AltModes[iMode].pszStatusName = const_cast<char *>( pads[i].pszName );
+			pTele->m_AltModes[iMode].pszModeName = const_cast<char *>( pads[i].pszName );
+			pTele->m_AltModes[iMode].pszIconMenu = const_cast<char *>( pads[i].pszIcon );
+		}
+		if ( pTele->m_iNumAltModes < MODE_TELEPORTER_JUMP2 )
+			pTele->m_iNumAltModes = MODE_TELEPORTER_JUMP2;
 	}
 
 	pValues->deleteThis();

@@ -108,6 +108,11 @@ struct EngyBuildingReplacement_t
 };
 
 extern const EngyConstructBuilding_t g_kEngyBuildings[];
+
+// Speed pads and jump pads reuse the teleporter card. This swaps the caption
+// and BuildingIcon. bUseStatusIcon is the destroy menu (obj_status_*);
+// the build menu uses the blueprint icons. Stock teleporters keep the .res text.
+void EngyMenu_ApplyPadPresentation( vgui::EditablePanel *pPanel, int iObjectMode, bool bUseStatusIcon );
 	 
 class CHudMenuEngyBuild : public CHudBaseBuildMenu
 {

@@ -3414,8 +3414,10 @@ static bool ItemWantsBlueprintIcon( const CEconItemView *pItem )
 	const char *pszKeys[] =
 	{
 		"pda_sentry", "pda_dispenser", "pda_tele_entrance", "pda_tele_exit",
+		"pda_speed_pad", "pda_jump_pad", "pda_speed_pad_2", "pda_jump_pad_2",
 		"chem_poison", "chem_repulsion", "chem_nitric", "chem_neutral",
 		"b22", "b23", "b24", "b25", "b26", "b27", "b28", "b29",
+		"b30", "b31", "b32", "b33",
 	};
 	for ( int i = 0; i < ARRAYSIZE( pszKeys ); ++i )
 	{
@@ -3454,6 +3456,13 @@ static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry )
 		return "hud_menu_tele_entrance_build";
 	if ( BlueprintLogName( pszLog, "pda_tele_exit" ) || BlueprintLogName( pszLog, "b25" ) )
 		return "hud_menu_tele_exit_build";
+	// Pads borrow the teleporter icons until they have their own art.
+	if ( BlueprintLogName( pszLog, "pda_speed_pad" ) || BlueprintLogName( pszLog, "pda_speed_pad_2" ) || BlueprintLogName( pszLog, "b30" ) || BlueprintLogName( pszLog, "b32" ) )
+		return "hud_menu_tele_entrance_build";
+	if ( BlueprintLogName( pszLog, "pda_jump_pad" ) || BlueprintLogName( pszLog, "b31" ) )
+		return "hud_menu_jumppad_a_build";
+	if ( BlueprintLogName( pszLog, "pda_jump_pad_2" ) || BlueprintLogName( pszLog, "b33" ) )
+		return "hud_menu_jumppad_b_build";
 	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
 		return "d_firedeath";
 	return NULL;

@@ -841,6 +841,118 @@
 				"engineer"		"1"
 			}
 		}
+		// Speed pads and jump pads take the teleporter's slots. Slot 3 still
+		// defaults to the entrance, which locks slot 4. Either pad in slot 3
+		// opens slot 4 for a second pad. Models and icons are the teleporter's
+		// until these get their own.
+		"b30"
+		{
+			"name"				"b30"
+			"item_class"		"no_entity"
+			"item_name"			"#TF_Blueprint_SpeedPad"
+			"item_type_name"	"#TF_Loadout_Blueprint"
+			"item_description"	"#TF_Blueprint_SpeedPad_Desc"
+			"item_logname"		"pda_speed_pad"
+			"item_iconname"	"pda_speed_pad"
+			"item_slot"			"pda_slot3"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"0"
+			"attach_to_hands"	"0"
+			"model_player"		"models/buildables/teleporter_blueprint_enter.mdl"
+			"model_world"		"models/buildables/teleporter_blueprint_enter.mdl"
+			"used_by_classes"
+			{
+				"engineer"		"1"
+			}
+		}
+		"b31"
+		{
+			"name"				"b31"
+			"item_class"		"no_entity"
+			"item_name"			"#TF_Blueprint_JumpPad"
+			"item_type_name"	"#TF_Loadout_Blueprint"
+			"item_description"	"#TF_Blueprint_JumpPad_Desc"
+			"item_logname"		"pda_jump_pad"
+			"item_iconname"	"pda_jump_pad"
+			"item_slot"			"pda_slot3"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"0"
+			"attach_to_hands"	"0"
+			"model_player"		"models/buildables/jumppad_blueprint.mdl"
+			"model_world"		"models/buildables/jumppad_blueprint.mdl"
+			"used_by_classes"
+			{
+				"engineer"		"1"
+			}
+		}
+		"b32"
+		{
+			"name"				"b32"
+			"item_class"		"no_entity"
+			"item_name"			"#TF_Blueprint_SpeedPad"
+			"item_type_name"	"#TF_Loadout_Blueprint"
+			"item_description"	"#TF_Blueprint_SpeedPad2_Desc"
+			"item_logname"		"pda_speed_pad_2"
+			"item_iconname"	"pda_speed_pad_2"
+			"item_slot"			"pda_slot4"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"0"
+			"attach_to_hands"	"0"
+			"model_player"		"models/buildables/teleporter_blueprint_enter.mdl"
+			"model_world"		"models/buildables/teleporter_blueprint_enter.mdl"
+			"used_by_classes"
+			{
+				"engineer"		"1"
+			}
+		}
+		"b33"
+		{
+			"name"				"b33"
+			"item_class"		"no_entity"
+			"item_name"			"#TF_Blueprint_JumpPad"
+			"item_type_name"	"#TF_Loadout_Blueprint"
+			"item_description"	"#TF_Blueprint_JumpPad2_Desc"
+			"item_logname"		"pda_jump_pad_2"
+			"item_iconname"	"pda_jump_pad_2"
+			"item_slot"			"pda_slot4"
+			"anim_slot"			"FORCE_NOT_USED"
+			"item_quality"		"normal"
+			"baseitem"			"1"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"0"
+			"attach_to_hands"	"0"
+			"model_player"		"models/buildables/jumppad_blueprint.mdl"
+			"model_world"		"models/buildables/jumppad_blueprint.mdl"
+			"used_by_classes"
+			{
+				"engineer"		"1"
+			}
+		}
 		// Chemistry set blueprints. One slot each, independent of the engineer's.
 		"b26"
 		{

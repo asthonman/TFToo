@@ -1,0 +1,17 @@
+"Building_JumpPad.Launch"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"0.9"
+	"soundlevel"	"SNDLVL_85dB"
+	"pitch"			"100"
+	"wave"			"buildables/catapult_launch.wav"
+}
+
+"Building_JumpPad.Reload"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"0.7"
+	"soundlevel"	"SNDLVL_75dB"
+	"pitch"			"100"
+	"wave"			"buildables/catapult_reload.wav"
+}

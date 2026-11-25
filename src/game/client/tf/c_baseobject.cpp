@@ -364,7 +364,13 @@ void C_BaseObject::FireEvent( const Vector& origin, const QAngle& angles, int ev
 
 const char* C_BaseObject::GetStatusName() const
 {
-	return GetObjectInfo( GetType() )->m_AltModes[GetObjectMode()].pszStatusName;
+	const CObjectInfo *pInfo = GetObjectInfo( GetType() );
+	int iMode = GetObjectMode();
+	if ( !pInfo || iMode < 0 || iMode >= OBJECT_MAX_MODES || !pInfo->m_AltModes[iMode].pszStatusName )
+		iMode = 0;
+	if ( !pInfo || !pInfo->m_AltModes[iMode].pszStatusName )
+		return "";
+	return pInfo->m_AltModes[iMode].pszStatusName;
 }
 
 //-----------------------------------------------------------------------------
@@ -919,8 +925,12 @@ void C_BaseObject::GetTargetIDString( OUT_Z_BYTECAP( iMaxLenInBytes ) wchar_t *s
 		const CObjectInfo* pObjectInfo = GetObjectInfo( GetType() );
 		if ( pObjectInfo && (pObjectInfo->m_iNumAltModes > 0) )
 		{
-			const char *pszModeName = pObjectInfo->m_AltModes[GetObjectMode()].pszModeName;
-			wszModeName = g_pVGuiLocalize->Find( pszModeName );
+			int iMode = GetObjectMode();
+			if ( iMode < 0 || iMode >= OBJECT_MAX_MODES )
+				iMode = 0;
+			const char *pszModeName = pObjectInfo->m_AltModes[iMode].pszModeName;
+			if ( pszModeName )
+				wszModeName = g_pVGuiLocalize->Find( pszModeName );
 			printFormatString = "TF_playerid_object_mode";
 			bHasMode = true;
 		}

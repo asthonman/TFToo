@@ -924,7 +924,13 @@ void CTargetID::UpdateID( void )
 							break;
 						case OBJ_TELEPORTER:
 							{
-								pszActionIcon = (pObj->GetObjectMode() == MODE_TELEPORTER_ENTRANCE) ? "obj_status_tele_entrance" : "obj_status_tele_exit";
+								const int iMode = pObj->GetObjectMode();
+								if ( TeleporterModeIsJumpPad( iMode ) )
+									pszActionIcon = "obj_status_jumppad";
+								else if ( iMode == MODE_TELEPORTER_EXIT )
+									pszActionIcon = "obj_status_tele_exit";
+								else
+									pszActionIcon = "obj_status_tele_entrance";
 							}
 							break;
 						case OBJ_SENTRYGUN:
