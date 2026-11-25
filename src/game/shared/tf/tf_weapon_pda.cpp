@@ -490,6 +490,14 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( tf_weapon_jetboots, CTFWeaponJetBoots );
 PRECACHE_WEAPON_REGISTER( tf_weapon_jetboots );
 
+void CTFWeaponJetBoots::Precache( void )
+{
+	// Not the PDA precache. That registers an empty vgui screen.
+	CTFWeaponBase::Precache();
+	PrecacheParticleSystem( "red_chemist_boots" );
+	PrecacheParticleSystem( "blue_chemist_boots" );
+}
+
 #ifdef CLIENT_DLL
 
 CHudBaseBuildMenu *CTFWeaponPDA_Chemistry::GetBuildMenu() const
@@ -1210,58 +1218,30 @@ CHudMenuChemistry::CHudMenuChemistry( const char *pElementName )
 	RegisterForRenderGroup( "mid" );
 }
 
-static const char *ChemDebuffImage( int slot )
-{
-	if ( slot == CHEM_REPULSION )
-		return "slowed";
-	if ( slot == CHEM_NEUTRAL )
-		return "tftoo_jarate";
-	return "bleed_drop";
-}
-
-static Color ChemDebuffColor( int slot )
-{
-	if ( slot == CHEM_POISON )
-		return Color( 220, 40, 40, 255 );
-	if ( slot == CHEM_NITRIC )
-		return Color( 255, 150, 40, 255 );
-	if ( slot == CHEM_NEUTRAL )
-		return Color( 255, 255, 255, 255 );
-	return Color( 230, 210, 40, 255 );
-}
-
-static void ChemMenu_SetDebuffIcon( vgui::Panel *pPanel, int slot )
+static void ChemMenu_SetDebuffIcon( vgui::Panel *pPanel, int slot, bool bRed )
 {
 	if ( !pPanel )
 		return;
 
 	vgui::ImagePanel *pIcon = dynamic_cast< vgui::ImagePanel * >( pPanel->FindChildByName( "DebuffIcon" ) );
 	CIconPanel *pHud = dynamic_cast< CIconPanel * >( pPanel->FindChildByName( "DebuffHudIcon" ) );
-	const bool bNitric = ( slot == CHEM_NITRIC );
+	if ( pHud )
+		pHud->SetVisible( false );
 	if ( pIcon )
 	{
-		pIcon->SetVisible( !bNitric );
+		pIcon->SetVisible( true );
 		pIcon->SetShouldScaleImage( true );
-		if ( !bNitric )
-		{
-			pIcon->SetImage( ChemDebuffImage( slot ) );
-			pIcon->SetDrawColor( ChemDebuffColor( slot ) );
-		}
-	}
-	if ( pHud )
-	{
-		pHud->SetVisible( bNitric );
-		if ( bNitric )
-		{
-			pHud->SetIcon( "d_firedeath" );
-			pHud->SetIconColor( ChemDebuffColor( slot ) );
-		}
+		pIcon->SetImage( ChemIconVguiImage( slot, bRed ) );
+		pIcon->SetDrawColor( Color( 255, 255, 255, 255 ) );
 	}
 }
 
 void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 {
 	LoadControlSettings( "resource/UI/chem_menu/HudMenuChemistry.res" );
+
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	const bool bRed = !pPlayer || pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
 
 	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
 	{
@@ -1272,7 +1252,7 @@ void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 			CExLabel *pName = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "ItemNameLabel" ) );
 			if ( pName )
 				pName->SetText( ChemConcoctionName( i ) );
-			ChemMenu_SetDebuffIcon( pStates[s], i );
+			ChemMenu_SetDebuffIcon( pStates[s], i, bRed );
 			vgui::Panel *pMetal = pStates[s]->FindChildByName( "MetalIcon" );
 			if ( pMetal )
 				pMetal->SetVisible( false );
@@ -1296,6 +1276,7 @@ void CHudMenuChemistry::UpdateSlots( void )
 		return;
 
 	const int iSelected = pPlayer->m_Shared.GetChemSelected();
+	const bool bRed = pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
 
 	vgui::Label *pSelected = dynamic_cast< vgui::Label * >( FindChildByName( "SelectedLabel" ) );
 	if ( pSelected )
@@ -1311,6 +1292,9 @@ void CHudMenuChemistry::UpdateSlots( void )
 		m_pCantAfford[i]->SetVisible( false );
 		m_pAlreadyBuilt[i]->SetVisible( bReady );
 		m_pUnavailable[i]->SetVisible( !bReady );
+
+		ChemMenu_SetDebuffIcon( m_pAlreadyBuilt[i], i, bRed );
+		ChemMenu_SetDebuffIcon( m_pUnavailable[i], i, bRed );
 
 		vgui::Panel *pMeter = m_pUnavailable[i]->FindChildByName( "BrewMeter" );
 		if ( pMeter )
@@ -1462,14 +1446,12 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 			m_pChunk[i][c]->SetMouseInputEnabled( false );
 			m_pChunk[i][c]->SetVisible( false );
 		}
-		const bool bNitric = ( i == CHEM_NITRIC );
-		m_pDebuff[i]->SetVisible( !bNitric );
+		m_pDebuffHud[i]->SetVisible( false );
+		m_pDebuff[i]->SetVisible( true );
 		m_pDebuff[i]->SetShouldScaleImage( true );
-		m_pDebuffHud[i]->SetVisible( bNitric );
-		if ( bNitric )
-			m_pDebuffHud[i]->SetIcon( "d_firedeath" );
-		else
-			m_pDebuff[i]->SetImage( ChemDebuffImage( i ) );
+		C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+		const bool bRed = !pPlayer || pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
+		m_pDebuff[i]->SetImage( ChemIconVguiImage( i, bRed ) );
 	}
 
 	BaseClass::ApplySchemeSettings( pScheme );
@@ -1533,13 +1515,8 @@ void CHudChemStatus::UpdateRows( void )
 		m_pBackground[i]->SetIcon( ( bReady || bSelected ) ? pszReady : "obj_status_background_disabled" );
 		m_pSelectedBar[i]->SetVisible( bSelected );
 
-		Color iconCol = ChemDebuffColor( i );
-		if ( !bReady && !bSelected )
-			iconCol = Color( 140, 140, 140, 255 );
-		if ( i == CHEM_NITRIC )
-			m_pDebuffHud[i]->SetIconColor( iconCol );
-		else
-			m_pDebuff[i]->SetDrawColor( iconCol );
+		m_pDebuff[i]->SetImage( ChemIconVguiImage( i, bRed ) );
+		m_pDebuff[i]->SetDrawColor( ( !bReady && !bSelected ) ? Color( 140, 140, 140, 255 ) : Color( 255, 255, 255, 255 ) );
 
 		int nChunks = (int)flMax;
 		if ( nChunks < 1 )

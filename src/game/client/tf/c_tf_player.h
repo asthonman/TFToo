@@ -116,6 +116,7 @@ public:
 
 	virtual void PreThink( void );
 	virtual void ClientThink();
+	void	UpdateJetBootParticles();
 
 	void	UpdateTimers();
 
@@ -751,6 +752,10 @@ public:
 	CSoundPatch			*m_pBurningSound;
 	HPARTICLEFFECT      m_pBurningEffect;
 	float				m_flBurnEffectStartTime;
+
+	// Chemist jet boots. One effect on each foot.
+	HPARTICLEFFECT		m_pJetBootEffect[2];
+	const char			*m_pszJetBootEffect;
 
 	// Urine
 	HPARTICLEFFECT		m_pUrineEffect;

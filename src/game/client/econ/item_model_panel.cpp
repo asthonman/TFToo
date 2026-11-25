@@ -40,12 +40,15 @@
 #include "hud.h"
 #include "tf_item_inventory.h"
 #include "vgui_controls/ImagePanel.h"
+#include "tf_chemist.h"
+#include "c_tf_player.h"
 #endif // TF_CLIENT_DLL
 #include "KeyValues.h"
 
 #ifdef TF_CLIENT_DLL
 static bool ItemWantsBlueprintIcon( const CEconItemView *pItem );
 static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry );
+extern int GetVisibleLoadoutTeam( void );
 #endif
 
 ConVar tf_time_loading_item_panels( "tf_time_loading_item_panels", "0.0005", FCVAR_ARCHIVE, "The time to spend per frame loading data for item panels" );
@@ -3463,37 +3466,44 @@ static const char *BlueprintHudIconName( const char *pszLog, bool bMiniSentry )
 		return "hud_menu_jumppad_a_build";
 	if ( BlueprintLogName( pszLog, "pda_jump_pad_2" ) || BlueprintLogName( pszLog, "b33" ) )
 		return "hud_menu_jumppad_b_build";
-	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
-		return "d_firedeath";
 	return NULL;
 }
 
-static const char *BlueprintVguiImage( const char *pszLog )
+static bool BlueprintIconIsRed( const CEconItemView *pItem )
 {
-	// Scheme GetImage() always prepends "vgui/", so these are materials/vgui/<name>.
-	// "../effects/jarated" is the colorblind peejar sprite (Sprite shader). It draws
-	// broken in an ImagePanel and is not gated on tf_colorblindassist here.
-	if ( BlueprintLogName( pszLog, "chem_poison" ) || BlueprintLogName( pszLog, "b26" ) )
-		return "bleed_drop";
-	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" ) )
-		return "slowed";
-	if ( BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
-		return "tftoo_jarate";
-	return NULL;
+	const int iLoadoutTeam = GetVisibleLoadoutTeam();
+	if ( iLoadoutTeam == TF_TEAM_BLUE )
+		return false;
+	if ( iLoadoutTeam == TF_TEAM_RED )
+		return true;
+
+	C_TFPlayer *pLocal = C_TFPlayer::GetLocalTFPlayer();
+	if ( pLocal )
+	{
+		if ( pLocal->GetTeamNumber() == TF_TEAM_BLUE )
+			return false;
+		if ( pLocal->GetTeamNumber() == TF_TEAM_RED )
+			return true;
+	}
+
+	if ( pItem && pItem->GetTeamNumber() == TF_TEAM_BLUE )
+		return false;
+	return true;
 }
 
-static Color BlueprintIconColor( const char *pszLog )
+static const char *BlueprintVguiImage( const char *pszLog, bool bRed )
 {
+	// Scheme GetImage() always prepends "vgui/". The effects/ chemicons are
+	// SpriteCards, so the loadout uses the UnlitGeneric copies under vgui/.
 	if ( BlueprintLogName( pszLog, "chem_poison" ) || BlueprintLogName( pszLog, "b26" ) )
-		return Color( 220, 40, 40, 255 );
-	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
-		return Color( 255, 150, 40, 255 );
+		return ChemIconVguiImage( CHEM_POISON, bRed );
 	if ( BlueprintLogName( pszLog, "chem_repulsion" ) || BlueprintLogName( pszLog, "b27" ) )
-		return Color( 230, 210, 40, 255 );
-	// Neutralizing uses the jar texture's own yellow. Don't multiply it again.
+		return ChemIconVguiImage( CHEM_REPULSION, bRed );
+	if ( BlueprintLogName( pszLog, "chem_nitric" ) || BlueprintLogName( pszLog, "b28" ) )
+		return ChemIconVguiImage( CHEM_NITRIC, bRed );
 	if ( BlueprintLogName( pszLog, "chem_neutral" ) || BlueprintLogName( pszLog, "b29" ) )
-		return Color( 255, 255, 255, 255 );
-	return Color( 255, 255, 255, 255 );
+		return ChemIconVguiImage( CHEM_NEUTRAL, bRed );
+	return NULL;
 }
 
 static const char *BlueprintItemKey( const CEconItemView *pItem )
@@ -3550,9 +3560,10 @@ void CItemModelPanel::ApplyBlueprintIcon( void )
 		m_pLoadingSpinner->SetVisible( false );
 
 	const bool bMini = EngineerLoadoutBuildsMiniSentry();
+	const bool bRed = BlueprintIconIsRed( pItem );
 	const char *pszHud = BlueprintHudIconName( pszKey, bMini );
-	const char *pszImage = pszHud ? NULL : BlueprintVguiImage( pszKey );
-	Color iconColor = BlueprintIconColor( pszKey );
+	const char *pszImage = pszHud ? NULL : BlueprintVguiImage( pszKey, bRed );
+	Color iconColor( 255, 255, 255, 255 );
 	if ( IsGreyedOut() )
 		iconColor = Color( 128, 128, 128, 255 );
 

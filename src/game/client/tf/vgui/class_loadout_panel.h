@@ -81,6 +81,7 @@ public:
 
 	void		 SetClass( int iClass );
 	void		 SetTeam( int iTeam );
+	int			 GetCurrentTeamIndex( void ) const { return m_iCurrentTeamIndex; }
 
 	int			 GetNumRelevantSlots() const;
 	CEconItemView	*GetItemInSlot( int iSlot );
@@ -163,5 +164,6 @@ private:
 };
 
 extern CClassLoadoutPanel *g_pClassLoadoutPanel;
+int GetVisibleLoadoutTeam( void );
 
 #endif // CLASS_LOADOUT_PANEL_H

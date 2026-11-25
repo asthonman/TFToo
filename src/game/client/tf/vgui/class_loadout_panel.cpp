@@ -1077,6 +1077,13 @@ void CClassLoadoutPanel::SetTeam( int iTeam )
 	m_iCurrentTeamIndex = iTeam;
 }
 
+int GetVisibleLoadoutTeam( void )
+{
+	if ( !g_pClassLoadoutPanel || !g_pClassLoadoutPanel->IsVisible() )
+		return TEAM_UNASSIGNED;
+	return g_pClassLoadoutPanel->GetCurrentTeamIndex();
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------

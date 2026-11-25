@@ -5,4 +5,5 @@ particles_manifest
 	"file"		"particles/effects_moneybag_indev.pcf"
 	"file"		"particles/effects_mobster_indev.pcf"
 	"file"		"particles/building_jumppad.pcf"
+	"file"		"particles/boot_particles.pcf"
 }

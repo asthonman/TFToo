@@ -69,6 +69,20 @@ float	ChemBrewSeconds( int slot );
 int		ChemUsesPerBrew( int slot );
 const char *ChemConcoctionName( int slot );
 
+// VGUI image name (materials/vgui/<name>). The effects/ SpriteCards are particle
+// sprites and do not draw in an ImagePanel. Neutralizer uses the white cross.
+inline const char *ChemIconVguiImage( int slot, bool bRed )
+{
+	switch ( slot )
+	{
+	case CHEM_POISON:		return bRed ? "chemicon_poison_red" : "chemicon_poison_blu";
+	case CHEM_REPULSION:	return "chemicon_repulsiongel";
+	case CHEM_NITRIC:		return bRed ? "chemicon_nitricfluid_red" : "chemicon_nitricfluid_blu";
+	case CHEM_NEUTRAL:		return "chemicon_healingsalve";
+	default:				return bRed ? "chemicon_poison_red" : "chemicon_poison_blu";
+	}
+}
+
 #ifdef GAME_DLL
 void	Chemist_Throw( CTFPlayer *pPlayer, int slot );
 // Paint plus a splash. Neutralizing cleanses allies. The others coat enemies.

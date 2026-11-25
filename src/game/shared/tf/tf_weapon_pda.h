@@ -198,6 +198,7 @@ public:
 	virtual bool	VisibleInWeaponSelection( void ) { return false; }
 	virtual bool	AllowsAutoSwitchTo( void ) { return false; }
 	virtual bool	CanDeploy( void ) { return false; }
+	virtual void	Precache( void );
 	virtual void	PrimaryAttack( void ) {}
 	virtual void	SecondaryAttack( void ) {}
 

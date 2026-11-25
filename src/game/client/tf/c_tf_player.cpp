@@ -4052,6 +4052,9 @@ C_TFPlayer::C_TFPlayer() :
 	m_pTeleporterEffect = NULL;
 	m_pBurningSound = NULL;
 	m_pBurningEffect = NULL;
+	m_pJetBootEffect[0] = NULL;
+	m_pJetBootEffect[1] = NULL;
+	m_pszJetBootEffect = NULL;
 	m_pUrineEffect = NULL;
 	m_pMilkEffect = NULL;
 	m_pGasEffect = NULL;
@@ -7037,6 +7040,34 @@ static void UpdateGuardDogVision()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void C_TFPlayer::UpdateJetBootParticles( void )
+{
+	const bool bOn = IsAlive() && IsPlayerClass( TF_CLASS_CHEMIST ) && m_Shared.IsChemJetting();
+	const char *pszWant = NULL;
+	if ( bOn )
+		pszWant = ( GetTeamNumber() == TF_TEAM_BLUE ) ? "blue_chemist_boots" : "red_chemist_boots";
+
+	if ( pszWant == m_pszJetBootEffect && ( !pszWant || m_pJetBootEffect[0] ) )
+		return;
+
+	for ( int i = 0; i < 2; ++i )
+	{
+		if ( m_pJetBootEffect[i] )
+		{
+			ParticleProp()->StopEmission( m_pJetBootEffect[i] );
+			m_pJetBootEffect[i] = NULL;
+		}
+	}
+
+	m_pszJetBootEffect = pszWant;
+	if ( !pszWant )
+		return;
+
+	static const char *const s_pszFoot[2] = { "foot_L", "foot_R" };
+	for ( int i = 0; i < 2; ++i )
+		m_pJetBootEffect[i] = ParticleProp()->Create( pszWant, PATTACH_POINT_FOLLOW, s_pszFoot[i] );
+}
+
 void C_TFPlayer::ClientThink()
 {
 	// Pass on through to the base class.
@@ -7112,6 +7143,8 @@ void C_TFPlayer::ClientThink()
 			m_bCigaretteSmokeActive = false;
 		}
 	}
+
+	UpdateJetBootParticles();
 
 	if ( m_bWaterExitEffectActive && !IsAlive() )
 	{
