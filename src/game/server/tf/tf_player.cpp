@@ -987,6 +987,7 @@ CTFPlayer::CTFPlayer()
 
 	m_bHudClassAutoKill = false;
 	m_bMedigunAutoHeal = false;
+	m_bJumpPadFallResist = false;
 
 	m_vecLastDeathPosition = Vector( FLT_MAX, FLT_MAX, FLT_MAX );
 
@@ -2365,9 +2366,13 @@ void CTFPlayer::TFPlayerThink()
 			m_bIsTeleportingUsingEurekaEffect = false;
 
 			CObjectTeleporter* pTeleExit = assert_cast< CObjectTeleporter* >( GetObjectOfType( OBJ_TELEPORTER, MODE_TELEPORTER_EXIT ) );
+
+			// Pads replace the teleporter, so Eureka can only send you home.
+			CEconItemView *pSlot3 = GetLoadoutItem( TF_CLASS_ENGINEER, LOADOUT_POSITION_PDA_SLOT3 );
+			const bool bPadsInstead = EngineerBlueprintItemIsPad( pSlot3 );
 			 
 			// Check if they wanted to go to their teleporter AND their teleporter can accept them
-			if ( m_eEurekaTeleportTarget == EUREKA_TELEPORT_TELEPORTER_EXIT && pTeleExit && ( pTeleExit->GetState() != TELEPORTER_STATE_BUILDING ) )
+			if ( !bPadsInstead && m_eEurekaTeleportTarget == EUREKA_TELEPORT_TELEPORTER_EXIT && pTeleExit && !pTeleExit->IsPad() && ( pTeleExit->GetState() != TELEPORTER_STATE_BUILDING ) )
 			{
 				pTeleExit->RecieveTeleportingPlayer( this );
 			}
@@ -4570,6 +4575,7 @@ void CTFPlayer::Spawn()
 	SetModelScale( 1.0f );
 	m_bBrickGrown = false;
 	m_bBrickGrowDuck = false;
+	m_bJumpPadFallResist = false;
 	UpdateModel();
 
 	SetMoveType( MOVETYPE_WALK );
@@ -9796,6 +9802,48 @@ static float PlayerBlastJumpDmgScale( CTFPlayer *pPlayer )
 ConVar tf_debug_damage( "tf_debug_damage", "0", FCVAR_CHEAT );
 
 //-----------------------------------------------------------------------------
+// Purpose: Thermal thruster landing, without the wrench attribute or the stun.
+// 75% of the fall damage was already applied by the caller.
+//-----------------------------------------------------------------------------
+void CTFPlayer::ApplyJumpPadLanding( float flFallVelocity )
+{
+	if ( !m_bJumpPadFallResist )
+		return;
+
+	m_bJumpPadFallResist = false;
+
+	float flPushAmount = RemapValClamped( flFallVelocity, 100.f, 1000.f, tf_rocketpack_impact_push_min.GetFloat(), tf_rocketpack_impact_push_max.GetFloat() );
+	float flPushRadius = RemapValClamped( flFallVelocity, 100.f, 1000.f, 150.f, 220.f );
+
+	TFGameRules()->PushAllPlayersAway( GetAbsOrigin(), flPushRadius, flPushAmount, GetEnemyTeam( GetTeamNumber() ) );
+
+	m_Local.m_flFallVelocity = 0.f;
+
+	// Extinguish teammates, same loop as the thermal thruster.
+	CUtlVector< CTFPlayer * > vecPlayers;
+	CollectPlayers( &vecPlayers, GetTeamNumber(), COLLECT_ONLY_LIVING_PLAYERS );
+	FOR_EACH_VEC( vecPlayers, i )
+	{
+		CTFPlayer *pPlayer = vecPlayers[i];
+		if ( !pPlayer )
+			continue;
+
+		if ( !pPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+			continue;
+
+		if ( ( pPlayer->GetAbsOrigin() - GetAbsOrigin() ).LengthSqr() > ( flPushRadius * flPushRadius ) )
+			continue;
+
+		if ( !FVisible( pPlayer, MASK_OPAQUE ) )
+			continue;
+
+		pPlayer->m_Shared.RemoveCond( TF_COND_BURNING );
+		pPlayer->EmitSound( "TFPlayer.FlameOut" );
+		CTF_GameStats.Event_PlayerAwardBonusPoints( this, pPlayer, 10 );
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
@@ -10041,6 +10089,13 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			}
 
 			info.SetDamage( Max( info.GetDamage() * 0.25f, 1.f ) );
+		}
+
+		// 75% fall resistance from a jump pad, then the thermal thruster's landing.
+		if ( m_bJumpPadFallResist )
+		{
+			info.SetDamage( Max( info.GetDamage() * 0.25f, 1.f ) );
+			ApplyJumpPadLanding( flOriginalVelocity );
 		}
 	}
 

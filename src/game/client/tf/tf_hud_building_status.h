@@ -292,12 +292,15 @@ class CBuildingStatusItem_TeleporterExit : public CBuildingStatusItem
 
 public:
 	CBuildingStatusItem_TeleporterExit( Panel *parent );
+	virtual void OnTick( void );
 	virtual void PerformLayout( void );
 
 private:
 
 	CIconPanel *m_pUpgradeIcon;
 	vgui::ContinuousProgressBar *m_pUpgradeProgress;
+	// Slot 4 is an exit res file, which has no recharge bar. Pads need one.
+	vgui::ContinuousProgressBar *m_pPadRecharge;
 };
 
 
