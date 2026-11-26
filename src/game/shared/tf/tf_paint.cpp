@@ -644,7 +644,7 @@ void CTFPaintMap::DecalRepulsionCoats( void )
 	{
 		if ( CoatDie( i ) <= gpGlobals->curtime )
 			continue;
-		CBaseEntity *pEnt = UTIL_EntityByIndex( CoatEntIndex( i ) );
+		CBaseEntity *pEnt = cl_entitylist->GetBaseEntity( CoatEntIndex( i ) );
 		if ( pEnt )
 			want.AddToTail( pEnt );
 	}
@@ -660,7 +660,7 @@ void CTFPaintMap::DecalRepulsionCoats( void )
 			die = pPlayer->m_Shared.GetRepulseGelUntil();
 		for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
 		{
-			CBaseEntity *pCoat = UTIL_EntityByIndex( CoatEntIndex( i ) );
+			CBaseEntity *pCoat = cl_entitylist->GetBaseEntity( CoatEntIndex( i ) );
 			if ( pCoat == pEnt && CoatDie( i ) > die )
 				die = CoatDie( i );
 		}
