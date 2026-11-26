@@ -847,6 +847,73 @@ void CTFGrenadePipebombProjectile::PipebombTouch( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 extern bool PropDynamic_CollidesWithGrenades( CBaseEntity* pBaseEntity );
 
+// VPhysics has already resolved the contact by the time this runs, so
+// GetAbsVelocity() is the leftover speed (often ~0 for a sticky). The
+// surface normal points at collision object 1, not out of the brush.
+static bool PipebombTryGelBounce( CTFGrenadePipebombProjectile *pBomb, int index, gamevcollisionevent_t *pEvent )
+{
+	CBaseEntity *pHit = pEvent->pEntities[!index];
+	if ( !pHit || pHit->IsPlayer() || pHit->IsBaseObject() )
+		return false;
+
+	surfacedata_t *pprops = physprops->GetSurfaceData( pEvent->surfaceProps[!index] );
+	if ( pprops && pprops->game.material == 'X' )
+		return false;
+
+	Vector n;
+	pEvent->pInternalData->GetSurfaceNormal( n );
+	if ( index == 0 )
+		n.Negate();
+	if ( n.NormalizeInPlace() < 0.1f )
+		return false;
+
+	Vector contact;
+	pEvent->pInternalData->GetContactPoint( contact );
+
+	Vector pre = pEvent->preVelocity[index];
+	if ( pre.LengthSqr() < 100.f * 100.f )
+	{
+		IPhysicsObject *pPhys = pBomb->VPhysicsGetObject();
+		AngularImpulse ang( 0, 0, 0 );
+		if ( pPhys )
+			pPhys->GetVelocity( &pre, &ang );
+	}
+
+	const Vector saved = pBomb->GetAbsVelocity();
+	pBomb->SetAbsVelocity( pre );
+
+	bool bounced = TFPaint_ReflectProjectile( pBomb, contact, n );
+	if ( !bounced )
+		bounced = TFPaint_ReflectProjectile( pBomb, pBomb->GetAbsOrigin(), n );
+	if ( !bounced )
+	{
+		pBomb->SetAbsVelocity( saved );
+		return false;
+	}
+
+	// Floor gel launches harder than a wall, same numbers as a player bounce.
+	Vector out = pBomb->GetAbsVelocity();
+	const float away = DotProduct( out, n );
+	const float flMin = ( n.z > 0.7f ) ? tf_paint_bounce_min.GetFloat() : tf_paint_bounce_wall.GetFloat();
+	if ( away < flMin )
+		out += n * ( flMin - away );
+
+	pBomb->SetAbsVelocity( out );
+	pBomb->SetGroundEntity( NULL );
+	IPhysicsObject *pPhys = pBomb->VPhysicsGetObject();
+	if ( pPhys )
+	{
+		AngularImpulse ang( 0, 0, 0 );
+		pPhys->EnableMotion( true );
+		pPhys->SetVelocity( &out, &ang );
+		pPhys->Wake();
+	}
+
+	// Not a world touch. Loch-n-Load must not shatter, and a sticky must not arm.
+	pBomb->m_bTouched = false;
+	return true;
+}
+
 void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
 {
 	BaseClass::VPhysicsCollision( index, pEvent );
@@ -860,26 +927,15 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 	// A sticky that sits on the ground never explodes, but it still struck the puddle.
 	TFPaint_IgniteNitricAt( GetAbsOrigin(), 48.f );
 
+	// Before wall-shatter (Loch-n-Load) and before a sticky sticks.
+	if ( PipebombTryGelBounce( this, index, pEvent ) )
+		return;
+
 	if ( m_bWallShatter )
 	{
 		Fizzle();
 		Detonate();
 		return;
-	}
-
-	// Bounce off repulsion gel without counting as a world touch, so a later
-	// hit on an enemy player can still detonate a grenade immediately.
-	if ( pHitEntity && !pHitEntity->IsPlayer() && !pHitEntity->IsBaseObject() && pHitEntity->m_takedamage == DAMAGE_NO )
-	{
-		surfacedata_t *pGelProps = physprops->GetSurfaceData( pEvent->surfaceProps[otherIndex] );
-		if ( !pGelProps || pGelProps->game.material != 'X' )
-		{
-			Vector vecNormal;
-			pEvent->pInternalData->GetSurfaceNormal( vecNormal );
-			vecNormal.Negate();
-			if ( TFPaint_ReflectProjectile( this, GetAbsOrigin(), vecNormal ) )
-				return;
-		}
 	}
 
 	if ( m_iType == TF_GL_MODE_REGULAR || m_iType == TF_GL_MODE_CANNONBALL )
