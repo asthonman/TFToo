@@ -81,6 +81,7 @@ protected:
 
 	float	 m_flSpawnTime;
 	int		m_iCachedDeflect;
+	int		m_iCachedTeam;
 	CNetworkHandle( CBaseEntity, m_hLauncher );
 
 //=============================================================================
@@ -122,6 +123,9 @@ public:
 
 	virtual void	SetLauncher( CBaseEntity *pLauncher ) OVERRIDE { m_hLauncher = pLauncher; BaseClass::SetLauncher( pLauncher ); }
 	CBaseEntity		*GetLauncher( void ) { return m_hLauncher; }
+
+	// Team change after bouncing off a friendly Brick. No deflect count, so no mini-crit.
+	virtual void	OnRepulseClaim( CTFPlayer *pNew ) {}
 
 	virtual bool	IsDestroyable( bool bOrbAttack = false ) OVERRIDE { return ( !bOrbAttack ? ( gpGlobals->curtime > m_flDestroyableTime ) : true ); }
 

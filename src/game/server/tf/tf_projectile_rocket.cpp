@@ -179,3 +179,11 @@ void CTFProjectile_Rocket::Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir 
 	IncrementDeflected();
 	m_nSkin = ( GetTeamNumber() == TF_TEAM_BLUE ) ? 1 : 0;
 }
+
+void CTFProjectile_Rocket::OnRepulseClaim( CTFPlayer *pNew )
+{
+	if ( !pNew )
+		return;
+	SetScorer( pNew );
+	m_nSkin = ( pNew->GetTeamNumber() == TF_TEAM_BLUE ) ? 1 : 0;
+}

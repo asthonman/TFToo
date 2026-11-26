@@ -72,6 +72,7 @@ public:
 	virtual void	IncrementDeflected( void );
 	
 	virtual void	Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir );
+	virtual void	OnRepulseClaim( CTFPlayer *pNew ) OVERRIDE;
 	
 	virtual bool	ShouldNotDetonate( void ) { return true; }
 	bool			IsAlight() { return m_bArrowAlight; }

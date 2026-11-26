@@ -38,6 +38,10 @@
 #include "materialsystem/imaterial.h"
 #include "texture_group_names.h"
 #include "engine/IStaticPropMgr.h"
+#include "basegrenade_shared.h"
+#include "tf_projectile_base.h"
+#include "tf_weaponbase_rocket.h"
+#include "tf_weaponbase_grenadeproj.h"
 #endif
 
 #include "materialsystem/imaterialvar.h"
@@ -409,6 +413,7 @@ void CTFPaintMap::Spawn( void )
 	PrecacheParticleSystem( "glue_paint_blob" );
 	PrecacheParticleSystem( "glue_stuck_blob" );
 	PrecacheParticleSystem( "glue_blob_pop" );
+	PrecacheParticleSystem( "repulse_stuck_blob" );
 
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
@@ -2251,6 +2256,43 @@ bool TFPaint_IsRepulsionCoated( CBaseEntity *pEnt )
 	return false;
 }
 
+#ifndef CLIENT_DLL
+// Airblast's team change, without IncrementDeflected, so there is no mini-crit.
+static void TFPaint_ClaimNoCrit( CBaseEntity *pProj, CTFPlayer *pNew )
+{
+	if ( !pProj || !pNew )
+		return;
+
+	pProj->ChangeTeam( pNew->GetTeamNumber() );
+	pProj->SetOwnerEntity( pNew );
+
+	CBaseGrenade *pGren = dynamic_cast< CBaseGrenade * >( pProj );
+	if ( pGren )
+		pGren->SetThrower( pNew );
+
+	CBaseProjectile *pBase = dynamic_cast< CBaseProjectile * >( pProj );
+	if ( pBase )
+		pBase->SetLauncher( pNew->GetActiveWeapon() );
+
+	CTFWeaponBaseGrenadeProj *pPipe = dynamic_cast< CTFWeaponBaseGrenadeProj * >( pProj );
+	if ( pPipe )
+		pPipe->SetLauncher( pNew->GetActiveWeapon() );
+
+	CTFBaseRocket *pRocket = dynamic_cast< CTFBaseRocket * >( pProj );
+	if ( pRocket )
+	{
+		pRocket->SetLauncher( pNew->GetActiveWeapon() );
+		pRocket->OnRepulseClaim( pNew );
+	}
+
+	CTFBaseProjectile *pBaseProj = dynamic_cast< CTFBaseProjectile * >( pProj );
+	if ( pBaseProj )
+		pBaseProj->SetScorer( pNew );
+
+	pProj->EmitSound( "Weapon_FlameThrower.AirBurstAttack" );
+}
+#endif
+
 bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vector &hitPos )
 {
 	if ( !pProj || !pHit || !TFPaint_IsRepulsionCoated( pHit ) )
@@ -2259,7 +2301,17 @@ bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vect
 	Vector n = hitPos - pHit->WorldSpaceCenter();
 	if ( n.LengthSqr() < 1.f )
 		n = pProj->GetAbsOrigin() - pHit->WorldSpaceCenter();
-	return TFPaint_ReflectProjectile( pProj, hitPos, n, true );
+	if ( !TFPaint_ReflectProjectile( pProj, hitPos, n, true ) )
+		return false;
+
+#ifndef CLIENT_DLL
+	// Enemy shots off a friendly Brick change teams like an airblast, but
+	// GetDeflected() stays 0 so the hit is not a mini-crit.
+	CTFPlayer *pBrick = ToTFPlayer( pHit );
+	if ( pBrick && pBrick->m_Shared.HasRepulseBuff() && pProj->GetTeamNumber() != pBrick->GetTeamNumber() )
+		TFPaint_ClaimNoCrit( pProj, pBrick );
+#endif
+	return true;
 }
 
 #ifndef CLIENT_DLL
@@ -2342,7 +2394,12 @@ bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter )
 	const float until = gpGlobals->curtime + seconds;
 	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
 	if ( pPlayer )
-		pPlayer->m_Shared.AddRepulseGel( seconds );
+	{
+		const bool bBuff = pPlayer->IsPlayerClass( TF_CLASS_BRICK )
+			&& team >= TF_TEAM_RED
+			&& pPlayer->GetTeamNumber() == team;
+		pPlayer->m_Shared.AddRepulseGel( seconds, bBuff );
+	}
 
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )

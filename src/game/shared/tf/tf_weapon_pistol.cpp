@@ -172,7 +172,7 @@ void CTFPistol_ScoutPrimary::Push( void )
 			Vector vecToVictim = pVictim->GetAbsOrigin() - pOwner->GetAbsOrigin();
 			VectorNormalize( vecToVictim );
 			float flPush = 400.f;
-			if ( pOwner->IsPlayerClass( TF_CLASS_BRICK ) && pOwner->m_Shared.InRepulseGel() )
+			if ( pOwner->m_Shared.HasRepulseBuff() )
 				flPush *= 1.75f;
 			pVictim->ApplyGenericPushbackImpulse( vecToVictim * flPush, pOwner );
 			float flDamage = GetPushDamage();

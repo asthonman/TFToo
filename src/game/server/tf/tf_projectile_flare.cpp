@@ -614,6 +614,14 @@ void CTFProjectile_Flare::Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir )
 	SetScorer( pTFDeflector );
 }
 
+void CTFProjectile_Flare::OnRepulseClaim( CTFPlayer *pNew )
+{
+	if ( !pNew )
+		return;
+	SetScorer( pNew );
+	m_nSkin = ( pNew->GetTeamNumber() == TF_TEAM_BLUE ) ? 1 : 0;
+}
+
 float CTFProjectile_Flare::GetProjectileSpeed( void ) const
 {
 	float flLaunchSpeed = FLARE_SPEED;

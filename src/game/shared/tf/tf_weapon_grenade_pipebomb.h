@@ -88,6 +88,7 @@ public:
 	bool			IsHighlighted( void ) { return m_bHighlight; }
 
 	int		m_iCachedDeflect;
+	int		m_iCachedTeam;
 	CNewParticleEffect	*pEffectTrail;
 	CNewParticleEffect	*pEffectCrit;
 	bool		m_bHighlight;

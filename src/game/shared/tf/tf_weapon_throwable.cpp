@@ -11,6 +11,7 @@
 #include "basetypes.h"
 #include "tf_weaponbase_gun.h"
 #include "effect_dispatch_data.h"
+#include "tf_paint.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -563,6 +564,12 @@ void CTFProjectile_ThrowableBrick::BrickImpactThink( void )
 
 void CTFProjectile_ThrowableBrick::PipebombTouch( CBaseEntity *pOther )
 {
+	if ( pOther && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, GetAbsOrigin() );
+		return;
+	}
+
 	if ( m_bHit || !pOther || pOther == GetThrower() )
 		return;
 

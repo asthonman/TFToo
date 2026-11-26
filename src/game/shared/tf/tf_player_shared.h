@@ -516,8 +516,11 @@ public:
 	void	AddGlue( float flSeconds );
 	bool	InGlue( void ) const;
 	// Repulsion gel on this body. Absolute gpGlobals->curtime.
-	void	AddRepulseGel( float flSeconds );
+	// bBuff is a friendly coat on a Brick: higher jump, harder shove, and
+	// enemy shots that bounce off them change teams.
+	void	AddRepulseGel( float flSeconds, bool bBuff = false );
 	bool	InRepulseGel( void ) const;
+	bool	HasRepulseBuff( void ) const;
 	float	GetRepulseGelUntil( void ) const { return m_flRepulseUntil; }
 	int		GetChemSelected( void ) const;
 	void	SetChemSelected( int slot );
@@ -1352,6 +1355,7 @@ private:
 	CNetworkVar( float, m_flIceUntil );
 	CNetworkVar( float, m_flGlueUntil );
 	CNetworkVar( float, m_flRepulseUntil );
+	CNetworkVar( bool, m_bRepulseBuff );
 	CNetworkVar( float, m_flPoisonExpire );
 	CNetworkVar( float, m_flNitricUntil );
 	CNetworkVar( float, m_flWetUntil );

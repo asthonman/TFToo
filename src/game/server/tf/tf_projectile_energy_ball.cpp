@@ -253,6 +253,23 @@ void CTFProjectile_EnergyBall::Deflected( CBaseEntity *pDeflectedBy, Vector &vec
 	}
 }
 
+void CTFProjectile_EnergyBall::OnRepulseClaim( CTFPlayer *pNew )
+{
+	if ( !pNew )
+		return;
+	SetScorer( pNew );
+	if ( pNew->GetTeamNumber() == TF_TEAM_BLUE )
+	{
+		m_vColor1 = TF_PARTICLE_WEAPON_BLUE_1;
+		m_vColor2 = TF_PARTICLE_WEAPON_BLUE_2;
+	}
+	else
+	{
+		m_vColor1 = TF_PARTICLE_WEAPON_RED_1;
+		m_vColor2 = TF_PARTICLE_WEAPON_RED_2;
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------

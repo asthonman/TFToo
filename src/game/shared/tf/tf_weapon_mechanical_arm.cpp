@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "tf_weapon_mechanical_arm.h"
 #include "in_buttons.h"
+#include "tf_paint.h"
 
 #if !defined( CLIENT_DLL )
 #include "tf_player.h"
@@ -650,6 +651,13 @@ bool CTFProjectile_MechanicalArmOrb::ShouldProjectileIgnore( CBaseEntity *pOther
 //-----------------------------------------------------------------------------
 void CTFProjectile_MechanicalArmOrb::RocketTouch( CBaseEntity *pOther )
 {
+	if ( pOther && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
+		TFPaint_ReflectOffCoated( this, pOther, pTrace->endpos );
+		return;
+	}
+
 	if ( pOther->IsPlayer() )
 		return;
 

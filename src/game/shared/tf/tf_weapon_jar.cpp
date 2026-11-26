@@ -547,19 +547,23 @@ void CTFProjectile_Jar::PipebombTouch( CBaseEntity *pOther )
 	// Don't collide with teammate if we're still in the grace period.
 	if ( pOther->IsPlayer() && pOther->GetTeamNumber() == GetTeamNumber() && !CanCollideWithTeammates() )
 	{
-		// Exception to this rule - if we're a jar or milk, and our potential victim is on fire, then allow collision after all.
-		// If we're a jar or milk, then still allow collision if our potential victim is on fire.
-		if (m_iProjectileType == TF_PROJECTILE_JAR || m_iProjectileType == TF_PROJECTILE_JAR_MILK)
+		// Repulsion gel has to land on a friendly Brick. Other jars still pass through teammates.
+		CTFPlayer *pAlly = ToTFPlayer( pOther );
+		const bool bCoatBrick = ( m_nChemSlot == CHEM_REPULSION && pAlly && pAlly->IsPlayerClass( TF_CLASS_BRICK ) );
+		if ( !bCoatBrick )
 		{
-			auto victim = ToTFPlayer(pOther);
-			if (!victim->m_Shared.InCond(TF_COND_BURNING))
+			// Exception to this rule - if we're a jar or milk, and our potential victim is on fire, then allow collision after all.
+			// If we're a jar or milk, then still allow collision if our potential victim is on fire.
+			if ( m_iProjectileType == TF_PROJECTILE_JAR || m_iProjectileType == TF_PROJECTILE_JAR_MILK )
+			{
+				auto victim = ToTFPlayer( pOther );
+				if ( !victim->m_Shared.InCond( TF_COND_BURNING ) )
+					return;
+			}
+			else
 			{
 				return;
 			}
-		}
-		else
-		{
-			return;
 		}
 	}
 

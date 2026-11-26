@@ -1736,8 +1736,8 @@ bool CTFGameMovement::CheckJumpButton()
 		flJumpMod *= 1.8f;
 	}
 
-	// Repulsion gel on a Brick. 1.5x jump height, so the velocity scale is sqrt(1.5).
-	if ( m_pTFPlayer->IsPlayerClass( TF_CLASS_BRICK ) && m_pTFPlayer->m_Shared.InRepulseGel() )
+	// Repulsion gel on a friendly Brick. 1.5x jump height, so the velocity scale is sqrt(1.5).
+	if ( m_pTFPlayer->m_Shared.HasRepulseBuff() )
 		flJumpMod *= 1.224745f;
 	
 	float flMul = ( 289.0f * flJumpMod ) * flGroundFactor;

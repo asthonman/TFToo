@@ -453,6 +453,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropFloat( RECVINFO( m_flIceUntil ) ),
 	RecvPropFloat( RECVINFO( m_flGlueUntil ) ),
 	RecvPropFloat( RECVINFO( m_flRepulseUntil ) ),
+	RecvPropBool( RECVINFO( m_bRepulseBuff ) ),
 	RecvPropFloat( RECVINFO( m_flPoisonExpire ) ),
 	RecvPropFloat( RECVINFO( m_flNitricUntil ) ),
 	RecvPropFloat( RECVINFO( m_flWetUntil ) ),
@@ -504,6 +505,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_flIceUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flGlueUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flRepulseUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_bRepulseBuff, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flPoisonExpire, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNitricUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flWetUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -659,6 +661,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropFloat( SENDINFO( m_flIceUntil ) ),
 	SendPropFloat( SENDINFO( m_flGlueUntil ) ),
 	SendPropFloat( SENDINFO( m_flRepulseUntil ) ),
+	SendPropBool( SENDINFO( m_bRepulseBuff ) ),
 	SendPropFloat( SENDINFO( m_flPoisonExpire ) ),
 	SendPropFloat( SENDINFO( m_flNitricUntil ) ),
 	SendPropFloat( SENDINFO( m_flWetUntil ) ),
@@ -987,6 +990,7 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flIceUntil = 0.f;
 	m_flGlueUntil = 0.f;
 	m_flRepulseUntil = 0.f;
+	m_bRepulseBuff = false;
 	m_flPoisonExpire = 0.f;
 	m_flNitricUntil = 0.f;
 	m_flWetUntil = 0.f;
@@ -1028,10 +1032,19 @@ bool CTFPlayerShared::InGlue( void ) const
 	return m_flGlueUntil > gpGlobals->curtime;
 }
 
-void CTFPlayerShared::AddRepulseGel( float flSeconds )
+void CTFPlayerShared::AddRepulseGel( float flSeconds, bool bBuff )
 {
+	if ( m_flRepulseUntil <= gpGlobals->curtime )
+		m_bRepulseBuff = false;
 	if ( flSeconds <= 0.f )
 		return;
+
+	// An enemy coat must not wipe a friendly Brick's buff while it is still up.
+	if ( !bBuff && m_bRepulseBuff && m_flRepulseUntil > gpGlobals->curtime )
+		return;
+
+	if ( bBuff )
+		m_bRepulseBuff = true;
 	float flUntil = gpGlobals->curtime + flSeconds;
 	if ( flUntil > m_flRepulseUntil )
 		m_flRepulseUntil = flUntil;
@@ -1040,6 +1053,11 @@ void CTFPlayerShared::AddRepulseGel( float flSeconds )
 bool CTFPlayerShared::InRepulseGel( void ) const
 {
 	return m_flRepulseUntil > gpGlobals->curtime;
+}
+
+bool CTFPlayerShared::HasRepulseBuff( void ) const
+{
+	return m_bRepulseBuff && m_flRepulseUntil > gpGlobals->curtime;
 }
 
 //-----------------------------------------------------------------------------
@@ -10513,6 +10531,7 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 		ePenetrateType = (ETFDmgCustom)nCustomDamageType;
 	}
 
+	bool bHandedOff = false;
 	for ( int iBounce = 0; ; ++iBounce )
 	{
 		vecEnd = vecStart + vecShotDir * flRemain;
@@ -10557,6 +10576,28 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 					if ( pad < 8.f )
 						pad = 8.f;
 					vecStart = trace.endpos + n * pad;
+
+					// Enemy bullet off a friendly Brick. The rest of the shot is theirs,
+					// with no reflect mini-crit (FireBullet does not set GetDeflected).
+					CTFPlayer *pBrick = ToTFPlayer( pHit );
+					if ( pBrick && pBrick->m_Shared.HasRepulseBuff() && pBrick->GetTeamNumber() != GetTeamNumber() )
+					{
+						FireBulletsInfo_t bounced = info;
+						bounced.m_vecSrc = vecStart;
+						bounced.m_vecDirShooting = vecShotDir;
+						bounced.m_flDistance = flRemain;
+						bounced.m_iTracerFreq = 0;
+						bounced.m_pAttacker = pBrick;
+						static int s_nRepulseBulletDepth = 0;
+						if ( s_nRepulseBulletDepth < 3 )
+						{
+							s_nRepulseBulletDepth++;
+							pBrick->FireBullet( NULL, bounced, bDoEffects, nDamageType, nCustomDamageType );
+							s_nRepulseBulletDepth--;
+						}
+						bHandedOff = true;
+						break;
+					}
 					continue;
 				}
 			}
@@ -10595,6 +10636,9 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 #endif
 
 #ifndef CLIENT_DLL
+	if ( bHandedOff )
+		return;
+
 	CUtlVector<CBaseEntity *> vecTracedEntities;
 	bool bPenetratingShot = ( (ePenetrateType == TF_DMG_CUSTOM_PENETRATE_ALL_PLAYERS) || (ePenetrateType == TF_DMG_CUSTOM_PENETRATE_MY_TEAM) || (ePenetrateType == TF_DMG_CUSTOM_PENETRATE_NONBURNING_TEAMMATE) );
 	if ( bPenetratingShot && trace.m_pEnt )

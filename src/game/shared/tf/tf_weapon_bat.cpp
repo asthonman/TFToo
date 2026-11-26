@@ -7,6 +7,7 @@
 #include "cbase.h"
 #include "tf_weapon_bat.h"
 #include "decals.h"
+#include "tf_paint.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -831,6 +832,12 @@ Vector CTFStunBall::GetDamageForce( void )
 //-----------------------------------------------------------------------------
 void CTFStunBall::PipebombTouch( CBaseEntity *pOther )
 {
+	if ( pOther && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, GetAbsOrigin() );
+		return;
+	}
+
 	if ( !ShouldBallTouch( pOther ) )
 		return;
 
@@ -1251,6 +1258,12 @@ void CTFBall_Ornament::ApplyBallImpactEffectOnVictim( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 void CTFBall_Ornament::PipebombTouch( CBaseEntity *pOther )
 {
+	if ( pOther && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, GetAbsOrigin() );
+		return;
+	}
+
 	if ( !ShouldBallTouch( pOther ) )
 		return;
 

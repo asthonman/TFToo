@@ -118,6 +118,7 @@ public:
 	virtual void ClientThink();
 	void	UpdateJetBootParticles();
 	void	UpdateGlueParticles();
+	void	UpdateRepulseParticles();
 
 	void	UpdateTimers();
 
@@ -760,6 +761,9 @@ public:
 
 	// Glue coat. One white blob on each attachment that the model actually has.
 	HPARTICLEFFECT		m_pGlueStuck[5];
+
+	// Repulsion gel coat. Same attachments, blue blobs.
+	HPARTICLEFFECT		m_pRepulseStuck[5];
 
 	// Urine
 	HPARTICLEFFECT		m_pUrineEffect;

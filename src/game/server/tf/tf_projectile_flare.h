@@ -67,6 +67,7 @@ public:
 
 	virtual bool	IsDeflectable() { return true; }
 	virtual void	Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir );
+	virtual void	OnRepulseClaim( CTFPlayer *pNew ) OVERRIDE;
 	virtual bool	IsDestroyable( bool bOrbAttack = false ) OVERRIDE { return ( !bOrbAttack ? false : true ); }
 
 	float GetProjectileSpeed( void ) const;

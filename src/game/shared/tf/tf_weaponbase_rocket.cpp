@@ -89,6 +89,7 @@ CTFBaseRocket::CTFBaseRocket()
 
 	m_flSpawnTime = 0.0f;
 	m_iCachedDeflect = false;
+	m_iCachedTeam = -1;
 	
 // Server specific.
 #else
@@ -224,12 +225,13 @@ void CTFBaseRocket::OnDataChanged(DataUpdateType_t updateType)
 {
 	BaseClass::OnDataChanged(updateType);
 
-	if ( updateType == DATA_UPDATE_CREATED || m_iCachedDeflect != GetDeflected() )
+	if ( updateType == DATA_UPDATE_CREATED || m_iCachedDeflect != GetDeflected() || m_iCachedTeam != GetTeamNumber() )
 	{
 		CreateTrails();		
 	}
 
 	m_iCachedDeflect = GetDeflected();
+	m_iCachedTeam = GetTeamNumber();
 }
 
 //-----------------------------------------------------------------------------

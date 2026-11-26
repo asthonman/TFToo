@@ -101,6 +101,7 @@ CTFGrenadePipebombProjectile::CTFGrenadePipebombProjectile()
 	pEffectTrail = NULL;
 	pEffectCrit = NULL;
 	m_iCachedDeflect = 0;
+	m_iCachedTeam = -1;
 	m_bHighlight = false;
 #endif
 }
@@ -273,12 +274,13 @@ void CTFGrenadePipebombProjectile::OnDataChanged(DataUpdateType_t updateType)
 		//ParticleProp()->StopEmission();
 	}
 
-	if ( m_iCachedDeflect != GetDeflected() )
+	if ( m_iCachedDeflect != GetDeflected() || m_iCachedTeam != GetTeamNumber() )
 	{
 		CreateTrailParticles();
 	}
 
 	m_iCachedDeflect = GetDeflected();
+	m_iCachedTeam = GetTeamNumber();
 }
 
 void CTFGrenadePipebombProjectile::CreateTrailParticles( void )
@@ -937,31 +939,29 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 	// Coated players, buildings, and props bounce the bomb before it shatters or sticks.
 	if ( pHitEntity && TFPaint_IsRepulsionCoated( pHitEntity ) )
 	{
-		Vector n;
-		pEvent->pInternalData->GetSurfaceNormal( n );
-		if ( index == 0 )
-			n.Negate();
-		if ( n.NormalizeInPlace() < 0.1f )
-		{
-			n = GetAbsOrigin() - pHitEntity->WorldSpaceCenter();
-			n.NormalizeInPlace();
-		}
 		Vector pre = pEvent->preVelocity[index];
 		if ( pre.LengthSqr() < 100.f * 100.f )
 			pre = GetAbsVelocity();
+		const Vector saved = GetAbsVelocity();
 		SetAbsVelocity( pre );
-		TFPaint_ReflectProjectile( this, GetAbsOrigin(), n, true );
-		IPhysicsObject *pCoatPhys = VPhysicsGetObject();
-		if ( pCoatPhys )
+		if ( !TFPaint_ReflectOffCoated( this, pHitEntity, GetAbsOrigin() ) )
 		{
-			Vector out = GetAbsVelocity();
-			AngularImpulse ang( 0, 0, 0 );
-			pCoatPhys->EnableMotion( true );
-			pCoatPhys->SetVelocity( &out, &ang );
-			pCoatPhys->Wake();
+			SetAbsVelocity( saved );
 		}
-		m_bTouched = false;
-		return;
+		else
+		{
+			IPhysicsObject *pCoatPhys = VPhysicsGetObject();
+			if ( pCoatPhys )
+			{
+				Vector out = GetAbsVelocity();
+				AngularImpulse ang( 0, 0, 0 );
+				pCoatPhys->EnableMotion( true );
+				pCoatPhys->SetVelocity( &out, &ang );
+				pCoatPhys->Wake();
+			}
+			m_bTouched = false;
+			return;
+		}
 	}
 
 	// Before wall-shatter (Loch-n-Load) and before a sticky sticks.

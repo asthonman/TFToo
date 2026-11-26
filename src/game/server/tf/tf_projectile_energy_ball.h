@@ -37,6 +37,7 @@ public:
 
 	void			SetScorer( CBaseEntity *pScorer );
 	void			SetCritical( bool bCritical ) { m_bCritical = bCritical; }
+	virtual void	OnRepulseClaim( CTFPlayer *pNew ) OVERRIDE;
 
 	virtual bool	CanHeadshot() { return false; }
 

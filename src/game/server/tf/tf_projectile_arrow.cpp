@@ -28,6 +28,7 @@
 #include "bot/tf_bot.h"
 #include "tf_weapon_medigun.h"
 #include "soundenvelope.h"
+#include "tf_paint.h"
 #include "tf_obj_sentrygun.h"
 #include "tf_powerup.h"
 #include "tf_weapon_paintgun.h"
@@ -743,6 +744,14 @@ void CTFProjectile_Arrow::ArrowTouch( CBaseEntity *pOther )
 	if ( !pOther )
 		return;
 
+	// A coated body throws the arrow back. Enemy shots off a friendly Brick change teams.
+	if ( TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
+		TFPaint_ReflectOffCoated( this, pOther, pTrace->endpos );
+		return;
+	}
+
 	bool bShield = pOther->IsCombatItem() && !InSameTeam( pOther );
 	CTFPumpkinBomb *pPumpkinBomb = dynamic_cast< CTFPumpkinBomb * >( pOther );
 
@@ -1179,6 +1188,15 @@ void CTFProjectile_Arrow::Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir )
 	m_HitEntities.Purge();
 	// Add ourselves so we dont hit ourselves
 	m_HitEntities.AddToTail( pTFDeflector->entindex() );
+}
+
+void CTFProjectile_Arrow::OnRepulseClaim( CTFPlayer *pNew )
+{
+	if ( !pNew )
+		return;
+	SetScorer( pNew );
+	m_HitEntities.Purge();
+	m_HitEntities.AddToTail( pNew->entindex() );
 }
 
 
