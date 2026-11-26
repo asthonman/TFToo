@@ -64,6 +64,15 @@ ConVar tf_paint_ice_accel( "tf_paint_ice_accel", "0.2", FCVAR_REPLICATED, "Groun
 ConVar tf_paint_glue_time( "tf_paint_glue_time", "2", FCVAR_REPLICATED, "Seconds an enemy stays glued after a direct hit. Must stay shorter than the glue gun attack interval. Puddles refresh a shorter coat." );
 ConVar tf_paint_repulse_enemy_time( "tf_paint_repulse_enemy_time", "3", FCVAR_REPLICATED, "Seconds repulsion gel stays on an enemy player." );
 ConVar tf_paint_repulse_ally_time( "tf_paint_repulse_ally_time", "5", FCVAR_REPLICATED, "Seconds repulsion gel stays on an ally, enemy building, or physics prop." );
+ConVar tf_paint_no_fade( "tf_paint_no_fade", "0", FCVAR_REPLICATED | FCVAR_CHEAT, "If non-zero, gel splats on surfaces never fade. Requires sv_cheats 1." );
+
+// Timed surface coats store a die time. 0 already means the splat lasts until it is erased.
+static bool TFPaint_SurfaceExpired( float die )
+{
+	if ( tf_paint_no_fade.GetBool() )
+		return false;
+	return die > 0.f && gpGlobals->curtime >= die;
+}
 
 static const char *const s_pszPaintSounds[] =
 {
@@ -499,7 +508,7 @@ TFPaintStampInfo_t CTFPaintMap::StampInfoNear( const Vector &origin, int type, f
 		if ( m_nStampType[slot] != want )
 			continue;
 		float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die )
+		if ( TFPaint_SurfaceExpired( die ) )
 			continue;
 		float rad = m_flStampRadius[slot] + extra;
 		float d2 = ( origin - m_vecStampPos[slot] ).LengthSqr();
@@ -532,11 +541,18 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 	int windowStart = ( cur > TF_PAINT_STAMP_MAX ) ? ( cur - TF_PAINT_STAMP_MAX ) : 0;
 
 	bool bExpired = false;
+	static bool s_bNoFade = false;
+	const bool bNoFade = tf_paint_no_fade.GetBool();
+	if ( bNoFade != s_bNoFade )
+	{
+		s_bNoFade = bNoFade;
+		bExpired = true;
+	}
 	for ( int s = windowStart; s < cur; ++s )
 	{
 		int slot = s % TF_PAINT_STAMP_MAX;
 		float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die && m_nStampType[slot] > 0 )
+		if ( TFPaint_SurfaceExpired( die ) && m_nStampType[slot] > 0 )
 		{
 			bExpired = true;
 			break;
@@ -566,7 +582,7 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 		if ( stored <= 0 )
 			continue;
 		float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die )
+		if ( TFPaint_SurfaceExpired( die ) )
 			continue;
 		int type = stored - 1;
 		float radius = m_flStampRadius[slot];
@@ -729,7 +745,7 @@ void CTFPaintMap::ProjectRepulsionDecals( void )
 		if ( stored - 1 != BOUNCE_POWER )
 			continue;
 		const float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die )
+		if ( TFPaint_SurfaceExpired( die ) )
 			continue;
 		float rad = m_flStampRadius[slot];
 		if ( rad < 8.f )
@@ -944,7 +960,7 @@ void CTFPaintMap::DrawStampDecals( const Vector &eye )
 			continue;
 
 		const float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die )
+		if ( TFPaint_SurfaceExpired( die ) )
 			continue;
 
 		const int type = stored - 1;
@@ -1376,9 +1392,9 @@ void CTFPaintMap::ReplayStamps( void )
 			continue;
 
 		float die = m_flStampDie[slot];
-		if ( die > 0.f && gpGlobals->curtime >= die )
+		if ( TFPaint_SurfaceExpired( die ) )
 			continue;
-		if ( die > 0.f && ( flNext <= 0.f || die < flNext ) )
+		if ( !tf_paint_no_fade.GetBool() && die > 0.f && ( flNext <= 0.f || die < flNext ) )
 			flNext = die;
 
 		int type = stored - 1;
@@ -1446,7 +1462,14 @@ void CTFPaintMap::Think( void )
 {
 	SetNextThink( gpGlobals->curtime );
 
-	if ( m_flNextCoatExpire > 0.f && gpGlobals->curtime >= m_flNextCoatExpire )
+	static bool s_bNoFade = false;
+	const bool bNoFade = tf_paint_no_fade.GetBool();
+	if ( bNoFade != s_bNoFade )
+	{
+		s_bNoFade = bNoFade;
+		ReplayStamps();
+	}
+	else if ( !bNoFade && m_flNextCoatExpire > 0.f && gpGlobals->curtime >= m_flNextCoatExpire )
 		ReplayStamps();
 
 	const float dt = Clamp( gpGlobals->frametime, 0.f, 0.05f );
