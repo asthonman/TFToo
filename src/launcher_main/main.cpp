@@ -7,6 +7,7 @@
 #if defined( _WIN32 )
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include <direct.h>
 #endif
@@ -342,6 +343,41 @@ static void RelaunchAs64Bit( std::vector<std::wstring> &args )
 #endif
 }
 
+// Nov 2026 TF2 ships Rubikon (Source 2 physics) as a separate vphysics DLL.
+// The engine picks it from -rubikon before the game DLL loads, so this
+// launcher has to put the switch on the process command line. -norubikon
+// or -havok keeps Havok. Game code only sees IPhysics / collision events.
+static void AppendDefaultRubikon( std::vector<std::wstring> &args )
+{
+	for ( size_t i = 1; i < args.size(); i++ )
+	{
+		if ( args[i] == L"-rubikon" || args[i] == L"-norubikon" || args[i] == L"-havok" )
+			return;
+	}
+	args.push_back( L"-rubikon" );
+}
+
+#ifdef _WIN64
+static void RelaunchCurrentExe( std::vector<std::wstring> args )
+{
+	std::wstring sExecutable = GetExePath();
+	if ( sExecutable.empty() || args.empty() )
+		return;
+
+	args[0] = sExecutable;
+
+	std::vector<wchar_t *> pArgs;
+	for ( std::wstring &arg : args )
+	{
+		arg = L"\"" + arg + L"\"";
+		pArgs.push_back( (wchar_t *)arg.c_str() );
+	}
+	pArgs.push_back( NULL );
+
+	_wexecvp( sExecutable.c_str(), &pArgs[0] );
+}
+#endif
+
 static BOOL FileExists( wchar_t *pwcsPath )
 {
 	DWORD dwAttrib = GetFileAttributesW( pwcsPath );
@@ -398,6 +434,7 @@ static void HandleRelaunching()
 		}
 		else if ( arg == L"-force64bit" )
 		{
+			AppendDefaultRubikon( pArgs );
 			RelaunchAs64Bit( pArgs );
 			return;
 		}
@@ -423,6 +460,7 @@ static void HandleRelaunching()
 
 	if ( FileExists( (wchar_t *)sServerDLL.c_str() ) )
 	{
+		AppendDefaultRubikon( pArgs );
 		RelaunchAs64Bit( pArgs );
 	}
 #endif
@@ -431,6 +469,44 @@ static void HandleRelaunching()
 int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
 	HandleRelaunching();
+
+#ifdef _WIN64
+	// launcher.dll builds the engine command line from GetCommandLine(), not
+	// from lpCmdLine (Source is Multi-Byte, IsPC() takes the process command
+	// line). Relaunch once so that buffer contains -rubikon. Steam already
+	// follows this hop for the 32-bit -> win64 relaunch above.
+	{
+		int nArgs = 0;
+		LPWSTR *pBaseArgs = CommandLineToArgvW( GetCommandLineW(), &nArgs );
+		if ( pBaseArgs )
+		{
+			std::vector<std::wstring> args;
+			for ( int i = 0; i < nArgs; i++ )
+				args.push_back( pBaseArgs[i] );
+			LocalFree( pBaseArgs );
+
+			const size_t nBefore = args.size();
+			AppendDefaultRubikon( args );
+			if ( args.size() != nBefore )
+			{
+				RelaunchCurrentExe( args );
+
+				static char s_szCmd[32768];
+				const char *pszIn = lpCmdLine ? lpCmdLine : "";
+				const size_t nIn = strlen( pszIn );
+				if ( nIn + sizeof( " -rubikon" ) < sizeof( s_szCmd ) )
+				{
+					memcpy( s_szCmd, pszIn, nIn );
+					size_t n = nIn;
+					if ( n && s_szCmd[n - 1] != ' ' && s_szCmd[n - 1] != '\t' )
+						s_szCmd[n++] = ' ';
+					memcpy( s_szCmd + n, "-rubikon", sizeof( "-rubikon" ) );
+					lpCmdLine = s_szCmd;
+				}
+			}
+		}
+	}
+#endif
 
 	// Must add 'bin' to the path....
 	char* pPath = getenv("PATH");
@@ -635,11 +711,21 @@ int main( int argc, char *argv[] )
 	new_argv.push_back( szExecutable );
 
 	bool bHasGame = false;
+	bool bHasRubikon = false;
+	bool bKeepHavok = false;
 	for ( int i = 1; i < argc; i++ )
 	{
 		if ( !strcmp( argv[i], "-game" ) )
 		{
 			bHasGame = true;
+		}
+		else if ( !strcmp( argv[i], "-rubikon" ) )
+		{
+			bHasRubikon = true;
+		}
+		else if ( !strcmp( argv[i], "-norubikon" ) || !strcmp( argv[i], "-havok" ) )
+		{
+			bKeepHavok = true;
 		}
 
 		new_argv.push_back(argv[i]);
@@ -656,6 +742,12 @@ int main( int argc, char *argv[] )
 		printf( "[Source Mod Launcher] Launching default game: %s\n", pModName );
 
 		new_argv.push_back(szGamePath);
+	}
+
+	// hl2.sh forwards "$@" , so this is the command line the engine reads.
+	if ( !bHasRubikon && !bKeepHavok )
+	{
+		new_argv.push_back( (char *)"-rubikon" );
 	}
 
 	new_argv.push_back(NULL);
