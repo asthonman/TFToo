@@ -57,7 +57,7 @@ ConVar tf_paint_grease_lifetime( "tf_paint_grease_lifetime", "10", FCVAR_REPLICA
 ConVar tf_paint_ice_time( "tf_paint_ice_time", "3", FCVAR_REPLICATED, "Seconds of ice physics after a grease blob hits an enemy." );
 ConVar tf_paint_ice_friction( "tf_paint_ice_friction", "0.05", FCVAR_REPLICATED, "Ground friction scale while iced." );
 ConVar tf_paint_ice_accel( "tf_paint_ice_accel", "0.2", FCVAR_REPLICATED, "Ground acceleration scale while iced." );
-ConVar tf_paint_glue_time( "tf_paint_glue_time", "3", FCVAR_REPLICATED, "Seconds an enemy stays glued after a direct hit. Puddles refresh a shorter coat." );
+ConVar tf_paint_glue_time( "tf_paint_glue_time", "2", FCVAR_REPLICATED, "Seconds an enemy stays glued after a direct hit. Must stay shorter than the glue gun attack interval. Puddles refresh a shorter coat." );
 
 static const char *const s_pszPaintSounds[] =
 {

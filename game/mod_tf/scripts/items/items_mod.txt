@@ -42,7 +42,7 @@
 			"name"					"glue gun fire rate penalty"
 			"attribute_class"		"mult_postfiredelay"
 			"description_string"	"#Attrib_GluegunFireRate"
-			"description_format"	"value_is_percentage"
+			"description_format"	"value_is_or"
 			"effect_type"			"negative"
 			"hidden"				"0"
 			"stored_as_integer"		"0"
@@ -80,7 +80,7 @@
 	}
 	"items"
 	{
-		// Madcap stock primary. First person is Scout's arms, secondary slot.
+		// Madcap and Chemist stock primary. First person attaches the world model.
 		"b1"
 		{
 			"name"				"b1"
@@ -105,6 +105,7 @@
 			"used_by_classes"
 			{
 				"madcap"		"1"
+				"chemist"		"1"
 			}
 		}
 		// Madcap unlock. Unique quality is the yellow name. The stock secondary
@@ -1121,8 +1122,8 @@
 				"chemist"		"1"
 			}
 		}
-		// Madcap secondary unlock. White glue, 100 metal ammo, half the
-		// grease gun's fire rate and puddle life.
+		// Madcap secondary unlock. White glue, 100 metal ammo. Attack interval
+		// is 2.5s, longer than the 2s direct-hit coat (tf_paint_glue_time).
 		"b34"
 		{
 			"name"				"b34"
@@ -1160,7 +1161,7 @@
 				}
 				"glue gun fire rate penalty"
 				{
-					"value"		"2"
+					"value"		"1"
 				}
 				"glue gun ammo penalty"
 				{

@@ -1,7 +1,7 @@
 // Chemist. 150 health, 107% move speed (320, same as Spy, Medic, and Witch).
-// Engineer body until a chemist model exists. No primary yet. The nailgun
-// (schema b1) is Madcap's stock primary only. 150 reserve stays here for a
-// future primary. No secondary. Melee is the spatula (b19). PDA is the
+// Engineer body until a chemist model exists. Primary is the nailgun
+// (schema b1), shared with Madcap. 150 reserve matches that gun.
+// No secondary. Melee is the spatula (b19). PDA is the
 // chemistry set (b20). PDA2 is the jet boots (b21), a passive fuel meter. Class-script weapons stay empty so the schema items
 // fill the loadout. Concoctions brew on their own. No reagent ammo.
 "PlayerClassData"

@@ -1,5 +1,6 @@
 // Madcap secondary unlock. One blob of glue per ammo.
 // Ammo is metal, shared with the Grease Gun. The item caps that pool at 100.
+// Attack interval must stay longer than tf_paint_glue_time (the direct-hit coat).
 "WeaponData"
 {
 	"printname"			"#TF_Weapon_Gluegun"
@@ -10,7 +11,7 @@
 
 	"Damage"			"0"
 	"Range"				"0"
-	"TimeFireDelay"		"0.1"
+	"TimeFireDelay"		"2.5"
 	"TimeIdle"			"5.0"
 	"TimeIdleEmpty"		"0.25"
 
