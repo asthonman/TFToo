@@ -452,6 +452,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropFloat( RECVINFO( m_flHolsterAnimTime ) ),
 	RecvPropFloat( RECVINFO( m_flIceUntil ) ),
 	RecvPropFloat( RECVINFO( m_flGlueUntil ) ),
+	RecvPropFloat( RECVINFO( m_flRepulseUntil ) ),
 	RecvPropFloat( RECVINFO( m_flPoisonExpire ) ),
 	RecvPropFloat( RECVINFO( m_flNitricUntil ) ),
 	RecvPropFloat( RECVINFO( m_flWetUntil ) ),
@@ -502,6 +503,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_flHolsterAnimTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flIceUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flGlueUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flRepulseUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flPoisonExpire, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNitricUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flWetUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -656,6 +658,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropFloat( SENDINFO( m_flHolsterAnimTime ) ),
 	SendPropFloat( SENDINFO( m_flIceUntil ) ),
 	SendPropFloat( SENDINFO( m_flGlueUntil ) ),
+	SendPropFloat( SENDINFO( m_flRepulseUntil ) ),
 	SendPropFloat( SENDINFO( m_flPoisonExpire ) ),
 	SendPropFloat( SENDINFO( m_flNitricUntil ) ),
 	SendPropFloat( SENDINFO( m_flWetUntil ) ),
@@ -983,6 +986,7 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flHolsterAnimTime = 0.f;
 	m_flIceUntil = 0.f;
 	m_flGlueUntil = 0.f;
+	m_flRepulseUntil = 0.f;
 	m_flPoisonExpire = 0.f;
 	m_flNitricUntil = 0.f;
 	m_flWetUntil = 0.f;
@@ -1022,6 +1026,20 @@ void CTFPlayerShared::AddGlue( float flSeconds )
 bool CTFPlayerShared::InGlue( void ) const
 {
 	return m_flGlueUntil > gpGlobals->curtime;
+}
+
+void CTFPlayerShared::AddRepulseGel( float flSeconds )
+{
+	if ( flSeconds <= 0.f )
+		return;
+	float flUntil = gpGlobals->curtime + flSeconds;
+	if ( flUntil > m_flRepulseUntil )
+		m_flRepulseUntil = flUntil;
+}
+
+bool CTFPlayerShared::InRepulseGel( void ) const
+{
+	return m_flRepulseUntil > gpGlobals->curtime;
 }
 
 //-----------------------------------------------------------------------------
@@ -10518,6 +10536,31 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 			break;
 
 		CBaseEntity *pHit = trace.m_pEnt;
+		if ( pHit && TFPaint_IsRepulsionCoated( pHit ) && iBounce < 4 )
+		{
+			Vector n = trace.endpos - pHit->WorldSpaceCenter();
+			if ( n.NormalizeInPlace() < 0.1f )
+				n = -vecShotDir;
+			const float into = DotProduct( vecShotDir, n );
+			if ( into < 0.f )
+			{
+				flRemain *= ( 1.0f - trace.fraction );
+				if ( flRemain > 16.f )
+				{
+					vecShotDir -= n * ( 2.f * into );
+					vecShotDir.NormalizeInPlace();
+#ifdef CLIENT_DLL
+					if ( nPath < 5 )
+						vecPath[nPath++] = trace.endpos;
+#endif
+					float pad = pHit->BoundingRadius() * 0.25f;
+					if ( pad < 8.f )
+						pad = 8.f;
+					vecStart = trace.endpos + n * pad;
+					continue;
+				}
+			}
+		}
 		if ( !pHit || pHit->IsPlayer() || pHit->IsBaseObject() )
 			break;
 		if ( trace.surface.flags & SURF_SKY )

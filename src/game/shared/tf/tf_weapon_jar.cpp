@@ -583,6 +583,13 @@ void CTFProjectile_Jar::PipebombTouch( CBaseEntity *pOther )
 
 	TFPaint_IgniteNitricAt( ( pTrace.fraction < 1.0f ) ? pTrace.endpos : GetAbsOrigin(), 48.f );
 
+	// A coated body bounces the jar. Neutralizing agent still splashes.
+	if ( m_nChemSlot != CHEM_NEUTRAL && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, ( pTrace.fraction < 1.0f ) ? pTrace.endpos : GetAbsOrigin() );
+		return;
+	}
+
 	// A jar that hits repulsion gel bounces. Neutralizing agent does not.
 	// A later hit on a player still splashes. Already leaving the surface still
 	// counts as gel, so the vphysics think cannot explode the bounce away.
@@ -659,6 +666,13 @@ void CTFProjectile_Jar::VPhysicsCollision( int index, gamevcollisionevent_t *pEv
 		// Neutralizing agent is the one jar that splashes on gel.
 		if ( m_nChemSlot != CHEM_NEUTRAL )
 		{
+			if ( TFPaint_IsRepulsionCoated( pHitEntity ) )
+			{
+				Vector n = GetAbsOrigin() - pHitEntity->WorldSpaceCenter();
+				TFPaint_ReflectProjectile( this, GetAbsOrigin(), n, true );
+				return;
+			}
+
 			TFPaintContact_t contact = TFPaint_Query( GetAbsOrigin(), 24.f );
 			if ( contact.painted && contact.type == BOUNCE_POWER )
 			{

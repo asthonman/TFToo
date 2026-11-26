@@ -742,6 +742,13 @@ void CTFGrenadePipebombProjectile::PipebombTouch( CBaseEntity *pOther )
 		return;
 	}
 
+	// A body wearing repulsion gel throws the grenade back. Do not detonate.
+	if ( TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, GetAbsOrigin() );
+		return;
+	}
+
 	// PASSTIME always explode when it hits the ball
 	// fixme find a non-strcmp way to do this
 	if ( !V_strcmp( pOther->GetClassname(), "passtime_ball" ) )
@@ -926,6 +933,36 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 
 	// A sticky that sits on the ground never explodes, but it still struck the puddle.
 	TFPaint_IgniteNitricAt( GetAbsOrigin(), 48.f );
+
+	// Coated players, buildings, and props bounce the bomb before it shatters or sticks.
+	if ( pHitEntity && TFPaint_IsRepulsionCoated( pHitEntity ) )
+	{
+		Vector n;
+		pEvent->pInternalData->GetSurfaceNormal( n );
+		if ( index == 0 )
+			n.Negate();
+		if ( n.NormalizeInPlace() < 0.1f )
+		{
+			n = GetAbsOrigin() - pHitEntity->WorldSpaceCenter();
+			n.NormalizeInPlace();
+		}
+		Vector pre = pEvent->preVelocity[index];
+		if ( pre.LengthSqr() < 100.f * 100.f )
+			pre = GetAbsVelocity();
+		SetAbsVelocity( pre );
+		TFPaint_ReflectProjectile( this, GetAbsOrigin(), n, true );
+		IPhysicsObject *pCoatPhys = VPhysicsGetObject();
+		if ( pCoatPhys )
+		{
+			Vector out = GetAbsVelocity();
+			AngularImpulse ang( 0, 0, 0 );
+			pCoatPhys->EnableMotion( true );
+			pCoatPhys->SetVelocity( &out, &ang );
+			pCoatPhys->Wake();
+		}
+		m_bTouched = false;
+		return;
+	}
 
 	// Before wall-shatter (Loch-n-Load) and before a sticky sticks.
 	if ( PipebombTryGelBounce( this, index, pEvent ) )

@@ -251,6 +251,12 @@ void CTFProjectile_EnergyRing::ProjectileTouch( CBaseEntity *pOther )
 	// Players standing in nitric, and the puddle itself, both count as a hit.
 	TFPaint_IgniteNitricAt( pTrace->endpos, 36.f );
 
+	if ( TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, pTrace->endpos );
+		return;
+	}
+
 	// The stuff we collide with
 	bool bCombatEntity = pOther->IsPlayer() || 
 						 pOther->IsBaseObject() || 

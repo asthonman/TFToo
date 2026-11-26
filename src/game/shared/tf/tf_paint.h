@@ -29,6 +29,7 @@ enum PaintPowerType
 
 #define TF_PAINT_STAMP_MAX	80
 #define TF_PAINT_BLOB_MAX	48
+#define TF_PAINT_ENTITY_COAT_MAX	16
 
 struct TFPaintContact_t
 {
@@ -62,6 +63,8 @@ extern ConVar tf_paint_ice_time;
 extern ConVar tf_paint_ice_friction;
 extern ConVar tf_paint_ice_accel;
 extern ConVar tf_paint_glue_time;
+extern ConVar tf_paint_repulse_enemy_time;
+extern ConVar tf_paint_repulse_ally_time;
 
 void TFPaint_GetColor( int type, int &r, int &g, int &b, int team = 0 );
 const char *TFPaint_Name( int type );
@@ -115,7 +118,21 @@ void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &m
 
 // Bounce a projectile off repulsion gel instead of its normal surface hit.
 // Speed is kept. nOutward points out of the solid. Returns true if it bounced.
-bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward );
+// bForce skips the world-gel test so a coated player, building, or prop can bounce it.
+bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward, bool bForce = false );
+
+// True while this player, building, or physics prop is wearing repulsion gel.
+bool TFPaint_IsRepulsionCoated( CBaseEntity *pEnt );
+
+// Bounce pProj off a coated body. Returns false if pHit is not coated or the
+// projectile is already leaving. A miss still means "do not apply the hit."
+bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vector &hitPos );
+
+#ifdef GAME_DLL
+// Enemy players last tf_paint_repulse_enemy_time. Allies, enemy buildings,
+// and physics props last tf_paint_repulse_ally_time. Allied buildings are skipped.
+bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter );
+#endif
 
 #ifdef GAME_DLL
 // HL2DM player linear impact table, interpolated by speed squared. Min 150 ups.

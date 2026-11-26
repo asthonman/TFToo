@@ -597,6 +597,7 @@ void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal
 		}
 		else if ( slot == CHEM_REPULSION )
 		{
+			TFPaint_CoatWithRepulsion( pEnemy, pPlayer );
 			pEnemy->m_Shared.AddWet( 10.f );
 			Vector vel = pEnemy->GetAbsVelocity();
 			if ( vel.z < 300.f )
@@ -622,7 +623,33 @@ void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal
 			continue;
 		if ( Chemist_Blocked( src, pObj->WorldSpaceCenter() ) )
 			continue;
-		pObj->NoteEnemyRepulse( team, gpGlobals->curtime + 8.f );
+		TFPaint_CoatWithRepulsion( pObj, pPlayer );
+		pObj->NoteEnemyRepulse( team, gpGlobals->curtime + tf_paint_repulse_ally_time.GetFloat() );
+	}
+
+	// Allies are coated, not launched. A friendly Brick keeps the gel for the ally timer.
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pAlly = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pAlly || !pAlly->IsAlive() || pAlly == pPlayer )
+			continue;
+		if ( pAlly->GetTeamNumber() != team )
+			continue;
+		if ( Chemist_DistSqr( pAlly, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pAlly->WorldSpaceCenter() ) )
+			continue;
+		TFPaint_CoatWithRepulsion( pAlly, pPlayer );
+	}
+
+	CBaseEntity *pProp = NULL;
+	while ( ( pProp = gEntList.FindEntityByClassname( pProp, "prop_physics*" ) ) != NULL )
+	{
+		if ( Chemist_DistSqr( pProp, pos ) > r2 )
+			continue;
+		if ( Chemist_Blocked( src, pProp->WorldSpaceCenter() ) )
+			continue;
+		TFPaint_CoatWithRepulsion( pProp, pPlayer );
 	}
 }
 

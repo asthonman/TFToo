@@ -344,6 +344,13 @@ void CTFBaseRocket::RocketTouch( CBaseEntity *pOther )
 		return;
 	}
 
+	// A coated body throws the rocket back. World gel is the branch below.
+	if ( pOther && TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, pTrace->endpos );
+		return;
+	}
+
 	// Repulsion gel throws the rocket back instead of detonating it.
 	if ( pOther && !pOther->IsPlayer() && !pOther->IsBaseObject() )
 	{

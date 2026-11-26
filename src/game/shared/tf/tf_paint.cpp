@@ -58,6 +58,8 @@ ConVar tf_paint_ice_time( "tf_paint_ice_time", "3", FCVAR_REPLICATED, "Seconds o
 ConVar tf_paint_ice_friction( "tf_paint_ice_friction", "0.05", FCVAR_REPLICATED, "Ground friction scale while iced." );
 ConVar tf_paint_ice_accel( "tf_paint_ice_accel", "0.2", FCVAR_REPLICATED, "Ground acceleration scale while iced." );
 ConVar tf_paint_glue_time( "tf_paint_glue_time", "2", FCVAR_REPLICATED, "Seconds an enemy stays glued after a direct hit. Must stay shorter than the glue gun attack interval. Puddles refresh a shorter coat." );
+ConVar tf_paint_repulse_enemy_time( "tf_paint_repulse_enemy_time", "3", FCVAR_REPLICATED, "Seconds repulsion gel stays on an enemy player." );
+ConVar tf_paint_repulse_ally_time( "tf_paint_repulse_ally_time", "5", FCVAR_REPLICATED, "Seconds repulsion gel stays on an ally, enemy building, or physics prop." );
 
 static const char *const s_pszPaintSounds[] =
 {
@@ -202,6 +204,13 @@ public:
 	int StampTeamNear( const Vector &origin, int type );
 	TFPaintStampInfo_t StampInfoNear( const Vector &origin, int type, float extra );
 
+	int		CoatEntIndex( int i ) const { return ( i >= 0 && i < TF_PAINT_ENTITY_COAT_MAX ) ? m_nCoatEnt[i] : 0; }
+	float	CoatDie( int i ) const { return ( i >= 0 && i < TF_PAINT_ENTITY_COAT_MAX ) ? m_flCoatDie[i] : 0.f; }
+#ifdef GAME_DLL
+	void	NoteEntityCoat( CBaseEntity *pEnt, float flUntil );
+	bool	BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys );
+#endif
+
 	static CTFPaintMap *Get() { return s_pMap; }
 
 private:
@@ -218,6 +227,9 @@ private:
 
 	CNetworkArray( Vector, m_vecBlobPos, TF_PAINT_BLOB_MAX );
 	CNetworkArray( int, m_nBlobType, TF_PAINT_BLOB_MAX );
+	// Entindex of a player, building, or physics prop wearing repulsion gel. 0 is empty.
+	CNetworkArray( int, m_nCoatEnt, TF_PAINT_ENTITY_COAT_MAX );
+	CNetworkArray( float, m_flCoatDie, TF_PAINT_ENTITY_COAT_MAX );
 
 	CTFPaintAtlas m_Atlas;
 
@@ -280,6 +292,7 @@ private:
 	void	DrawDisc( const Vector &pos, const Vector &normal, float radius, int type, int alpha, bool additive );
 	void	DrawStampDecals( const Vector &eye );
 	void	ProjectRepulsionDecals( void );
+	void	DecalRepulsionCoats( void );
 	void	UpdateGreaseBlobs( void );
 	void	KillGreaseBlob( int slot, int splatGel );
 	CNewParticleEffect *m_pGreaseFx[TF_PAINT_BLOB_MAX];
@@ -310,6 +323,8 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	RecvPropInt( RECVINFO( m_nStampCursor ) ),
 	RecvPropArray( RecvPropVector( RECVINFO( m_vecBlobPos[0] ) ), m_vecBlobPos ),
 	RecvPropArray3( RECVINFO_ARRAY( m_nBlobType ), RecvPropInt( RECVINFO( m_nBlobType[0] ) ) ),
+	RecvPropArray3( RECVINFO_ARRAY( m_nCoatEnt ), RecvPropInt( RECVINFO( m_nCoatEnt[0] ) ) ),
+	RecvPropArray( RecvPropFloat( RECVINFO( m_flCoatDie[0] ) ), m_flCoatDie ),
 #else
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampPos ), -1, SPROP_COORD ), m_vecStampPos ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecStampNormal ), -1, SPROP_NOSCALE ), m_vecStampNormal ),
@@ -320,6 +335,8 @@ BEGIN_NETWORK_TABLE( CTFPaintMap, DT_TFPaintMap )
 	SendPropInt( SENDINFO( m_nStampCursor ), 32, SPROP_UNSIGNED ),
 	SendPropArray( SendPropVector( SENDINFO_ARRAY( m_vecBlobPos ), -1, SPROP_COORD ), m_vecBlobPos ),
 	SendPropArray3( SENDINFO_ARRAY3( m_nBlobType ), SendPropInt( SENDINFO_ARRAY( m_nBlobType ), 8, SPROP_UNSIGNED ) ),
+	SendPropArray3( SENDINFO_ARRAY3( m_nCoatEnt ), SendPropInt( SENDINFO_ARRAY( m_nCoatEnt ), 16, SPROP_UNSIGNED ) ),
+	SendPropArray( SendPropFloat( SENDINFO_ARRAY( m_flCoatDie ) ), m_flCoatDie ),
 #endif
 END_NETWORK_TABLE()
 
@@ -417,6 +434,11 @@ void CTFPaintMap::Spawn( void )
 	{
 		m_vecBlobPos.Set( i, vec3_origin );
 		m_nBlobType.Set( i, 0 );
+	}
+	for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+	{
+		m_nCoatEnt.Set( i, 0 );
+		m_flCoatDie.Set( i, 0.f );
 	}
 	SetNextThink( gpGlobals->curtime + 0.05f );
 #else
@@ -555,6 +577,102 @@ void CTFPaintMap::ApplyNetworkStamps( void )
 			NotePop( pos, n, type | ( ( m_nStampTeam[slot] & 0x0F ) << 4 ) );
 	}
 	m_nAppliedCursor = cur;
+}
+
+void CTFPaintMap::DecalRepulsionCoats( void )
+{
+	if ( !tf_paint_enabled.GetBool() )
+		return;
+
+	static int s_decal = -1;
+	static float s_nextLookup = 0.f;
+	if ( s_decal < 0 )
+	{
+		if ( gpGlobals->curtime < s_nextLookup )
+			return;
+		s_nextLookup = gpGlobals->curtime + 1.f;
+		const int idx = effects->Draw_DecalIndexFromName( (char *)"paint/prop_paint_blue" );
+		const char *pszName = ( idx >= 0 ) ? effects->Draw_DecalNameFromIndex( idx ) : NULL;
+		if ( !pszName || !Q_stristr( pszName, "prop_paint_blue" ) )
+			return;
+		s_decal = idx;
+	}
+
+	// One decal per coat. Refreshing the timer paints them again.
+	struct Seen_t
+	{
+		EHANDLE ent;
+		float die;
+	};
+	static CUtlVector< Seen_t > s_Seen;
+
+	for ( int i = s_Seen.Count() - 1; i >= 0; --i )
+	{
+		if ( !s_Seen[i].ent.Get() || s_Seen[i].die <= gpGlobals->curtime )
+			s_Seen.FastRemove( i );
+	}
+
+	CUtlVector< CBaseEntity * > want;
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( pPlayer && pPlayer->m_Shared.InRepulseGel() )
+			want.AddToTail( pPlayer );
+	}
+	for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+	{
+		if ( CoatDie( i ) <= gpGlobals->curtime )
+			continue;
+		CBaseEntity *pEnt = UTIL_EntityByIndex( CoatEntIndex( i ) );
+		if ( pEnt )
+			want.AddToTail( pEnt );
+	}
+
+	for ( int w = 0; w < want.Count(); ++w )
+	{
+		CBaseEntity *pEnt = want[w];
+		if ( !pEnt || !pEnt->GetModel() )
+			continue;
+		float die = 0.f;
+		CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+		if ( pPlayer && pPlayer->m_Shared.InRepulseGel() )
+			die = pPlayer->m_Shared.GetRepulseGelUntil();
+		for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+		{
+			CBaseEntity *pCoat = UTIL_EntityByIndex( CoatEntIndex( i ) );
+			if ( pCoat == pEnt && CoatDie( i ) > die )
+				die = CoatDie( i );
+		}
+		if ( die <= gpGlobals->curtime )
+			continue;
+
+		bool bHave = false;
+		for ( int s = 0; s < s_Seen.Count(); ++s )
+		{
+			if ( s_Seen[s].ent.Get() == pEnt && s_Seen[s].die >= die - 0.05f )
+			{
+				bHave = true;
+				break;
+			}
+		}
+		if ( bHave )
+			continue;
+
+		const Vector center = pEnt->WorldSpaceCenter();
+		float bounds = pEnt->BoundingRadius();
+		if ( bounds < 24.f )
+			bounds = 24.f;
+		const Vector start = center + Vector( 0.f, 0.f, bounds + 16.f );
+		const Vector end = center - Vector( 0.f, 0.f, 8.f );
+		trace_t tr;
+		memset( &tr, 0, sizeof( tr ) );
+		pEnt->AddDecal( start, end, center, 0, s_decal, true, tr );
+
+		Seen_t rec;
+		rec.ent = pEnt;
+		rec.die = die;
+		s_Seen.AddToTail( rec );
+	}
 }
 
 void CTFPaintMap::ProjectRepulsionDecals( void )
@@ -717,6 +835,7 @@ void CTFPaintMap::ClientThink( void )
 
 	UpdateGreaseBlobs();
 	ProjectRepulsionDecals();
+	DecalRepulsionCoats();
 }
 
 void CTFPaintMap::OnDataChanged( DataUpdateType_t updateType )
@@ -988,30 +1107,45 @@ void CTFPaintMap::UpdateGreaseBlobs( void )
 
 #else // GAME_DLL
 
-// Grease blobs hit enemies. Teammates and the shooter are skipped so the blob
-// can still paint the wall behind them.
+// Grease and glue skip teammates so the blob can still paint the wall behind
+// them. Repulsion gel coats allies too, plus enemy buildings and physics props.
 class CTraceFilterPaintBlob : public CTraceFilterSimple
 {
 public:
-	CTraceFilterPaintBlob( const IHandleEntity *pass, CBaseEntity *pOwner )
-		: CTraceFilterSimple( pass, COLLISION_GROUP_NONE ), m_pOwner( pOwner ) {}
+	CTraceFilterPaintBlob( const IHandleEntity *pass, CBaseEntity *pOwner, bool bHitAllies )
+		: CTraceFilterSimple( pass, COLLISION_GROUP_NONE ), m_pOwner( pOwner ), m_bHitAllies( bHitAllies ) {}
 
 	virtual bool ShouldHitEntity( IHandleEntity *pHandle, int contentsMask )
 	{
 		CBaseEntity *pEnt = EntityFromEntityHandle( pHandle );
-		if ( pEnt && pEnt->IsPlayer() )
+		if ( !pEnt )
+			return false;
+		if ( pEnt->IsPlayer() )
 		{
 			if ( !m_pOwner || pEnt == m_pOwner )
 				return false;
-			if ( pEnt->GetTeamNumber() == m_pOwner->GetTeamNumber() )
+			if ( !m_bHitAllies && pEnt->GetTeamNumber() == m_pOwner->GetTeamNumber() )
 				return false;
 			return true;
 		}
-		return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
+		if ( !m_bHitAllies )
+			return CTraceFilterSimple::ShouldHitEntity( pHandle, contentsMask );
+
+		if ( pEnt->IsBaseObject() )
+		{
+			if ( m_pOwner && pEnt->GetTeamNumber() == m_pOwner->GetTeamNumber() )
+				return false;
+			return true;
+		}
+		const char *pszClass = pEnt->GetClassname();
+		if ( pszClass && !Q_strnicmp( pszClass, "prop_physics", 12 ) )
+			return true;
+		return false;
 	}
 
 private:
 	CBaseEntity *m_pOwner;
+	bool m_bHitAllies;
 };
 
 // Decals stick to world brushes and static props. Players, dynamic props,
@@ -1338,23 +1472,34 @@ void CTFPaintMap::Think( void )
 		Vector next = m_vecBlobPos[i] + m_vecBlobVel[i] * dt;
 
 		const bool bStickyShot = ( m_flBlobCoatLife[i] > 0.f );
+		const int typeNow = ( packed & 0x0F ) - 1;
+		const bool bRepulseShot = ( typeNow == BOUNCE_POWER );
 		trace_t tr;
 		CTraceFilterPaintDecal decalFilter;
 		UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, TF_PAINT_VIS_MASK, &decalFilter, &tr );
 
-		if ( bStickyShot )
+		if ( bStickyShot || bRepulseShot )
 		{
 			trace_t entTr;
-			CTraceFilterPaintBlob entFilter( this, m_hBlobOwner[i].Get() );
+			CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+			CTraceFilterPaintBlob entFilter( this, pOwner, bRepulseShot );
 			UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, MASK_SHOT, &entFilter, &entTr );
 			const bool bEntCloser = entTr.fraction < 1.f && ( tr.fraction >= 1.f || entTr.fraction <= tr.fraction + 0.001f );
 			if ( bEntCloser && entTr.m_pEnt && !staticpropmgr->IsStaticProp( entTr.m_pEnt ) )
 			{
 				int team = ( packed >> 4 ) & 0x0F;
-				CBaseEntity *pOwner = m_hBlobOwner[i].Get();
 				if ( team < TF_TEAM_RED && pOwner )
 					team = pOwner->GetTeamNumber();
-				const int type = ( packed & 0x0F ) - 1;
+				const int type = typeNow;
+
+				if ( bRepulseShot && TFPaint_CoatWithRepulsion( entTr.m_pEnt, pOwner ) )
+				{
+					PlaySplatSound( entTr.endpos );
+					m_nBlobType.Set( i, 0 );
+					m_flBlobCoatLife[i] = 0.f;
+					m_hBlobOwner[i] = NULL;
+					continue;
+				}
 
 				CTFPlayer *pVictim = ToTFPlayer( entTr.m_pEnt );
 				if ( pVictim )
@@ -1854,7 +1999,10 @@ void CTFPaintMap::ThinkProps( void )
 		if ( !hit.painted || hit.type != BOUNCE_POWER )
 			hit = TFPaint_Query( pEnt->GetAbsOrigin(), 36.f );
 		if ( !hit.painted || hit.type != BOUNCE_POWER )
+		{
+			BounceOffCoatedBody( pEnt, pPhys );
 			continue;
+		}
 
 		// Already in a hop. SetVelocity every scan pins the prop to the gel
 		// and the physics scrape loops for as long as the coat lasts.
@@ -2027,18 +2175,22 @@ void TFPaint_IgniteNitricAt( const Vector &pos, float extra )
 #endif
 }
 
-bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward )
+bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const Vector &nOutward, bool bForce )
 {
 	if ( !pEnt || !tf_paint_enabled.GetBool() )
 		return false;
 
-	TFPaintContact_t hit = TFPaint_Query( hitPos, 16.f );
-	if ( hit.type != BOUNCE_POWER )
-		return false;
+	TFPaintContact_t hit;
+	if ( !bForce )
+	{
+		hit = TFPaint_Query( hitPos, 16.f );
+		if ( hit.type != BOUNCE_POWER )
+			return false;
+	}
 
 	Vector n = nOutward;
 	if ( n.LengthSqr() < 0.01f )
-		n = hit.normal;
+		n = bForce ? Vector( 0.f, 0.f, 1.f ) : hit.normal;
 	if ( n.NormalizeInPlace() < 0.1f )
 		return false;
 
@@ -2076,7 +2228,200 @@ bool TFPaint_ReflectProjectile( CBaseEntity *pEnt, const Vector &hitPos, const V
 	return true;
 }
 
+bool TFPaint_IsRepulsionCoated( CBaseEntity *pEnt )
+{
+	if ( !pEnt || !tf_paint_enabled.GetBool() )
+		return false;
+
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+		return pPlayer->m_Shared.InRepulseGel();
+
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( !pMap )
+		return false;
+	const int idx = pEnt->entindex();
+	if ( idx <= 0 )
+		return false;
+	for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+	{
+		if ( pMap->CoatEntIndex( i ) == idx && pMap->CoatDie( i ) > gpGlobals->curtime )
+			return true;
+	}
+	return false;
+}
+
+bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vector &hitPos )
+{
+	if ( !pProj || !pHit || !TFPaint_IsRepulsionCoated( pHit ) )
+		return false;
+
+	Vector n = hitPos - pHit->WorldSpaceCenter();
+	if ( n.LengthSqr() < 1.f )
+		n = pProj->GetAbsOrigin() - pHit->WorldSpaceCenter();
+	return TFPaint_ReflectProjectile( pProj, hitPos, n, true );
+}
+
 #ifndef CLIENT_DLL
+
+static float RepulsionCoatSeconds( CBaseEntity *pEnt, int painterTeam )
+{
+	if ( !pEnt )
+		return 0.f;
+
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+	{
+		if ( !pPlayer->IsAlive() )
+			return 0.f;
+		if ( painterTeam >= TF_TEAM_RED && pPlayer->GetTeamNumber() != painterTeam )
+			return tf_paint_repulse_enemy_time.GetFloat();
+		return tf_paint_repulse_ally_time.GetFloat();
+	}
+
+	if ( pEnt->IsBaseObject() )
+	{
+		if ( painterTeam >= TF_TEAM_RED && pEnt->GetTeamNumber() == painterTeam )
+			return 0.f;
+		return tf_paint_repulse_ally_time.GetFloat();
+	}
+
+	const char *pszClass = pEnt->GetClassname();
+	if ( pszClass && !Q_strnicmp( pszClass, "prop_physics", 12 ) )
+		return tf_paint_repulse_ally_time.GetFloat();
+	return 0.f;
+}
+
+void CTFPaintMap::NoteEntityCoat( CBaseEntity *pEnt, float flUntil )
+{
+	if ( !pEnt )
+		return;
+	const int idx = pEnt->entindex();
+	if ( idx <= 0 )
+		return;
+
+	int slot = -1;
+	int oldSlot = 0;
+	float oldest = 1.0e12f;
+	for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+	{
+		const int cur = m_nCoatEnt[i];
+		const float die = m_flCoatDie[i];
+		if ( cur == idx )
+		{
+			if ( flUntil > die )
+				m_flCoatDie.Set( i, flUntil );
+			return;
+		}
+		if ( cur <= 0 || die <= gpGlobals->curtime )
+		{
+			slot = i;
+			break;
+		}
+		if ( die < oldest )
+		{
+			oldest = die;
+			oldSlot = i;
+		}
+	}
+	if ( slot < 0 )
+		slot = oldSlot;
+	m_nCoatEnt.Set( slot, idx );
+	m_flCoatDie.Set( slot, flUntil );
+}
+
+bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter )
+{
+	if ( !pEnt )
+		return false;
+	int team = pPainter ? pPainter->GetTeamNumber() : 0;
+	const float seconds = RepulsionCoatSeconds( pEnt, team );
+	if ( seconds <= 0.f )
+		return false;
+
+	const float until = gpGlobals->curtime + seconds;
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+		pPlayer->m_Shared.AddRepulseGel( seconds );
+
+	CTFPaintMap *pMap = TFPaint_Ensure();
+	if ( pMap )
+		pMap->NoteEntityCoat( pEnt, until );
+	return true;
+}
+
+bool CTFPaintMap::BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys )
+{
+	if ( !pEnt || !pPhys )
+		return false;
+
+	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
+	{
+		if ( m_BouncedProps[i].prop.Get() == pEnt && gpGlobals->curtime < m_BouncedProps[i].until )
+			return false;
+	}
+
+	CBaseEntity *pCoat = NULL;
+	float best = 1.0e12f;
+	const Vector origin = pEnt->WorldSpaceCenter();
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+		if ( !pPlayer || pPlayer == pEnt || !pPlayer->m_Shared.InRepulseGel() )
+			continue;
+		float reach = pEnt->BoundingRadius() + pPlayer->BoundingRadius();
+		if ( reach < 48.f )
+			reach = 48.f;
+		const float d2 = origin.DistToSqr( pPlayer->WorldSpaceCenter() );
+		if ( d2 > reach * reach || d2 >= best )
+			continue;
+		best = d2;
+		pCoat = pPlayer;
+	}
+	for ( int i = 0; i < TF_PAINT_ENTITY_COAT_MAX; ++i )
+	{
+		if ( m_flCoatDie[i] <= gpGlobals->curtime )
+			continue;
+		CBaseEntity *pOther = UTIL_EntityByIndex( m_nCoatEnt[i] );
+		if ( !pOther || pOther == pEnt )
+			continue;
+		float reach = pEnt->BoundingRadius() + pOther->BoundingRadius();
+		if ( reach < 48.f )
+			reach = 48.f;
+		const float d2 = origin.DistToSqr( pOther->WorldSpaceCenter() );
+		if ( d2 > reach * reach || d2 >= best )
+			continue;
+		best = d2;
+		pCoat = pOther;
+	}
+	if ( !pCoat )
+		return false;
+
+	Vector n = origin - pCoat->WorldSpaceCenter();
+	if ( n.NormalizeInPlace() < 0.1f )
+		n.Init( 0.f, 0.f, 1.f );
+
+	Vector vel;
+	AngularImpulse ang;
+	pPhys->GetVelocity( &vel, &ang );
+	const float into = DotProduct( vel, n );
+	const bool bImpact = ( into < -40.f );
+	const bool bResting = ( vel.LengthSqr() < 90.f * 90.f );
+	if ( !bImpact && !bResting )
+		return false;
+
+	const float flMin = ( n.z > 0.7f ) ? tf_paint_bounce_min.GetFloat() : tf_paint_bounce_wall.GetFloat();
+	Vector out = vel - n * into;
+	float away = flMin;
+	if ( into < 0.f && -into > away )
+		away = -into;
+	out += n * away;
+	pPhys->SetVelocity( &out, &ang );
+	pPhys->Wake();
+	pEnt->SetGroundEntity( NULL );
+	NoteBouncedProp( pEnt, pCoat );
+	return true;
+}
 
 //-----------------------------------------------------------------------------
 // Continuous blob sprayer. Angles aim the stream.

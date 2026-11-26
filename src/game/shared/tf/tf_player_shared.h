@@ -515,6 +515,10 @@ public:
 	// Glue gun. Absolute gpGlobals->curtime. Half move, fire, reload, and switch. No jump.
 	void	AddGlue( float flSeconds );
 	bool	InGlue( void ) const;
+	// Repulsion gel on this body. Absolute gpGlobals->curtime.
+	void	AddRepulseGel( float flSeconds );
+	bool	InRepulseGel( void ) const;
+	float	GetRepulseGelUntil( void ) const { return m_flRepulseUntil; }
 	int		GetChemSelected( void ) const;
 	void	SetChemSelected( int slot );
 	int		GetChemPrev( void ) const;
@@ -1347,6 +1351,7 @@ private:
 	CNetworkVar( float, m_flHolsterAnimTime );
 	CNetworkVar( float, m_flIceUntil );
 	CNetworkVar( float, m_flGlueUntil );
+	CNetworkVar( float, m_flRepulseUntil );
 	CNetworkVar( float, m_flPoisonExpire );
 	CNetworkVar( float, m_flNitricUntil );
 	CNetworkVar( float, m_flWetUntil );

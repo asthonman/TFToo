@@ -416,6 +416,13 @@ void CTFBaseProjectile::ProjectileTouch( CBaseEntity *pOther )
 			return;
 	}
 
+	// Repulsion gel on a player, building, or prop. Do not damage the coat.
+	if ( TFPaint_IsRepulsionCoated( pOther ) )
+	{
+		TFPaint_ReflectOffCoated( this, pOther, pTrace->endpos );
+		return;
+	}
+
 	// Repulsion gel. Nails, syringes, and anything else on this touch.
 	if ( !pOther->IsPlayer() && !pOther->IsBaseObject() )
 	{
