@@ -15,6 +15,7 @@
 #ifdef CLIENT_DLL
 #define CTFWeaponPaintgun C_TFWeaponPaintgun
 #define CTFWeaponGreasegun C_TFWeaponGreasegun
+#define CTFWeaponGluegun C_TFWeaponGluegun
 #endif
 
 class CTFWeaponPaintgun : public CTFWeaponBase
@@ -67,6 +68,31 @@ public:
 	CTFWeaponGreasegun();
 
 	virtual int GetWeaponID( void ) const { return TF_WEAPON_NONE; }
+	virtual void PrimaryAttack( void );
+
+private:
+	float m_flNextPaintAnim;
+};
+
+//-----------------------------------------------------------------------------
+// Madcap secondary unlock. White glue. Ammo is TF_AMMO_METAL, same pool as
+// the Grease Gun, capped at 100 by mult_maxammo_metal while this is equipped.
+//-----------------------------------------------------------------------------
+class CTFWeaponGluegun : public CTFWeaponBase
+{
+	DECLARE_CLASS( CTFWeaponGluegun, CTFWeaponBase );
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
+
+#ifdef GAME_DLL
+	DECLARE_DATADESC();
+#endif
+
+public:
+	CTFWeaponGluegun();
+
+	virtual int GetWeaponID( void ) const { return TF_WEAPON_NONE; }
+	virtual void Precache( void );
 	virtual void PrimaryAttack( void );
 
 private:

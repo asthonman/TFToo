@@ -4055,6 +4055,8 @@ C_TFPlayer::C_TFPlayer() :
 	m_pJetBootEffect[0] = NULL;
 	m_pJetBootEffect[1] = NULL;
 	m_pszJetBootEffect = NULL;
+	for ( int iGlue = 0; iGlue < 5; ++iGlue )
+		m_pGlueStuck[iGlue] = NULL;
 	m_pUrineEffect = NULL;
 	m_pMilkEffect = NULL;
 	m_pGasEffect = NULL;
@@ -7068,6 +7070,44 @@ void C_TFPlayer::UpdateJetBootParticles( void )
 		m_pJetBootEffect[i] = ParticleProp()->Create( pszWant, PATTACH_POINT_FOLLOW, s_pszFoot[i] );
 }
 
+void C_TFPlayer::UpdateGlueParticles( void )
+{
+	const bool bOn = IsAlive() && m_Shared.InGlue();
+	if ( !bOn )
+	{
+		for ( int i = 0; i < 5; ++i )
+		{
+			if ( m_pGlueStuck[i] )
+			{
+				ParticleProp()->StopEmissionAndDestroyImmediately( m_pGlueStuck[i] );
+				m_pGlueStuck[i] = NULL;
+			}
+		}
+		return;
+	}
+
+	// Local offsets sit the blob on the mesh instead of inside the attachment.
+	static const char *const s_pszAttach[5] = { "head", "back_upper", "foot_L", "foot_R", "flag" };
+	static const Vector s_vecOffset[5] =
+	{
+		Vector( 5.f, 0.f, 2.f ),
+		Vector( -6.f, 0.f, 1.f ),
+		Vector( 2.f, 0.f, 3.f ),
+		Vector( 2.f, 0.f, 3.f ),
+		Vector( 0.f, 6.f, 3.f ),
+	};
+
+	for ( int i = 0; i < 5; ++i )
+	{
+		if ( m_pGlueStuck[i] )
+			continue;
+		const int iAttach = LookupAttachment( s_pszAttach[i] );
+		if ( iAttach <= 0 )
+			continue;
+		m_pGlueStuck[i] = ParticleProp()->Create( "glue_stuck_blob", PATTACH_POINT_FOLLOW, iAttach, s_vecOffset[i] );
+	}
+}
+
 void C_TFPlayer::ClientThink()
 {
 	// Pass on through to the base class.
@@ -7145,6 +7185,7 @@ void C_TFPlayer::ClientThink()
 	}
 
 	UpdateJetBootParticles();
+	UpdateGlueParticles();
 
 	if ( m_bWaterExitEffectActive && !IsAlive() )
 	{

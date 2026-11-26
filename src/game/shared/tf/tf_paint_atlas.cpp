@@ -127,6 +127,7 @@ static int PaintRankAtlas( int type )
 	case BOUNCE_POWER:	return 4;
 	case SPEED_POWER:	return 3;
 	case SIXTH_POWER:	return 3;
+	case SEVENTH_POWER:	return 3;
 	case PORTAL_POWER:	return 2;
 	case FIFTH_POWER:	return 1;
 	default:			return 0;

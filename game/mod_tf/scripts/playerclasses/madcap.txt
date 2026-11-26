@@ -1,7 +1,7 @@
 // Madcap. Body, arms, and death sounds are the Scout's for now.
 // 300 units/sec is 100% move speed. Health is 175.
 // Primary: Nailgun. Secondary: Grease Gun. Melee: Boston Basher.
-// The Mason's Missile is the secondary unlock.
+// The Glue Gun and the Mason's Missile are the secondary unlocks.
 // Boot unlocks are primaries (Sole Saviors, Teufort Tooth Kicker).
 // Shields moved to the Guard Dog. Eyelander, Shiv, Zatoichi, Wrap Assassin,
 // and Warrior's Spirit are shared melees. Persian Persuader and

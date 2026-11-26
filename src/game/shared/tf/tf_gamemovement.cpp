@@ -310,6 +310,22 @@ void CTFGameMovement::PlayerMove()
 			mv->m_flMaxSpeed = tf_paint_stick_speed.GetFloat();
 			mv->m_flClientMaxSpeed = tf_paint_stick_speed.GetFloat();
 		}
+		else if ( m_nPaintPower == SEVENTH_POWER && m_pTFPlayer )
+		{
+			// Enemy glue. An unowned puddle slows everyone. Refresh while a foot is on it.
+			const int team = TFPaint_QueryStampTeam( mv->GetAbsOrigin(), SEVENTH_POWER );
+			if ( team < TF_TEAM_RED || team != m_pTFPlayer->GetTeamNumber() )
+				m_pTFPlayer->m_Shared.AddGlue( 0.35f );
+		}
+	}
+
+	// Half move speed while glued, including an absolute gel cap written above.
+	// Done on the move data so every class slows the same command the coat starts,
+	// and so propulsion gel cannot wipe the slow.
+	if ( m_pTFPlayer && m_pTFPlayer->m_Shared.InGlue() )
+	{
+		mv->m_flMaxSpeed *= 0.5f;
+		mv->m_flClientMaxSpeed *= 0.5f;
 	}
 
 	// call base class to do movement
@@ -1544,6 +1560,10 @@ bool CTFGameMovement::CheckJumpButton()
 {
 	// Are we dead?  Then we cannot jump.
 	if ( player->pl.deadflag )
+		return false;
+
+	// Glue coats and glue puddles. No jump and no air dash until it wears off.
+	if ( m_pTFPlayer && m_pTFPlayer->m_Shared.InGlue() )
 		return false;
 
 	// Check to see if we are in water.

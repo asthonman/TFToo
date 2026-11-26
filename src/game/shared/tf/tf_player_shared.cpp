@@ -451,6 +451,7 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 
 	RecvPropFloat( RECVINFO( m_flHolsterAnimTime ) ),
 	RecvPropFloat( RECVINFO( m_flIceUntil ) ),
+	RecvPropFloat( RECVINFO( m_flGlueUntil ) ),
 	RecvPropFloat( RECVINFO( m_flPoisonExpire ) ),
 	RecvPropFloat( RECVINFO( m_flNitricUntil ) ),
 	RecvPropFloat( RECVINFO( m_flWetUntil ) ),
@@ -500,6 +501,7 @@ BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_askForBallTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flHolsterAnimTime, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flIceUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flGlueUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flPoisonExpire, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flNitricUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flWetUntil, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
@@ -653,6 +655,7 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	
 	SendPropFloat( SENDINFO( m_flHolsterAnimTime ) ),
 	SendPropFloat( SENDINFO( m_flIceUntil ) ),
+	SendPropFloat( SENDINFO( m_flGlueUntil ) ),
 	SendPropFloat( SENDINFO( m_flPoisonExpire ) ),
 	SendPropFloat( SENDINFO( m_flNitricUntil ) ),
 	SendPropFloat( SENDINFO( m_flWetUntil ) ),
@@ -979,6 +982,7 @@ CTFPlayerShared::CTFPlayerShared()
 
 	m_flHolsterAnimTime = 0.f;
 	m_flIceUntil = 0.f;
+	m_flGlueUntil = 0.f;
 	m_flPoisonExpire = 0.f;
 	m_flNitricUntil = 0.f;
 	m_flWetUntil = 0.f;
@@ -1004,6 +1008,20 @@ void CTFPlayerShared::AddIcePhysics( float flSeconds )
 bool CTFPlayerShared::InIcePhysics( void ) const
 {
 	return m_flIceUntil > gpGlobals->curtime;
+}
+
+void CTFPlayerShared::AddGlue( float flSeconds )
+{
+	if ( flSeconds <= 0.f )
+		return;
+	float flUntil = gpGlobals->curtime + flSeconds;
+	if ( flUntil > m_flGlueUntil )
+		m_flGlueUntil = flUntil;
+}
+
+bool CTFPlayerShared::InGlue( void ) const
+{
+	return m_flGlueUntil > gpGlobals->curtime;
 }
 
 //-----------------------------------------------------------------------------
@@ -12078,6 +12096,8 @@ bool CTFPlayer::Weapon_Switch( CBaseCombatWeapon *pWeapon, int viewmodelindex )
 		{
 			float flHolsterAnimTime = 0.f;
 			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pActiveWeapon, flHolsterAnimTime, holster_anim_time );
+			if ( m_Shared.InGlue() && flHolsterAnimTime > 0.f )
+				flHolsterAnimTime *= 2.f;
 			if ( flHolsterAnimTime > 0.f )
 			{
 				// this actually calls Holster() to start the anim. Then we do another Holster call when we actually switch weapon.

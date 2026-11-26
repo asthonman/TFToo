@@ -117,6 +117,7 @@ public:
 	virtual void PreThink( void );
 	virtual void ClientThink();
 	void	UpdateJetBootParticles();
+	void	UpdateGlueParticles();
 
 	void	UpdateTimers();
 
@@ -756,6 +757,9 @@ public:
 	// Chemist jet boots. One effect on each foot.
 	HPARTICLEFFECT		m_pJetBootEffect[2];
 	const char			*m_pszJetBootEffect;
+
+	// Glue coat. One white blob on each attachment that the model actually has.
+	HPARTICLEFFECT		m_pGlueStuck[5];
 
 	// Urine
 	HPARTICLEFFECT		m_pUrineEffect;

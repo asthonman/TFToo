@@ -512,6 +512,9 @@ public:
 	// Grease-gun ice. Absolute gpGlobals->curtime. Ground friction and accel only.
 	void	AddIcePhysics( float flSeconds );
 	bool	InIcePhysics( void ) const;
+	// Glue gun. Absolute gpGlobals->curtime. Half move, fire, reload, and switch. No jump.
+	void	AddGlue( float flSeconds );
+	bool	InGlue( void ) const;
 	int		GetChemSelected( void ) const;
 	void	SetChemSelected( int slot );
 	int		GetChemPrev( void ) const;
@@ -1343,6 +1346,7 @@ private:
 
 	CNetworkVar( float, m_flHolsterAnimTime );
 	CNetworkVar( float, m_flIceUntil );
+	CNetworkVar( float, m_flGlueUntil );
 	CNetworkVar( float, m_flPoisonExpire );
 	CNetworkVar( float, m_flNitricUntil );
 	CNetworkVar( float, m_flWetUntil );

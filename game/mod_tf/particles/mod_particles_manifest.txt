@@ -8,4 +8,5 @@ particles_manifest
 	"file"		"particles/boot_particles.pcf"
 	"file"		"particles/paint_splats_fx.pcf"
 	"file"		"particles/grease_blob.pcf"
+	"file"		"particles/glue_blob.pcf"
 }

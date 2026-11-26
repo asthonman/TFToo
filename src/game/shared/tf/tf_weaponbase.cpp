@@ -1314,6 +1314,9 @@ bool CTFWeaponBase::Deploy( void )
 			flDeployTimeMultiplier /= 5.0f;
 		}
 
+		if ( pPlayer->m_Shared.InGlue() )
+			flDeployTimeMultiplier *= 2.f;
+
 		int numHealers = pPlayer->m_Shared.GetNumHealers();
 		if ( numHealers == 0 )
 		{
@@ -1958,6 +1961,9 @@ float CTFWeaponBase::ApplyFireDelay( float flDelay ) const
 		flDelayMult *= 0.75f;
 	}
 
+	if ( pPlayer && pPlayer->m_Shared.InGlue() )
+		flDelayMult *= 2.f;
+
 	return flDelay * flDelayMult;
 }
 
@@ -2339,6 +2345,9 @@ void CTFWeaponBase::SetReloadTimer( float flReloadTime )
 	{
 		flReloadTime *= 0.75f;
 	}
+
+	if ( pPlayer->m_Shared.InGlue() )
+		flReloadTime *= 2.f;
 
 	flReloadTime *= GetReloadSpeedScale();
 

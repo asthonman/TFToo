@@ -17,10 +17,70 @@
 			"hidden"				"0"
 			"stored_as_integer"		"0"
 		}
+		"b2"
+		{
+			"name"					"glue coat on hit"
+			"attribute_class"		"glue_coat_on_hit"
+			"description_string"	"#Attrib_GlueCoat"
+			"description_format"	"value_is_or"
+			"effect_type"			"positive"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+		"b3"
+		{
+			"name"					"glue slow on hit"
+			"attribute_class"		"glue_slow_on_hit"
+			"description_string"	"#Attrib_GlueSlow"
+			"description_format"	"value_is_or"
+			"effect_type"			"positive"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+		"b4"
+		{
+			"name"					"glue gun fire rate penalty"
+			"attribute_class"		"mult_postfiredelay"
+			"description_string"	"#Attrib_GluegunFireRate"
+			"description_format"	"value_is_percentage"
+			"effect_type"			"negative"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+		"b5"
+		{
+			"name"					"glue gun ammo penalty"
+			"attribute_class"		"mult_maxammo_metal"
+			"description_string"	"#Attrib_GluegunAmmo"
+			"description_format"	"value_is_percentage"
+			"effect_type"			"negative"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+		"b6"
+		{
+			"name"					"glue puddle lifetime"
+			"attribute_class"		"glue_puddle_lifetime"
+			"description_string"	"#Attrib_GluePuddleLife"
+			"description_format"	"value_is_or"
+			"effect_type"			"negative"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
+		"b7"
+		{
+			"name"					"glue puddle effect"
+			"attribute_class"		"glue_puddle_effect"
+			"description_string"	"#Attrib_GluePuddle"
+			"description_format"	"value_is_or"
+			"effect_type"			"neutral"
+			"hidden"				"0"
+			"stored_as_integer"		"0"
+		}
 	}
 	"items"
 	{
-		// Madcap and Chemist stock primary. First person is Scout's arms, secondary slot.
+		// Madcap stock primary. First person is Scout's arms, secondary slot.
 		"b1"
 		{
 			"name"				"b1"
@@ -45,7 +105,6 @@
 			"used_by_classes"
 			{
 				"madcap"		"1"
-				"chemist"		"1"
 			}
 		}
 		// Madcap unlock. Unique quality is the yellow name. The stock secondary
@@ -1060,6 +1119,61 @@
 			"used_by_classes"
 			{
 				"chemist"		"1"
+			}
+		}
+		// Madcap secondary unlock. White glue, 100 metal ammo, half the
+		// grease gun's fire rate and puddle life.
+		"b34"
+		{
+			"name"				"b34"
+			"item_class"		"tf_weapon_gluegun"
+			"item_name"			"#TF_Weapon_Gluegun"
+			"item_type_name"	"#TF_Weapon_Gluegun"
+			"item_logname"		"gluegun"
+			"item_iconname"	"smg"
+			"item_slot"			"secondary"
+			"anim_slot"			"SECONDARY"
+			"item_quality"		"unique"
+			"baseitem"			"0"
+			"enabled"			"1"
+			"hidden"			"0"
+			"propername"		"0"
+			"min_ilevel"		"1"
+			"max_ilevel"		"1"
+			"act_as_weapon"		"1"
+			"attach_to_hands"	"1"
+			"model_player"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"model_world"		"models/weapons/c_models/c_smg/c_smg.mdl"
+			"used_by_classes"
+			{
+				"madcap"		"1"
+			}
+			"attributes"
+			{
+				"glue coat on hit"
+				{
+					"value"		"1"
+				}
+				"glue slow on hit"
+				{
+					"value"		"1"
+				}
+				"glue gun fire rate penalty"
+				{
+					"value"		"2"
+				}
+				"glue gun ammo penalty"
+				{
+					"value"		"0.5"
+				}
+				"glue puddle lifetime"
+				{
+					"value"		"1"
+				}
+				"glue puddle effect"
+				{
+					"value"		"1"
+				}
 			}
 		}
 	}

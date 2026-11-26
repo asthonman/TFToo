@@ -285,11 +285,82 @@ void CTFWeaponGreasegun::PrimaryAttack( void )
 	float flDelay = GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flTimeFireDelay;
 	if ( flDelay < 0.05f )
 		flDelay = 0.05f;
+	// This gun does not go through ApplyFireDelay. Glue still slows the shot.
+	if ( pOwner->m_Shared.InGlue() )
+		flDelay *= 2.f;
 	m_flNextPrimaryAttack = gpGlobals->curtime + flDelay;
 	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
 
 #ifdef GAME_DLL
 	FirePaintBlob( pOwner, SIXTH_POWER, tf_paint_grease_lifetime.GetFloat() );
+#endif
+	WeaponSound( SINGLE );
+
+	if ( gpGlobals->curtime >= m_flNextPaintAnim )
+	{
+		SendWeaponAnim( ACT_VM_PRIMARYATTACK );
+		pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY );
+		m_flNextPaintAnim = gpGlobals->curtime + 0.15f;
+	}
+}
+
+IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponGluegun, DT_WeaponGluegun )
+
+BEGIN_NETWORK_TABLE( CTFWeaponGluegun, DT_WeaponGluegun )
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA( CTFWeaponGluegun )
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS( tf_weapon_gluegun, CTFWeaponGluegun );
+PRECACHE_WEAPON_REGISTER( tf_weapon_gluegun );
+
+#ifdef GAME_DLL
+BEGIN_DATADESC( CTFWeaponGluegun )
+END_DATADESC()
+#endif
+
+CTFWeaponGluegun::CTFWeaponGluegun()
+{
+	m_flNextPaintAnim = 0.f;
+}
+
+void CTFWeaponGluegun::Precache( void )
+{
+	BaseClass::Precache();
+	PrecacheParticleSystem( "glue_paint_blob" );
+	PrecacheParticleSystem( "glue_stuck_blob" );
+	PrecacheParticleSystem( "glue_blob_pop" );
+}
+
+void CTFWeaponGluegun::PrimaryAttack( void )
+{
+	if ( !CanAttack() )
+		return;
+
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( !pOwner )
+		return;
+
+	if ( m_iPrimaryAmmoType < 0 || pOwner->GetAmmoCount( m_iPrimaryAmmoType ) < 1 )
+	{
+		WeaponSound( EMPTY );
+		m_flNextPrimaryAttack = gpGlobals->curtime + 0.2f;
+		return;
+	}
+
+	pOwner->RemoveAmmo( 1, m_iPrimaryAmmoType );
+
+	float flDelay = ApplyFireDelay( GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flTimeFireDelay );
+	if ( flDelay < 0.05f )
+		flDelay = 0.05f;
+	m_flNextPrimaryAttack = gpGlobals->curtime + flDelay;
+	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
+
+#ifdef GAME_DLL
+	// Puddles last half as long as grease. Direct hits coat for tf_paint_glue_time.
+	const float flPuddle = tf_paint_grease_lifetime.GetFloat() * 0.5f;
+	FirePaintBlob( pOwner, SEVENTH_POWER, flPuddle );
 #endif
 	WeaponSound( SINGLE );
 

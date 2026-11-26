@@ -61,6 +61,7 @@ extern ConVar tf_paint_grease_lifetime;
 extern ConVar tf_paint_ice_time;
 extern ConVar tf_paint_ice_friction;
 extern ConVar tf_paint_ice_accel;
+extern ConVar tf_paint_glue_time;
 
 void TFPaint_GetColor( int type, int &r, int &g, int &b, int team = 0 );
 const char *TFPaint_Name( int type );

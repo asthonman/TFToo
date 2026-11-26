@@ -57,6 +57,7 @@ ConVar tf_paint_grease_lifetime( "tf_paint_grease_lifetime", "10", FCVAR_REPLICA
 ConVar tf_paint_ice_time( "tf_paint_ice_time", "3", FCVAR_REPLICATED, "Seconds of ice physics after a grease blob hits an enemy." );
 ConVar tf_paint_ice_friction( "tf_paint_ice_friction", "0.05", FCVAR_REPLICATED, "Ground friction scale while iced." );
 ConVar tf_paint_ice_accel( "tf_paint_ice_accel", "0.2", FCVAR_REPLICATED, "Ground acceleration scale while iced." );
+ConVar tf_paint_glue_time( "tf_paint_glue_time", "3", FCVAR_REPLICATED, "Seconds an enemy stays glued after a direct hit. Puddles refresh a shorter coat." );
 
 static const char *const s_pszPaintSounds[] =
 {
@@ -98,6 +99,7 @@ void TFPaint_GetColor( int type, int &r, int &g, int &b, int team )
 			r = 120; g = 88; b = 36;
 		}
 		break;
+	case SEVENTH_POWER:	r = 255; g = 255; b = 255; break;
 	case NO_POWER:		r = 16;  g = 16;  b = 16;  break;
 	default:			r = 255; g = 255; b = 255; break;
 	}
@@ -112,6 +114,7 @@ const char *TFPaint_Name( int type )
 	case PORTAL_POWER:	return "Adhesion gel";
 	case FIFTH_POWER:	return "Nitric fluid";
 	case SIXTH_POWER:	return "Grease";
+	case SEVENTH_POWER:	return "Glue";
 	case NO_POWER:		return "Cleansing gel";
 	default:			return "Gel";
 	}
@@ -278,7 +281,7 @@ private:
 	void	DrawStampDecals( const Vector &eye );
 	void	ProjectRepulsionDecals( void );
 	void	UpdateGreaseBlobs( void );
-	void	KillGreaseBlob( int slot, bool bSplat );
+	void	KillGreaseBlob( int slot, int splatGel );
 	CNewParticleEffect *m_pGreaseFx[TF_PAINT_BLOB_MAX];
 	Vector	m_vecGreaseAnchor[TF_PAINT_BLOB_MAX];
 	struct PropPaintRec_t
@@ -362,7 +365,7 @@ CTFPaintMap::~CTFPaintMap()
 {
 #ifdef CLIENT_DLL
 	for ( int i = 0; i < TF_PAINT_BLOB_MAX; ++i )
-		KillGreaseBlob( i, false );
+		KillGreaseBlob( i, -1 );
 #endif
 	if ( s_pMap == this )
 		s_pMap = NULL;
@@ -386,6 +389,9 @@ void CTFPaintMap::Spawn( void )
 	PrecacheParticleSystem( "grease_paint_blob_red" );
 	PrecacheParticleSystem( "grease_paint_blob_blue" );
 	PrecacheParticleSystem( "paint_splat_bounce_01_B" );
+	PrecacheParticleSystem( "glue_paint_blob" );
+	PrecacheParticleSystem( "glue_stuck_blob" );
+	PrecacheParticleSystem( "glue_blob_pop" );
 
 	SetSolid( SOLID_NONE );
 	SetMoveType( MOVETYPE_NONE );
@@ -702,8 +708,8 @@ void CTFPaintMap::ClientThink( void )
 			int gel = ( packed & 0x0F ) - 1;
 			int team = ( packed >> 4 ) & 0x0F;
 			NotePop( m_vecBlobSeen[i], Vector( 0, 0, 1 ), gel | ( team << 4 ) );
-			if ( gel == SIXTH_POWER )
-				KillGreaseBlob( i, true );
+			if ( gel == SIXTH_POWER || gel == SEVENTH_POWER )
+				KillGreaseBlob( i, gel );
 		}
 		m_nBlobSeen[i] = m_nBlobType[i];
 		m_vecBlobSeen[i] = m_vecBlobPos[i];
@@ -880,7 +886,7 @@ int CTFPaintMap::DrawModel( int flags )
 			int gel = ( packed & 0x0F ) - 1;
 			int team = ( packed >> 4 ) & 0x0F;
 			// Grease is the sprite-sheet blob. Keep the flat quad only if that effect failed to spawn.
-			if ( gel == SIXTH_POWER && m_pGreaseFx[i] && m_pGreaseFx[i]->m_nActiveParticles > 0 )
+			if ( ( gel == SIXTH_POWER || gel == SEVENTH_POWER ) && m_pGreaseFx[i] && m_pGreaseFx[i]->m_nActiveParticles > 0 )
 				continue;
 			int r, g, b;
 			TFPaint_GetColor( gel, r, g, b, team );
@@ -928,7 +934,7 @@ static const char *GreaseBlobParticle( int team )
 	return "grease_paint_blob";
 }
 
-void CTFPaintMap::KillGreaseBlob( int slot, bool bSplat )
+void CTFPaintMap::KillGreaseBlob( int slot, int splatGel )
 {
 	if ( slot < 0 || slot >= TF_PAINT_BLOB_MAX )
 		return;
@@ -939,7 +945,9 @@ void CTFPaintMap::KillGreaseBlob( int slot, bool bSplat )
 		m_pGreaseFx[slot] = NULL;
 	}
 
-	if ( bSplat )
+	if ( splatGel == SEVENTH_POWER )
+		DispatchParticleEffect( "glue_blob_pop", m_vecBlobSeen[slot], vec3_angle );
+	else if ( splatGel == SIXTH_POWER )
 		DispatchParticleEffect( "paint_splat_bounce_01_B", m_vecBlobSeen[slot], vec3_angle );
 }
 
@@ -950,17 +958,18 @@ void CTFPaintMap::UpdateGreaseBlobs( void )
 		const int packed = m_nBlobType[i];
 		const int gel = ( packed & 0x0F ) - 1;
 		const int team = ( packed >> 4 ) & 0x0F;
-		if ( packed <= 0 || gel != SIXTH_POWER )
+		const bool bSprite = ( gel == SIXTH_POWER || gel == SEVENTH_POWER );
+		if ( packed <= 0 || !bSprite )
 		{
-			KillGreaseBlob( i, false );
+			KillGreaseBlob( i, -1 );
 			continue;
 		}
 
 		const Vector pos = m_vecBlobPos[i];
-		const char *pszName = GreaseBlobParticle( team );
+		const char *pszName = ( gel == SEVENTH_POWER ) ? "glue_paint_blob" : GreaseBlobParticle( team );
 		const bool bJump = m_pGreaseFx[i] && ( pos - m_vecGreaseAnchor[i] ).LengthSqr() > ( 128.f * 128.f );
 		if ( bJump )
-			KillGreaseBlob( i, false );
+			KillGreaseBlob( i, -1 );
 
 		if ( !m_pGreaseFx[i] )
 		{
@@ -1328,12 +1337,12 @@ void CTFPaintMap::Think( void )
 		m_vecBlobVel[i].z -= gravity * dt;
 		Vector next = m_vecBlobPos[i] + m_vecBlobVel[i] * dt;
 
-		const bool bGrease = ( m_flBlobCoatLife[i] > 0.f );
+		const bool bStickyShot = ( m_flBlobCoatLife[i] > 0.f );
 		trace_t tr;
 		CTraceFilterPaintDecal decalFilter;
 		UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, TF_PAINT_VIS_MASK, &decalFilter, &tr );
 
-		if ( bGrease )
+		if ( bStickyShot )
 		{
 			trace_t entTr;
 			CTraceFilterPaintBlob entFilter( this, m_hBlobOwner[i].Get() );
@@ -1341,13 +1350,24 @@ void CTFPaintMap::Think( void )
 			const bool bEntCloser = entTr.fraction < 1.f && ( tr.fraction >= 1.f || entTr.fraction <= tr.fraction + 0.001f );
 			if ( bEntCloser && entTr.m_pEnt && !staticpropmgr->IsStaticProp( entTr.m_pEnt ) )
 			{
+				int team = ( packed >> 4 ) & 0x0F;
+				CBaseEntity *pOwner = m_hBlobOwner[i].Get();
+				if ( team < TF_TEAM_RED && pOwner )
+					team = pOwner->GetTeamNumber();
+				const int type = ( packed & 0x0F ) - 1;
+
 				CTFPlayer *pVictim = ToTFPlayer( entTr.m_pEnt );
 				if ( pVictim )
 				{
 					if ( pVictim->IsAlive() )
 					{
-						pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
-						pVictim->m_Shared.AddWet( 10.f );
+						if ( type == SEVENTH_POWER )
+							pVictim->m_Shared.AddGlue( tf_paint_glue_time.GetFloat() );
+						else
+						{
+							pVictim->m_Shared.AddIcePhysics( tf_paint_ice_time.GetFloat() );
+							pVictim->m_Shared.AddWet( 10.f );
+						}
 						PlaySplatSound( entTr.endpos );
 					}
 					// The player is not where the decal goes. If this step also
@@ -1367,11 +1387,7 @@ void CTFPaintMap::Think( void )
 				}
 				else if ( entTr.m_pEnt->IsBaseObject() )
 				{
-					int team = ( packed >> 4 ) & 0x0F;
-					CBaseEntity *pOwner = m_hBlobOwner[i].Get();
-					if ( team < TF_TEAM_RED && pOwner )
-						team = pOwner->GetTeamNumber();
-					int type = ( packed & 0x0F ) - 1;
+					// Grease coats allied buildings. Glue only sticks to players.
 					if ( type == SIXTH_POWER && ( team < TF_TEAM_RED || entTr.m_pEnt->GetTeamNumber() == team ) )
 					{
 						const float flLife = m_flBlobCoatLife[i];
