@@ -32,6 +32,8 @@
 #include "tf_player.h"
 #include "tf_obj.h"
 #include "physics_shared.h"
+#include "physics.h"
+#include "collisionutils.h"
 #include "recipientfilter.h"
 #include "particle_system.h"
 #include "materialsystem/imaterialsystem.h"
@@ -222,6 +224,7 @@ public:
 #ifdef GAME_DLL
 	void	NoteEntityCoat( CBaseEntity *pEnt, float flUntil );
 	bool	BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys );
+	bool	LaunchPhysicsProp( CBaseEntity *pEnt, IPhysicsObject *pPhys, const Vector &contact, const Vector &nOutward, const Vector &preVelocity, bool bNudge );
 #endif
 
 	static CTFPaintMap *Get() { return s_pMap; }
@@ -278,6 +281,7 @@ private:
 		EHANDLE prop;
 		EHANDLE owner;
 		float until;
+		float next;
 	};
 	CUtlVector< BouncedProp_t > m_BouncedProps;
 	float	m_flNextPropScan;
@@ -1936,11 +1940,13 @@ void CTFPaintMap::NoteBouncedProp( CBaseEntity *pProp, CBaseEntity *pOwner )
 	// Long enough for the hop to land. Refreshing this every scan was what
 	// kept SetVelocity running and the scrape going.
 	const float until = gpGlobals->curtime + 1.15f;
+	const float next = gpGlobals->curtime + 0.12f;
 	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
 	{
 		if ( m_BouncedProps[i].prop.Get() == pProp )
 		{
 			m_BouncedProps[i].until = until;
+			m_BouncedProps[i].next = next;
 			if ( pOwner )
 				m_BouncedProps[i].owner = pOwner;
 			return;
@@ -1951,6 +1957,7 @@ void CTFPaintMap::NoteBouncedProp( CBaseEntity *pProp, CBaseEntity *pOwner )
 	rec.prop = pProp;
 	rec.owner = pOwner;
 	rec.until = until;
+	rec.next = next;
 	m_BouncedProps.AddToTail( rec );
 }
 
@@ -2010,7 +2017,6 @@ void CTFPaintMap::ThinkProps( void )
 	if ( !tf_paint_enabled.GetBool() )
 		return;
 
-	const float flMin = tf_paint_bounce_min.GetFloat();
 	CBaseEntity *pEnt = NULL;
 	while ( ( pEnt = gEntList.FindEntityByClassname( pEnt, "prop_physics*" ) ) != NULL )
 	{
@@ -2023,54 +2029,50 @@ void CTFPaintMap::ThinkProps( void )
 		if ( pPhys->GetGameFlags() & FVPHYSICS_PLAYER_HELD )
 			continue;
 
-		TFPaintContact_t hit = TFPaint_Query( pEnt->WorldSpaceCenter(), 28.f );
+		Vector mins, maxs;
+		pEnt->CollisionProp()->WorldSpaceAABB( &mins, &maxs );
+		const Vector feet( ( mins.x + maxs.x ) * 0.5f, ( mins.y + maxs.y ) * 0.5f, mins.z + 1.f );
+
+		TFPaintContact_t hit = TFPaint_Query( feet, 36.f );
+		if ( !hit.painted || hit.type != BOUNCE_POWER )
+			hit = TFPaint_Query( pEnt->WorldSpaceCenter(), 48.f );
 		if ( !hit.painted || hit.type != BOUNCE_POWER )
 			hit = TFPaint_Query( pEnt->GetAbsOrigin(), 36.f );
-		if ( !hit.painted || hit.type != BOUNCE_POWER )
-		{
-			BounceOffCoatedBody( pEnt, pPhys );
-			continue;
-		}
-
-		// Already in a hop. SetVelocity every scan pins the prop to the gel
-		// and the physics scrape loops for as long as the coat lasts.
-		bool bHopping = false;
-		for ( int i = 0; i < m_BouncedProps.Count(); ++i )
-		{
-			if ( m_BouncedProps[i].prop.Get() == pEnt && gpGlobals->curtime < m_BouncedProps[i].until )
-			{
-				bHopping = true;
-				break;
-			}
-		}
-		if ( bHopping )
-			continue;
-
-		Vector n = hit.normal;
-		if ( n.NormalizeInPlace() < 0.1f )
-			n.Init( 0.f, 0.f, 1.f );
 
 		Vector vel;
-		AngularImpulse ang;
-		pPhys->GetVelocity( &vel, &ang );
-		const float into = DotProduct( vel, n );
-		// A landing, or a prop that was sitting still when the gel appeared.
-		// Sliding across the coat is not another bounce.
-		const bool bImpact = ( into < -40.f );
-		const bool bResting = ( vel.LengthSqr() < 90.f * 90.f );
-		if ( !bImpact && !bResting )
-			continue;
+		pPhys->GetVelocity( &vel, NULL );
 
-		Vector out = vel - n * into;
-		float away = flMin;
-		if ( into < 0.f && -into > away )
-			away = -into;
-		out += n * away;
-		pPhys->SetVelocity( &out, &ang );
-		pPhys->Wake();
-		pEnt->SetGroundEntity( NULL );
+		if ( hit.painted && hit.type == BOUNCE_POWER )
+		{
+			Vector n = hit.normal;
+			if ( n.NormalizeInPlace() < 0.1f )
+				n.Init( 0.f, 0.f, 1.f );
+			const Vector contact = ( hit.pos.LengthSqr() > 1.f ) ? hit.pos : feet;
+			if ( LaunchPhysicsProp( pEnt, pPhys, contact, n, vel, true ) )
+				continue;
+		}
 
-		NoteBouncedProp( pEnt, BounceCoatOwnerNear( pEnt->WorldSpaceCenter() ) );
+		// Gel on the prop itself. Pop it off the ground it is actually resting on.
+		// A midair sample must not fire or the top of a hop becomes another shove.
+		if ( TFPaint_IsRepulsionCoated( pEnt ) )
+		{
+			trace_t tr;
+			UTIL_TraceLine( feet + Vector( 0.f, 0.f, 6.f ), feet - Vector( 0.f, 0.f, 28.f ), MASK_SOLID, pEnt, COLLISION_GROUP_NONE, &tr );
+			if ( tr.startsolid || ( tr.fraction < 1.f && tr.plane.normal.z > 0.45f ) )
+			{
+				Vector n( 0.f, 0.f, 1.f );
+				Vector support = feet;
+				if ( !tr.startsolid && tr.plane.normal.z > 0.45f )
+				{
+					n = tr.plane.normal;
+					support = tr.endpos;
+				}
+				if ( LaunchPhysicsProp( pEnt, pPhys, support, n, vel, true ) )
+					continue;
+			}
+		}
+
+		BounceOffCoatedBody( pEnt, pPhys );
 	}
 }
 
@@ -2430,30 +2432,116 @@ bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter )
 	return true;
 }
 
+bool CTFPaintMap::LaunchPhysicsProp( CBaseEntity *pEnt, IPhysicsObject *pPhys, const Vector &contact, const Vector &nOutward, const Vector &preVelocity, bool bNudge )
+{
+	if ( !pEnt || !pPhys || !tf_paint_enabled.GetBool() )
+		return false;
+	if ( !pPhys->IsMoveable() )
+		return false;
+	if ( pPhys->GetGameFlags() & FVPHYSICS_PLAYER_HELD )
+		return false;
+
+	Vector n = nOutward;
+	if ( n.NormalizeInPlace() < 0.1f )
+		n.Init( 0.f, 0.f, 1.f );
+
+	Vector vel = preVelocity;
+	if ( vel.LengthSqr() < 100.f * 100.f )
+		pPhys->GetVelocity( &vel, NULL );
+
+	const float into = DotProduct( vel, n );
+	const bool bImpact = ( into < -40.f );
+	const bool bResting = ( vel.LengthSqr() < 90.f * 90.f );
+	// Sliding across the coat is not another bounce.
+	if ( !bImpact && !bResting )
+		return false;
+
+	// Feet-to-surface distance. The atlas query reaches well above a splat, so a
+	// hop's apex still "hits" the gel. A real contact is close to the plane.
+	// Impacts may be anywhere on a tall prop; the diagonal covers that.
+	Vector mins, maxs;
+	pEnt->CollisionProp()->WorldSpaceAABB( &mins, &maxs );
+	const Vector feet( ( mins.x + maxs.x ) * 0.5f, ( mins.y + maxs.y ) * 0.5f, mins.z + 1.f );
+	const float gap = DotProduct( feet - contact, n );
+	const float span = ( maxs - mins ).Length() + 16.f;
+	const bool bNear = ( gap > -16.f && gap < 36.f );
+	if ( bImpact )
+	{
+		if ( gap > span )
+			return false;
+	}
+	else if ( !bNear )
+	{
+		return false;
+	}
+
+	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
+	{
+		if ( m_BouncedProps[i].prop.Get() == pEnt && gpGlobals->curtime < m_BouncedProps[i].next )
+			return false;
+	}
+
+	const float flMin = ( n.z > 0.7f ) ? tf_paint_bounce_min.GetFloat() : tf_paint_bounce_wall.GetFloat();
+	Vector out = vel - n * into;
+	float away = flMin;
+	if ( into < 0.f && -into > away )
+		away = -into;
+	out += n * away;
+
+	// Asleep objects ignore SetVelocity, and a resting contact eats a shove that
+	// never leaves the surface. Think nudges the prop clear, then writes the
+	// velocity. A collision callback cannot teleport safely; queue the write
+	// for after the solver or it is overwritten by the contact response.
+	const bool bCallback = PhysIsInCallback();
+	if ( !bCallback )
+		pPhys->Wake();
+	if ( bNudge && !bCallback )
+	{
+		Vector pos;
+		QAngle angles;
+		pPhys->GetPosition( &pos, &angles );
+		pos += n * 12.f;
+		pPhys->SetPosition( pos, angles, true );
+		pPhys->Wake();
+		pEnt->SetAbsOrigin( pEnt->GetAbsOrigin() + n * 12.f );
+	}
+
+	AngularImpulse spin( 0, 0, 0 );
+	pPhys->SetVelocityInstantaneous( &out, &spin );
+	if ( bCallback )
+		PhysCallbackSetVelocity( pPhys, out );
+	pEnt->SetAbsVelocity( out );
+	pEnt->SetGroundEntity( NULL );
+	NoteBouncedProp( pEnt, BounceCoatOwnerNear( contact ) );
+	TFPaint_PlaySound( pEnt, "Player.JumpPowerUse" );
+	return true;
+}
+
 bool CTFPaintMap::BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys )
 {
 	if ( !pEnt || !pPhys )
 		return false;
 
-	for ( int i = 0; i < m_BouncedProps.Count(); ++i )
-	{
-		if ( m_BouncedProps[i].prop.Get() == pEnt && gpGlobals->curtime < m_BouncedProps[i].until )
-			return false;
-	}
+	Vector mins, maxs;
+	pEnt->CollisionProp()->WorldSpaceAABB( &mins, &maxs );
 
 	CBaseEntity *pCoat = NULL;
 	float best = 1.0e12f;
 	const Vector origin = pEnt->WorldSpaceCenter();
+
 	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
 	{
 		CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
 		if ( !pPlayer || pPlayer == pEnt || !pPlayer->m_Shared.InRepulseGel() )
 			continue;
-		float reach = pEnt->BoundingRadius() + pPlayer->BoundingRadius();
-		if ( reach < 48.f )
-			reach = 48.f;
+		Vector pmin, pmax;
+		pPlayer->CollisionProp()->WorldSpaceAABB( &pmin, &pmax );
+		pmin -= Vector( 12.f, 12.f, 12.f );
+		pmax += Vector( 12.f, 12.f, 12.f );
+		if ( !IsBoxIntersectingBox( mins, maxs, pmin, pmax ) )
+			continue;
 		const float d2 = origin.DistToSqr( pPlayer->WorldSpaceCenter() );
-		if ( d2 > reach * reach || d2 >= best )
+		if ( d2 >= best )
 			continue;
 		best = d2;
 		pCoat = pPlayer;
@@ -2465,11 +2553,14 @@ bool CTFPaintMap::BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys 
 		CBaseEntity *pOther = UTIL_EntityByIndex( m_nCoatEnt[i] );
 		if ( !pOther || pOther == pEnt )
 			continue;
-		float reach = pEnt->BoundingRadius() + pOther->BoundingRadius();
-		if ( reach < 48.f )
-			reach = 48.f;
+		Vector pmin, pmax;
+		pOther->CollisionProp()->WorldSpaceAABB( &pmin, &pmax );
+		pmin -= Vector( 12.f, 12.f, 12.f );
+		pmax += Vector( 12.f, 12.f, 12.f );
+		if ( !IsBoxIntersectingBox( mins, maxs, pmin, pmax ) )
+			continue;
 		const float d2 = origin.DistToSqr( pOther->WorldSpaceCenter() );
-		if ( d2 > reach * reach || d2 >= best )
+		if ( d2 >= best )
 			continue;
 		best = d2;
 		pCoat = pOther;
@@ -2481,26 +2572,47 @@ bool CTFPaintMap::BounceOffCoatedBody( CBaseEntity *pEnt, IPhysicsObject *pPhys 
 	if ( n.NormalizeInPlace() < 0.1f )
 		n.Init( 0.f, 0.f, 1.f );
 
-	Vector vel;
-	AngularImpulse ang;
-	pPhys->GetVelocity( &vel, &ang );
-	const float into = DotProduct( vel, n );
-	const bool bImpact = ( into < -40.f );
-	const bool bResting = ( vel.LengthSqr() < 90.f * 90.f );
-	if ( !bImpact && !bResting )
-		return false;
+	// Gap is measured from the prop's feet to this point. Use the face that
+	// is actually against the coated body, or a tall prop fails the near test.
+	Vector contact = origin;
+	if ( n.z > 0.7f )
+		contact.z = mins.z;
+	else if ( n.z < -0.7f )
+		contact.z = maxs.z;
 
-	const float flMin = ( n.z > 0.7f ) ? tf_paint_bounce_min.GetFloat() : tf_paint_bounce_wall.GetFloat();
-	Vector out = vel - n * into;
-	float away = flMin;
-	if ( into < 0.f && -into > away )
-		away = -into;
-	out += n * away;
-	pPhys->SetVelocity( &out, &ang );
-	pPhys->Wake();
-	pEnt->SetGroundEntity( NULL );
+	Vector vel;
+	pPhys->GetVelocity( &vel, NULL );
+	if ( !LaunchPhysicsProp( pEnt, pPhys, contact, n, vel, true ) )
+		return false;
+	// Credit the body we bounced off, not whoever painted the floor nearby.
 	NoteBouncedProp( pEnt, pCoat );
 	return true;
+}
+
+bool TFPaint_BouncePhysicsObject( CBaseEntity *pProp, const Vector &contact, const Vector &nOutward, const Vector &preVelocity, bool bForce )
+{
+	if ( !pProp )
+		return false;
+	IPhysicsObject *pPhys = pProp->VPhysicsGetObject();
+	if ( !pPhys )
+		return false;
+
+	Vector n = nOutward;
+	if ( !bForce )
+	{
+		TFPaintContact_t hit = TFPaint_Query( contact, 20.f );
+		if ( !hit.painted || hit.type != BOUNCE_POWER )
+			hit = TFPaint_Query( contact + n * 8.f, 24.f );
+		if ( !hit.painted || hit.type != BOUNCE_POWER )
+			return false;
+		if ( hit.normal.LengthSqr() > 0.01f )
+			n = hit.normal;
+	}
+
+	CTFPaintMap *pMap = CTFPaintMap::Get();
+	if ( !pMap )
+		return false;
+	return pMap->LaunchPhysicsProp( pProp, pPhys, contact, n, preVelocity, false );
 }
 
 //-----------------------------------------------------------------------------

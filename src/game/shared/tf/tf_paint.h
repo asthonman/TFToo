@@ -132,6 +132,11 @@ bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vect
 // Enemy players last tf_paint_repulse_enemy_time. Allies, enemy buildings,
 // and physics props last tf_paint_repulse_ally_time. Allied buildings are skipped.
 bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter );
+
+// Launch a moveable physics prop off repulsion gel. nOutward points out of the
+// surface. preVelocity is the incoming speed (zero uses the object's current
+// velocity). bForce skips the world-gel test for a coated prop or coated body.
+bool TFPaint_BouncePhysicsObject( CBaseEntity *pProp, const Vector &contact, const Vector &nOutward, const Vector &preVelocity, bool bForce = false );
 #endif
 
 #ifdef GAME_DLL

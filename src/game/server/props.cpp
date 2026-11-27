@@ -44,6 +44,7 @@
 
 #ifdef TF_DLL
 #include "nav_mesh/tf_nav_mesh.h"
+#include "tf_paint.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -2991,6 +2992,37 @@ void CPhysicsProp::ComputeEnablingImpulse( int index, gamevcollisionevent_t *pEv
 void CPhysicsProp::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
 {
 	BaseClass::VPhysicsCollision( index, pEvent );
+
+#ifdef TF_DLL
+	IPhysicsObject *pSelf = VPhysicsGetObject();
+	if ( pSelf && pSelf->IsMoveable() && !( pSelf->GetGameFlags() & FVPHYSICS_PLAYER_HELD ) && pEvent->pInternalData )
+	{
+		CBaseEntity *pHit = pEvent->pEntities[!index];
+		Vector n;
+		pEvent->pInternalData->GetSurfaceNormal( n );
+		if ( index == 0 )
+			n.Negate();
+		Vector contact;
+		pEvent->pInternalData->GetContactPoint( contact );
+		const Vector pre = pEvent->preVelocity[index];
+
+		if ( pHit && pHit != this && TFPaint_IsRepulsionCoated( pHit ) )
+		{
+			Vector away = WorldSpaceCenter() - pHit->WorldSpaceCenter();
+			if ( away.NormalizeInPlace() < 0.1f )
+				away = n;
+			TFPaint_BouncePhysicsObject( this, contact, away, pre, true );
+		}
+		else if ( TFPaint_IsRepulsionCoated( this ) )
+		{
+			TFPaint_BouncePhysicsObject( this, contact, n, pre, true );
+		}
+		else
+		{
+			TFPaint_BouncePhysicsObject( this, contact, n, pre, false );
+		}
+	}
+#endif
 
 	IPhysicsObject *pPhysObj = pEvent->pObjects[!index];
 
