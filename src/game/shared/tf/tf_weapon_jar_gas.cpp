@@ -484,9 +484,9 @@ void CTFPoisonGas::OnCollide( CBaseEntity *pEnt, int iPointIndex )
 
 static bool Chemist_Blocked( const Vector &from, const Vector &to )
 {
-	trace_t tr;
-	UTIL_TraceLine( from, to, MASK_SOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr );
-	return tr.fraction < 1.f;
+	// Fences and other $compilepassbullets brushes are CONTENTS_GRATE. The splash
+	// coats and paints through them, the same way a bullet would.
+	return TFPaint_SplashBlocked( from, to );
 }
 
 static float Chemist_DistSqr( CBaseEntity *pEnt, const Vector &pos )

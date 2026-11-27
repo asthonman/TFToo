@@ -114,6 +114,8 @@ void TFPaint_IgniteNitricAt( const Vector &pos, float extra );
 #ifdef GAME_DLL
 // Brushes and static props only. Players, dynamic props, and func_brush are skipped.
 void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr );
+// True when a real wall blocks a gel splash. $compilepassbullets (CONTENTS_GRATE) does not.
+bool TFPaint_SplashBlocked( const Vector &from, const Vector &to );
 #endif
 
 // Bounce a projectile off repulsion gel instead of its normal surface hit.

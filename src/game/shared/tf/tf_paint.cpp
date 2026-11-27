@@ -1199,10 +1199,131 @@ public:
 	}
 };
 
-void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr )
+// $compilepassbullets becomes CONTENTS_GRATE on brushes. Props keep the
+// material flag even when their collision contents are still solid.
+static bool TFPaint_SurfacePassBullets( const trace_t &tr )
+{
+	if ( tr.contents & CONTENTS_GRATE )
+		return true;
+	if ( !materials )
+		return false;
+
+	const char *pszName = tr.surface.name;
+	if ( !pszName || !pszName[0] )
+		return false;
+
+	IMaterial *pMat = materials->FindMaterial( pszName, TEXTURE_GROUP_OTHER, false );
+	if ( !pMat || pMat->IsErrorMaterial() )
+		return false;
+
+	bool bFound = false;
+	IMaterialVar *pVar = pMat->FindVar( "$compilepassbullets", &bFound, false );
+	if ( bFound && pVar && pVar->GetIntValue() != 0 )
+		return true;
+	// vbsp treats this as nodraw plus pass-bullets.
+	pVar = pMat->FindVar( "$compileinvisible", &bFound, false );
+	return bFound && pVar && pVar->GetIntValue() != 0;
+}
+
+// Keep going until a surface a bullet would stop on. A grate in the middle
+// of the segment is not the splash.
+static void TFPaint_TraceThrough( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr )
 {
 	CTraceFilterPaintDecal filter;
-	UTIL_TraceHull( start, end, mins, maxs, TF_PAINT_VIS_MASK, &filter, &tr );
+	Vector from = start;
+	memset( &tr, 0, sizeof( tr ) );
+	tr.fraction = 1.f;
+
+	for ( int i = 0; i < 8; ++i )
+	{
+		UTIL_TraceHull( from, end, mins, maxs, TF_PAINT_VIS_MASK, &filter, &tr );
+		if ( tr.startsolid )
+		{
+			if ( TFPaint_SurfacePassBullets( tr ) )
+			{
+				Vector dir = end - from;
+				if ( dir.NormalizeInPlace() < 0.1f )
+					return;
+				from += dir * 4.f;
+				if ( DotProduct( end - from, dir ) <= 0.f )
+				{
+					tr.fraction = 1.f;
+					return;
+				}
+				continue;
+			}
+			// Stepped out of a grate into the next real surface.
+			if ( i > 0 )
+			{
+				tr.startsolid = false;
+				tr.fraction = 0.f;
+				tr.endpos = from;
+			}
+			return;
+		}
+		if ( tr.fraction >= 1.f )
+			return;
+		if ( !TFPaint_SurfacePassBullets( tr ) )
+			return;
+
+		Vector dir = end - from;
+		const float remain = dir.NormalizeInPlace();
+		if ( remain < 1.f )
+			break;
+		const float step = tr.fraction * remain + 1.f;
+		if ( step >= remain - 0.5f )
+			break;
+		from += dir * step;
+	}
+
+	tr.fraction = 1.f;
+}
+
+void TFPaint_TraceDecal( const Vector &start, const Vector &end, const Vector &mins, const Vector &maxs, trace_t &tr )
+{
+	TFPaint_TraceThrough( start, end, mins, maxs, tr );
+}
+
+bool TFPaint_SplashBlocked( const Vector &from, const Vector &to )
+{
+	if ( from.DistToSqr( to ) < 1.f )
+		return false;
+
+	// Brushes compiled with $compilepassbullets are CONTENTS_GRATE. Leave them
+	// out of the mask, then step through any prop that still uses the material.
+	const unsigned int mask = MASK_SOLID_BRUSHONLY & ~CONTENTS_GRATE;
+	Vector start = from;
+	for ( int i = 0; i < 8; ++i )
+	{
+		trace_t tr;
+		UTIL_TraceLine( start, to, mask, NULL, COLLISION_GROUP_NONE, &tr );
+		if ( tr.startsolid )
+		{
+			if ( !TFPaint_SurfacePassBullets( tr ) )
+				return true;
+			Vector dir = to - start;
+			if ( dir.NormalizeInPlace() < 0.1f )
+				return false;
+			start += dir * 8.f;
+			if ( DotProduct( to - start, dir ) <= 0.f )
+				return false;
+			continue;
+		}
+		if ( tr.fraction >= 1.f )
+			return false;
+		if ( !TFPaint_SurfacePassBullets( tr ) )
+			return true;
+
+		Vector dir = to - start;
+		const float remain = dir.NormalizeInPlace();
+		if ( remain < 1.f )
+			return false;
+		const float step = tr.fraction * remain + 2.f;
+		if ( step >= remain - 0.5f )
+			return false;
+		start += dir * step;
+	}
+	return false;
 }
 
 // A hit is a decal surface only when it is a world brush or a static prop.
@@ -1213,7 +1334,7 @@ static bool TFPaint_TraceIsDecalSurface( const trace_t &tr, bool bForce )
 		return false;
 	if ( tr.surface.flags & SURF_SKY )
 		return false;
-	if ( tr.contents & CONTENTS_GRATE )
+	if ( TFPaint_SurfacePassBullets( tr ) )
 		return false;
 
 	if ( tr.m_pEnt )
@@ -1241,7 +1362,6 @@ static bool TFPaint_ResolveDecalSurface( const Vector &pos, const Vector &hintNo
 	if ( reach < 8.f )
 		reach = 8.f;
 
-	CTraceFilterPaintDecal filter;
 	Vector n = hintNormal;
 	if ( n.LengthSqr() < 0.01f )
 		n.Init( 0.f, 0.f, 1.f );
@@ -1259,7 +1379,7 @@ static bool TFPaint_ResolveDecalSurface( const Vector &pos, const Vector &hintNo
 			const Vector start = pos - along[i] * 2.f;
 			const Vector end = pos + along[i] * passes[pass];
 			trace_t tr;
-			UTIL_TraceLine( start, end, TF_PAINT_VIS_MASK, &filter, &tr );
+			TFPaint_TraceThrough( start, end, vec3_origin, vec3_origin, tr );
 			if ( !TFPaint_TraceIsDecalSurface( tr, bForce ) )
 				continue;
 			outPos = tr.endpos;
@@ -1281,7 +1401,7 @@ static bool TFPaint_ResolveDecalSurface( const Vector &pos, const Vector &hintNo
 	for ( int i = 0; i < 6; ++i )
 	{
 		trace_t tr;
-		UTIL_TraceLine( pos, pos + dirs[i] * reach, TF_PAINT_VIS_MASK, &filter, &tr );
+		TFPaint_TraceThrough( pos, pos + dirs[i] * reach, vec3_origin, vec3_origin, tr );
 		if ( !TFPaint_TraceIsDecalSurface( tr, bForce ) )
 			continue;
 		const float dist = tr.fraction * reach;
@@ -1507,8 +1627,7 @@ void CTFPaintMap::Think( void )
 		const int typeNow = ( packed & 0x0F ) - 1;
 		const bool bRepulseShot = ( typeNow == BOUNCE_POWER );
 		trace_t tr;
-		CTraceFilterPaintDecal decalFilter;
-		UTIL_TraceHull( m_vecBlobPos[i], next, mins, maxs, TF_PAINT_VIS_MASK, &decalFilter, &tr );
+		TFPaint_TraceThrough( m_vecBlobPos[i], next, mins, maxs, tr );
 
 		if ( bStickyShot || bRepulseShot )
 		{
@@ -2748,9 +2867,8 @@ void CPaintSphere::Paint( void )
 	for ( int i = 0; i < 6; ++i )
 	{
 		trace_t tr;
-		CTraceFilterPaintDecal filter;
-		UTIL_TraceHull( GetAbsOrigin(), GetAbsOrigin() + dirs[i] * m_flRad,
-			Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), TF_PAINT_VIS_MASK, &filter, &tr );
+		TFPaint_TraceThrough( GetAbsOrigin(), GetAbsOrigin() + dirs[i] * m_flRad,
+			Vector( -2, -2, -2 ), Vector( 2, 2, 2 ), tr );
 		if ( TFPaint_TraceIsDecalSurface( tr, false ) )
 		{
 			if ( m_nPaintType == NO_POWER )
