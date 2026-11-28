@@ -3747,6 +3747,9 @@ void CTFPlayer::PrecacheTFPlayer()
 
 	PrecacheScriptSound( "DemoCharge.ChargeCritOn" );
 	PrecacheScriptSound( "DemoCharge.ChargeCritOff" );
+	PrecacheScriptSound( "DisciplineDevice.PowerUp" );
+	PrecacheScriptSound( "DisciplineDevice.PowerDown" );
+	PrecacheParticleSystem( "speed_boost_trail" );
 	PrecacheScriptSound( "DemoCharge.Charging" );
 
 	PrecacheScriptSound( "TFPlayer.StunImpactRange" );

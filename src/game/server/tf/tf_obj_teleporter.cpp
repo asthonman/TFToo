@@ -557,6 +557,9 @@ void CObjectTeleporter::Precache()
 
 	PrecacheParticleSystem( "teleporter_arms_circle_red_blink" );
 	PrecacheParticleSystem( "teleporter_arms_circle_blue_blink" );
+	PrecacheParticleSystem( "speed_boost_trail" );
+	PrecacheScriptSound( "DisciplineDevice.PowerUp" );
+	PrecacheScriptSound( "DisciplineDevice.PowerDown" );
 
 }
 
@@ -1138,7 +1141,7 @@ void CObjectTeleporter::PadTouch( CTFPlayer *pPlayer )
 			vel += vecForward * ( flTarget - flAlong );
 			pPlayer->QueuePadVelocity( vel );
 		}
-		// 3s, 5s, 10s.
+		// 3s, 5s, 10s. Same whoosh and screen lines as the Disciplinary Action.
 		static const float s_flBoostDuration[4] = { 0.f, 3.f, 5.f, 10.f };
 		pPlayer->m_Shared.AddCond( TF_COND_SPEED_BOOST, s_flBoostDuration[iLevel] );
 	}

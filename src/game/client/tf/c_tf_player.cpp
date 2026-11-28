@@ -7093,6 +7093,18 @@ void C_TFPlayer::ClientThink()
 		}
 	}
 
+	// Whip speed lines. OnAdd usually starts them. This covers a missed
+	// start, which is how the speed pad and grease present that boost.
+	if ( m_Shared.InCond( TF_COND_SPEED_BOOST ) )
+	{
+		if ( !m_pSpeedBoostEffect && !m_Shared.InCond( TF_COND_STEALTHED ) && !m_Shared.InCond( TF_COND_FEIGN_DEATH ) )
+		{
+			m_pSpeedBoostEffect = ParticleProp()->Create( "speed_boost_trail", PATTACH_ABSORIGIN_FOLLOW );
+			if ( m_pSpeedBoostEffect && IsLocalPlayer() )
+				EmitSound( "DisciplineDevice.PowerUp" );
+		}
+	}
+
 	UpdateLookAt();
 
 	UpdateOverheadEffects();
