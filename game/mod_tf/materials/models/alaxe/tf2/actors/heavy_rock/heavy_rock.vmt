@@ -28,11 +28,7 @@
 	"$yellow" "0"
 	"$one" "1"
 
-	"$translucent" "1"
-	// Stay under 1 so the first snapshot is an alpha blend. brick_invis
-	// writes this from his size and does not touch $cloakfactor.
-	"$alpha" "0.999"
-	// spy_invis stays. A Spy disguised as him cloaks through this pass.
+	// Grow is the spy cloak. Full size is 90%. A disguise still uses this pass.
 	"$cloakPassEnabled" "1"
 	"Proxies"
 	{
@@ -40,9 +36,6 @@
 		{
 		}
 		"invis"
-		{
-		}
-		"brick_invis"
 		{
 		}
 		"AnimatedTexture"

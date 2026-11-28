@@ -29,8 +29,7 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	// Spy disguise uses this pass. EyeRefract ignores $alpha, so the grow
-	// fade does not run on the live eyes.
+	// Grow uses this pass and reaches 90% cloak at full size.
 	"$cloakPassEnabled" "1"
 	"Proxies"
 	{

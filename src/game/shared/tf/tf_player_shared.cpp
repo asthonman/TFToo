@@ -8228,6 +8228,16 @@ void CTFPlayerShared::InvisibilityThink( void )
 	}
 
 	flTargetInvis *= flTargetInvisScale;
+
+	// Grow uses the spy cloak. Full size is 90%. A disguise still cloaks
+	// through the same proxy; this only raises a real Brick.
+	if ( iClass == TF_CLASS_BRICK )
+	{
+		const float flGrowCloak = TFBrickGrowFraction( m_pOuter->GetModelScale() ) * TF_BRICK_GROW_CLOAK;
+		if ( flTargetInvis < flGrowCloak )
+			flTargetInvis = flGrowCloak;
+	}
+
 	m_flPrevInvisibility = m_flInvisibility;
 	m_flInvisibility = clamp( flTargetInvis, 0.0f, 1.0f );
 }

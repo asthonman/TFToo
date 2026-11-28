@@ -23,8 +23,6 @@
 		"$iris"         "models/player/shared/dxlevel80/iris_blue_l"
 	}
 
-	"$translucent" "1"
-	"$alpha" "0.999"
 	"$cloakPassEnabled" "1"
 	"Proxies"
 	{
@@ -32,9 +30,6 @@
 		{
 		}
 		"invis"
-		{
-		}
-		"brick_invis"
 		{
 		}
 	}

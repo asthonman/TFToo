@@ -1826,7 +1826,7 @@ void CTFPlayer::ThinkBrickGrow( void )
 	// overwrite a pause later in the same frame. Shrink stays on that think.
 	// A ceiling crouches him first. If the ducked hull still does not fit,
 	// the clock pauses. Speed and knockback follow the scale, so they pause
-	// too. The see-through is brick_invis, which reads this same scale.
+	// too. The cloak reads this same scale and reaches 90% at full size.
 	if ( IsAlive() )
 	{
 		ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );

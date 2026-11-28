@@ -286,10 +286,9 @@ inline int TF_DisplayModelDonorClass( int iClass )
 // Brick's grow. 0-100, and he cannot start one below the Spy's cloak floor.
 // It refills at the Spy cloak rate while small. While big it drains like the
 // invis watch, at half of tf_spy_cloak_consume_rate (20s from a full meter).
-// Shrinking spends whatever is left. The size, the see-through (brick_invis
-// on his materials, on top of spy_invis so a disguise can still cloak), the
-// knockback resist, and the spun-up-Heavy slowdown all move together over
-// TF_BRICK_GROW_TIME.
+// Shrinking spends whatever is left. The size, the spy cloak (90% at full
+// size, lerped while the scale is moving), the knockback resist, and the
+// spun-up-Heavy slowdown all move together over TF_BRICK_GROW_TIME.
 // A ceiling pauses that scale instead of cancelling it. He crouches first.
 #define TF_BRICK_GROW_MAX			100.0f
 #define TF_BRICK_GROW_MIN_START		8.0f
@@ -299,6 +298,8 @@ inline int TF_DisplayModelDonorClass( int iClass )
 #define TF_BRICK_GROW_DRAIN_FRACTION	0.5f
 // Full size matches a spun-up Heavy. Partial size lerps from class speed.
 #define TF_BRICK_GROW_SPEED			110.0f
+// Spy cloak at full size. Partial size is this times the grow fraction.
+#define TF_BRICK_GROW_CLOAK			0.9f
 // attackStand_MELEE_L is 2.067s. smash_slow_start ends at 1.033s, which is
 // halfway. In the air the swing holds there. The hurtbox opens at that
 // same time: one tick on the ground, or until he lands if he is airborne.
@@ -342,19 +343,6 @@ inline float TFBrickGrowFraction( float flModelScale )
 	if ( flModelScale >= TF_BRICK_GROW_SCALE )
 		return 1.0f;
 	return ( flModelScale - 1.0f ) / ( TF_BRICK_GROW_SCALE - 1.0f );
-}
-
-// 0 is solid, 1 is clear. Half grown is 0.75 clear. Spy's cloak at that
-// same 50% is still a solid silhouette, which is why Brick does not use it.
-inline float TFBrickGrowSeeThrough( float flModelScale )
-{
-	const float flGrow = TFBrickGrowFraction( flModelScale );
-	float flClear = flGrow * ( 2.0f - flGrow );
-	if ( flClear > 0.9f )
-		flClear = 0.9f;
-	if ( flClear < 0.0f )
-		flClear = 0.0f;
-	return flClear;
 }
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
