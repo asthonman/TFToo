@@ -1,4 +1,4 @@
-// Madcap stock secondary. One blob of propulsion gel per ammo.
+// Madcap stock secondary. One blob of grease per ammo. Not propulsion gel.
 // Ammo is metal so the Mason's Missile can keep the single secondary charge.
 "WeaponData"
 {

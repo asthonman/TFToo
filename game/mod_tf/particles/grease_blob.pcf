@@ -15,7 +15,7 @@
 			"bounding_box_min" "vector3" "-32 -32 -32"
 			"bounding_box_max" "vector3" "32 32 32"
 			"radius" "float" "8"
-			"color" "color" "120 88 36 255"
+			"color" "color" "112 82 44 255"
 			"Sort particles" "bool" "0"
 			"batch particle systems" "bool" "0"
 			"renderers" "element_array"
@@ -88,8 +88,8 @@
 					"id" "elementid" "b1e0a001-0001-4000-8000-000000000018"
 					"name" "string" "Color Random"
 					"functionName" "string" "Color Random"
-					"color1" "color" "120 88 36 255"
-					"color2" "color" "120 88 36 255"
+					"color1" "color" "112 82 44 255"
+					"color2" "color" "112 82 44 255"
 				},
 				"DmeParticleOperator"
 				{
@@ -131,7 +131,7 @@
 			"bounding_box_min" "vector3" "-32 -32 -32"
 			"bounding_box_max" "vector3" "32 32 32"
 			"radius" "float" "8"
-			"color" "color" "186 96 28 255"
+			"color" "color" "158 52 40 255"
 			"Sort particles" "bool" "0"
 			"batch particle systems" "bool" "0"
 			"renderers" "element_array"
@@ -201,8 +201,8 @@
 					"id" "elementid" "b1e0a001-0001-4000-8000-000000000028"
 					"name" "string" "Color Random"
 					"functionName" "string" "Color Random"
-					"color1" "color" "186 96 28 255"
-					"color2" "color" "186 96 28 255"
+					"color1" "color" "158 52 40 255"
+					"color2" "color" "158 52 40 255"
 				},
 				"DmeParticleOperator"
 				{
@@ -243,7 +243,7 @@
 			"bounding_box_min" "vector3" "-32 -32 -32"
 			"bounding_box_max" "vector3" "32 32 32"
 			"radius" "float" "8"
-			"color" "color" "78 118 40 255"
+			"color" "color" "74 68 122 255"
 			"Sort particles" "bool" "0"
 			"batch particle systems" "bool" "0"
 			"renderers" "element_array"
@@ -313,8 +313,8 @@
 					"id" "elementid" "b1e0a001-0001-4000-8000-000000000038"
 					"name" "string" "Color Random"
 					"functionName" "string" "Color Random"
-					"color1" "color" "78 118 40 255"
-					"color2" "color" "78 118 40 255"
+					"color1" "color" "74 68 122 255"
+					"color2" "color" "74 68 122 255"
 				},
 				"DmeParticleOperator"
 				{

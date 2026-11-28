@@ -102,18 +102,19 @@ void TFPaint_GetColor( int type, int &r, int &g, int &b, int team )
 	case PORTAL_POWER:	r = 0;   g = 200; b = 33;  break;
 	case FIFTH_POWER:	r = 0;   g = 0;   b = 0;   break;
 	case SIXTH_POWER:
-		// Two browns. One yellow-brown puddle could not be told apart by team.
+		// Grease, not propulsion gel. Red is a red-brown, BLU a blue-brown.
+		// Propulsion stays the orange above and is never used for this gel.
 		if ( team == TF_TEAM_BLUE )
 		{
-			r = 78; g = 118; b = 40;	// Greenish brown.
+			r = 74; g = 68; b = 122;
 		}
 		else if ( team == TF_TEAM_RED )
 		{
-			r = 186; g = 96; b = 28;	// Orangish brown.
+			r = 158; g = 52; b = 40;
 		}
 		else
 		{
-			r = 120; g = 88; b = 36;
+			r = 112; g = 82; b = 44;
 		}
 		break;
 	case SEVENTH_POWER:	r = 255; g = 255; b = 255; break;
