@@ -15,6 +15,7 @@
 #include "engine/IEngineTrace.h"
 #include "igamesystem.h"
 #include "movevars_shared.h"
+#include "vphysics_interface.h"
 
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
@@ -1133,6 +1134,8 @@ void CTFPaintMap::UpdateGreaseBlobs( void )
 
 #else // GAME_DLL
 
+static void ThinkPropulsionSlip( void );
+
 // Grease and glue skip teammates so the blob can still paint the wall behind
 // them. Repulsion gel coats allies too, plus enemy buildings and physics props.
 class CTraceFilterPaintBlob : public CTraceFilterSimple
@@ -1740,6 +1743,7 @@ void CTFPaintMap::Think( void )
 	}
 
 	ThinkCoats();
+	ThinkPropulsionSlip();
 	ThinkProps();
 }
 
@@ -2549,6 +2553,120 @@ bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter )
 	CTFPaintMap *pMap = TFPaint_Ensure();
 	if ( pMap )
 		pMap->NoteEntityCoat( pEnt, until );
+	return true;
+}
+
+struct PropulsionSlip_t
+{
+	EHANDLE ent;
+	float until;
+	int material;
+	bool applied;
+};
+
+static CUtlVector< PropulsionSlip_t > s_PropulsionSlip;
+
+static float PropulsionCoatSeconds( CBaseEntity *pEnt, int painterTeam )
+{
+	if ( !pEnt )
+		return 0.f;
+
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+	{
+		if ( painterTeam >= TF_TEAM_RED && pPlayer->GetTeamNumber() == painterTeam )
+			return 0.f;
+		return tf_paint_repulse_enemy_time.GetFloat();
+	}
+
+	if ( pEnt->IsBaseObject() )
+	{
+		if ( painterTeam >= TF_TEAM_RED && pEnt->GetTeamNumber() == painterTeam )
+			return 0.f;
+		return tf_paint_repulse_ally_time.GetFloat();
+	}
+
+	const char *pszClass = pEnt->GetClassname();
+	if ( pszClass && !Q_strnicmp( pszClass, "prop_physics", 12 ) )
+		return tf_paint_repulse_ally_time.GetFloat();
+	return 0.f;
+}
+
+static void PropulsionRestoreSlip( PropulsionSlip_t &rec )
+{
+	CBaseEntity *pEnt = rec.ent.Get();
+	if ( !pEnt || !rec.applied || rec.material < 0 )
+		return;
+	IPhysicsObject *pPhys = pEnt->VPhysicsGetObject();
+	if ( pPhys )
+		pPhys->SetMaterialIndex( rec.material );
+}
+
+static void ThinkPropulsionSlip( void )
+{
+	for ( int i = s_PropulsionSlip.Count() - 1; i >= 0; --i )
+	{
+		PropulsionSlip_t &rec = s_PropulsionSlip[i];
+		CBaseEntity *pEnt = rec.ent.Get();
+		if ( !pEnt || gpGlobals->curtime >= rec.until )
+		{
+			PropulsionRestoreSlip( rec );
+			s_PropulsionSlip.FastRemove( i );
+		}
+	}
+}
+
+bool TFPaint_CoatWithPropulsion( CBaseEntity *pEnt, CBaseEntity *pPainter )
+{
+	if ( !pEnt )
+		return false;
+	const int team = pPainter ? pPainter->GetTeamNumber() : 0;
+	const float seconds = PropulsionCoatSeconds( pEnt, team );
+	if ( seconds <= 0.f )
+		return false;
+
+	const float until = gpGlobals->curtime + seconds;
+	CTFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+	{
+		pPlayer->m_Shared.AddIcePhysics( seconds );
+		return true;
+	}
+
+	IPhysicsObject *pPhys = pEnt->VPhysicsGetObject();
+	int slot = -1;
+	for ( int i = 0; i < s_PropulsionSlip.Count(); ++i )
+	{
+		if ( s_PropulsionSlip[i].ent.Get() == pEnt )
+		{
+			slot = i;
+			break;
+		}
+	}
+	if ( slot < 0 )
+	{
+		PropulsionSlip_t rec;
+		rec.ent = pEnt;
+		rec.until = until;
+		rec.material = pPhys ? pPhys->GetMaterialIndex() : -1;
+		rec.applied = false;
+		slot = s_PropulsionSlip.AddToTail( rec );
+	}
+	else if ( until > s_PropulsionSlip[slot].until )
+	{
+		s_PropulsionSlip[slot].until = until;
+	}
+
+	PropulsionSlip_t &rec = s_PropulsionSlip[slot];
+	if ( pPhys && !rec.applied )
+	{
+		int ice = physprops ? physprops->GetSurfaceIndex( "ice" ) : -1;
+		if ( ice > 0 )
+			pPhys->SetMaterialIndex( ice );
+		if ( pPhys->IsMoveable() )
+			pPhys->Wake();
+		rec.applied = true;
+	}
 	return true;
 }
 

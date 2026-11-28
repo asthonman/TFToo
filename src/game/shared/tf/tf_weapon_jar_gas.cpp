@@ -548,6 +548,57 @@ void Chemist_Impact( CTFPlayer *pPlayer, const Vector &pos, const Vector &normal
 
 	if ( slot == CHEM_REPULSION )
 		TFPaint_AddTimedCoat( pos, n, BOUNCE_POWER, 80.f, 30.f, false, pPlayer );
+	else if ( slot == CHEM_PROPULSION )
+	{
+		const int team = pPlayer ? pPlayer->GetTeamNumber() : 0;
+		TFPaint_PaintSphere( pos, n, SPEED_POWER, 80.f, 30.f, team, false );
+		if ( !pPlayer || ( TFGameRules() && TFGameRules()->IsTruceActive() ) )
+			return;
+
+		const float radius = 80.f;
+		const float r2 = radius * radius;
+		const Vector src = pos + n * 8.f;
+
+		for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+		{
+			CTFPlayer *pEnemy = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+			if ( !pEnemy || !pEnemy->IsAlive() || pEnemy == pPlayer )
+				continue;
+			if ( pEnemy->GetTeamNumber() == team )
+				continue;
+			if ( Chemist_DistSqr( pEnemy, pos ) > r2 )
+				continue;
+			if ( Chemist_Blocked( src, pEnemy->WorldSpaceCenter() ) )
+				continue;
+			TFPaint_CoatWithPropulsion( pEnemy, pPlayer );
+			pEnemy->m_Shared.AddWet( 10.f );
+		}
+
+		for ( int o = 0; o < IBaseObjectAutoList::AutoList().Count(); ++o )
+		{
+			CBaseObject *pObj = static_cast< CBaseObject * >( IBaseObjectAutoList::AutoList()[o] );
+			if ( !pObj || !pObj->IsAlive() || pObj->IsPlacing() || pObj->IsCarried() )
+				continue;
+			if ( pObj->GetTeamNumber() == team )
+				continue;
+			if ( Chemist_DistSqr( pObj, pos ) > r2 )
+				continue;
+			if ( Chemist_Blocked( src, pObj->WorldSpaceCenter() ) )
+				continue;
+			TFPaint_CoatWithPropulsion( pObj, pPlayer );
+		}
+
+		CBaseEntity *pProp = NULL;
+		while ( ( pProp = gEntList.FindEntityByClassname( pProp, "prop_physics*" ) ) != NULL )
+		{
+			if ( Chemist_DistSqr( pProp, pos ) > r2 )
+				continue;
+			if ( Chemist_Blocked( src, pProp->WorldSpaceCenter() ) )
+				continue;
+			TFPaint_CoatWithPropulsion( pProp, pPlayer );
+		}
+		return;
+	}
 	else if ( slot == CHEM_NITRIC )
 		TFPaint_AddTimedCoat( pos, n, FIFTH_POWER, 80.f, TF_GAS_LIFETIME, true, pPlayer );
 	else if ( slot == CHEM_NEUTRAL )
@@ -660,11 +711,15 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 	if ( slot < 0 || slot >= CHEM_COUNT )
 		return;
 
+	const int chem = pPlayer->m_Shared.GetChemInSlot( slot );
+	if ( chem < 0 || chem >= CHEM_TYPE_COUNT )
+		return;
+
 	Vector vecForward, vecRight, vecUp;
 	AngleVectors( pPlayer->EyeAngles(), &vecForward, &vecRight, &vecUp );
 	const Vector vecEye = pPlayer->EyePosition();
 
-	const char *pszWeapon = ( slot == CHEM_POISON ) ? "tf_weapon_jar_gas" : "tf_weapon_jar";
+	const char *pszWeapon = ( chem == CHEM_POISON ) ? "tf_weapon_jar_gas" : "tf_weapon_jar";
 	WEAPON_FILE_INFO_HANDLE hWpn = LookupWeaponInfoSlot( pszWeapon );
 	if ( hWpn == GetInvalidWeaponInfoHandle() )
 		return;
@@ -682,7 +737,7 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 		vecSrc = trace.endpos;
 
 	AngularImpulse ang( 300, 0, 0 );
-	if ( slot == CHEM_POISON )
+	if ( chem == CHEM_POISON )
 	{
 		const Vector vecVel = vecForward * TF_GAS_PROJ_SPEED;
 		CTFProjectile_JarGas *pProj = CTFProjectile_JarGas::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
@@ -703,9 +758,11 @@ void Chemist_Throw( CTFPlayer *pPlayer, int slot )
 	CTFProjectile_Jar *pProj = CTFProjectile_Jar::Create( vecSrc, pPlayer->EyeAngles(), vecVel, ang, pPlayer, *pInfo );
 	if ( pProj )
 	{
-		pProj->SetChemSlot( slot );
+		pProj->SetChemSlot( chem );
 		pProj->SetModel( TF_WEAPON_CHEMIST_VIAL_MODEL );
 		pProj->m_nSkin = 0;
+		if ( chem == CHEM_PROPULSION )
+			pProj->StartPropulsionDrip();
 	}
 }
 

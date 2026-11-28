@@ -157,6 +157,9 @@ public:
 	static CTFProjectile_Jar *Create( const Vector &position, const QAngle &angles, const Vector &velocity, 
 	const AngularImpulse &angVelocity, CBaseCombatCharacter *pOwner, const CTFWeaponInfo &weaponInfo );
 
+	void				StartPropulsionDrip( void );
+	void				PropulsionDripThink( void );
+
 	virtual int			GetProjectileType() const OVERRIDE			{ return m_iProjectileType; }
 
 	virtual int			GetWeaponID( void ) const OVERRIDE			{ return TF_WEAPON_GRENADE_JAR; }
@@ -190,10 +193,11 @@ protected:
 	virtual bool		ShouldJarateOnExplode( void ) { return true; }
 
 	Vector		m_vCollisionVelocity;
+	Vector		m_vecLastPropulsionDrip;
 	int			m_iProjectileType;
 #endif
 
-	// -1 is a stock jar. 0..CHEM_COUNT-1 is a chemist concoction.
+	// -1 is a stock jar. Otherwise a chemist chemical (CHEM_POISON .. CHEM_PROPULSION).
 	CNetworkVar( int, m_nChemSlot );
 };
 

@@ -39,7 +39,7 @@
 #include "gcsdk/gcclientsdk.h"
 #include "econ_gcmessages.h"
 #include "newitemdefinitions.h"
-#include "newitemdefinitions.h"
+#include "tf_chemist.h"
 #include "tf_gamerules.h"
 #include "tf_gcmessages.h"
 #include "econ_item.h"
@@ -264,6 +264,31 @@ void CTFInventoryManager::GenerateBaseItems( void )
 }
 
 #ifdef CLIENT_DLL
+// The stock chemical for a slot is the first base item, stored by clearing
+// the slot. Every other chemical is a blueprint with a fake item id. Putting
+// a chemical that is already equipped into another slot swaps the two.
+static void ChemistEquip_WriteSlot( CTFInventoryManager *pMgr, int iClass, int iSlot, int menuSlot, int chem )
+{
+	if ( !pMgr )
+		return;
+
+	if ( chem == ChemDefaultForMenuSlot( menuSlot ) )
+	{
+		pMgr->GetLocalTFInventory()->ClearLoadoutSlot( iClass, iSlot );
+		return;
+	}
+
+	CEconItemView *pView = NewItem_AlwaysOwnedViewForLogName( ChemBlueprintLogName( chem, menuSlot ) );
+	if ( !pView )
+		return;
+
+	const itemid_t id = pView->GetItemID();
+	if ( id == INVALID_ITEM_ID || id == 0 )
+		return;
+
+	pMgr->UpdateInventoryEquippedState( pMgr->GetLocalTFInventory(), id, iClass, iSlot );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -271,6 +296,53 @@ bool CTFInventoryManager::EquipItemInLoadout( int iClass, int iSlot, itemid_t iI
 {
 	if ( !steamapicontext || !steamapicontext->SteamUser() )
 		return false;
+
+	if ( iClass == TF_CLASS_CHEMIST && IsPdaBlueprintSlot( iSlot ) )
+	{
+		const int menuSlot = iSlot - LOADOUT_POSITION_PDA_SLOT1;
+		int chem = -1;
+		if ( iItemID == INVALID_ITEM_ID )
+		{
+			chem = ChemDefaultForMenuSlot( menuSlot );
+		}
+		else
+		{
+			CEconItemView *pItem = m_LocalInventory.GetInventoryItemByItemID( iItemID );
+			if ( !pItem )
+				return false;
+
+			chem = ChemTypeFromLogName( TFInventoryItemLogName( pItem ) );
+			if ( chem < 0 )
+				return false;
+		}
+
+		CEconItemView *pHere = m_LocalInventory.GetItemInLoadout( iClass, iSlot );
+		const int hereChem = ChemForMenuSlotItem( pHere, menuSlot );
+		if ( hereChem == chem )
+			return true;
+
+		int otherSlot = -1;
+		int otherMenu = -1;
+		for ( int s = 0; s < CHEM_COUNT; ++s )
+		{
+			if ( s == menuSlot )
+				continue;
+
+			const int loadoutSlot = LOADOUT_POSITION_PDA_SLOT1 + s;
+			CEconItemView *pOther = m_LocalInventory.GetItemInLoadout( iClass, loadoutSlot );
+			if ( ChemForMenuSlotItem( pOther, s ) == chem )
+			{
+				otherSlot = loadoutSlot;
+				otherMenu = s;
+				break;
+			}
+		}
+
+		ChemistEquip_WriteSlot( this, iClass, iSlot, menuSlot, chem );
+		if ( otherSlot >= 0 )
+			ChemistEquip_WriteSlot( this, iClass, otherSlot, otherMenu, hereChem );
+		return true;
+	}
 
 	// If they pass in a INVALID_ITEM_ID item id, we're just clearing the loadout slot
 	if ( iItemID == INVALID_ITEM_ID )

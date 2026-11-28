@@ -17,8 +17,12 @@ enum
 	CHEM_REPULSION,
 	CHEM_NITRIC,
 	CHEM_NEUTRAL,
-	CHEM_COUNT
+	CHEM_PROPULSION,
+	CHEM_TYPE_COUNT
 };
+
+// The chemistry menu and the four blueprint slots. Not the chemical count.
+static const int CHEM_COUNT = 4;
 
 // Thrown vial. One skin; the liquid tint is a material proxy of the concoction.
 #define TF_WEAPON_CHEMIST_VIAL_MODEL	"models/weapons/chemist/vial/flask_chemist.mdl"
@@ -69,6 +73,14 @@ float	ChemBrewSeconds( int slot );
 int		ChemUsesPerBrew( int slot );
 const char *ChemConcoctionName( int slot );
 
+// Blueprint log names. menuSlot is 0..3 (pda slot 1..4). The stock chemical
+// for a slot keeps the unsuffixed name; the copies that move it have _N.
+int		ChemDefaultForMenuSlot( int menuSlot );
+int		ChemTypeFromLogName( const char *pszLog );
+const char *ChemBlueprintLogName( int chem, int menuSlot );
+class CEconItemView;
+int		ChemForMenuSlotItem( const CEconItemView *pItem, int menuSlot );
+
 // VGUI image name (materials/vgui/<name>). The effects/ SpriteCards are particle
 // sprites and do not draw in an ImagePanel. Neutralizer uses the white cross.
 inline const char *ChemIconVguiImage( int slot, bool bRed )
@@ -79,6 +91,7 @@ inline const char *ChemIconVguiImage( int slot, bool bRed )
 	case CHEM_REPULSION:	return "chemicon_repulsiongel";
 	case CHEM_NITRIC:		return bRed ? "chemicon_nitricfluid_red" : "chemicon_nitricfluid_blu";
 	case CHEM_NEUTRAL:		return "chemicon_healingsalve";
+	case CHEM_PROPULSION:	return "chemicon_propulsion_gel";
 	default:				return bRed ? "chemicon_poison_red" : "chemicon_poison_blu";
 	}
 }

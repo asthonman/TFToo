@@ -68,7 +68,7 @@ BEGIN_NETWORK_TABLE( CTFProjectile_Jar, DT_TFProjectile_Jar )
 #ifdef CLIENT_DLL
 	RecvPropInt( RECVINFO( m_nChemSlot ) ),
 #else
-	// Signed so -1 (a stock jar) fits. Chemist slots are 0..3.
+	// Signed so -1 (a stock jar) fits. Chemist chemicals are 0..CHEM_PROPULSION.
 	SendPropInt( SENDINFO( m_nChemSlot ), 4 ),
 #endif
 END_NETWORK_TABLE()
@@ -98,6 +98,7 @@ CTFProjectile_Jar::CTFProjectile_Jar()
 	m_nChemSlot = -1;
 #ifdef GAME_DLL
 	m_vCollisionVelocity = Vector( 0, 0, 0 );
+	m_vecLastPropulsionDrip = vec3_origin;
 	m_iProjectileType = TF_PROJECTILE_JAR;
 #endif
 }
@@ -507,7 +508,7 @@ void CTFProjectile_Jar::Explode( trace_t *pTrace, int bitsDamageType )
 	}
 
 	CTFPlayer *pThrower = ToTFPlayer( GetThrower() );
-	if ( m_nChemSlot >= 0 && m_nChemSlot < CHEM_COUNT )
+	if ( m_nChemSlot >= 0 && m_nChemSlot < CHEM_TYPE_COUNT )
 	{
 		Vector normal = ( pTrace->fraction != 1.0f ) ? pTrace->plane.normal : Vector( 0, 0, 1 );
 		CPVSFilter particleFilter( GetAbsOrigin() );
@@ -530,6 +531,40 @@ void CTFProjectile_Jar::Explode( trace_t *pTrace, int bitsDamageType )
 
 	AddEffects( EF_NODRAW );
 	SetAbsVelocity( vec3_origin );
+}
+
+//-----------------------------------------------------------------------------
+// Propulsion gel leaks while the vial is in the air, so the throw leaves a lane.
+//-----------------------------------------------------------------------------
+void CTFProjectile_Jar::StartPropulsionDrip( void )
+{
+	m_vecLastPropulsionDrip = vec3_origin;
+	SetContextThink( &CTFProjectile_Jar::PropulsionDripThink, gpGlobals->curtime, "PropulsionDrip" );
+}
+
+void CTFProjectile_Jar::PropulsionDripThink( void )
+{
+	if ( m_nChemSlot != CHEM_PROPULSION || m_takedamage == DAMAGE_NO )
+		return;
+
+	const Vector pos = GetAbsOrigin();
+	const bool bFirst = ( m_vecLastPropulsionDrip == vec3_origin );
+	if ( bFirst || ( pos - m_vecLastPropulsionDrip ).LengthSqr() > ( 20.f * 20.f ) )
+	{
+		trace_t tr;
+		TFPaint_TraceDecal( pos, pos + Vector( 0.f, 0.f, -512.f ), vec3_origin, vec3_origin, tr );
+		if ( tr.fraction < 1.f && !( tr.surface.flags & SURF_SKY ) )
+		{
+			int team = 0;
+			CBaseEntity *pThrower = GetThrower();
+			if ( pThrower )
+				team = pThrower->GetTeamNumber();
+			TFPaint_PaintSphere( tr.endpos, tr.plane.normal, SPEED_POWER, 36.f, 30.f, team, false );
+			m_vecLastPropulsionDrip = pos;
+		}
+	}
+
+	SetContextThink( &CTFProjectile_Jar::PropulsionDripThink, gpGlobals->curtime + 0.08f, "PropulsionDrip" );
 }	
 
 //-----------------------------------------------------------------------------

@@ -57,6 +57,17 @@ static bool NewItem_IsFirstStockBaseItem( CTFItemDefinition *pDef )
 	return true;
 }
 
+static bool NewItem_IsChemistPropulsionUnlock( CTFItemDefinition *pDef )
+{
+	// Propulsion gel is not a weapon and not a base item. It still has to be
+	// equippable in a chemist blueprint slot, one copy per slot.
+	if ( !pDef || pDef->IsBaseItem() )
+		return false;
+
+	const char *pszLog = pDef->GetLogClassname();
+	return pszLog && !Q_strnicmp( pszLog, "chem_propulsion", 15 );
+}
+
 static CTFItemDefinition *NewItem_Definition( item_definition_index_t iIndex )
 {
 	if ( !IsNewItemDefinitionIndex( iIndex ) )
@@ -94,7 +105,8 @@ CEconItemView *NewItem_AlwaysOwnedView( item_definition_index_t iIndex )
 	// Wearables that are not base items (the empty Resupply hat) are not unlocks.
 	// A second stock blueprint in the same slot (speed pad, jump pad) also needs
 	// an id, or equipping it would just put the slot back on the first base item.
-	if ( ( !pDef->IsBaseItem() && pDef->IsActingAsAWeapon() ) || ( pDef->IsBaseItem() && !NewItem_IsFirstStockBaseItem( pDef ) ) )
+	// Propulsion gel is an unlock that is not a weapon, so it needs the same id.
+	if ( ( !pDef->IsBaseItem() && pDef->IsActingAsAWeapon() ) || ( pDef->IsBaseItem() && !NewItem_IsFirstStockBaseItem( pDef ) ) || NewItem_IsChemistPropulsionUnlock( pDef ) )
 		pView->SetItemID( NewItem_FakeItemID( iIndex ) );
 	s_Views.AddToTail( pView );
 	return pView;
@@ -154,7 +166,7 @@ void NewItem_AddStockItemsForSlot( int iClass, int iSlot, CUtlVector<CEconItemVi
 			if ( NewItem_IsFirstStockBaseItem( pDef ) )
 				continue;
 		}
-		else if ( !pDef->IsActingAsAWeapon() )
+		else if ( !pDef->IsActingAsAWeapon() && !NewItem_IsChemistPropulsionUnlock( pDef ) )
 		{
 			continue;
 		}

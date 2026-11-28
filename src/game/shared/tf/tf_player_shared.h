@@ -524,6 +524,7 @@ public:
 	float	GetRepulseGelUntil( void ) const { return m_flRepulseUntil; }
 	int		GetChemSelected( void ) const;
 	void	SetChemSelected( int slot );
+	int		GetChemInSlot( int slot ) const;
 	int		GetChemPrev( void ) const;
 	int		GetChemBrewSlot( void ) const;
 	void	SetChemBrewSlot( int slot );

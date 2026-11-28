@@ -135,6 +135,10 @@ bool TFPaint_ReflectOffCoated( CBaseEntity *pProj, CBaseEntity *pHit, const Vect
 // and physics props last tf_paint_repulse_ally_time. Allied buildings are skipped.
 bool TFPaint_CoatWithRepulsion( CBaseEntity *pEnt, CBaseEntity *pPainter );
 
+// Propulsion gel. Enemy players, enemy buildings, and physics props lose
+// friction for the same windows repulsion uses. Allies are not coated.
+bool TFPaint_CoatWithPropulsion( CBaseEntity *pEnt, CBaseEntity *pPainter );
+
 // Launch a moveable physics prop off repulsion gel. nOutward points out of the
 // surface. preVelocity is the incoming speed (zero uses the object's current
 // velocity). bForce skips the world-gel test for a coated prop or coated body.

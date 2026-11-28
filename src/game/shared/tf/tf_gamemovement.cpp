@@ -299,10 +299,11 @@ void CTFGameMovement::PlayerMove()
 			mv->m_flMaxSpeed = tf_paint_speed.GetFloat();
 			mv->m_flClientMaxSpeed = tf_paint_speed.GetFloat();
 #ifdef GAME_DLL
-			// Allied grease. The whip's speed-boost condition is the whoosh
-			// and the screen lines. The 600 cap above replaces its +40%.
-			// Refresh without re-adding, so the sound does not restart.
-			if ( m_nPaintPower == SIXTH_POWER && m_pTFPlayer )
+			// Allied grease, and any propulsion gel. The whip's speed-boost
+			// condition is the whoosh and the screen lines. The 600 cap
+			// above replaces its +40%. Refresh without re-adding, so the
+			// sound does not restart.
+			if ( ( m_nPaintPower == SPEED_POWER || m_nPaintPower == SIXTH_POWER ) && m_pTFPlayer )
 			{
 				if ( m_pTFPlayer->m_Shared.InCond( TF_COND_SPEED_BOOST ) )
 				{

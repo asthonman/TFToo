@@ -2002,17 +2002,19 @@ public:
 		CTFProjectile_Jar *pJar = dynamic_cast< CTFProjectile_Jar * >( pEntity );
 		if ( pJar )
 		{
-			// poison, repulsion, nitric, neutralizer.
+			// poison, repulsion, nitric, neutralizer, propulsion.
 			// Nitric matches the puddle (black). Neutralizer is white.
-			static const int s_rgb[CHEM_COUNT][3] =
+			// Propulsion is the orange gel, not grease.
+			static const int s_rgb[CHEM_TYPE_COUNT][3] =
 			{
 				{ 179, 0, 226 },
 				{ 0, 0, 255 },
 				{ 0, 0, 0 },
 				{ 255, 255, 255 },
+				{ 255, 106, 0 },
 			};
 			const int slot = pJar->GetChemSlot();
-			if ( slot >= 0 && slot < CHEM_COUNT )
+			if ( slot >= 0 && slot < CHEM_TYPE_COUNT )
 			{
 				vResult.x = s_rgb[slot][0] * ( 1.f / 255.f );
 				vResult.y = s_rgb[slot][1] * ( 1.f / 255.f );

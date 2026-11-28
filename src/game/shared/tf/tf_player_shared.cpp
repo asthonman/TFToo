@@ -35,6 +35,7 @@
 #include "tf_weapon_rocketpack.h"
 #include "tf_chemist.h"
 #include "tf_paint.h"
+#include "tf_item_inventory.h"
 #include <functional>
 
 // Client specific.
@@ -14780,6 +14781,76 @@ void CTFPlayerShared::SetScoutHypeMeter( float val )
 //-----------------------------------------------------------------------------
 // Chemist concoction pack. Fuel is the cloak meter. Brewing does not spend ammo.
 //-----------------------------------------------------------------------------
+int ChemDefaultForMenuSlot( int menuSlot )
+{
+	switch ( menuSlot )
+	{
+	case 0:		return CHEM_POISON;
+	case 1:		return CHEM_REPULSION;
+	case 2:		return CHEM_NITRIC;
+	case 3:		return CHEM_NEUTRAL;
+	default:	return CHEM_POISON;
+	}
+}
+
+int ChemTypeFromLogName( const char *pszLog )
+{
+	if ( !pszLog || !pszLog[0] )
+		return -1;
+	if ( !Q_strnicmp( pszLog, "chem_propulsion", 15 ) )
+		return CHEM_PROPULSION;
+	if ( !Q_strnicmp( pszLog, "chem_repulsion", 14 ) )
+		return CHEM_REPULSION;
+	if ( !Q_strnicmp( pszLog, "chem_neutral", 12 ) )
+		return CHEM_NEUTRAL;
+	if ( !Q_strnicmp( pszLog, "chem_nitric", 11 ) )
+		return CHEM_NITRIC;
+	if ( !Q_strnicmp( pszLog, "chem_poison", 11 ) )
+		return CHEM_POISON;
+	return -1;
+}
+
+const char *ChemBlueprintLogName( int chem, int menuSlot )
+{
+	if ( menuSlot < 0 || menuSlot >= CHEM_COUNT )
+		menuSlot = 0;
+	static const char *s_psz[CHEM_TYPE_COUNT][CHEM_COUNT] =
+	{
+		{ "chem_poison", "chem_poison_2", "chem_poison_3", "chem_poison_4" },
+		{ "chem_repulsion_1", "chem_repulsion", "chem_repulsion_3", "chem_repulsion_4" },
+		{ "chem_nitric_1", "chem_nitric_2", "chem_nitric", "chem_nitric_4" },
+		{ "chem_neutral_1", "chem_neutral_2", "chem_neutral_3", "chem_neutral" },
+		{ "chem_propulsion_1", "chem_propulsion_2", "chem_propulsion_3", "chem_propulsion_4" },
+	};
+	if ( chem < 0 || chem >= CHEM_TYPE_COUNT )
+		chem = ChemDefaultForMenuSlot( menuSlot );
+	return s_psz[chem][menuSlot];
+}
+
+int ChemForMenuSlotItem( const CEconItemView *pItem, int menuSlot )
+{
+	const int chem = ChemTypeFromLogName( TFInventoryItemLogName( pItem ) );
+	if ( chem < 0 )
+		return ChemDefaultForMenuSlot( menuSlot );
+	return chem;
+}
+
+int CTFPlayerShared::GetChemInSlot( int slot ) const
+{
+	if ( slot < 0 || slot >= CHEM_COUNT )
+		slot = 0;
+
+	CEconItemView *pItem = NULL;
+#ifdef GAME_DLL
+	if ( m_pOuter )
+		pItem = m_pOuter->GetLoadoutItem( TF_CLASS_CHEMIST, LOADOUT_POSITION_PDA_SLOT1 + slot );
+#else
+	if ( TFInventoryManager() )
+		pItem = TFInventoryManager()->GetItemInLoadoutForClass( TF_CLASS_CHEMIST, LOADOUT_POSITION_PDA_SLOT1 + slot );
+#endif
+	return ChemForMenuSlotItem( pItem, slot );
+}
+
 float ChemBrewSeconds( int slot )
 {
 	switch ( slot )
@@ -14788,6 +14859,7 @@ float ChemBrewSeconds( int slot )
 	case CHEM_REPULSION:	return 30.f;
 	case CHEM_NITRIC:		return 45.f;
 	case CHEM_NEUTRAL:		return 10.f;
+	case CHEM_PROPULSION:	return 30.f;
 	default:				return 45.f;
 	}
 }
@@ -14800,6 +14872,7 @@ int ChemUsesPerBrew( int slot )
 	case CHEM_REPULSION:	return 3;
 	case CHEM_NITRIC:		return 1;
 	case CHEM_NEUTRAL:		return 5;
+	case CHEM_PROPULSION:	return 3;
 	default:				return 1;
 	}
 }
@@ -14812,6 +14885,7 @@ const char *ChemConcoctionName( int slot )
 	case CHEM_REPULSION:	return "#TF_Chem_Repulsion";
 	case CHEM_NITRIC:		return "#TF_Chem_Nitric";
 	case CHEM_NEUTRAL:		return "#TF_Chem_Neutral";
+	case CHEM_PROPULSION:	return "#TF_Chem_Propulsion";
 	default:				return "#TF_Chem_Poison";
 	}
 }
@@ -14830,7 +14904,7 @@ void CTFPlayerShared::SetChemUses( int slot, int uses )
 	if ( slot < 0 || slot >= CHEM_COUNT )
 		return;
 	float v = (float)uses;
-	const float mx = (float)ChemUsesPerBrew( slot );
+	const float mx = (float)ChemUsesPerBrew( GetChemInSlot( slot ) );
 	if ( v < 0.f )
 		v = 0.f;
 	if ( v > mx )
@@ -14882,8 +14956,9 @@ void CTFPlayerShared::ChemistBrewThink( void )
 
 	for ( int i = 0; i < CHEM_COUNT; ++i )
 	{
-		const float flMax = (float)ChemUsesPerBrew( i );
-		const float flDur = ChemBrewSeconds( i );
+		const int chem = GetChemInSlot( i );
+		const float flMax = (float)ChemUsesPerBrew( chem );
+		const float flDur = ChemBrewSeconds( chem );
 		float flCharge = m_flChemCharge[i];
 		if ( flCharge >= flMax || flDur <= 0.f )
 			continue;
@@ -14899,7 +14974,7 @@ void CTFPlayerShared::ResetChemist( void )
 	// Spawn with every concoction already brewed.
 	m_nChemPacked = ChemPack_SetBrew( 0, CHEM_BREW_NONE );
 	for ( int i = 0; i < CHEM_COUNT; ++i )
-		m_flChemCharge.Set( i, (float)ChemUsesPerBrew( i ) );
+		m_flChemCharge.Set( i, (float)ChemUsesPerBrew( GetChemInSlot( i ) ) );
 	m_flChemBrewDone = 0.f;
 	m_bChemJetting = false;
 #ifdef GAME_DLL

@@ -1249,10 +1249,11 @@ void CHudMenuChemistry::ApplySchemeSettings( IScheme *pScheme )
 		for ( int s = 0; s < 4; ++s )
 		{
 			pStates[s]->LoadControlSettings( s_pszChemStateRes[s] );
+			const int chem = pPlayer ? pPlayer->m_Shared.GetChemInSlot( i ) : i;
 			CExLabel *pName = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "ItemNameLabel" ) );
 			if ( pName )
-				pName->SetText( ChemConcoctionName( i ) );
-			ChemMenu_SetDebuffIcon( pStates[s], i, bRed );
+				pName->SetText( ChemConcoctionName( chem ) );
+			ChemMenu_SetDebuffIcon( pStates[s], chem, bRed );
 			vgui::Panel *pMetal = pStates[s]->FindChildByName( "MetalIcon" );
 			if ( pMetal )
 				pMetal->SetVisible( false );
@@ -1280,12 +1281,13 @@ void CHudMenuChemistry::UpdateSlots( void )
 
 	vgui::Label *pSelected = dynamic_cast< vgui::Label * >( FindChildByName( "SelectedLabel" ) );
 	if ( pSelected )
-		pSelected->SetText( ChemConcoctionName( iSelected ) );
+		pSelected->SetText( ChemConcoctionName( pPlayer->m_Shared.GetChemInSlot( iSelected ) ) );
 
 	for ( int i = 0; i < CHEM_MENU_SLOTS; ++i )
 	{
+		const int chem = pPlayer->m_Shared.GetChemInSlot( i );
 		const float flCharge = pPlayer->m_Shared.GetChemCharge( i );
-		const float flMax = (float)ChemUsesPerBrew( i );
+		const float flMax = (float)ChemUsesPerBrew( chem );
 		const bool bReady = flCharge >= 1.f;
 
 		m_pAvailable[i]->SetVisible( false );
@@ -1293,8 +1295,16 @@ void CHudMenuChemistry::UpdateSlots( void )
 		m_pAlreadyBuilt[i]->SetVisible( bReady );
 		m_pUnavailable[i]->SetVisible( !bReady );
 
-		ChemMenu_SetDebuffIcon( m_pAlreadyBuilt[i], i, bRed );
-		ChemMenu_SetDebuffIcon( m_pUnavailable[i], i, bRed );
+		ChemMenu_SetDebuffIcon( m_pAlreadyBuilt[i], chem, bRed );
+		ChemMenu_SetDebuffIcon( m_pUnavailable[i], chem, bRed );
+
+		EditablePanel *pStates[2] = { m_pAlreadyBuilt[i], m_pUnavailable[i] };
+		for ( int s = 0; s < 2; ++s )
+		{
+			CExLabel *pName = dynamic_cast< CExLabel * >( pStates[s]->FindChildByName( "ItemNameLabel" ) );
+			if ( pName )
+				pName->SetText( ChemConcoctionName( chem ) );
+		}
 
 		vgui::Panel *pMeter = m_pUnavailable[i]->FindChildByName( "BrewMeter" );
 		if ( pMeter )
@@ -1451,7 +1461,8 @@ void CHudChemStatus::ApplySchemeSettings( IScheme *pScheme )
 		m_pDebuff[i]->SetShouldScaleImage( true );
 		C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 		const bool bRed = !pPlayer || pPlayer->GetTeamNumber() != TF_TEAM_BLUE;
-		m_pDebuff[i]->SetImage( ChemIconVguiImage( i, bRed ) );
+		const int chem = pPlayer ? pPlayer->m_Shared.GetChemInSlot( i ) : i;
+		m_pDebuff[i]->SetImage( ChemIconVguiImage( chem, bRed ) );
 	}
 
 	BaseClass::ApplySchemeSettings( pScheme );
@@ -1507,15 +1518,16 @@ void CHudChemStatus::UpdateRows( void )
 
 	for ( int i = 0; i < CHEM_COUNT; ++i )
 	{
+		const int chem = pPlayer->m_Shared.GetChemInSlot( i );
 		const float flCharge = pPlayer->m_Shared.GetChemCharge( i );
-		const float flMax = (float)ChemUsesPerBrew( i );
+		const float flMax = (float)ChemUsesPerBrew( chem );
 		const bool bSelected = ( i == iSelected );
 		const bool bReady = flCharge >= 1.f;
 
 		m_pBackground[i]->SetIcon( ( bReady || bSelected ) ? pszReady : "obj_status_background_disabled" );
 		m_pSelectedBar[i]->SetVisible( bSelected );
 
-		m_pDebuff[i]->SetImage( ChemIconVguiImage( i, bRed ) );
+		m_pDebuff[i]->SetImage( ChemIconVguiImage( chem, bRed ) );
 		m_pDebuff[i]->SetDrawColor( ( !bReady && !bSelected ) ? Color( 140, 140, 140, 255 ) : Color( 255, 255, 255, 255 ) );
 
 		int nChunks = (int)flMax;
