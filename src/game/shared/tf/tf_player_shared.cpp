@@ -8229,14 +8229,17 @@ void CTFPlayerShared::InvisibilityThink( void )
 
 	flTargetInvis *= flTargetInvisScale;
 
-	// Grow uses the spy cloak. Full size is 90%. A disguise still cloaks
-	// through the same proxy; this only raises a real Brick.
-	if ( iClass == TF_CLASS_BRICK )
+#ifdef CLIENT_DLL
+	// Grow cloak is a client visual. The server never stores it, so sentries,
+	// bots, and score checks still see him. Allies (and he himself) get it.
+	// An enemy's client leaves the value at 0.
+	if ( iClass == TF_CLASS_BRICK && !m_pOuter->IsEnemyPlayer() )
 	{
 		const float flGrowCloak = TFBrickGrowFraction( m_pOuter->GetModelScale() ) * TF_BRICK_GROW_CLOAK;
 		if ( flTargetInvis < flGrowCloak )
 			flTargetInvis = flGrowCloak;
 	}
+#endif
 
 	m_flPrevInvisibility = m_flInvisibility;
 	m_flInvisibility = clamp( flTargetInvis, 0.0f, 1.0f );

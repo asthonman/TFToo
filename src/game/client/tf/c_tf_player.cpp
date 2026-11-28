@@ -8997,7 +8997,18 @@ bool C_TFPlayer::ShouldCollide( int collisionGroup, int contentsMask ) const
 
 float C_TFPlayer::GetPercentInvisible( void )
 {
-	return m_Shared.GetPercentInvisible();
+	float flInvis = m_Shared.GetPercentInvisible();
+
+	// Grow cloak is ally-only. Drop it here too, in case the stored value
+	// was raised before this viewer became an enemy.
+	if ( flInvis > 0.0f && IsPlayerClass( TF_CLASS_BRICK ) && IsEnemyPlayer() )
+	{
+		flInvis -= TFBrickGrowFraction( GetModelScale() ) * TF_BRICK_GROW_CLOAK;
+		if ( flInvis < 0.0f )
+			flInvis = 0.0f;
+	}
+
+	return flInvis;
 }
 
 void C_TFPlayer::AdjustSkinIndexForZombie( int iClassIndex, int &iSkinIndex )

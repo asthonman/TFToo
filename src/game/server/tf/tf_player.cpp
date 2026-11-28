@@ -1826,7 +1826,7 @@ void CTFPlayer::ThinkBrickGrow( void )
 	// overwrite a pause later in the same frame. Shrink stays on that think.
 	// A ceiling crouches him first. If the ducked hull still does not fit,
 	// the clock pauses. Speed and knockback follow the scale, so they pause
-	// too. The cloak reads this same scale and reaches 90% at full size.
+	// too. Allies see the cloak from this same scale, 90% at full size.
 	if ( IsAlive() )
 	{
 		ModelScale *mvs = (ModelScale *)GetDataObject( MODELSCALE );
@@ -5522,7 +5522,22 @@ bool CTFPlayer::ItemIsAllowed( CEconItemView *pItem )
 				bMedievalModeAllowed = true;
 			break;
 		}
-		
+
+		// Brick's shove and Mason's Missile are secondaries. The Witch
+		// spellbook and Chemist chemistry set are PDAs. Medieval mode
+		// keeps all four.
+		if ( !bMedievalModeAllowed && pData && pData->GetItemClass() )
+		{
+			const char *pszItemClass = pData->GetItemClass();
+			if ( FStrEq( pszItemClass, "tf_weapon_brickshove" )
+				|| FStrEq( pszItemClass, "tf_weapon_throwable_brick" )
+				|| FStrEq( pszItemClass, "tf_weapon_pda_spellbook" )
+				|| FStrEq( pszItemClass, "tf_weapon_pda_chemistry" ) )
+			{
+				bMedievalModeAllowed = true;
+			}
+		}
+
 		if ( !bMedievalModeAllowed )
 		{
 			static CSchemaAttributeDefHandle pAttrib_AllowedInMedievalMode( "allowed in medieval mode" );
